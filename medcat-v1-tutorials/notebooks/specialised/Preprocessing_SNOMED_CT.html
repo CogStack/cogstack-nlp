@@ -14665,7 +14665,7 @@ body[data-format='mobile'] .jp-OutputArea-child .jp-OutputArea-output {
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs  ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -14674,89 +14674,12 @@ body[data-format='mobile'] .jp-OutputArea-child .jp-OutputArea-output {
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
      <div class="CodeMirror cm-s-jupyter">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># Install medcat</span>
-<span class="o">!</span>pip install --upgrade medcat
+<span class="o">%</span><span class="k">pip</span> install --upgrade medcat
 </pre></div>
 
      </div>
 </div>
 </div>
-</div>
-
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-
-
-<div class="jp-OutputArea jp-Cell-outputArea">
-
-<div class="jp-OutputArea-child">
-
-    
-    <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-
-
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain">
-<pre>Requirement already satisfied: medcat in /usr/local/lib/python3.7/dist-packages (1.1.1)
-Requirement already satisfied: spacy&lt;3.1.0,&gt;=3.0.1 in /usr/local/lib/python3.7/dist-packages (from medcat) (3.0.7)
-Requirement already satisfied: gensim~=3.8 in /usr/local/lib/python3.7/dist-packages (from medcat) (3.8.3)
-Requirement already satisfied: pandas~=1.0 in /usr/local/lib/python3.7/dist-packages (from medcat) (1.1.5)
-Requirement already satisfied: numpy&lt;1.21.0,&gt;=1.19.0 in /usr/local/lib/python3.7/dist-packages (from medcat) (1.19.5)
-Requirement already satisfied: transformers~=4.5.1 in /usr/local/lib/python3.7/dist-packages (from medcat) (4.5.1)
-Requirement already satisfied: tqdm&lt;4.50.0,&gt;=4.27 in /usr/local/lib/python3.7/dist-packages (from medcat) (4.49.0)
-Requirement already satisfied: elasticsearch~=7.10 in /usr/local/lib/python3.7/dist-packages (from medcat) (7.14.0)
-Requirement already satisfied: scipy~=1.5 in /usr/local/lib/python3.7/dist-packages (from medcat) (1.7.1)
-Requirement already satisfied: torch~=1.8.1 in /usr/local/lib/python3.7/dist-packages (from medcat) (1.8.1)
-Requirement already satisfied: jsonpickle~=2.0.0 in /usr/local/lib/python3.7/dist-packages (from medcat) (2.0.0)
-Requirement already satisfied: datasets~=1.6.0 in /usr/local/lib/python3.7/dist-packages (from medcat) (1.6.2)
-Requirement already satisfied: sklearn~=0.0 in /usr/local/lib/python3.7/dist-packages (from medcat) (0.0)
-Requirement already satisfied: dill~=0.3.3 in /usr/local/lib/python3.7/dist-packages (from medcat) (0.3.4)
-Requirement already satisfied: pyarrow&gt;=1.0.0&lt;4.0.0 in /usr/local/lib/python3.7/dist-packages (from datasets~=1.6.0-&gt;medcat) (3.0.0)
-Requirement already satisfied: xxhash in /usr/local/lib/python3.7/dist-packages (from datasets~=1.6.0-&gt;medcat) (2.0.2)
-Requirement already satisfied: requests&gt;=2.19.0 in /usr/local/lib/python3.7/dist-packages (from datasets~=1.6.0-&gt;medcat) (2.23.0)
-Requirement already satisfied: huggingface-hub&lt;0.1.0 in /usr/local/lib/python3.7/dist-packages (from datasets~=1.6.0-&gt;medcat) (0.0.15)
-Requirement already satisfied: multiprocess in /usr/local/lib/python3.7/dist-packages (from datasets~=1.6.0-&gt;medcat) (0.70.12.2)
-Requirement already satisfied: fsspec in /usr/local/lib/python3.7/dist-packages (from datasets~=1.6.0-&gt;medcat) (2021.7.0)
-Requirement already satisfied: packaging in /usr/local/lib/python3.7/dist-packages (from datasets~=1.6.0-&gt;medcat) (21.0)
-Requirement already satisfied: importlib-metadata in /usr/local/lib/python3.7/dist-packages (from datasets~=1.6.0-&gt;medcat) (4.6.4)
-Requirement already satisfied: certifi in /usr/local/lib/python3.7/dist-packages (from elasticsearch~=7.10-&gt;medcat) (2021.5.30)
-Requirement already satisfied: urllib3&lt;2,&gt;=1.21.1 in /usr/local/lib/python3.7/dist-packages (from elasticsearch~=7.10-&gt;medcat) (1.24.3)
-Requirement already satisfied: six&gt;=1.5.0 in /usr/local/lib/python3.7/dist-packages (from gensim~=3.8-&gt;medcat) (1.15.0)
-Requirement already satisfied: smart-open&gt;=1.8.1 in /usr/local/lib/python3.7/dist-packages (from gensim~=3.8-&gt;medcat) (5.1.0)
-Requirement already satisfied: filelock in /usr/local/lib/python3.7/dist-packages (from huggingface-hub&lt;0.1.0-&gt;datasets~=1.6.0-&gt;medcat) (3.0.12)
-Requirement already satisfied: typing-extensions in /usr/local/lib/python3.7/dist-packages (from huggingface-hub&lt;0.1.0-&gt;datasets~=1.6.0-&gt;medcat) (3.7.4.3)
-Requirement already satisfied: pyparsing&gt;=2.0.2 in /usr/local/lib/python3.7/dist-packages (from packaging-&gt;datasets~=1.6.0-&gt;medcat) (2.4.7)
-Requirement already satisfied: pytz&gt;=2017.2 in /usr/local/lib/python3.7/dist-packages (from pandas~=1.0-&gt;medcat) (2018.9)
-Requirement already satisfied: python-dateutil&gt;=2.7.3 in /usr/local/lib/python3.7/dist-packages (from pandas~=1.0-&gt;medcat) (2.8.2)
-Requirement already satisfied: chardet&lt;4,&gt;=3.0.2 in /usr/local/lib/python3.7/dist-packages (from requests&gt;=2.19.0-&gt;datasets~=1.6.0-&gt;medcat) (3.0.4)
-Requirement already satisfied: idna&lt;3,&gt;=2.5 in /usr/local/lib/python3.7/dist-packages (from requests&gt;=2.19.0-&gt;datasets~=1.6.0-&gt;medcat) (2.10)
-Requirement already satisfied: scikit-learn in /usr/local/lib/python3.7/dist-packages (from sklearn~=0.0-&gt;medcat) (0.22.2.post1)
-Requirement already satisfied: spacy-legacy&lt;3.1.0,&gt;=3.0.5 in /usr/local/lib/python3.7/dist-packages (from spacy&lt;3.1.0,&gt;=3.0.1-&gt;medcat) (3.0.8)
-Requirement already satisfied: wasabi&lt;1.1.0,&gt;=0.8.1 in /usr/local/lib/python3.7/dist-packages (from spacy&lt;3.1.0,&gt;=3.0.1-&gt;medcat) (0.8.2)
-Requirement already satisfied: blis&lt;0.8.0,&gt;=0.4.0 in /usr/local/lib/python3.7/dist-packages (from spacy&lt;3.1.0,&gt;=3.0.1-&gt;medcat) (0.4.1)
-Requirement already satisfied: thinc&lt;8.1.0,&gt;=8.0.3 in /usr/local/lib/python3.7/dist-packages (from spacy&lt;3.1.0,&gt;=3.0.1-&gt;medcat) (8.0.8)
-Requirement already satisfied: preshed&lt;3.1.0,&gt;=3.0.2 in /usr/local/lib/python3.7/dist-packages (from spacy&lt;3.1.0,&gt;=3.0.1-&gt;medcat) (3.0.5)
-Requirement already satisfied: cymem&lt;2.1.0,&gt;=2.0.2 in /usr/local/lib/python3.7/dist-packages (from spacy&lt;3.1.0,&gt;=3.0.1-&gt;medcat) (2.0.5)
-Requirement already satisfied: catalogue&lt;2.1.0,&gt;=2.0.4 in /usr/local/lib/python3.7/dist-packages (from spacy&lt;3.1.0,&gt;=3.0.1-&gt;medcat) (2.0.6)
-Requirement already satisfied: typer&lt;0.4.0,&gt;=0.3.0 in /usr/local/lib/python3.7/dist-packages (from spacy&lt;3.1.0,&gt;=3.0.1-&gt;medcat) (0.3.2)
-Requirement already satisfied: pydantic!=1.8,!=1.8.1,&lt;1.9.0,&gt;=1.7.4 in /usr/local/lib/python3.7/dist-packages (from spacy&lt;3.1.0,&gt;=3.0.1-&gt;medcat) (1.8.2)
-Requirement already satisfied: jinja2 in /usr/local/lib/python3.7/dist-packages (from spacy&lt;3.1.0,&gt;=3.0.1-&gt;medcat) (2.11.3)
-Requirement already satisfied: setuptools in /usr/local/lib/python3.7/dist-packages (from spacy&lt;3.1.0,&gt;=3.0.1-&gt;medcat) (57.4.0)
-Requirement already satisfied: pathy&gt;=0.3.5 in /usr/local/lib/python3.7/dist-packages (from spacy&lt;3.1.0,&gt;=3.0.1-&gt;medcat) (0.6.0)
-Requirement already satisfied: srsly&lt;3.0.0,&gt;=2.4.1 in /usr/local/lib/python3.7/dist-packages (from spacy&lt;3.1.0,&gt;=3.0.1-&gt;medcat) (2.4.1)
-Requirement already satisfied: murmurhash&lt;1.1.0,&gt;=0.28.0 in /usr/local/lib/python3.7/dist-packages (from spacy&lt;3.1.0,&gt;=3.0.1-&gt;medcat) (1.0.5)
-Requirement already satisfied: zipp&gt;=0.5 in /usr/local/lib/python3.7/dist-packages (from catalogue&lt;2.1.0,&gt;=2.0.4-&gt;spacy&lt;3.1.0,&gt;=3.0.1-&gt;medcat) (3.5.0)
-Requirement already satisfied: tokenizers&lt;0.11,&gt;=0.10.1 in /usr/local/lib/python3.7/dist-packages (from transformers~=4.5.1-&gt;medcat) (0.10.3)
-Requirement already satisfied: sacremoses in /usr/local/lib/python3.7/dist-packages (from transformers~=4.5.1-&gt;medcat) (0.0.45)
-Requirement already satisfied: regex!=2019.12.17 in /usr/local/lib/python3.7/dist-packages (from transformers~=4.5.1-&gt;medcat) (2019.12.20)
-Requirement already satisfied: click&lt;7.2.0,&gt;=7.1.1 in /usr/local/lib/python3.7/dist-packages (from typer&lt;0.4.0,&gt;=0.3.0-&gt;spacy&lt;3.1.0,&gt;=3.0.1-&gt;medcat) (7.1.2)
-Requirement already satisfied: MarkupSafe&gt;=0.23 in /usr/local/lib/python3.7/dist-packages (from jinja2-&gt;spacy&lt;3.1.0,&gt;=3.0.1-&gt;medcat) (2.0.1)
-Requirement already satisfied: joblib in /usr/local/lib/python3.7/dist-packages (from sacremoses-&gt;transformers~=4.5.1-&gt;medcat) (1.0.1)
-</pre>
-</div>
-</div>
-
-</div>
-
 </div>
 
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs  ">
@@ -14767,7 +14690,8 @@ Requirement already satisfied: joblib in /usr/local/lib/python3.7/dist-packages 
 <div class="jp-InputPrompt jp-InputArea-prompt">In&nbsp;[&nbsp;]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
      <div class="CodeMirror cm-s-jupyter">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">from</span> <span class="nn">medcat.utils.preprocess_snomed</span> <span class="kn">import</span> <span class="n">Snomed</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="kn">import</span> <span class="nn">zipfile</span>
+<span class="kn">from</span> <span class="nn">medcat.utils.preprocess_snomed</span> <span class="kn">import</span> <span class="n">Snomed</span>
 </pre></div>
 
      </div>
@@ -14797,6 +14721,7 @@ Requirement already satisfied: joblib in /usr/local/lib/python3.7/dist-packages 
      <div class="CodeMirror cm-s-jupyter">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># Assign a path to the zipped SNOMED CT release download. (skip this step if the folder is not zipped)</span>
 <span class="n">snomed_path</span> <span class="o">=</span> <span class="s2">&quot;SnomedCT_InternationalRF2_PRODUCTION_20210131T120000Z.zip&quot;</span>  <span class="c1"># Enter your zipped Snomed folder here</span>
+<span class="n">snomed_filename</span> <span class="o">=</span> <span class="n">snomed_path</span><span class="p">[:</span><span class="o">-</span><span class="mi">4</span><span class="p">]</span>
 </pre></div>
 
      </div>
@@ -14812,7 +14737,9 @@ Requirement already satisfied: joblib in /usr/local/lib/python3.7/dist-packages 
 <div class="jp-InputPrompt jp-InputArea-prompt">In&nbsp;[&nbsp;]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
      <div class="CodeMirror cm-s-jupyter">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="o">!</span>unzip snomed_path
+<div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># unzip snomed files to work with</span>
+<span class="k">with</span> <span class="n">zipfile</span><span class="o">.</span><span class="n">ZipFile</span><span class="p">(</span><span class="n">snomed_path</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">zip_ref</span><span class="p">:</span>
+    <span class="n">zip_ref</span><span class="o">.</span><span class="n">extractall</span><span class="p">(</span><span class="n">snomed_filename</span><span class="p">)</span>
 </pre></div>
 
      </div>
@@ -14840,7 +14767,6 @@ Requirement already satisfied: joblib in /usr/local/lib/python3.7/dist-packages 
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
      <div class="CodeMirror cm-s-jupyter">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># Initialise</span>
-<span class="n">snomed_filename</span> <span class="o">=</span> <span class="s2">&quot;SnomedCT_InternationalRF2_PRODUCTION_20210131T120000Z&quot;</span>  <span class="c1"># The unzippedSNOMED CT folder</span>
 <span class="n">snomed</span> <span class="o">=</span> <span class="n">Snomed</span><span class="p">(</span><span class="n">snomed_filename</span><span class="p">)</span>
 </pre></div>
 
@@ -14927,7 +14853,7 @@ Requirement already satisfied: joblib in /usr/local/lib/python3.7/dist-packages 
 </div>
 </div>
 
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs  ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -14943,105 +14869,7 @@ Requirement already satisfied: joblib in /usr/local/lib/python3.7/dist-packages 
 </div>
 </div>
 
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-
-
-<div class="jp-OutputArea jp-Cell-outputArea">
-
-<div class="jp-OutputArea-child">
-
-    
-    <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[&nbsp;]:</div>
-
-
-
-<div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/html">
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>cui</th>
-      <th>name</th>
-      <th>name_status</th>
-      <th>ontologies</th>
-      <th>description_type_ids</th>
-      <th>type_ids</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>0</th>
-      <td>101009</td>
-      <td>Quilonia ethiopica (organism)</td>
-      <td>P</td>
-      <td>SNOMED-CT</td>
-      <td>organism</td>
-      <td>81102976</td>
-    </tr>
-    <tr>
-      <th>1</th>
-      <td>102002</td>
-      <td>Hemoglobin Okaloosa (substance)</td>
-      <td>P</td>
-      <td>SNOMED-CT</td>
-      <td>substance</td>
-      <td>91187746</td>
-    </tr>
-    <tr>
-      <th>2</th>
-      <td>103007</td>
-      <td>Squirrel fibroma virus (organism)</td>
-      <td>P</td>
-      <td>SNOMED-CT</td>
-      <td>organism</td>
-      <td>81102976</td>
-    </tr>
-    <tr>
-      <th>3</th>
-      <td>104001</td>
-      <td>Excision of lesion of patella (procedure)</td>
-      <td>P</td>
-      <td>SNOMED-CT</td>
-      <td>procedure</td>
-      <td>28321150</td>
-    </tr>
-    <tr>
-      <th>4</th>
-      <td>106004</td>
-      <td>Structure of posterior carpal region (body str...</td>
-      <td>P</td>
-      <td>SNOMED-CT</td>
-      <td>body structure</td>
-      <td>37552161</td>
-    </tr>
-  </tbody>
-</table>
-</div>
-</div>
-
-</div>
-
-</div>
-
-</div>
-
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs  ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -15056,77 +14884,6 @@ Requirement already satisfied: joblib in /usr/local/lib/python3.7/dist-packages 
      </div>
 </div>
 </div>
-</div>
-
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-
-
-<div class="jp-OutputArea jp-Cell-outputArea">
-
-<div class="jp-OutputArea-child">
-
-    
-    <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[&nbsp;]:</div>
-
-
-
-<div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/html">
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>cui</th>
-      <th>name</th>
-      <th>name_status</th>
-      <th>ontologies</th>
-      <th>description_type_ids</th>
-      <th>type_ids</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>0</th>
-      <td>101009</td>
-      <td>Quilonia ethiopica (organism)</td>
-      <td>P</td>
-      <td>SNOMED-CT</td>
-      <td>organism</td>
-      <td>81102976</td>
-    </tr>
-    <tr>
-      <th>354448</th>
-      <td>101009</td>
-      <td>Quilonia ethiopica</td>
-      <td>A</td>
-      <td>SNOMED-CT</td>
-      <td>organism</td>
-      <td>81102976</td>
-    </tr>
-  </tbody>
-</table>
-</div>
-</div>
-
-</div>
-
-</div>
-
 </div>
 
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs  ">
@@ -15148,7 +14905,7 @@ Requirement already satisfied: joblib in /usr/local/lib/python3.7/dist-packages 
 </div>
 </div>
 
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs  ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -15162,31 +14919,6 @@ Requirement already satisfied: joblib in /usr/local/lib/python3.7/dist-packages 
      </div>
 </div>
 </div>
-</div>
-
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-
-
-<div class="jp-OutputArea jp-Cell-outputArea">
-
-<div class="jp-OutputArea-child">
-
-    
-    <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[&nbsp;]:</div>
-
-
-
-
-<div class="jp-RenderedText jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/plain">
-<pre>&#39;Quilonia ethiopica (organism)&#39;</pre>
-</div>
-
-</div>
-
-</div>
-
 </div>
 
 </div>
@@ -15311,7 +15043,7 @@ Map Blocks, Map Groups and Map Priorities, for correct official mapping methodol
 </div>
 </div>
 
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs  ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -15327,146 +15059,6 @@ Map Blocks, Map Groups and Map Priorities, for correct official mapping methodol
 </div>
 </div>
 
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-
-
-<div class="jp-OutputArea jp-Cell-outputArea">
-
-<div class="jp-OutputArea-child">
-
-    
-    <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[&nbsp;]:</div>
-
-
-
-<div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/html">
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>id</th>
-      <th>effectiveTime</th>
-      <th>active</th>
-      <th>moduleId</th>
-      <th>refsetId</th>
-      <th>referencedComponentId</th>
-      <th>mapGroup</th>
-      <th>mapPriority</th>
-      <th>mapRule</th>
-      <th>mapAdvice</th>
-      <th>mapTarget</th>
-      <th>correlationId</th>
-      <th>mapCategoryId</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>0</th>
-      <td>49b07dca-0559-59d9-8c85-3198c941a813</td>
-      <td>20130731</td>
-      <td>1</td>
-      <td>449080006</td>
-      <td>447562003</td>
-      <td>10000006</td>
-      <td>1</td>
-      <td>1</td>
-      <td>TRUE</td>
-      <td>ALWAYS R07.4</td>
-      <td>R07.4</td>
-      <td>447561005</td>
-      <td>447637006</td>
-    </tr>
-    <tr>
-      <th>1</th>
-      <td>2c141272-bbc0-5c34-aa48-72f2dc370ead</td>
-      <td>20150131</td>
-      <td>1</td>
-      <td>449080006</td>
-      <td>447562003</td>
-      <td>10001005</td>
-      <td>1</td>
-      <td>1</td>
-      <td>TRUE</td>
-      <td>ALWAYS A41.9</td>
-      <td>A41.9</td>
-      <td>447561005</td>
-      <td>447637006</td>
-    </tr>
-    <tr>
-      <th>2</th>
-      <td>47cf847c-c85c-5979-8129-98475d4ab274</td>
-      <td>20190731</td>
-      <td>1</td>
-      <td>449080006</td>
-      <td>447562003</td>
-      <td>10007009</td>
-      <td>1</td>
-      <td>1</td>
-      <td>TRUE</td>
-      <td>ALWAYS Q87.1 | POSSIBLE REQUIREMENT FOR ADDITI...</td>
-      <td>Q87.1</td>
-      <td>447561005</td>
-      <td>447637006</td>
-    </tr>
-    <tr>
-      <th>3</th>
-      <td>4cd08e27-0417-5c5d-8873-6a72d130e918</td>
-      <td>20140731</td>
-      <td>1</td>
-      <td>449080006</td>
-      <td>447562003</td>
-      <td>1001000119102</td>
-      <td>1</td>
-      <td>1</td>
-      <td>TRUE</td>
-      <td>ALWAYS I26.9 | MAPPED FOLLOWING WHO GUIDANCE</td>
-      <td>I26.9</td>
-      <td>447561005</td>
-      <td>447637006</td>
-    </tr>
-    <tr>
-      <th>4</th>
-      <td>ca792560-1589-5f24-9126-b040e8ea2b2d</td>
-      <td>20180731</td>
-      <td>1</td>
-      <td>449080006</td>
-      <td>447562003</td>
-      <td>10017004</td>
-      <td>1</td>
-      <td>1</td>
-      <td>TRUE</td>
-      <td>ALWAYS K03.0</td>
-      <td>K03.0</td>
-      <td>447561005</td>
-      <td>447637006</td>
-    </tr>
-  </tbody>
-</table>
-</div>
-</div>
-
-</div>
-
-</div>
-
-</div>
-
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs  ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -15475,8 +15067,11 @@ Map Blocks, Map Groups and Map Priorities, for correct official mapping methodol
 <div class="jp-InputPrompt jp-InputArea-prompt">In&nbsp;[&nbsp;]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
      <div class="CodeMirror cm-s-jupyter">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">sctid2icd10</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">g</span><span class="p">[</span><span class="s2">&quot;mapTarget&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">g</span> <span class="ow">in</span> <span class="n">icd_df</span><span class="p">[[</span><span class="s1">&#39;referencedComponentId&#39;</span><span class="p">,</span>
-                                                              <span class="s1">&#39;mapTarget&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;referencedComponentId&quot;</span><span class="p">)}</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">sctid2icd10</span> <span class="o">=</span> <span class="n">icd_df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s1">&#39;referencedComponentId&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">group</span><span class="p">:</span> <span class="p">[{</span><span class="s1">&#39;code&#39;</span><span class="p">:</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;mapTarget&#39;</span><span class="p">],</span>
+                                                                                       <span class="s1">&#39;mapGroup&#39;</span><span class="p">:</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;mapPriority&#39;</span><span class="p">],</span>
+                                                                                       <span class="s1">&#39;mapPriority&#39;</span><span class="p">:</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;mapPriority&#39;</span><span class="p">],</span>
+                                                                                       <span class="s1">&#39;mapRule&#39;</span><span class="p">:</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;mapRule&#39;</span><span class="p">],</span>
+                                                                                       <span class="s1">&#39;mapAdvice&#39;</span><span class="p">:</span> <span class="n">row</span><span class="p">[</span><span class="s1">&#39;mapAdvice&#39;</span><span class="p">]}</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">group</span><span class="o">.</span><span class="n">iterrows</span><span class="p">()])</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>
 </pre></div>
 
      </div>
@@ -15484,7 +15079,7 @@ Map Blocks, Map Groups and Map Priorities, for correct official mapping methodol
 </div>
 </div>
 
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs  ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -15501,31 +15096,6 @@ Map Blocks, Map Groups and Map Priorities, for correct official mapping methodol
 </div>
 </div>
 
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-
-
-<div class="jp-OutputArea jp-Cell-outputArea">
-
-<div class="jp-OutputArea-child">
-
-    
-    <div class="jp-OutputPrompt jp-OutputArea-prompt">Out[&nbsp;]:</div>
-
-
-
-
-<div class="jp-RenderedText jp-OutputArea-output jp-OutputArea-executeResult" data-mime-type="text/plain">
-<pre>[&#39;G40.9&#39;, &#39;G93.8&#39;]</pre>
-</div>
-
-</div>
-
-</div>
-
-</div>
-
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper">
@@ -15533,7 +15103,7 @@ Map Blocks, Map Groups and Map Priorities, for correct official mapping methodol
 </div>
 <div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
 </div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput " data-mime-type="text/markdown">
-<h5 id="OPCS">OPCS<a class="anchor-link" href="#OPCS">&#182;</a></h5><p>Office of Population Censuses and Surveys</p>
+<h5 id="UK-extention--%3E-ICD10-&amp;-OPCS-processing">UK extention -&gt; ICD10 &amp; OPCS processing<a class="anchor-link" href="#UK-extention--%3E-ICD10-&amp;-OPCS-processing">&#182;</a></h5><p>OPCS - Office of Population Censuses and Surveys</p>
 <p><strong>Note:</strong> only the SNOMED UK extension edition contains this information
 Skip if your version is not a UK extension</p>
 
@@ -15548,7 +15118,24 @@ Skip if your version is not a UK extension</p>
 <div class="jp-InputPrompt jp-InputArea-prompt">In&nbsp;[&nbsp;]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
      <div class="CodeMirror cm-s-jupyter">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">opcs_df</span> <span class="o">=</span> <span class="n">snomed</span><span class="o">.</span><span class="n">map_snomed2opcs4</span><span class="p">()</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">refset_uk_df</span> <span class="o">=</span> <span class="n">snomed</span><span class="o">.</span><span class="n">map_snomed2opcs4</span><span class="p">()</span>
+</pre></div>
+
+     </div>
+</div>
+</div>
+</div>
+
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs  ">
+<div class="jp-Cell-inputWrapper">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In&nbsp;[&nbsp;]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+     <div class="CodeMirror cm-s-jupyter">
+<div class=" highlight hl-ipython3"><pre><span></span><span class="n">opcs_df</span> <span class="o">=</span> <span class="n">refset_uk_df</span><span class="p">[</span><span class="n">refset_uk_df</span><span class="p">[</span><span class="s1">&#39;refsetId&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;1126441000000105&#39;</span><span class="p">]</span>
+<span class="n">icd10_df</span> <span class="o">=</span> <span class="n">refset_uk_df</span><span class="p">[</span><span class="n">refset_uk_df</span><span class="p">[</span><span class="s1">&#39;refsetId&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;999002271000000101&#39;</span><span class="p">]</span>
 </pre></div>
 
      </div>
@@ -15624,7 +15211,7 @@ Skip if your version is not a UK extension</p>
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs  ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -15633,73 +15220,12 @@ Skip if your version is not a UK extension</p>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
      <div class="CodeMirror cm-s-jupyter">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="c1"># Get the scispacy model.</span>
-<span class="o">!</span>pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.4.0/en_core_sci_md-0.4.0.tar.gz
+<span class="o">%</span><span class="k">pip</span> install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.4.0/en_core_sci_md-0.4.0.tar.gz
 </pre></div>
 
      </div>
 </div>
 </div>
-</div>
-
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-
-
-<div class="jp-OutputArea jp-Cell-outputArea">
-
-<div class="jp-OutputArea-child">
-
-    
-    <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-
-
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain">
-<pre>Collecting https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.4.0/en_core_sci_md-0.4.0.tar.gz
-  Downloading https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.4.0/en_core_sci_md-0.4.0.tar.gz (125.2 MB)
-     |████████████████████████████████| 125.2 MB 33 kB/s 
-Requirement already satisfied: spacy&lt;3.1.0,&gt;=3.0.1 in /usr/local/lib/python3.7/dist-packages (from en-core-sci-md==0.4.0) (3.0.7)
-Requirement already satisfied: pydantic!=1.8,!=1.8.1,&lt;1.9.0,&gt;=1.7.4 in /usr/local/lib/python3.7/dist-packages (from spacy&lt;3.1.0,&gt;=3.0.1-&gt;en-core-sci-md==0.4.0) (1.8.2)
-Requirement already satisfied: thinc&lt;8.1.0,&gt;=8.0.3 in /usr/local/lib/python3.7/dist-packages (from spacy&lt;3.1.0,&gt;=3.0.1-&gt;en-core-sci-md==0.4.0) (8.0.8)
-Requirement already satisfied: srsly&lt;3.0.0,&gt;=2.4.1 in /usr/local/lib/python3.7/dist-packages (from spacy&lt;3.1.0,&gt;=3.0.1-&gt;en-core-sci-md==0.4.0) (2.4.1)
-Requirement already satisfied: setuptools in /usr/local/lib/python3.7/dist-packages (from spacy&lt;3.1.0,&gt;=3.0.1-&gt;en-core-sci-md==0.4.0) (57.4.0)
-Requirement already satisfied: cymem&lt;2.1.0,&gt;=2.0.2 in /usr/local/lib/python3.7/dist-packages (from spacy&lt;3.1.0,&gt;=3.0.1-&gt;en-core-sci-md==0.4.0) (2.0.5)
-Requirement already satisfied: requests&lt;3.0.0,&gt;=2.13.0 in /usr/local/lib/python3.7/dist-packages (from spacy&lt;3.1.0,&gt;=3.0.1-&gt;en-core-sci-md==0.4.0) (2.23.0)
-Requirement already satisfied: murmurhash&lt;1.1.0,&gt;=0.28.0 in /usr/local/lib/python3.7/dist-packages (from spacy&lt;3.1.0,&gt;=3.0.1-&gt;en-core-sci-md==0.4.0) (1.0.5)
-Requirement already satisfied: packaging&gt;=20.0 in /usr/local/lib/python3.7/dist-packages (from spacy&lt;3.1.0,&gt;=3.0.1-&gt;en-core-sci-md==0.4.0) (21.0)
-Requirement already satisfied: typer&lt;0.4.0,&gt;=0.3.0 in /usr/local/lib/python3.7/dist-packages (from spacy&lt;3.1.0,&gt;=3.0.1-&gt;en-core-sci-md==0.4.0) (0.3.2)
-Requirement already satisfied: blis&lt;0.8.0,&gt;=0.4.0 in /usr/local/lib/python3.7/dist-packages (from spacy&lt;3.1.0,&gt;=3.0.1-&gt;en-core-sci-md==0.4.0) (0.4.1)
-Requirement already satisfied: pathy&gt;=0.3.5 in /usr/local/lib/python3.7/dist-packages (from spacy&lt;3.1.0,&gt;=3.0.1-&gt;en-core-sci-md==0.4.0) (0.6.0)
-Requirement already satisfied: preshed&lt;3.1.0,&gt;=3.0.2 in /usr/local/lib/python3.7/dist-packages (from spacy&lt;3.1.0,&gt;=3.0.1-&gt;en-core-sci-md==0.4.0) (3.0.5)
-Requirement already satisfied: wasabi&lt;1.1.0,&gt;=0.8.1 in /usr/local/lib/python3.7/dist-packages (from spacy&lt;3.1.0,&gt;=3.0.1-&gt;en-core-sci-md==0.4.0) (0.8.2)
-Requirement already satisfied: spacy-legacy&lt;3.1.0,&gt;=3.0.5 in /usr/local/lib/python3.7/dist-packages (from spacy&lt;3.1.0,&gt;=3.0.1-&gt;en-core-sci-md==0.4.0) (3.0.8)
-Requirement already satisfied: typing-extensions&lt;4.0.0.0,&gt;=3.7.4 in /usr/local/lib/python3.7/dist-packages (from spacy&lt;3.1.0,&gt;=3.0.1-&gt;en-core-sci-md==0.4.0) (3.7.4.3)
-Requirement already satisfied: tqdm&lt;5.0.0,&gt;=4.38.0 in /usr/local/lib/python3.7/dist-packages (from spacy&lt;3.1.0,&gt;=3.0.1-&gt;en-core-sci-md==0.4.0) (4.49.0)
-Requirement already satisfied: numpy&gt;=1.15.0 in /usr/local/lib/python3.7/dist-packages (from spacy&lt;3.1.0,&gt;=3.0.1-&gt;en-core-sci-md==0.4.0) (1.19.5)
-Requirement already satisfied: jinja2 in /usr/local/lib/python3.7/dist-packages (from spacy&lt;3.1.0,&gt;=3.0.1-&gt;en-core-sci-md==0.4.0) (2.11.3)
-Requirement already satisfied: catalogue&lt;2.1.0,&gt;=2.0.4 in /usr/local/lib/python3.7/dist-packages (from spacy&lt;3.1.0,&gt;=3.0.1-&gt;en-core-sci-md==0.4.0) (2.0.6)
-Requirement already satisfied: zipp&gt;=0.5 in /usr/local/lib/python3.7/dist-packages (from catalogue&lt;2.1.0,&gt;=2.0.4-&gt;spacy&lt;3.1.0,&gt;=3.0.1-&gt;en-core-sci-md==0.4.0) (3.5.0)
-Requirement already satisfied: pyparsing&gt;=2.0.2 in /usr/local/lib/python3.7/dist-packages (from packaging&gt;=20.0-&gt;spacy&lt;3.1.0,&gt;=3.0.1-&gt;en-core-sci-md==0.4.0) (2.4.7)
-Requirement already satisfied: smart-open&lt;6.0.0,&gt;=5.0.0 in /usr/local/lib/python3.7/dist-packages (from pathy&gt;=0.3.5-&gt;spacy&lt;3.1.0,&gt;=3.0.1-&gt;en-core-sci-md==0.4.0) (5.1.0)
-Requirement already satisfied: certifi&gt;=2017.4.17 in /usr/local/lib/python3.7/dist-packages (from requests&lt;3.0.0,&gt;=2.13.0-&gt;spacy&lt;3.1.0,&gt;=3.0.1-&gt;en-core-sci-md==0.4.0) (2021.5.30)
-Requirement already satisfied: idna&lt;3,&gt;=2.5 in /usr/local/lib/python3.7/dist-packages (from requests&lt;3.0.0,&gt;=2.13.0-&gt;spacy&lt;3.1.0,&gt;=3.0.1-&gt;en-core-sci-md==0.4.0) (2.10)
-Requirement already satisfied: chardet&lt;4,&gt;=3.0.2 in /usr/local/lib/python3.7/dist-packages (from requests&lt;3.0.0,&gt;=2.13.0-&gt;spacy&lt;3.1.0,&gt;=3.0.1-&gt;en-core-sci-md==0.4.0) (3.0.4)
-Requirement already satisfied: urllib3!=1.25.0,!=1.25.1,&lt;1.26,&gt;=1.21.1 in /usr/local/lib/python3.7/dist-packages (from requests&lt;3.0.0,&gt;=2.13.0-&gt;spacy&lt;3.1.0,&gt;=3.0.1-&gt;en-core-sci-md==0.4.0) (1.24.3)
-Requirement already satisfied: click&lt;7.2.0,&gt;=7.1.1 in /usr/local/lib/python3.7/dist-packages (from typer&lt;0.4.0,&gt;=0.3.0-&gt;spacy&lt;3.1.0,&gt;=3.0.1-&gt;en-core-sci-md==0.4.0) (7.1.2)
-Requirement already satisfied: MarkupSafe&gt;=0.23 in /usr/local/lib/python3.7/dist-packages (from jinja2-&gt;spacy&lt;3.1.0,&gt;=3.0.1-&gt;en-core-sci-md==0.4.0) (2.0.1)
-Building wheels for collected packages: en-core-sci-md
-  Building wheel for en-core-sci-md (setup.py) ... done
-  Created wheel for en-core-sci-md: filename=en_core_sci_md-0.4.0-py3-none-any.whl size=125733930 sha256=2b5ae33ca2617bc5d309dcdaf1cbb3308698d655892465353e2655eb07536370
-  Stored in directory: /root/.cache/pip/wheels/43/54/a8/27fc51c81ba9feda7ba7f9031eb81e33429840cd79d141c88c
-Successfully built en-core-sci-md
-Installing collected packages: en-core-sci-md
-Successfully installed en-core-sci-md-0.4.0
-</pre>
-</div>
-</div>
-
-</div>
-
 </div>
 
 </div>
@@ -15763,7 +15289,7 @@ Successfully installed en-core-sci-md-0.4.0
 </div>
 </div>
 
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs  ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -15783,129 +15309,6 @@ Successfully installed en-core-sci-md-0.4.0
 </div>
 </div>
 
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-
-
-<div class="jp-OutputArea jp-Cell-outputArea">
-
-<div class="jp-OutputArea-child">
-
-    
-    <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-
-
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr">
-<pre>Started importing concepts from: preprocessed_snomed.csv
-Current progress: 0% at 0.000s per 9231 rows
-Current progress: 1% at 55.210s per 9231 rows
-Current progress: 2% at 53.859s per 9231 rows
-Current progress: 3% at 53.306s per 9231 rows
-Current progress: 4% at 52.994s per 9231 rows
-Current progress: 5% at 53.183s per 9231 rows
-Current progress: 6% at 52.772s per 9231 rows
-Current progress: 7% at 53.400s per 9231 rows
-Current progress: 8% at 53.544s per 9231 rows
-Current progress: 9% at 53.441s per 9231 rows
-Current progress: 10% at 53.373s per 9231 rows
-Current progress: 11% at 53.139s per 9231 rows
-Current progress: 12% at 53.432s per 9231 rows
-Current progress: 13% at 54.119s per 9231 rows
-Current progress: 14% at 57.038s per 9231 rows
-Current progress: 15% at 52.765s per 9231 rows
-Current progress: 16% at 53.870s per 9231 rows
-Current progress: 17% at 52.843s per 9231 rows
-Current progress: 18% at 52.480s per 9231 rows
-Current progress: 19% at 53.725s per 9231 rows
-Current progress: 20% at 51.605s per 9231 rows
-Current progress: 21% at 51.518s per 9231 rows
-Current progress: 22% at 52.093s per 9231 rows
-Current progress: 23% at 55.296s per 9231 rows
-Current progress: 24% at 57.431s per 9231 rows
-Current progress: 25% at 54.461s per 9231 rows
-Current progress: 26% at 54.331s per 9231 rows
-Current progress: 27% at 53.020s per 9231 rows
-Current progress: 28% at 53.901s per 9231 rows
-Current progress: 29% at 53.801s per 9231 rows
-Current progress: 30% at 54.598s per 9231 rows
-Current progress: 31% at 55.406s per 9231 rows
-Current progress: 32% at 54.040s per 9231 rows
-Current progress: 33% at 55.327s per 9231 rows
-Current progress: 34% at 53.733s per 9231 rows
-Current progress: 35% at 56.794s per 9231 rows
-Current progress: 36% at 57.681s per 9231 rows
-Current progress: 37% at 57.643s per 9231 rows
-Current progress: 38% at 55.093s per 9231 rows
-Current progress: 39% at 37.171s per 9231 rows
-Current progress: 40% at 25.026s per 9231 rows
-Current progress: 41% at 26.463s per 9231 rows
-Current progress: 42% at 25.014s per 9231 rows
-Current progress: 43% at 25.232s per 9231 rows
-Current progress: 44% at 25.494s per 9231 rows
-Current progress: 45% at 24.800s per 9231 rows
-Current progress: 46% at 25.182s per 9231 rows
-Current progress: 47% at 25.173s per 9231 rows
-Current progress: 48% at 25.426s per 9231 rows
-Current progress: 49% at 25.611s per 9231 rows
-Current progress: 50% at 25.003s per 9231 rows
-Current progress: 51% at 25.017s per 9231 rows
-Current progress: 52% at 25.014s per 9231 rows
-Current progress: 53% at 25.083s per 9231 rows
-Current progress: 54% at 24.947s per 9231 rows
-Current progress: 55% at 25.621s per 9231 rows
-Current progress: 56% at 25.706s per 9231 rows
-Current progress: 57% at 25.613s per 9231 rows
-Current progress: 58% at 25.828s per 9231 rows
-Current progress: 59% at 25.326s per 9231 rows
-Current progress: 60% at 24.827s per 9231 rows
-Current progress: 61% at 26.253s per 9231 rows
-Current progress: 62% at 26.208s per 9231 rows
-Current progress: 63% at 27.473s per 9231 rows
-Current progress: 64% at 25.096s per 9231 rows
-Current progress: 65% at 25.642s per 9231 rows
-Current progress: 66% at 25.526s per 9231 rows
-Current progress: 67% at 25.227s per 9231 rows
-Current progress: 68% at 25.584s per 9231 rows
-Current progress: 69% at 24.345s per 9231 rows
-Current progress: 70% at 25.192s per 9231 rows
-Current progress: 71% at 25.546s per 9231 rows
-Current progress: 72% at 25.602s per 9231 rows
-Current progress: 73% at 24.551s per 9231 rows
-Current progress: 74% at 24.943s per 9231 rows
-Current progress: 75% at 24.805s per 9231 rows
-Current progress: 76% at 25.794s per 9231 rows
-Current progress: 77% at 25.876s per 9231 rows
-Current progress: 78% at 26.088s per 9231 rows
-Current progress: 79% at 25.277s per 9231 rows
-Current progress: 80% at 26.565s per 9231 rows
-Current progress: 81% at 25.703s per 9231 rows
-Current progress: 82% at 25.643s per 9231 rows
-Current progress: 83% at 24.959s per 9231 rows
-Current progress: 84% at 24.800s per 9231 rows
-Current progress: 85% at 25.392s per 9231 rows
-Current progress: 86% at 26.113s per 9231 rows
-Current progress: 87% at 26.089s per 9231 rows
-Current progress: 88% at 25.346s per 9231 rows
-Current progress: 89% at 25.667s per 9231 rows
-Current progress: 90% at 25.072s per 9231 rows
-Current progress: 91% at 26.609s per 9231 rows
-Current progress: 92% at 26.163s per 9231 rows
-Current progress: 93% at 25.331s per 9231 rows
-Current progress: 94% at 26.538s per 9231 rows
-Current progress: 95% at 26.680s per 9231 rows
-Current progress: 96% at 27.022s per 9231 rows
-Current progress: 97% at 26.182s per 9231 rows
-Current progress: 98% at 26.465s per 9231 rows
-Current progress: 99% at 26.286s per 9231 rows
-</pre>
-</div>
-</div>
-
-</div>
-
-</div>
-
 </div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell">
 <div class="jp-Cell-inputWrapper">
@@ -15917,7 +15320,7 @@ Current progress: 99% at 26.286s per 9231 rows
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs  ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -15933,30 +15336,7 @@ Current progress: 99% at 26.286s per 9231 rows
 </div>
 </div>
 
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-
-
-<div class="jp-OutputArea jp-Cell-outputArea">
-
-<div class="jp-OutputArea-child">
-
-    
-    <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-
-
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain">
-<pre>[&#39;84757009&#39;]
-</pre>
-</div>
-</div>
-
-</div>
-
-</div>
-
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs  ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -15972,30 +15352,7 @@ Current progress: 99% at 26.286s per 9231 rows
 </div>
 </div>
 
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-
-
-<div class="jp-OutputArea jp-Cell-outputArea">
-
-<div class="jp-OutputArea-child">
-
-    
-    <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-
-
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain">
-<pre>Epilepsy
-</pre>
-</div>
-</div>
-
-</div>
-
-</div>
-
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell   ">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs  ">
 <div class="jp-Cell-inputWrapper">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
@@ -16009,29 +15366,6 @@ Current progress: 99% at 26.286s per 9231 rows
      </div>
 </div>
 </div>
-</div>
-
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-
-
-<div class="jp-OutputArea jp-Cell-outputArea">
-
-<div class="jp-OutputArea-child">
-
-    
-    <div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-
-
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain">
-<pre>{&#39;ep~epilepsy&#39;, &#39;epileptic~disorder&#39;, &#39;epileptic&#39;, &#39;epilepsy~disorder&#39;, &#39;epilepsy&#39;}
-</pre>
-</div>
-</div>
-
-</div>
-
 </div>
 
 </div>
