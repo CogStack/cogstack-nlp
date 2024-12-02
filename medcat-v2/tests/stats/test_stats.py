@@ -1,3 +1,4 @@
+from typing import Union
 import os
 import json
 
@@ -41,7 +42,7 @@ class PerfectStatsTests(TrainedModelTests):
                 detexted_value = text[start:end]
                 self.assertEqual(detexted_value, value)
 
-    def assert_perfect_dict(self, d: dict[str, float | int]) -> None:
+    def assert_perfect_dict(self, d: dict[str, Union[float, int]]) -> None:
         for cui, f1 in d.items():
             with self.subTest(cui):
                 self.assertEqual(f1, 1)
