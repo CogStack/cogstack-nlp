@@ -37,4 +37,4 @@ jobs:
           flake8 medcat2
       - name: Test
         run: |
-          timeout 10m python -m unittest medcat2
+          timeout 10m python -m unittest discover
