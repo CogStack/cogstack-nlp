@@ -1,0 +1,47 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build and release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install build dependencies
+        run: pip install --upgrade build
+
+      - name: Build package
+        run: python -m build
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          draft: true
+          files: |
+            dist/*
+
+      # Uncomment and modify this for PyPI publishing in the future
+      # - name: Publish to PyPI
+      #   if: false # Set to `true` or remove when ready
+      #   env:
+      #     PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+      #   run: |
+      #     pip install --upgrade twine
+      #     twine upload dist/*
