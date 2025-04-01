@@ -19,9 +19,21 @@ jobs:
 
       - name: Checkout release branch
         run: |
-            git checkout $GITHUB_REF
-            # Make sure you're on the correct branch
-            git pull origin $GITHUB_REF
+          # Fetch all branches to ensure we can access the one we need
+          git fetch --all
+
+          # Get the tag without the 'v' and strip the patch version
+          VERSION_TAG="${GITHUB_REF#refs/tags/v}"
+          VERSION_MAJOR_MINOR="${VERSION_TAG%.*}"  # This removes the patch version (everything after the second dot)
+
+          # Construct the branch name (e.g., release/0.1)
+          BRANCH_NAME="release/$VERSION_MAJOR_MINOR"
+
+          # Check out the corresponding release branch (e.g., release/0.1)
+          git checkout $BRANCH_NAME
+
+          # Ensure the branch is up-to-date with the remote
+          git pull origin $BRANCH_NAME
 
       - name: Extract version from tag
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
