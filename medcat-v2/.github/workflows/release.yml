@@ -17,6 +17,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Checkout release branch
+        run: |
+            git checkout $GITHUB_REF
+            # Make sure you're on the correct branch
+            git pull origin $GITHUB_REF
+
       - name: Extract version from tag
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
 
