@@ -14,6 +14,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Extract version from tag
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+
+      - name: Update pyproject.toml version
+        run: |
+          sed -i 's/^version = ".*"/version = "'$VERSION'"/' pyproject.toml
+
+      - name: Commit version update
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -am "Update version to $VERSION"
+          git push
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
