@@ -41,18 +41,23 @@ Currently MedCAT v2 is in Beta.
 As such, we're not yet pushing to PyPI.
 And because of that the current installation command for (only) core MedCAT v2 is:
 ```
-pip install "git+ssh://git@github.com/CogStack/MedCAT2.git@main#egg=medcat2"
+pip install "install git+https://github.com/CogStack/MedCAT2@v0.1.5#egg=medcat2"
 ```
 Do note that **this installs only the core MedCAT v2**.
 **It does not necessary dependencies for `spacy`-based tokenizing or MetaCATs or DeID**.
 However, all of those are supported as well.
 You can install them as follows:
 ```
-pip install "git+ssh://git@github.com/CogStack/MedCAT2.git@main#egg=medcat2[spacy]"  # for spacy-based tokenizer
-pip install "git+ssh://git@github.com/CogStack/MedCAT2.git@main#egg=medcat2[meta_cat]"  # for MetaCAT
-pip install "git+ssh://git@github.com/CogStack/MedCAT2.git@main#egg=medcat2[deid]"  # for DeID models
-pip install "git+ssh://git@github.com/CogStack/MedCAT2.git@main#egg=medcat2[spacy,meta_cat,deid,dict_ner]"  # for all of the sbove
+pip install "git+https://git@github.com/CogStack/MedCAT2.git@v0.1.5#egg=medcat2[spacy]"  # for spacy-based tokenizer
+pip install "git+https://git@github.com/CogStack/MedCAT2.git@v0.1.5#egg=medcat2[meta_cat]"  # for MetaCAT
+pip install "git+https://git@github.com/CogStack/MedCAT2.git@v0.1.5#egg=medcat2[deid]"  # for DeID models
+pip install "git+https://git@github.com/CogStack/MedCAT2.git@v0.1.5#egg=medcat2[spacy,meta_cat,deid,dict_ner]"  # for all of the sbove
 ```
+
+PS:
+For in the above example, we're installing the MedCAT v2 BETA version of `v0.1.5`.
+The README is unlikely to change after every new release.
+If another version is available / required, substitute the version tag as appropriate.
 
 <!-- 
 To install the latest version of MedCAT run the following command:
