@@ -3,7 +3,7 @@ import logging
 
 from medcat2.cdb import CDB
 from medcat2.config import Config
-from medcat2.cdb.concepts import get_new_cui_info, get_new_name_info
+from medcat2.cdb.concepts import get_new_cui_info, get_new_name_info, TypeInfo
 from medcat2.utils.legacy.convert_config import get_config_from_nested_dict
 
 
@@ -68,6 +68,40 @@ CUI2KEYS = {'cui2names', 'cui2snames', 'cui2context_vectors',
 TO_RENAME = {'vocab': 'token_counts'}
 
 
+_DEFAULT_SNOMED_TYPE_ID2NAME = {
+    '32816260': 'physical object', '2680757': 'observable entity',
+    '37552161': 'body structure', '91776366': 'product',
+    '81102976': 'organism', '28321150': 'procedure',
+    '67667581': 'finding', '7882689': 'qualifier value',
+    '91187746': 'substance', '29422548': 'core metadata concept',
+    '40357424': 'foundation metadata concept',
+    '33782986': 'morphologic abnormality', '9090192': 'disorder',
+    '90170645': 'record artifact', '66527446': 'cell structure',
+    '3061879': 'situation', '16939031': 'occupation',
+    '31601201': 'person', '37785117': 'medicinal product',
+    '17030977': 'assessment scale', '47503797': 'regime/therapy',
+    '33797723': 'event', '82417248': 'navigational concept',
+    '75168589': 'environment', '9593000': 'medicinal product form',
+    '99220404': 'cell', '13371933': 'social concept',
+    '46922199': 'religion/philosophy', '27603525': 'clinical drug',
+    '43039974': 'attribute', '43857361': 'physical force',
+    '40584095': 'metadata', '337250': 'specimen',
+    '46506674': 'disposition', '87776218': 'role',
+    '30703196': 'tumor staging', '31685163': 'staging scale',
+    '21114934': 'dose form', '70426313': 'namespace concept',
+    '51120815': 'intended site', '45958968': 'administration method',
+    '51885115': 'OWL metadata concept', '8067332': 'basic dose form',
+    '95475658': 'product name', '43744943': 'supplier',
+    '66203715': 'transformation', '64755083': 'release characteristic',
+    '49144999': 'state of matter', '39041339': 'unit of presentation',
+    '18854038': 'geographic location', '28695783': 'link assertion',
+    '14654508': 'racial group', '20410104': 'ethnic group',
+    '92873870': 'special concept', '72706784': 'product',
+    '78096516': 'environment / location', '25624495': 'SNOMED RT+CTV3',
+    '55540447': 'linkage concept', '3242456': 'social context'
+}
+
+
 def _add_cui_info(cdb: CDB, data: dict) -> CDB:
     all_cuis = set()
     for key in CUI2KEYS:
@@ -95,6 +129,29 @@ def _add_cui_info(cdb: CDB, data: dict) -> CDB:
             context_vectors=vecs, average_confidence=av_conf,
         )
         cdb.cui2info[cui] = info
+    all_cui_tuis = set((ci['cui'], tui) for ci in cdb.cui2info.values()
+                       for tui in ci['type_ids'])
+    all_tuis = set(tui for _, tui in all_cui_tuis)
+    if (not (tid2name := data['addl_info'].get('type_id2name', None)) and
+            # UMLS has TypeIds that start with T
+            # so in this case we can be _pretty sure_ it's Snomed
+            not any("T" in tui for tui in all_tuis)):
+        tid2name = {
+            tid: name for tid, name in _DEFAULT_SNOMED_TYPE_ID2NAME.items()
+            if tid in all_tuis
+        }
+        print("Set TypeID2name for", len(tid2name),
+              'TypeIDs out of', len(all_tuis))
+    print("Conditions", bool(not tid2name),
+          not any("T" in tui for tui in all_tuis),
+          "IN", all_tuis)
+    print("Got TypeID2name for", len(tid2name),
+          'TypeIDs out of', len(all_tuis))
+    for cui, tui in all_cui_tuis:
+        if tui not in cdb.type_id2info:
+            cdb.type_id2info[tui] = TypeInfo(
+                type_id=tui, name=tid2name.get(tui), cuis=set())
+        cdb.type_id2info[tui].cuis.add(cui)
     cdb.addl_info.update(data['addl_info'])
     # for cui, ontos in data['addl_info']['cui2ontologies'].items():
     #     cdb.cui2info[cui]['in_other_ontology'] = ontos
