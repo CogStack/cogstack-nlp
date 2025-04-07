@@ -482,7 +482,10 @@ class TransformersNERComponent:
         if trainer_callbacks:
             for tr_callback in trainer_callbacks:
                 tcbo = tr_callback(trainer)
-                trainer.add_callback(tcbo)
+                # NOTE: No idea why mypy isn't able to find the method
+                #       It reports (`[attr-defined]`):
+                #          error: "Trainer" has no attribute "callback_handler"
+                trainer.add_callback(tcbo)  # type: ignore
 
         trainer.train()
 
