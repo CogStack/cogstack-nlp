@@ -49,7 +49,7 @@ class Linker(AbstractCoreComponent):
         return CoreComponentType.linking
 
     def _train(self, cui: str, entity: MutableEntity, doc: MutableDocument,
-               per_doc_valid_token_cache:  PerDocumentTokenCache,
+               per_doc_valid_token_cache: PerDocumentTokenCache,
                add_negative: bool = True) -> None:
         name = "{} - {}".format(entity.detected_name, cui)
         # TODO - bring back subsample after?
@@ -218,7 +218,9 @@ class Linker(AbstractCoreComponent):
               entity: MutableEntity,
               doc: MutableDocument,
               negative: bool = False,
-              names: Union[list[str], dict] = []) -> None:
+              names: Union[list[str], dict] = [],
+              per_doc_valid_token_cache: Optional[PerDocumentTokenCache] = None
+              ) -> None:
         """Train the linker.
 
         This simply trains the context model.
@@ -232,9 +234,13 @@ class Linker(AbstractCoreComponent):
             names (list[str]/dict):
                 Optionally used to update the `status` of a name-cui
                 pair in the CDB.
+            per_doc_valid_token_cache (PerDocumentTokenCache):
+                Optionally, provide the per doc valid token cache.
         """
-        pdc = PerDocumentTokenCache()
-        self.context_model.train(cui, entity, doc, pdc, negative, names)
+        if per_doc_valid_token_cache is None:
+            per_doc_valid_token_cache = PerDocumentTokenCache()
+        self.context_model.train(
+            cui, entity, doc, per_doc_valid_token_cache, negative, names)
 
     @classmethod
     def get_init_args(cls, tokenizer: BaseTokenizer, cdb: CDB, vocab: Vocab,
