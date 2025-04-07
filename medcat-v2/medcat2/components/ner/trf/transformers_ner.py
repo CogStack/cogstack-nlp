@@ -487,7 +487,10 @@ class TransformersNERComponent:
                 #          error: "Trainer" has no attribute "callback_handler"
                 trainer.add_callback(tcbo)  # type: ignore
 
-        trainer.train()
+        # NOTE: No idea why mypy isn't able to find the method
+        #       It reports:
+        #          error: "Trainer" has no attribute "train"  [attr-defined]
+        trainer.train()  # type: ignore
 
         # Save the training time
         self.config.general.last_train_on = datetime.now().timestamp()
