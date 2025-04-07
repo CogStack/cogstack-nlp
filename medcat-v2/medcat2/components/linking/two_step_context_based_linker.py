@@ -253,15 +253,12 @@ class TwoStepLinker(AbstractCoreComponent):
         """
         pdc = PerDocumentTokenCache()
         tuis = self.cdb.cui2info[cui]['type_ids']
-        if len(tuis) == 1:
+        for tui in tuis:
+            # one CUI may have multiple type IDs
             tui = next(iter(tuis))
             self._tui_context_model.train(f"{TYPE_ID_PREFIX}{tui}",
                                           entity, doc, pdc,
                                           negative=negative, names=names)
-        # NOTE: if there's more than 1, I can't train
-        #           (though should be rare in Snomed)
-        #       and if there's 0, then I can't train
-        #           (though should be rare in Snomed)
         self._linker.train(cui, entity, doc, negative, names,
                            per_doc_valid_token_cache=pdc)
 
