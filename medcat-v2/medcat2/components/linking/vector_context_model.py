@@ -200,7 +200,8 @@ class ContextModel(AbstractSerialisable):
             for i, (cui, sim) in enumerate(zip(cuis, similarities)):
                 if sim <= 0:
                     continue
-                status = self.name2info[name]['per_cui_status'][cui]
+                status = self.name2info[name]['per_cui_status'].get(
+                    cui, ST.AUTOMATIC)
                 if status in ST.PRIMARY_STATUS:
                     new_sim = sim * (1 + self.config.prefer_primary_name)
                     similarities[i] = min(0.99, new_sim)
