@@ -203,6 +203,9 @@ def _load_component(cdb: CDB, save_dir_path: str,
     return ner
 
 
+TrCBCreator = Callable[[Trainer], TrainerCallback]
+
+
 class TransformersNERComponent:
     """TODO: Add documentation"""
 
@@ -255,7 +258,8 @@ class TransformersNERComponent:
                 # We want to get to bs=4
                 gradient_accumulation_steps=4,
                 do_eval=True,
-                evaluation_strategy='epoch',  # type: ignore
+                # eval_strategy since transformers==4.41
+                eval_strategy='epoch',
                 logging_strategy='epoch',     # type: ignore
                 save_strategy='epoch',        # type: ignore
                 # Can be changed if our preference is not recall but precision
@@ -377,7 +381,7 @@ class TransformersNERComponent:
               ignore_extra_labels=False,
               dataset=None,
               meta_requirements=None,
-              trainer_callbacks: Optional[list[TrainerCallback]] = None
+              trainer_callbacks: Optional[list[TrCBCreator]] = None
               ) -> tuple:
         """Train or continue training a model give a json_path containing a
         MedCATtrainer export. It will continue training if an existing model
@@ -393,7 +397,7 @@ class TransformersNERComponent:
                 in the old model.
             dataset: Defaults to None.
             meta_requirements: Defaults to None
-            trainer_callbacks (List[TrainerCallback]):
+            trainer_callbacks (list[TrCBCreator]):
                 A list of trainer callbacks for collecting metrics during the
                 training at the client side. The transformers Trainer object
                 will be passed in when each callback is called.
@@ -477,17 +481,29 @@ class TransformersNERComponent:
                 data_collator=data_collator,  # type: ignore
                 tokenizer=None)
         if trainer_callbacks:
-            for callback in trainer_callbacks:
-                trainer.add_callback(callback(trainer))
+            for tr_callback in trainer_callbacks:
+                tcbo = tr_callback(trainer)
+                # NOTE: No idea why mypy isn't able to find the method
+                #       It reports (`[attr-defined]`):
+                #          error: "Trainer" has no attribute "callback_handler"
+                trainer.add_callback(tcbo)  # type: ignore
 
-        trainer.train()
+        # NOTE: No idea why mypy isn't able to find the method
+        #       It reports:
+        #          error: "Trainer" has no attribute "train"  [attr-defined]
+        trainer.train()  # type: ignore
 
         # Save the training time
         self.config.general.last_train_on = datetime.now().timestamp()
 
+        output_dir = self.training_arguments.output_dir
+        if output_dir is None:
+            # NOTE: shouldn't ever really happen
+            raise ValueError("Unable to save output during training "
+                             "since output path is None")
         # Save everything
         _save_component(self, save_dir_path=os.path.join(
-            self.training_arguments.output_dir, 'final_model'),
+            output_dir, 'final_model'),
             overwrite=True)
 
         # Run an eval step and return metrics

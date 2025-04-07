@@ -214,11 +214,15 @@ class TokenizerWrapperBERT(TokenizerWrapperBase):
             tokenizer.hf_tokenizers = BertTokenizerFast.from_pretrained(
                 path, **kwargs)
         else:
+            # NOTE: the variable is a string since it's called from meta_cat.py
+            #       using a string (in 2 places), but the super class requires
+            #       the argument here to be `Optional`.
+            variant = str(model_variant)
             logging.warning("Could not load tokenizer (no path provided). "
                             f"Loading from library for model variant: "
-                            f"{model_variant}")
+                            f"{variant}")
             tokenizer.hf_tokenizers = BertTokenizerFast.from_pretrained(
-                model_variant)
+                variant)
         return tokenizer
 
     def get_size(self) -> int:

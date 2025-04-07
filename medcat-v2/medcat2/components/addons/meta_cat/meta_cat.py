@@ -333,7 +333,10 @@ class MetaCAT(AbstractSerialisable):
                     lora_alpha=16, target_modules=["query", "value"],
                     lora_dropout=0.2)
 
-                model = get_peft_model(model, peft_config)
+                # NOTE: Not sure what changed between transformers 4.50.3 and
+                # 4.50.1 that made this fail for mypy. But as best as I can
+                # tell, it still works just the same
+                model = get_peft_model(model, peft_config)  # type: ignore
                 # model.print_trainable_parameters()
 
             logger.info("BERT model used for classification")
