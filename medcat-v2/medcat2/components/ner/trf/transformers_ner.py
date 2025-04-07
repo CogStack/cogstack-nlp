@@ -258,7 +258,8 @@ class TransformersNERComponent:
                 # We want to get to bs=4
                 gradient_accumulation_steps=4,
                 do_eval=True,
-                evaluation_strategy='epoch',  # type: ignore
+                # eval_strategy since transformers==4.46
+                eval_strategy='epoch',
                 logging_strategy='epoch',     # type: ignore
                 save_strategy='epoch',        # type: ignore
                 # Can be changed if our preference is not recall but precision
