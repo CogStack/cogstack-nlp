@@ -203,6 +203,9 @@ def _load_component(cdb: CDB, save_dir_path: str,
     return ner
 
 
+TrCBCreator = Callable[[Trainer], TrainerCallback]
+
+
 class TransformersNERComponent:
     """TODO: Add documentation"""
 
@@ -377,7 +380,7 @@ class TransformersNERComponent:
               ignore_extra_labels=False,
               dataset=None,
               meta_requirements=None,
-              trainer_callbacks: Optional[list[TrainerCallback]] = None
+              trainer_callbacks: Optional[list[TrCBCreator]] = None
               ) -> tuple:
         """Train or continue training a model give a json_path containing a
         MedCATtrainer export. It will continue training if an existing model
@@ -393,7 +396,7 @@ class TransformersNERComponent:
                 in the old model.
             dataset: Defaults to None.
             meta_requirements: Defaults to None
-            trainer_callbacks (List[TrainerCallback]):
+            trainer_callbacks (list[TrCBCreator]):
                 A list of trainer callbacks for collecting metrics during the
                 training at the client side. The transformers Trainer object
                 will be passed in when each callback is called.
@@ -477,8 +480,9 @@ class TransformersNERComponent:
                 data_collator=data_collator,  # type: ignore
                 tokenizer=None)
         if trainer_callbacks:
-            for callback in trainer_callbacks:
-                trainer.add_callback(callback(trainer))
+            for tr_callback in trainer_callbacks:
+                tcbo = tr_callback(trainer)
+                trainer.add_callback(tcbo)
 
         trainer.train()
 
