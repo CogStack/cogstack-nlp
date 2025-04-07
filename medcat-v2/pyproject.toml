@@ -93,7 +93,7 @@ dict_ner = [
 ]
 deid = [
   "datasets>=2.2.2,<3.0.0",
-  "transformers>4.34.0,<5.0" # avoid major bump
+  "transformers>=4.41.0,<5.0" # avoid major bump
 ]
 test = []  # TODO - list
 
