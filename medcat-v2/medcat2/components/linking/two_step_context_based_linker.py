@@ -161,8 +161,6 @@ class TwoStepLinker(AbstractCoreComponent):
             return context_similarity >= conf * threshold
         return False
 
-    COUNT_SHOWN_PRINT = 0
-
     def _narrow_down_candidates(
             self, doc: MutableDocument,
             entity: MutableEntity,
@@ -194,8 +192,6 @@ class TwoStepLinker(AbstractCoreComponent):
             tuis = list(filter(allowed_tuis.__contains__, tuis))
             logger.debug("Filtered from %d to %d due to %d CUIs in filters",
                          num_before, len(tuis), len(cnf_l.filters.cuis))
-            if TwoStepLinker.COUNT_SHOWN_PRINT < 10:
-                TwoStepLinker.COUNT_SHOWN_PRINT += 1
         if cnf_l.filters.cuis_exclude:
             # this should check whether a TUI that's listed above corresponds
             # to any CUIs in the list of excluded ones
