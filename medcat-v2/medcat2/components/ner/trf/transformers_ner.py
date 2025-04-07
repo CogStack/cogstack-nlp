@@ -495,9 +495,14 @@ class TransformersNERComponent:
         # Save the training time
         self.config.general.last_train_on = datetime.now().timestamp()
 
+        output_dir = self.training_arguments.output_dir
+        if output_dir is None:
+            # NOTE: shouldn't ever really happen
+            raise ValueError("Unable to save output during training "
+                             "since output path is None")
         # Save everything
         _save_component(self, save_dir_path=os.path.join(
-            self.training_arguments.output_dir, 'final_model'),
+            output_dir, 'final_model'),
             overwrite=True)
 
         # Run an eval step and return metrics
