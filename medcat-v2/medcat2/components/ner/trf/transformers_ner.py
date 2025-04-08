@@ -4,7 +4,7 @@ import logging
 import datasets
 import torch
 from datetime import datetime
-from typing import Iterable, Iterator, Optional, Union, Callable, Type, Any
+from typing import Iterable, Iterator, Optional, Union, Callable, Any
 from typing import cast
 import inspect
 from functools import partial
@@ -310,8 +310,6 @@ class TransformersNERComponent:
                 '_special_tokens_map'] = special_tokens_map
 
         self.ner_pipe.device = self.model.device
-        self._consecutive_identical_failures = 0
-        self._last_exception: Optional[tuple[str, Type[Exception]]] = None
 
     def get_hash(self) -> str:
         """A partial hash trying to catch differences between models.
@@ -555,7 +553,7 @@ class TransformersNERComponent:
         df, examples = metrics(p, return_df=True, tokenizer=self.tokenizer,
                                dataset=encoded_dataset)
 
-        return df, examples
+        return df, examples, dataset
 
     def expand_model_with_concepts(self, cui2preferred_name: dict[str, str],
                                    use_avg_init: bool = True) -> None:
@@ -695,8 +693,6 @@ class TransformersNERComponent:
 
             doc.all_ents.append(entity)
         create_main_ann(doc)
-        self._consecutive_identical_failures = 0  # success
-        self._last_exception = None
 
     def _process(self,
                  stream: Iterable[Union[MutableDocument, None]],

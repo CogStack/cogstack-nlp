@@ -124,10 +124,12 @@ class CAT(AbstractSerialisable):
             right_context = []
             center_context = []
 
+        # NOTE: in case the CUI is not in the CDB, we don't want to fail here
+        def_ci: dict[str, list[str]] = {'type_ids': []}
         out_dict: Entity = {
             'pretty_name': self.cdb.get_name(cui),
             'cui': cui,
-            'type_ids': list(self.cdb.cui2info[cui]['type_ids']),
+            'type_ids': list(self.cdb.cui2info.get(cui, def_ci)['type_ids']),
             'source_value': ent.base.text,
             'detected_name': str(ent.detected_name),
             'acc': ent.context_similarity,
