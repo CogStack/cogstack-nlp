@@ -125,7 +125,7 @@ class CAT(AbstractSerialisable):
             center_context = []
 
         # NOTE: in case the CUI is not in the CDB, we don't want to fail here
-        def_ci = {'type_ids': []}  # default cui2info for type_ids
+        def_ci: dict[str, list[str]] = {'type_ids': []}
         out_dict: Entity = {
             'pretty_name': self.cdb.get_name(cui),
             'cui': cui,
