@@ -555,7 +555,7 @@ class TransformersNERComponent:
         df, examples = metrics(p, return_df=True, tokenizer=self.tokenizer,
                                dataset=encoded_dataset)
 
-        return df, examples
+        return df, examples, dataset
 
     def expand_model_with_concepts(self, cui2preferred_name: dict[str, str],
                                    use_avg_init: bool = True) -> None:

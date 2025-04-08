@@ -43,6 +43,20 @@ class NerModel:
         """
         return self.trf_ner._component.train(json_path, *args, **kwargs)
 
+    def eval(self, json_path: Union[str, list, None],
+             *args, **kwargs) -> tuple[Any, Any, Any]:
+        """Evaluate the underlying transformers NER model.
+        All the extra arguments are passed to the TransformersNER eval method.
+        Args:
+            json_path (Union[str, list, None]):
+                The JSON file path to read the training data from.
+            *args: Additional arguments for TransformersNER.eval .
+            **kwargs: Additional keyword arguments for TransformersNER.eval .
+        Returns:
+            Tuple[Any, Any, Any]: df, examples, dataset
+        """
+        return self.trf_ner._component.eval(json_path, *args, **kwargs)
+
     def __call__(self, text: Optional[str], *args, **kwargs
                  ) -> Optional[MutableDocument]:
         """Get the annotated document for text.
