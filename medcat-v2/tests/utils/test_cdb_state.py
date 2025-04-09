@@ -7,8 +7,9 @@ import json
 
 import numpy as np
 
+from medcat2.config.config import ModelMeta
 from medcat2.utils.cdb_state import (
-    captured_state_cdb, CDBState, copy_cdb_state)
+    captured_state_cdb, CDBState, copy_cdb_state, _get_attr)
 from medcat2.storage.serialisers import deserialise
 from medcat2.cdb import CDB
 from medcat2.vocab import Vocab
@@ -50,7 +51,7 @@ class StateTests(unittest.TestCase):
                                    callback: Callable[[str, Any], None]
                                    ) -> None:
         for k in CDBState.__annotations__:
-            v = getattr(cdb, k)
+            v = _get_attr(cdb, k)
             callback(k, v)
 
     def assertDictWithNdarrayEqual(self, dict1: dict, dict2: dict):
@@ -81,7 +82,9 @@ class StateSavedTests(StateTests):
         # capture state
         with captured_state_cdb(cls.cdb, save_state_to_disk=cls.on_disk):
             # clear state
-            cls.do_smth_for_each_state_var(cls.cdb, lambda k, v: v.clear())
+            cls.do_smth_for_each_state_var(
+                cls.cdb, lambda k, v: v.clear()
+                if isinstance(v, (dict, set, list)) else None)
             cls.cleared_state = copy_cdb_state(cls.cdb)
         # save after state - should be equal to before
         cls.restored_state = copy_cdb_state(cls.cdb)
@@ -98,7 +101,11 @@ class StateSavedTests(StateTests):
         for k, v in self.cleared_state.items():
             with self.subTest(k):
                 # length is 0
-                self.assertFalse(v)
+                if isinstance(v, ModelMeta):
+                    self.assertFalse(v.unsup_trained)
+                    self.assertFalse(v.sup_trained)
+                else:
+                    self.assertFalse(v)
 
     def test_state_restored(self):
         self.assertStateEqual(self.initial_state, self.restored_state)
