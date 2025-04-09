@@ -78,8 +78,30 @@ def apply_cdb_state(cdb, state: CDBState) -> None:
         cdb: The CDB to apply the state to.
         state (CDBState): The state to use.
     """
+    _clear_state(cdb)
+    _reapply_state(cdb, state)
+
+
+def _clear_state(cdb) -> None:
+    for k in CDBState.__annotations__:
+        val = getattr(cdb, k)
+        if not isinstance(val, dict):
+            raise ValueError(
+                "A part of the CDB state was not a dict (during clearing). "
+                f"Got {type(val).__name__}. The "
+                "re-setting of the sate needs to be implemented per type.")
+        val.clear()
+
+
+def _reapply_state(cdb, state: CDBState):
     for k, v in state.items():
-        setattr(cdb, k, v)
+        prev_ver = getattr(cdb, k)
+        if not isinstance(prev_ver, dict) or not isinstance(v, dict):
+            raise ValueError(
+                "A part of the CDB state was not a dict (during setting). "
+                f"Got {type(prev_ver).__name__}. The "
+                "re-setting of the sate needs to be implemented per type.")
+        prev_ver.update(v)
 
 
 def load_and_apply_cdb_state(cdb, file_path: str) -> None:
@@ -99,13 +121,11 @@ def load_and_apply_cdb_state(cdb, file_path: str) -> None:
     # this is so that we don't occupy the memory for both the loaded
     # and the on-CDB data
     logger.debug("Clearing CDB state in memory")
-    for k in CDBState.__annotations__:
-        delattr(cdb, k)
+    _clear_state(cdb)
     logger.debug("Loading CDB state from disk from '%s'", file_path)
     with open(file_path, 'rb') as f:
-        data = dill.load(f)
-    for k in CDBState.__annotations__:
-        setattr(cdb, k, data[k])
+        state: CDBState = dill.load(f)
+    _reapply_state(cdb, state)
 
 
 @contextlib.contextmanager
