@@ -22,45 +22,6 @@ logger = logging.getLogger(__name__)
 TYPE_ID_PREFIX: str = "TYPE_ID:"
 
 
-# class SubsetDict(dict[str, CUIInfo]):
-
-#     def __init__(self, full_dict: dict[str, CUIInfo], keys: set[str]):
-#         self._full_dict = full_dict
-#         self._keys = set(keys)
-
-#     def __getitem__(self, key):
-#         if key in self._keys:
-#             return self._full_dict[key]
-#         raise KeyError(key)
-
-#     def __setitem__(self, key, value):
-#         if key in self._keys:
-#             self._full_dict[key] = value
-#         else:
-#             raise KeyError(f"Cannot modify key '{key}', not in subset")
-
-#     def __delitem__(self, key):
-#         if key in self._keys:
-#             del self._full_dict[key]
-#         else:
-#             raise KeyError(f"Cannot delete key '{key}', not in subset")
-
-#     def keys(self):
-#         return self._keys
-
-#     def items(self):
-#         return ((k, self._full_dict[k]) for k in self._keys)
-
-#     def values(self):
-#         return (self._full_dict[k] for k in self._keys)
-
-#     def __iter__(self):
-#         return iter(self._keys)
-
-#     def __contains__(self, key):
-#         return key in self._keys
-
-
 def add_tuis_to_cui_info(cui2info: dict[str, CUIInfo],
                          type_ids: dict[str, TypeInfo]
                          ):  # -> dict[str, CUIInfo]:
@@ -69,7 +30,6 @@ def add_tuis_to_cui_info(cui2info: dict[str, CUIInfo],
         if prefixed_tid not in cui2info:
             cui2info[prefixed_tid] = get_new_cui_info(
                 tid, preferred_name=tid_info.name, names={tid_info.name})
-    # return SubsetDict(cui2info, set(type_ids.keys()))
 
 
 class TwoStepLinker(AbstractCoreComponent):
