@@ -283,7 +283,11 @@ class ContextModel(AbstractSerialisable):
         cui_info = self.cui2info[cui]
         lr = get_lr_linking(self.config, cui_info['count_train'])
         if not cui_info['context_vectors']:
-            cui_info['context_vectors'] = vectors
+            if not negative:
+                cui_info['context_vectors'] = vectors
+            else:
+                cui_info['context_vectors'] = {ct: -1 * vec for
+                                               ct, vec in vectors.items()}
         else:
             update_context_vectors(
                 cui_info['context_vectors'], cui, vectors, lr,
