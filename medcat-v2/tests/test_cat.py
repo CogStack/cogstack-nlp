@@ -10,6 +10,7 @@ from medcat2.config import Config
 from medcat2.model_creation.cdb_maker import CDBMaker
 from medcat2.cdb import CDB
 from medcat2.tokenizing.tokens import UnregisteredDataPathException
+from medcat2.utils.cdb_state import captured_state_cdb
 
 import unittest
 import unittest.mock
@@ -206,6 +207,14 @@ class CATSupTrainingTests(CATUnsupTrainingTests):
 
     def test_lists_sup_train_in_config(self):
         self.assertTrue(self.cat.config.meta.sup_trained)
+
+    def test_clearing_training_works(self):
+        with captured_state_cdb(self.cat.cdb):
+            self.cat.cdb.reset_training()
+            self.assertEqual(self.cat.cdb.get_cui2count_train(), {})
+            self.assertEqual(self.cat.cdb.get_name2count_train(), {})
+            self.assertEqual(self.cat.config.meta.unsup_trained, [])
+            self.assertEqual(self.cat.config.meta.sup_trained, [])
 
 
 class CATWithDictNERSupTrainingTests(CATSupTrainingTests):
