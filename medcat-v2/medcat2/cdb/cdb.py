@@ -278,6 +278,10 @@ class CDB(AbstractSerialisable):
             reset_cui_training(cui_info)
         for name_info in self.name2info.values():
             name_info['count_train'] = 0
+        self._subnames.clear()
+        # clear config entries as well
+        self.config.meta.unsup_trained.clear()
+        self.config.meta.sup_trained.clear()
         self.is_dirty = True
 
     def _remove_names(self, cui: str, names: Iterable[str]) -> None:
