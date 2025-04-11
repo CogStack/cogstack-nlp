@@ -138,6 +138,8 @@ class CATUnsupTrainingTests(CATCreationTests):
         os.path.dirname(__file__), 'resources', 'selfsupervised_data.txt'
     )
     EXPECT_TRAIN = {'C01': 2, 'C02': 2, 'C03': 2, 'C04': 1, 'C05': 1}
+    # NOTE: should remain consistent unless we change the model or data
+    EXPECTED_HASH = "e9989cc2dde739ff"
 
     @classmethod
     def setUpClass(cls):
@@ -150,6 +152,8 @@ class CATSupTrainingTests(CATUnsupTrainingTests):
     SUPERVISED_DATA_PATH = os.path.join(
         os.path.dirname(__file__), 'resources', 'supervised_mct_export.json'
     )
+    # NOTE: should remain consistent unless we change the model or data
+    EXPECTED_HASH = "7bfe01e8e36eb07d"
 
     @classmethod
     def _get_cui_counts(cls) -> dict[str, int]:
