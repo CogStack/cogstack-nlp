@@ -268,7 +268,7 @@ class CAT(AbstractSerialisable):
                              type(component).__name__)
                 hasher.update(component.get_hash())
         hex_hash = self.config.meta.hash = hasher.hexdigest()
-        self.config.meta.history.add(hex_hash)
+        self.config.meta.history.append(hex_hash)
         logger.info("Got hash: %s", hex_hash)
         return hex_hash
 
