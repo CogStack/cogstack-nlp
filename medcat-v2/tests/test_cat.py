@@ -115,6 +115,11 @@ class CATCreationTests(CATIncludingTests):
     EXPECTED_HASH = "558019fd37ed2167"
 
     @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.prev_hash = cls.cat.config.meta.hash
+
+    @classmethod
     def get_cui2ct(cls, cat: Optional[cat.CAT] = None):
         if cat is None:
             cat = cls.cat
@@ -126,11 +131,21 @@ class CATCreationTests(CATIncludingTests):
         self.assertEqual(self.get_cui2ct(), self.EXPECT_TRAIN)
 
     def test_versioning_updates_config_hash(self):
-        prev_hash = self.cat.config.meta.hash
         self.cat._versioning()
         new_hash = self.cat.config.meta.hash
-        self.assertNotEqual(prev_hash, new_hash)
+        self.assertNotEqual(self.prev_hash, new_hash)
         self.assertEqual(new_hash, self.EXPECTED_HASH)
+        self.assertEqual(self.cat.config.meta.history[-1], new_hash)
+
+    def test_versioning_does_not_overpopulate_history(self):
+        # run multiple times
+        self.cat._versioning()
+        self.cat._versioning()
+        # and expect it not to append multiple times in the history
+        # if there were multiple instances, the set would remove duplicates
+        sorted_set = sorted(set(self.cat.config.meta.history))
+        sorted_list = sorted(self.cat.config.meta.history)
+        self.assertEqual(sorted_set, sorted_list)
 
 
 class CATUnsupTrainingTests(CATCreationTests):
