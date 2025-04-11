@@ -110,7 +110,9 @@ class CATIncludingTests(unittest.TestCase):
         cls.cat.config.components.linking.train = False
 
 
-class CATCReationTests(CATIncludingTests):
+class CATCreationTests(CATIncludingTests):
+    # should be persistent as long as we don't change the underlying model
+    EXPECTED_HASH = "558019fd37ed2167"
 
     @classmethod
     def get_cui2ct(cls, cat: Optional[cat.CAT] = None):
@@ -123,8 +125,15 @@ class CATCReationTests(CATIncludingTests):
     def test_has_expected_training(self):
         self.assertEqual(self.get_cui2ct(), self.EXPECT_TRAIN)
 
+    def test_versioning_updates_config_hash(self):
+        prev_hash = self.cat.config.meta.hash
+        self.cat._versioning()
+        new_hash = self.cat.config.meta.hash
+        self.assertNotEqual(prev_hash, new_hash)
+        self.assertEqual(new_hash, self.EXPECTED_HASH)
 
-class CATUnsupTrainingTests(CATCReationTests):
+
+class CATUnsupTrainingTests(CATCreationTests):
     SELF_SUPERVISED_DATA_PATH = os.path.join(
         os.path.dirname(__file__), 'resources', 'selfsupervised_data.txt'
     )
