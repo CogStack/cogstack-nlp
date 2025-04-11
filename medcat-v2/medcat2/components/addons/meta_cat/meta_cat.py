@@ -77,35 +77,7 @@ class MetaCATAddon(AddonComponent):
         """Factory method to load an existing MetaCATAddon from disk."""
         meta_cat = cls(cnf, base_tokenizer, None)  # Temporary instance
         meta_cat._mc = meta_cat.load(load_path)
-        # meta_cat.mc.tokenizer = meta_cat._load_tokenizer(tokenizer_folder)
         return meta_cat
-
-    # def __init__(self, cnf: ConfigMetaCAT, base_tokenizer: BaseTokenizer,
-    #              model_load_path: Optional[str],
-    #              tokenizer: Optional[TokenizerWrapperBase] = None):
-    #     self.base_tokenizer = base_tokenizer
-    #     self._name = cnf.general.category_name
-    #     # NOTE: if tokenizer (Optional[TokenizerWrapperBase]) is provided
-    #     #       this is probably a new MetaCAT being created
-    #     #       otherwise, it should be loaded off disk
-    #     if tokenizer is None and model_load_path is None:
-    #         tokenizer = self._init_tokenizer(
-    #             cnf, model_load_path)
-    #     if tokenizer is None and model_load_path is None:
-    #         raise MisconfiguredMetaCATException(
-    #             "When initialising a MetaCAT, neither model load path nor "
-    #             "a tokenizer was provided. If loading off disk, the model "
-    #             "load path would be expected; when creating a new one, the "
-    #             "tokenizer should be provided"
-    #         )
-    #     self.config = cnf
-    #     if model_load_path is None:
-    #         self.mc = MetaCAT(tokenizer, embeddings=None, config=cnf)
-    #     else:
-    #         load_path = os.path.join(
-    #             model_load_path, COMPONENTS_FOLDER, self.get_folder_name())
-    #         self.mc = self.load(load_path)
-    #     self._init_data_paths()
 
     @property
     def name(self) -> str:
@@ -230,6 +202,12 @@ class MetaCATAddon(AddonComponent):
     @classmethod
     def include_properties(cls) -> list[str]:
         return []
+
+    def get_hash(self) -> str:
+        if self._mc:
+            return self._mc.get_hash()
+        else:
+            return 'No-model'
 
 
 class MetaCAT(AbstractSerialisable):
