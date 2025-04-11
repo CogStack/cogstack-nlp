@@ -7,6 +7,7 @@ import dill
 from copy import deepcopy
 
 from medcat2.cdb.concepts import NameInfo, CUIInfo
+from medcat2.config.config import ModelMeta
 
 
 logger = logging.getLogger(__name__)
@@ -19,6 +20,7 @@ CDBState = TypedDict(
         'cui2info': dict[str, CUIInfo],
         'token_counts': dict[str, int],
         '_subnames': set[str],
+        'config.meta': ModelMeta,
     })
 """CDB State.
 
@@ -31,7 +33,26 @@ Currently, the following fields are saved:
  - cui2info
  - token_counts
  - _subnames
+ - config.meta
 """
+
+
+def _get_attr(cdb, path: str) -> object:
+    cur_obj = cdb
+    cur_path = path
+    while "." in cur_path:
+        cur_left, cur_path = cur_path.split(".", 1)
+        cur_obj = getattr(cur_obj, cur_left)
+    return getattr(cur_obj, cur_path)
+
+
+def _set_attr(cdb, path: str, val: object) -> None:
+    cur_obj = cdb
+    cur_path = path
+    while "." in cur_path:
+        cur_left, cur_path = cur_path.split(".", 1)
+        cur_obj = getattr(cur_obj, cur_left)
+    setattr(cur_obj, cur_path, val)
 
 
 def copy_cdb_state(cdb) -> CDBState:
@@ -47,7 +68,7 @@ def copy_cdb_state(cdb) -> CDBState:
         CDBState: The copied state.
     """
     return cast(CDBState, {
-        k: deepcopy(getattr(cdb, k)) for k in CDBState.__annotations__
+        k: deepcopy(_get_attr(cdb, k)) for k in CDBState.__annotations__
     })
 
 
@@ -64,7 +85,7 @@ def save_cdb_state(cdb, file_path: str) -> None:
     #       That is so that we don't have to occupy the memory for
     #       both copies
     the_dict = {
-        k: getattr(cdb, k) for k in CDBState.__annotations__
+        k: _get_attr(cdb, k) for k in CDBState.__annotations__
     }
     logger.debug("Saving CDB state on disk at: '%s'", file_path)
     with open(file_path, 'wb') as f:
@@ -81,7 +102,7 @@ def apply_cdb_state(cdb, state: CDBState) -> None:
         state (CDBState): The state to use.
     """
     for k, v in state.items():
-        setattr(cdb, k, v)
+        _set_attr(cdb, k, v)
 
 
 def load_and_apply_cdb_state(cdb, file_path: str) -> None:
@@ -107,7 +128,7 @@ def load_and_apply_cdb_state(cdb, file_path: str) -> None:
     with open(file_path, 'rb') as f:
         data = dill.load(f)
     for k in CDBState.__annotations__:
-        setattr(cdb, k, data[k])
+        _set_attr(cdb, k, data[k])
 
 
 @contextlib.contextmanager
