@@ -147,6 +147,9 @@ class CATUnsupTrainingTests(CATCreationTests):
         data = pd.read_csv(cls.SELF_SUPERVISED_DATA_PATH)
         cls.cat.trainer.train_unsupervised(data.text.values)
 
+    def test_lists_unsup_train_in_config(self):
+        self.assertTrue(self.cat.config.meta.unsup_trained)
+
 
 class CATSupTrainingTests(CATUnsupTrainingTests):
     SUPERVISED_DATA_PATH = os.path.join(
@@ -185,6 +188,9 @@ class CATSupTrainingTests(CATUnsupTrainingTests):
     def _perform_training(cls):
         data = cls._get_data()
         cls.cat.trainer.train_supervised_raw(data)
+
+    def test_lists_sup_train_in_config(self):
+        self.assertTrue(self.cat.config.meta.sup_trained)
 
 
 class CATWithDictNERSupTrainingTests(CATSupTrainingTests):
