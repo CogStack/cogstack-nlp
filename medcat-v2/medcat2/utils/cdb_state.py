@@ -18,6 +18,7 @@ CDBState = TypedDict(
         'name2info': dict[str, NameInfo],
         'cui2info': dict[str, CUIInfo],
         'token_counts': dict[str, int],
+        '_subnames': set[str],
     })
 """CDB State.
 
@@ -29,6 +30,7 @@ Currently, the following fields are saved:
  - name2info
  - cui2info
  - token_counts
+ - _subnames
 """
 
 
