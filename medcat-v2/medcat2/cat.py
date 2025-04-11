@@ -13,10 +13,11 @@ from medcat2.storage.serialisers import serialise, AvailableSerialisers
 from medcat2.storage.serialisers import deserialise
 from medcat2.storage.serialisables import AbstractSerialisable
 from medcat2.utils.fileutils import ensure_folder_if_parent
+from medcat2.utils.hasher import Hasher
 from medcat2.pipeline.pipeline import Pipeline
 from medcat2.tokenizing.tokens import MutableDocument, MutableEntity
 from medcat2.data.entities import Entity, Entities, OnlyCUIEntities
-from medcat2.components.types import AbstractCoreComponent
+from medcat2.components.types import AbstractCoreComponent, HashableComponet
 from medcat2.components.addons.addons import AddonComponent
 
 
@@ -221,6 +222,9 @@ class CAT(AbstractSerialisable):
             ) -> str:
         """Save model pack.
 
+        The resulting model pack name will have the hash of the model pack
+        in its name if (and only if) the default model pack name is used.
+
         Args:
             target_folder (str):
                 The folder to save the pack in.
@@ -236,6 +240,9 @@ class CAT(AbstractSerialisable):
         """
         self.config.meta.mark_saved_now()
         # figure out the location/folder of the saved files
+        hex_hash = self._versioning()
+        if pack_name == DEFAULT_PACK_NAME:
+            pack_name = f"{pack_name}_{hex_hash}"
         model_pack_path = os.path.join(target_folder, pack_name)
         # ensure target folder and model pack folder exist
         ensure_folder_if_parent(model_pack_path)
@@ -250,6 +257,16 @@ class CAT(AbstractSerialisable):
             shutil.make_archive(model_pack_path, 'zip',
                                 root_dir=model_pack_path)
         return model_pack_path
+
+    def _versioning(self) -> str:
+        hasher = Hasher()
+        hasher.update(self.cdb.get_hash())
+        for component in self._pipeline.iter_all_components():
+            if isinstance(component, HashableComponet):
+                print("Hashing for", type(component).__name__)
+                hasher.update(component.get_hash())
+        hex_hash = self.config.meta.hash = hasher.hexdigest()
+        return hex_hash
 
     @classmethod
     def load_model_pack(cls, model_pack_path: str) -> 'CAT':
