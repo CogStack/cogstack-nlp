@@ -260,12 +260,15 @@ class CAT(AbstractSerialisable):
 
     def _versioning(self) -> str:
         hasher = Hasher()
+        logger.debug("Hashing the CDB")
         hasher.update(self.cdb.get_hash())
         for component in self._pipeline.iter_all_components():
             if isinstance(component, HashableComponet):
-                print("Hashing for", type(component).__name__)
+                logger.debug("Hashing for component %s",
+                             type(component).__name__)
                 hasher.update(component.get_hash())
         hex_hash = self.config.meta.hash = hasher.hexdigest()
+        logger.info("Got hash: %s", hex_hash)
         return hex_hash
 
     @classmethod
