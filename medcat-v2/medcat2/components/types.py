@@ -91,6 +91,13 @@ class AbstractCoreComponent(CoreComponent):
 
 
 @runtime_checkable
+class HashableComponet(Protocol):
+
+    def get_hash(self) -> str:
+        pass
+
+
+@runtime_checkable
 class TrainableComponent(Protocol):
 
     def train(self, cui: str,
