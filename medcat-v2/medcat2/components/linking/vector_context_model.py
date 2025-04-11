@@ -1,4 +1,5 @@
 from typing import Optional, Iterable, Union, Sequence, cast, Callable
+from typing import Protocol
 
 import numpy as np
 import random
@@ -16,6 +17,13 @@ from medcat2.storage.serialisables import AbstractSerialisable
 
 
 logger = logging.getLogger(__name__)
+
+
+class DisambPreprocessor(Protocol):
+
+    def __call__(self, ent: MutableEntity, name: str, cuis: list[str],
+                 similarities: list[float]) -> None:
+        pass
 
 
 class ContextModel(AbstractSerialisable):
@@ -36,13 +44,16 @@ class ContextModel(AbstractSerialisable):
                  name2info: dict[str, NameInfo],
                  weighted_average_function: Callable[[int], float],
                  vocab: Vocab, config: Linking,
-                 name_separator: str) -> None:
+                 name_separator: str,
+                 disamb_preprocessors: list[DisambPreprocessor] = []) -> None:
         self.cui2info = cui2info
         self.name2info = name2info
         self.weighted_average_function = weighted_average_function
         self.vocab = vocab
         self.config = config
         self.name_separator = name_separator
+        self._disamb_preprocessors = (  # copy if default/empty
+            disamb_preprocessors or disamb_preprocessors.copy())
 
     def get_context_tokens(self, entity: MutableEntity, doc: MutableDocument,
                            size: int,
@@ -192,8 +203,11 @@ class ContextModel(AbstractSerialisable):
         else:
             return -1
 
-    def _preprocess_disamb_similarities(self, name: str, cuis: list[str],
+    def _preprocess_disamb_similarities(self, entity: MutableEntity,
+                                        name: str, cuis: list[str],
                                         similarities: list[float]) -> None:
+        for preprocessor in self._disamb_preprocessors:
+            preprocessor(entity, name, cuis, similarities)
         # NOTE: Has side effects on similarities
         if self.config.prefer_primary_name > 0:
             logger.debug("Preferring primary names")
@@ -222,10 +236,11 @@ class ContextModel(AbstractSerialisable):
             similarities += [min(0.99, sim + sim*scale)
                              for sim, scale in zip(old_sims, scales)]
 
-    def disambiguate(self, cuis: list[str], entity: MutableEntity, name: str,
-                     doc: MutableDocument,
-                     per_doc_valid_token_cache: 'PerDocumentTokenCache'
-                     ) -> tuple[Optional[str], float]:
+    def get_all_similarities(self, cuis: list[str], entity: MutableEntity,
+                             name: str, doc: MutableDocument,
+                             per_doc_valid_token_cache: 'PerDocumentTokenCache'
+                             ) -> tuple[Union[list[str], list[None]],
+                                        list[float], int]:
         vectors = self.get_context_vectors(
             entity, doc, per_doc_valid_token_cache)
         filters = self.config.filters
@@ -247,12 +262,22 @@ class ContextModel(AbstractSerialisable):
             # DEBUG
             logger.debug("Similarities: %s", list(zip(cuis, similarities)))
 
-            self._preprocess_disamb_similarities(name, cuis, similarities)
+            self._preprocess_disamb_similarities(
+                entity, name, cuis, similarities)
 
-            mx = np.argmax(similarities)
-            return cuis[mx], similarities[mx]
+            # technically, could be a np.int64 or something like that
+            mx = int(np.argmax(similarities))
+            return cuis, similarities, mx
         else:
-            return None, 0
+            return [None], [0], 0
+
+    def disambiguate(self, cuis: list[str], entity: MutableEntity, name: str,
+                     doc: MutableDocument,
+                     per_doc_valid_token_cache: 'PerDocumentTokenCache'
+                     ) -> tuple[Optional[str], float]:
+        suitable_cuis, sims, best_index = self.get_all_similarities(
+            cuis, entity, name, doc, per_doc_valid_token_cache)
+        return suitable_cuis[best_index], sims[best_index]
 
     def train(self, cui: str, entity: MutableEntity, doc: MutableDocument,
               per_doc_valid_token_cache: 'PerDocumentTokenCache',
