@@ -14,8 +14,8 @@ MedCAT(*v2*) can be used to extract information from Electronic Health Records (
 <!-- **Available Models (requires UMLS license) [here](https://uts.nlm.nih.gov/uts/login?service=https://medcat.rosalind.kcl.ac.uk/auth-callback)** -->
 
 ## News
+- **MedCAT v2 beta** \[1. April 2025\] MedCATv2 beta 0.1.5 was released 1. April 2025.
 - **Paper** [A New Public Corpus for Clinical Section Identification: MedSecId](https://aclanthology.org/2022.coling-1.326.pdf)
-- **MedCAT v2 beta** MedCATv2 beta 0.1.5 was released 1. April 2025.
 - **New Release** \[5. October 2022\]**: Logging changes, and various small updates. [Full changelog](https://github.com/CogStack/MedCAT/compare/v1.3.0...v1.4.0)
 - **New Downloader \[15. March 2022\]**: You can now [download](https://uts.nlm.nih.gov/uts/login?service=https://medcat.rosalind.kcl.ac.uk/auth-callback) the latest SNOMED-CT and UMLS model packs via UMLS user authentication.
 - **New Feature and Tutorial \[7. December 2021\]**: [Exploring Electronic Health Records with MedCAT and Neo4j](https://towardsdatascience.com/exploring-electronic-health-records-with-medcat-and-neo4j-f376c03d8eef)
