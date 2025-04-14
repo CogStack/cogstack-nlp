@@ -8,7 +8,7 @@
 MedCAT can be used to extract information from Electronic Health Records (EHRs) and link it to biomedical ontologies like SNOMED-CT, UMLS, or HPO (and potentially other ontologies).
 Original paper for v1 on [arXiv](https://arxiv.org/abs/2010.01165). 
 
-<!-- **Official Docs [here](https://medcat.readthedocs.io/en/latest/)** -->
+**Official Docs [here](https://medcat2.readthedocs.io/en/latest/)**
 
 **Discussion Forum [discourse](https://discourse.cogstack.org/)**
 
