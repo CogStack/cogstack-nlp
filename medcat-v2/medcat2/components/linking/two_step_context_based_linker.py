@@ -1,7 +1,8 @@
-from typing import Optional, Union, Any
+from typing import Optional, Union, Any, Iterator, cast
 import random
 import logging
 from itertools import chain
+from collections.abc import MutableMapping, KeysView
 
 from medcat2.cdb.cdb import CDB
 from medcat2.vocab import Vocab
@@ -40,6 +41,8 @@ class TwoStepLinker(AbstractCoreComponent):
         vocab (Vocab): The vocabulary.
         config (Config): The config.
     """
+    # 70% cui, 30% type ID
+    ALPHA = 0.7
     # Custom pipeline component name
     name = 'medcat2_two_step_linker'
 
@@ -50,14 +53,14 @@ class TwoStepLinker(AbstractCoreComponent):
         self.config = config
         self._linker = NormalLinker(cdb, vocab, config)
         add_tuis_to_cui_info(self.cdb.cui2info, self.cdb.type_id2info)
-        self._tui_linker = NormalLinker(cdb, vocab, config)
         self._tui_context_model = ContextModel(
             self.cdb.cui2info,
             self.cdb.name2info,
             self.cdb.weighted_average_function,
             self.vocab,
             self.config.components.linking,
-            self.config.general.separator)
+            self.config.general.separator,
+            disamb_preprocessors=[self._preprocess_disamb])
 
     def get_type(self) -> CoreComponentType:
         return CoreComponentType.linking
@@ -121,7 +124,7 @@ class TwoStepLinker(AbstractCoreComponent):
             return context_similarity >= conf * threshold
         return False
 
-    def _narrow_down_candidates(
+    def _reweigh_candidates(
             self, doc: MutableDocument,
             entity: MutableEntity,
             per_doc_valid_token_cache: PerDocumentTokenCache
@@ -164,28 +167,36 @@ class TwoStepLinker(AbstractCoreComponent):
             # ignore if there's no name found
             # in my experience, this shouldn't really happen anyway
             return
-        tui, context_similarity = self._tui_context_model.disambiguate(
+        (suitable_tuis,
+         tui_similarities, _) = self._tui_context_model.get_all_similarities(
             tuis, entity, name, doc, per_doc_valid_token_cache)
+        per_cui_weight = {
+            cui: sim
+            for tui, sim in zip(suitable_tuis, tui_similarities)
+            if tui is not None
+            for cui in per_tui_candidates[tui.removeprefix(TYPE_ID_PREFIX)]
+        }
+        self._per_entity_weights[entity] = per_cui_weight
+        logger.debug("Adding per CUI to %s (tokens %d..%d) weights %s",
+                     cui, entity.base.start_index, entity.base.end_index,
+                     per_cui_weight)
 
-        if tui and self._check_similarity(tui, context_similarity):
-            # now resetting the link candidates to only ones allowed for TUI
-            final_candidates = per_tui_candidates[tui[len(TYPE_ID_PREFIX):]]
-            logger.debug("Narrowed down to TUI %s, and subsequently CUIs: %s",
-                         tui, final_candidates)
-            entity.link_candidates = final_candidates
-
-    def _narrow_down_on_inference(self, doc: MutableDocument) -> None:
+    def _weigh_on_inference(self, doc: MutableDocument) -> None:
+        self._per_entity_weights = PerEntityWeights(doc)
         per_doc_valid_token_cache = PerDocumentTokenCache()
         for entity in doc.all_ents:
-            logger.debug("Narrowing down candidates for: %s", entity.base.text)
-            self._narrow_down_candidates(
+            logger.debug("Narrowing down candidates for: '%s' from %s",
+                         entity.base.text, entity.link_candidates)
+            self._reweigh_candidates(
                 doc, entity, per_doc_valid_token_cache)
+        # clean up
+        self._per_entity_weights.clear()
 
     def __call__(self, doc: MutableDocument) -> MutableDocument:
         if self.config.components.linking.train:
             self._train_for_tuis(doc)
         else:
-            self._narrow_down_on_inference(doc)
+            self._weigh_on_inference(doc)
         return self._linker(doc)
 
     def train(self, cui: str,
@@ -227,3 +238,63 @@ class TwoStepLinker(AbstractCoreComponent):
     def get_init_kwargs(cls, tokenizer: BaseTokenizer, cdb: CDB, vocab: Vocab,
                         model_load_path: Optional[str]) -> dict[str, Any]:
         return {}
+
+    def _preprocess_disamb(self, ent: MutableEntity, name: str,
+                           cuis: list[str], similarities: list[float]) -> None:
+        if ent not in self._per_entity_weights:
+            # ignore for stuff not in here
+            return
+        per_cui_weights = self._per_entity_weights[ent]
+        ts_coef = self.ALPHA
+        for cui, weight in per_cui_weights.items():
+            if cui not in cuis:
+                continue
+            cui_index = cuis.index(cui)
+            prev_sim = similarities[cui_index]
+            new_sim = ts_coef * prev_sim + (1 - ts_coef) * weight
+            similarities[cui_index] = new_sim
+            logger.debug("[Per CUI weights] CUI: %s, Name: %s, "
+                         "Old sim: %.3f, New sim: %.3f",
+                         prev_sim, new_sim)
+
+
+class PerEntityWeights(MutableMapping[MutableEntity, dict[str, float]]):
+
+    def __init__(self, doc: MutableDocument):
+        self._doc = doc
+        self._cui_weights: dict[tuple[int, int], dict[str, float]] = {}
+
+    def _to_key(self, ent: MutableEntity) -> tuple[int, int]:
+        return ent.base.start_index, ent.base.end_index
+
+    def _from_key(self, key: tuple[int, int]) -> MutableEntity:
+        start, end = key
+        for ent in self._doc.all_ents:
+            if ent.base.start_index == start and ent.base.end_index == end:
+                return ent
+        raise ValueError("Unable to find entity corresponding to "
+                         f"{start}...{end} (token indices) within doc "
+                         f"{self._doc}")
+
+    def __getitem__(self, ent: MutableEntity):
+        return self._cui_weights[self._to_key(ent)]
+
+    def __contains__(self, key: object):
+        # NOTE: shouldn't ever really be anything else
+        ent = cast(MutableEntity, key)
+        return self._to_key(ent) in self._cui_weights
+
+    def __setitem__(self, ent: MutableEntity, value: dict[str, float]):
+        self._cui_weights[self._to_key(ent)] = value
+
+    def __delitem__(self, key: MutableEntity) -> None:
+        del self._cui_weights[self._to_key(key)]
+
+    def __iter__(self) -> Iterator[MutableEntity]:
+        return (self._from_key(k) for k in self._cui_weights)
+
+    def __len__(self) -> int:
+        return len(self._cui_weights)
+
+    def keys(self) -> KeysView[MutableEntity]:
+        return {self._from_key(k): None for k in self._cui_weights}.keys()
