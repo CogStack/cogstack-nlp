@@ -6,8 +6,9 @@ from collections.abc import MutableMapping, KeysView
 
 from medcat2.cdb.cdb import CDB
 from medcat2.vocab import Vocab
-from medcat2.config.config import Config
+from medcat2.config.config import Config, SerialisableBaseModel
 from medcat2.utils.defaults import StatusTypes as ST
+from medcat2.utils.matutils import sigmoid
 from medcat2.cdb.concepts import CUIInfo, TypeInfo, get_new_cui_info
 from medcat2.components.types import CoreComponentType, AbstractCoreComponent
 from medcat2.tokenizing.tokenizers import BaseTokenizer
@@ -25,7 +26,7 @@ TYPE_ID_PREFIX: str = "TYPE_ID:"
 
 def add_tuis_to_cui_info(cui2info: dict[str, CUIInfo],
                          type_ids: dict[str, TypeInfo]
-                         ):  # -> dict[str, CUIInfo]:
+                         ):
     for tid, tid_info in type_ids.items():
         prefixed_tid = f"{TYPE_ID_PREFIX}{tid}"
         if prefixed_tid not in cui2info:
@@ -41,8 +42,6 @@ class TwoStepLinker(AbstractCoreComponent):
         vocab (Vocab): The vocabulary.
         config (Config): The config.
     """
-    # 70% cui, 30% type ID
-    ALPHA = 0.7
     # Custom pipeline component name
     name = 'medcat2_two_step_linker'
 
@@ -51,6 +50,7 @@ class TwoStepLinker(AbstractCoreComponent):
         self.cdb = cdb
         self.vocab = vocab
         self.config = config
+        self._init_cnf()
         self._linker = NormalLinker(cdb, vocab, config)
         add_tuis_to_cui_info(self.cdb.cui2info, self.cdb.type_id2info)
         self._tui_context_model = ContextModel(
@@ -61,6 +61,13 @@ class TwoStepLinker(AbstractCoreComponent):
             self.config.components.linking,
             self.config.general.separator,
             disamb_preprocessors=[self._preprocess_disamb])
+
+    def _init_cnf(self):
+        if not isinstance(self.config.components.linking.additional,
+                          TwoStepLinkerConfig):
+            logger.info("Setting default TwoStepLinkerConfig instead of %s",
+                        self.config.components.linking.additional)
+            self.config.components.linking.additional = TwoStepLinkerConfig()
 
     def get_type(self) -> CoreComponentType:
         return CoreComponentType.linking
@@ -170,16 +177,16 @@ class TwoStepLinker(AbstractCoreComponent):
         (suitable_tuis,
          tui_similarities, _) = self._tui_context_model.get_all_similarities(
             tuis, entity, name, doc, per_doc_valid_token_cache)
-        per_cui_weight = {
+        per_cui_type_sims = {
             cui: sim
             for tui, sim in zip(suitable_tuis, tui_similarities)
             if tui is not None
             for cui in per_tui_candidates[tui.removeprefix(TYPE_ID_PREFIX)]
         }
-        self._per_entity_weights[entity] = per_cui_weight
+        self._per_entity_weights[entity] = per_cui_type_sims
         logger.debug("Adding per CUI to %s (tokens %d..%d) weights %s",
                      cui, entity.base.start_index, entity.base.end_index,
-                     per_cui_weight)
+                     per_cui_type_sims)
 
     def _weigh_on_inference(self, doc: MutableDocument) -> None:
         self._per_entity_weights = PerEntityWeights(doc)
@@ -244,14 +251,21 @@ class TwoStepLinker(AbstractCoreComponent):
         if ent not in self._per_entity_weights:
             # ignore for stuff not in here
             return
-        per_cui_weights = self._per_entity_weights[ent]
-        ts_coef = self.ALPHA
-        for cui, weight in per_cui_weights.items():
+        per_cui_type_sims = self._per_entity_weights[ent]
+        cnf_2step = self.config.components.linking.additional
+        if not isinstance(cnf_2step, TwoStepLinkerConfig):
+            raise ValueError(
+                "Need to set 'config.components.linking.additional' to "
+                "an instance of TwoStepLinkerConfig")
+        for cui, type_sim in per_cui_type_sims.items():
             if cui not in cuis:
                 continue
             cui_index = cuis.index(cui)
             prev_sim = similarities[cui_index]
-            new_sim = ts_coef * prev_sim + (1 - ts_coef) * weight
+            ts_coef = sigmoid(
+                cnf_2step.alpha_sharpness * (
+                    type_sim - cnf_2step.alpha_midpoint))
+            new_sim = ts_coef * prev_sim + (1 - ts_coef) * type_sim
             similarities[cui_index] = new_sim
             logger.debug("[Per CUI weights] CUI: %s, Name: %s, "
                          "Old sim: %.3f, New sim: %.3f",
@@ -298,3 +312,16 @@ class PerEntityWeights(MutableMapping[MutableEntity, dict[str, float]]):
 
     def keys(self) -> KeysView[MutableEntity]:
         return {self._from_key(k): None for k in self._cui_weights}.keys()
+
+
+class TwoStepLinkerConfig(SerialisableBaseModel):
+    alpha_midpoint: float = 0.5
+    """The midpoint for the sigmoid.
+    alpha = sigmoid(alpha_sharpness(similarity - alpha_midpoint))
+    This is used for weighting the type similarity vs the concept similarity.
+    """
+    alpha_sharpness: float = 5.0
+    """The sharpness for the sigmoid.
+    alpha = sigmoid(alpha_sharpness(similarity - alpha_midpoint))
+    This is used for weighting the type similarity vs the concept similarity.
+    """
