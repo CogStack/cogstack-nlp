@@ -9,6 +9,7 @@ from medcat2.vocab import Vocab
 from medcat2.config.config import Config, SerialisableBaseModel
 from medcat2.utils.defaults import StatusTypes as ST
 from medcat2.utils.matutils import sigmoid
+from medcat2.utils.config_utils import temp_changed_config
 from medcat2.cdb.concepts import CUIInfo, TypeInfo, get_new_cui_info
 from medcat2.components.types import CoreComponentType, AbstractCoreComponent
 from medcat2.tokenizing.tokenizers import BaseTokenizer
@@ -97,6 +98,18 @@ class TwoStepLinker(AbstractCoreComponent):
             for tui in self.cdb.cui2info[cui]['type_ids']] for cui in cuis}
         tuis = list(set(chain(*per_cui_tuis.values())))
 
+        with changed_learning_rate(self.config, self.two_step_config):
+            self._do_training(doc, entity, name, cuis,
+                              per_cui_tuis, tuis, per_doc_valid_token_cache)
+
+    def _do_training(self,
+                     doc: MutableDocument,
+                     entity: MutableEntity,
+                     name: str,
+                     cuis: list[str],
+                     per_cui_tuis: dict[str, list[str]],
+                     tuis: list[str],
+                     per_doc_valid_token_cache: PerDocumentTokenCache):
         if len(tuis) == 1:
             self._train_tuis(
                 tui=tuis[0], entity=entity, doc=doc,
@@ -246,17 +259,22 @@ class TwoStepLinker(AbstractCoreComponent):
                         model_load_path: Optional[str]) -> dict[str, Any]:
         return {}
 
+    @property
+    def two_step_config(self) -> 'TwoStepLinkerConfig':
+        cnf_2step = self.config.components.linking.additional
+        if not isinstance(cnf_2step, TwoStepLinkerConfig):
+            raise ValueError(
+                "Need to set 'config.components.linking.additional' to "
+                "an instance of TwoStepLinkerConfig")
+        return cnf_2step
+
     def _preprocess_disamb(self, ent: MutableEntity, name: str,
                            cuis: list[str], similarities: list[float]) -> None:
         if ent not in self._per_entity_weights:
             # ignore for stuff not in here
             return
         per_cui_type_sims = self._per_entity_weights[ent]
-        cnf_2step = self.config.components.linking.additional
-        if not isinstance(cnf_2step, TwoStepLinkerConfig):
-            raise ValueError(
-                "Need to set 'config.components.linking.additional' to "
-                "an instance of TwoStepLinkerConfig")
+        cnf_2step = self.two_step_config
         for cui, type_sim in per_cui_type_sims.items():
             if cui not in cuis:
                 continue
@@ -318,6 +336,20 @@ class PerEntityWeights(MutableMapping[MutableEntity, dict[str, float]]):
         return {self._from_key(k): None for k in self._cui_weights}.keys()
 
 
+def changed_learning_rate(config: Config, two_step_cnf: 'TwoStepLinkerConfig'):
+    coef = two_step_cnf.type_learning_rate_coefficient
+    comp_optim = config.components.linking.optim.copy()
+    for learning_rate_name in comp_optim:
+        if 'lr' not in learning_rate_name:
+            continue
+        comp_optim[learning_rate_name] *= coef
+    logger.debug("Changing learning rate from %s to %s",
+                 config.components.linking.optim,
+                 comp_optim)
+    return temp_changed_config(
+        config.components.linking, 'optim', comp_optim)
+
+
 class TwoStepLinkerConfig(SerialisableBaseModel):
     alpha_midpoint: float = 0.5
     """The midpoint for the sigmoid.
@@ -328,4 +360,12 @@ class TwoStepLinkerConfig(SerialisableBaseModel):
     """The sharpness for the sigmoid.
     alpha = sigmoid(alpha_sharpness(similarity - alpha_midpoint))
     This is used for weighting the type similarity vs the concept similarity.
+    """
+    type_learning_rate_coefficient: float = 0.2
+    """The coefficient for the type-based context model learning rate.
+
+    The idea is that since there's a far fewer classes for types,
+    we need to lower the learning rate. In the Snomed examples we have
+    around 10 000 more CUIs then types so a coefficient like 0.2 should be
+    appropriate.
     """
