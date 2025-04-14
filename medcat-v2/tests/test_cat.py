@@ -10,6 +10,7 @@ from medcat2.config import Config
 from medcat2.model_creation.cdb_maker import CDBMaker
 from medcat2.cdb import CDB
 from medcat2.tokenizing.tokens import UnregisteredDataPathException
+from medcat2.utils.cdb_state import captured_state_cdb
 
 import unittest
 import unittest.mock
@@ -110,7 +111,14 @@ class CATIncludingTests(unittest.TestCase):
         cls.cat.config.components.linking.train = False
 
 
-class CATCReationTests(CATIncludingTests):
+class CATCreationTests(CATIncludingTests):
+    # should be persistent as long as we don't change the underlying model
+    EXPECTED_HASH = "558019fd37ed2167"
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.prev_hash = cls.cat.config.meta.hash
 
     @classmethod
     def get_cui2ct(cls, cat: Optional[cat.CAT] = None):
@@ -123,12 +131,31 @@ class CATCReationTests(CATIncludingTests):
     def test_has_expected_training(self):
         self.assertEqual(self.get_cui2ct(), self.EXPECT_TRAIN)
 
+    def test_versioning_updates_config_hash(self):
+        self.cat._versioning()
+        new_hash = self.cat.config.meta.hash
+        self.assertNotEqual(self.prev_hash, new_hash)
+        self.assertEqual(new_hash, self.EXPECTED_HASH)
+        self.assertEqual(self.cat.config.meta.history[-1], new_hash)
 
-class CATUnsupTrainingTests(CATCReationTests):
+    def test_versioning_does_not_overpopulate_history(self):
+        # run multiple times
+        self.cat._versioning()
+        self.cat._versioning()
+        # and expect it not to append multiple times in the history
+        # if there were multiple instances, the set would remove duplicates
+        sorted_set = sorted(set(self.cat.config.meta.history))
+        sorted_list = sorted(self.cat.config.meta.history)
+        self.assertEqual(sorted_set, sorted_list)
+
+
+class CATUnsupTrainingTests(CATCreationTests):
     SELF_SUPERVISED_DATA_PATH = os.path.join(
         os.path.dirname(__file__), 'resources', 'selfsupervised_data.txt'
     )
     EXPECT_TRAIN = {'C01': 2, 'C02': 2, 'C03': 2, 'C04': 1, 'C05': 1}
+    # NOTE: should remain consistent unless we change the model or data
+    EXPECTED_HASH = "e9989cc2dde739ff"
 
     @classmethod
     def setUpClass(cls):
@@ -136,11 +163,16 @@ class CATUnsupTrainingTests(CATCReationTests):
         data = pd.read_csv(cls.SELF_SUPERVISED_DATA_PATH)
         cls.cat.trainer.train_unsupervised(data.text.values)
 
+    def test_lists_unsup_train_in_config(self):
+        self.assertTrue(self.cat.config.meta.unsup_trained)
+
 
 class CATSupTrainingTests(CATUnsupTrainingTests):
     SUPERVISED_DATA_PATH = os.path.join(
         os.path.dirname(__file__), 'resources', 'supervised_mct_export.json'
     )
+    # NOTE: should remain consistent unless we change the model or data
+    EXPECTED_HASH = "7bfe01e8e36eb07d"
 
     @classmethod
     def _get_cui_counts(cls) -> dict[str, int]:
@@ -172,6 +204,17 @@ class CATSupTrainingTests(CATUnsupTrainingTests):
     def _perform_training(cls):
         data = cls._get_data()
         cls.cat.trainer.train_supervised_raw(data)
+
+    def test_lists_sup_train_in_config(self):
+        self.assertTrue(self.cat.config.meta.sup_trained)
+
+    def test_clearing_training_works(self):
+        with captured_state_cdb(self.cat.cdb):
+            self.cat.cdb.reset_training()
+            self.assertEqual(self.cat.cdb.get_cui2count_train(), {})
+            self.assertEqual(self.cat.cdb.get_name2count_train(), {})
+            self.assertEqual(self.cat.config.meta.unsup_trained, [])
+            self.assertEqual(self.cat.config.meta.sup_trained, [])
 
 
 class CATWithDictNERSupTrainingTests(CATSupTrainingTests):

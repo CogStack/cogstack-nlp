@@ -5,6 +5,7 @@ from medcat2.cdb.concepts import CUIInfo, NameInfo, TypeInfo
 from medcat2.cdb.concepts import get_new_cui_info, get_new_name_info
 from medcat2.cdb.concepts import reset_cui_training
 from medcat2.utils.defaults import default_weighted_average, StatusTypes as ST
+from medcat2.utils.hasher import Hasher
 from medcat2.preprocessors.cleaners import NameDescriptor
 from medcat2.config import Config
 
@@ -277,6 +278,10 @@ class CDB(AbstractSerialisable):
             reset_cui_training(cui_info)
         for name_info in self.name2info.values():
             name_info['count_train'] = 0
+        self._subnames.clear()
+        # clear config entries as well
+        self.config.meta.unsup_trained.clear()
+        self.config.meta.sup_trained.clear()
         self.is_dirty = True
 
     def _remove_names(self, cui: str, names: Iterable[str]) -> None:
@@ -337,3 +342,26 @@ class CDB(AbstractSerialisable):
                 self.name2info == other.name2info and
                 self.type_id2info == other.type_id2info and
                 self.token_counts == other.token_counts)
+
+    def get_cui2count_train(self) -> dict[str, int]:
+        return {
+            cui: ct for cui, ci in self.cui2info.items()
+            if (ct := ci['count_train'])
+        }
+
+    def get_name2count_train(self) -> dict[str, int]:
+        return {
+            cui: ct for cui, ni in self.name2info.items()
+            if (ct := ni['count_train'])
+        }
+
+    def get_hash(self) -> str:
+        hasher = Hasher()
+        # only length for number of cuis/names/subnames
+        hasher.update(len(self.cui2info))
+        hasher.update(len(self.name2info))
+        hasher.update(len(self._subnames))
+        # the entirety of trained stuff
+        hasher.update(self.get_cui2count_train())
+        hasher.update(self.get_name2count_train())
+        return hasher.hexdigest()
