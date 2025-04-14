@@ -1,11 +1,11 @@
-# Medical  <img src="https://github.com/CogStack/MedCAT/blob/master/media/cat-logo.png?raw=true" width=45>oncept Annotation Tool
+# Medical  <img src="https://github.com/CogStack/MedCAT/blob/master/media/cat-logo.png?raw=true" width=45>oncept Annotation Tool (v2)
 
 [![Build Status](https://github.com/CogStack/MedCAT2/actions/workflows/main.yml/badge.svg?branch=main)](https://github.com/CogStack/MedCAT/actions/workflows/main.yml?query=branch%3Amaster)
 [![Documentation Status](https://readthedocs.org/projects/medcat/badge/?version=latest)](https://medcat2.readthedocs.io/en/latest/?badge=latest)
 [![Latest release](https://img.shields.io/github/v/release/CogStack/MedCAT2)](https://github.com/CogStack/MedCAT2/releases/latest)
 [![pypi Version](https://img.shields.io/pypi/v/medcat.svg?style=flat-square&logo=pypi&logoColor=white)](https://pypi.org/project/medcat/)
 
-MedCAT can be used to extract information from Electronic Health Records (EHRs) and link it to biomedical ontologies like SNOMED-CT and UMLS. Paper on [arXiv](https://arxiv.org/abs/2010.01165).
+MedCAT(*v2*) can be used to extract information from Electronic Health Records (EHRs) and link it to biomedical ontologies like SNOMED-CT and UMLS. Paper on [arXiv](https://arxiv.org/abs/2010.01165).
 
 **Official Docs [here](https://medcat2.readthedocs.io/en/latest/)**
 
