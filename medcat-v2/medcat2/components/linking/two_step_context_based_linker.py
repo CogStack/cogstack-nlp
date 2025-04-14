@@ -261,15 +261,19 @@ class TwoStepLinker(AbstractCoreComponent):
             if cui not in cuis:
                 continue
             cui_index = cuis.index(cui)
-            prev_sim = similarities[cui_index]
+            cui_sim = similarities[cui_index]
             ts_coef = sigmoid(
                 cnf_2step.alpha_sharpness * (
                     type_sim - cnf_2step.alpha_midpoint))
-            new_sim = ts_coef * prev_sim + (1 - ts_coef) * type_sim
+            logger.debug(
+                "Mixing type similarity of %.4f and CUI similarity of %.4f "
+                "with %.4f weight for CUI similarity",
+                cui_sim, type_sim, ts_coef)
+            new_sim = ts_coef * cui_sim + (1 - ts_coef) * type_sim
             similarities[cui_index] = new_sim
             logger.debug("[Per CUI weights] CUI: %s, Name: %s, "
                          "Old sim: %.3f, New sim: %.3f",
-                         prev_sim, new_sim)
+                         cui_sim, new_sim)
 
 
 class PerEntityWeights(MutableMapping[MutableEntity, dict[str, float]]):
