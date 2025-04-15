@@ -5,6 +5,7 @@ from contextlib import contextmanager
 
 from pydantic import BaseModel, Field, ValidationError
 
+from medcat2 import __version__ as medcat_version
 from medcat2.utils.defaults import workers
 from medcat2.utils.envsnapshot import Environment, get_environment_info
 from medcat2.utils.iterutils import callback_iterator
@@ -413,16 +414,19 @@ C = TypeVar('C', bound=Iterable)
 class ModelMeta(SerialisableBaseModel):
     description: str = 'N/A'
     ontology: list[str] = []
+    location: str = 'N/A'
     hash: str = ''  # TODO - implement
     history: list[str] = Field(default_factory=list)
     last_saved: datetime = Field(default_factory=datetime.now)
     unsup_trained: list[TrainingDescriptor] = []  # TODO - implement
     sup_trained: list[TrainingDescriptor] = []  # TODO - implement
+    medcat_version: str = ''
     saved_environ: Environment = get_environment_info()
 
     def mark_saved_now(self):
         self.last_saved = datetime.now()
         self.saved_environ = get_environment_info()
+        self.medcat_version = medcat_version
 
     # NOTE: this is expected to be called when training finished
     def add_unsup_training(self, start_time: datetime, num_docs: int,
@@ -526,3 +530,38 @@ class Config(SerialisableBaseModel):
     # ner: Ner = Ner()
     annotation_output: AnnotationOutput = AnnotationOutput()
     meta: ModelMeta = ModelMeta()
+
+
+def get_important_config_parameters(config: Config) -> dict[str, Any]:
+    return {
+        "config.ponents.ner.min_name_len": {
+            'value': config.components.ner.min_name_len,
+            'description': ("Minimum detection length (found terms/mentions "
+                            "shorter than this will not be detected).")
+            },
+        "config.ponents.ner.upper_case_limit_len": {
+            'value': config.components.ner.upper_case_limit_len,
+            'description': ("All detected terms shorter than this value have "
+                            "to be uppercase, otherwise they will be ignored.")
+            },
+        "config.ponents.linking.similarity_threshold": {
+            'value': config.components.linking.similarity_threshold,
+            'description': ("If the confidence of the model is lower than "
+                            "this a detection will be ignore.")
+            },
+        "config.ponents.linking.filters.cuis": {
+            'value': len(config.components.linking.filters.cuis),
+            'description': ("Length of the CUIs filter to be included in "
+                            "outputs. If this is not 0 (i.e. not empty) its "
+                            "best to check what is included before using the "
+                            "model")
+        },
+        "config.general.spell_check": {
+            'value': config.general.spell_check,
+            'description': "Is spell checking enabled."
+            },
+        "config.general.spell_check_len_limit": {
+            'value': config.general.spell_check_len_limit,
+            'description': "Words shorter than this will not be spell checked."
+            },
+    }
