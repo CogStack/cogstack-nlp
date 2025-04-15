@@ -2,6 +2,17 @@ from typing import Any
 from typing_extensions import TypedDict
 
 
+CDBInfo = TypedDict(
+    "CDBInfo", {
+        "Number of concepts": int,
+        "Number of names": int,
+        "Number of concepts that received training": int,
+        "Number of seen training examples in total": int,
+        "Average training examples per concept": float,
+    }
+)
+
+
 ModelCard = TypedDict(
     "ModelCard", {
         "Model ID": str,
@@ -11,7 +22,7 @@ ModelCard = TypedDict(
         'Source Ontology': list[str],
         'Location': str,
         'MetaCAT models': list[str],
-        'Basic CDB Stats': dict[str, Any],
+        'Basic CDB Stats': CDBInfo,
         'Performance': dict[str, Any],
         ('Important Parameters '
          '(Partial view, all available in cat.config)'): dict[str, Any],
