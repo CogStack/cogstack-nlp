@@ -376,10 +376,12 @@ class CDB(AbstractSerialisable):
         else:
             average_count_train = 0.5
         unsup_history = [
-            history.model_dump() for history in self.config.meta.unsup_trained
+            history.model_dump(mode='json')
+            for history in self.config.meta.unsup_trained
         ]
         sup_history = [
-            history.model_dump() for history in self.config.meta.sup_trained
+            history.model_dump(mode='json')
+            for history in self.config.meta.sup_trained
         ]
         return {
             "Number of concepts": len(self.cui2info),
