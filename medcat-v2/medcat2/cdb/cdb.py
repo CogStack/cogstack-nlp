@@ -8,6 +8,7 @@ from medcat2.utils.defaults import default_weighted_average, StatusTypes as ST
 from medcat2.utils.hasher import Hasher
 from medcat2.preprocessors.cleaners import NameDescriptor
 from medcat2.config import Config
+from medcat2.data.model_card import CDBInfo
 
 import logging
 
@@ -365,3 +366,16 @@ class CDB(AbstractSerialisable):
         hasher.update(self.get_cui2count_train())
         hasher.update(self.get_name2count_train())
         return hasher.hexdigest()
+
+    def get_basic_info(self) -> CDBInfo:
+        cui2ct = self.get_cui2count_train()
+        cuis_trained = len(cui2ct)
+        examples_seen = sum(cui2ct.values())
+        average_count_train = examples_seen / cuis_trained
+        return {
+            "Number of concepts": len(self.cui2info),
+            "Number of names": len(self.name2info),
+            "Number of concepts that received training": cuis_trained,
+            "Number of seen training examples in total": examples_seen,
+            "Average training examples per concept": average_count_train
+        }
