@@ -9,6 +9,8 @@ CDBInfo = TypedDict(
         "Number of concepts that received training": int,
         "Number of seen training examples in total": int,
         "Average training examples per concept": float,
+        "Unsupervised training history": list[dict[str, Any]],
+        "Supervised training history": list[dict[str, Any]],
     }
 )
 

@@ -372,10 +372,18 @@ class CDB(AbstractSerialisable):
         cuis_trained = len(cui2ct)
         examples_seen = sum(cui2ct.values())
         average_count_train = examples_seen / cuis_trained
+        unsup_history = [
+            history.model_dump() for history in self.config.meta.unsup_trained
+        ]
+        sup_history = [
+            history.model_dump() for history in self.config.meta.sup_trained
+        ]
         return {
             "Number of concepts": len(self.cui2info),
             "Number of names": len(self.name2info),
             "Number of concepts that received training": cuis_trained,
             "Number of seen training examples in total": examples_seen,
-            "Average training examples per concept": average_count_train
+            "Average training examples per concept": average_count_train,
+            "Unsupervised training history": unsup_history,
+            "Supervised training history": sup_history,
         }
