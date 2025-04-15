@@ -371,7 +371,10 @@ class CDB(AbstractSerialisable):
         cui2ct = self.get_cui2count_train()
         cuis_trained = len(cui2ct)
         examples_seen = sum(cui2ct.values())
-        average_count_train = examples_seen / cuis_trained
+        if cuis_trained:
+            average_count_train = examples_seen / cuis_trained
+        else:
+            average_count_train = 0.5
         unsup_history = [
             history.model_dump() for history in self.config.meta.unsup_trained
         ]
