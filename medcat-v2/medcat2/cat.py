@@ -1,4 +1,4 @@
-from typing import Optional, Union, Any
+from typing import Optional, Union, Any, overload, Literal
 import os
 import json
 
@@ -316,6 +316,14 @@ class CAT(AbstractSerialisable):
         #       after init so the CDB is likely "dirty"
         cat.cdb._reset_subnames()
         return cat
+
+    @overload
+    def get_model_card(self, as_dict: Literal[True]) -> ModelCard:
+        pass
+
+    @overload
+    def get_model_card(self, as_dict: Literal[False]) -> str:
+        pass
 
     def get_model_card(self, as_dict: bool = False) -> Union[str, ModelCard]:
         """Get the model card either a (nested) `dict` or a json string.
