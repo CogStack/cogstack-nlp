@@ -250,6 +250,10 @@ class CAT(AbstractSerialisable):
         ensure_folder_if_parent(model_pack_path)
         # serialise
         serialise(serialiser_type, self, model_pack_path)
+        model_card: str = self.get_model_card(as_dict=False)
+        model_card_path = os.path.join(model_pack_path, "model_card.json")
+        with open(model_card_path, 'w') as f:
+            f.write(model_card)
         # components
         components_folder = os.path.join(
             model_pack_path, COMPONENTS_FOLDER)
