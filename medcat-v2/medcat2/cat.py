@@ -1,5 +1,6 @@
 from typing import Optional, Union, Any
 import os
+import json
 
 import shutil
 import logging
@@ -7,7 +8,7 @@ import logging
 from medcat2.utils.defaults import DEFAULT_PACK_NAME, COMPONENTS_FOLDER
 from medcat2.cdb import CDB
 from medcat2.vocab import Vocab
-from medcat2.config.config import Config
+from medcat2.config.config import Config, get_important_config_parameters
 from medcat2.trainer import Trainer
 from medcat2.storage.serialisers import serialise, AvailableSerialisers
 from medcat2.storage.serialisers import deserialise
@@ -17,6 +18,7 @@ from medcat2.utils.hasher import Hasher
 from medcat2.pipeline.pipeline import Pipeline
 from medcat2.tokenizing.tokens import MutableDocument, MutableEntity
 from medcat2.data.entities import Entity, Entities, OnlyCUIEntities
+from medcat2.data.model_card import ModelCard
 from medcat2.components.types import AbstractCoreComponent, HashableComponet
 from medcat2.components.addons.addons import AddonComponent
 
@@ -314,6 +316,42 @@ class CAT(AbstractSerialisable):
         #       after init so the CDB is likely "dirty"
         cat.cdb._reset_subnames()
         return cat
+
+    def get_model_card(self, as_dict: bool = False) -> Union[str, ModelCard]:
+        """Get the model card either a (nested) `dict` or a json string.
+
+        Args:
+            as_dict (bool): Whether to return as dict. Defaults to False.
+
+        Returns:
+            Union[str, ModelCard]: The model card.
+        """
+        meta_cat_categories = [
+            cnf.category_name  # type: ignore
+            for cnf in self.config.components.addons
+            if cnf.comp_name == 'meta_cat' and
+            # NOTE: not the best way to check this,
+            #       but I don't want to import the addon config
+            type(cnf).__name__ == 'ConfigMetaCAT']
+        cdb_info = self.cdb.get_basic_info()
+        model_card: ModelCard = {
+            'Model ID': self.config.meta.hash,
+            'Last Modified On': self.config.meta.last_saved.isoformat(),
+            'History (from least to most recent)': self.config.meta.history,
+            'Description': self.config.meta.description,
+            'Source Ontology': self.config.meta.ontology,
+            'Location': self.config.meta.location,
+            'MetaCAT models': meta_cat_categories,
+            'Basic CDB Stats': cdb_info,
+            'Performance': {},  # TODO
+            'Important Parameters (Partial view, '
+            'all available in cat.config)': get_important_config_parameters(
+                self.config),
+            'MedCAT Version': self.config.meta.medcat_version,
+        }
+        if as_dict:
+            return model_card
+        return json.dumps(model_card, indent=2, sort_keys=False)
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, CAT):
