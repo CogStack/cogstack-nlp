@@ -5,6 +5,7 @@ from typing import Optional
 from collections import Counter
 
 from medcat2 import cat
+from medcat2.data.model_card import ModelCard
 from medcat2.vocab import Vocab
 from medcat2.config import Config
 from medcat2.model_creation.cdb_maker import CDBMaker
@@ -147,6 +148,26 @@ class CATCreationTests(CATIncludingTests):
         sorted_set = sorted(set(self.cat.config.meta.history))
         sorted_list = sorted(self.cat.config.meta.history)
         self.assertEqual(sorted_set, sorted_list)
+
+    def test_can_get_model_card_str(self):
+        model_card = self.cat.get_model_card(as_dict=False)
+        self.assertIsInstance(model_card, str)
+
+    def test_can_get_model_card_dict(self):
+        model_card = self.cat.get_model_card(as_dict=True)
+        self.assertIsInstance(model_card, dict)
+
+    def test_model_card_has_required_keys(self):
+        model_card = self.cat.get_model_card(as_dict=True)
+        for ann in ModelCard.__annotations__:
+            with self.subTest(f"Ann: {ann}"):
+                self.assertIn(ann, model_card)
+
+    def test_model_card_has_no_extra_keys(self):
+        model_card = self.cat.get_model_card(as_dict=True)
+        for key in model_card:
+            with self.subTest(f"Key: {key}"):
+                self.assertIn(key, ModelCard.__annotations__)
 
 
 class CATUnsupTrainingTests(CATCreationTests):
