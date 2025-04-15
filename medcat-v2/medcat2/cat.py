@@ -339,7 +339,7 @@ class CAT(AbstractSerialisable):
             Union[str, ModelCard]: The model card.
         """
         meta_cat_categories = [
-            cnf.category_name  # type: ignore
+            cnf.general.category_name  # type: ignore
             for cnf in self.config.components.addons
             if cnf.comp_name == 'meta_cat' and
             # NOTE: not the best way to check this,
