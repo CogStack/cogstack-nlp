@@ -41,6 +41,9 @@ class CDBTests(TestCase):
     # filtering
     def test_can_filter_cdb(self):
         to_filter = self.TO_FILTER
+        # NOTE: this does not always guarantee other CUIs are removed
+        #       if there's a lot of overlap between concept names.
+        #       see docstring of CDB.filter_by_cui
         removed_cui = set(self.cdb.cui2info) - set(to_filter)
         with captured_state_cdb(self.cdb):
             self.cdb.filter_by_cui(self.TO_FILTER)
