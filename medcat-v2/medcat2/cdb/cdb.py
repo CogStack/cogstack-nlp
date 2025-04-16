@@ -345,6 +345,31 @@ class CDB(AbstractSerialisable):
         self._reset_subnames()
         self.is_dirty = True
 
+    def remove_cui(self, cui: str) -> None:
+        """This function takes a CUI and removes it the CDB.
+
+        It also removes the CUI from name specific per_cui_status
+        maps as well as well as removes all the names that do not
+        correspond to any CUIs after the removal of this one.
+
+        Args:
+            cui (str): The CUI to remove.
+        """
+        if cui not in self.cui2info:
+            logger.warning(
+                "Trying remove CUI '%s' which does not exist in CDB", cui)
+            return
+        ci = self.cui2info.pop(cui)
+        for name in ci['names']:
+            ni = self.name2info[name]
+            del ni['per_cui_status'][cui]
+            # if name name corresponds to no CUIs
+            if not ni['per_cui_status']:
+                del self.name2info[name]
+        # need to reset subnames
+        self._reset_subnames()
+        self.is_dirty = True
+
     def _remove_names(self, cui: str, names: Iterable[str]) -> None:
         """Remove names from an existing concept - effect is this name will
         never again be used to link to this concept. This will only remove the
