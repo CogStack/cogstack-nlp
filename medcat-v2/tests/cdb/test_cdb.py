@@ -51,3 +51,39 @@ class CDBTests(TestCase):
             self.assertEqual(set(self.TO_FILTER), set(self.cdb.cui2info))
             for removed in removed_cui:
                 self.assertNotIn(removed, self.cdb.cui2info)
+
+    CUI_TO_REMOVE_UNIQUE_NAMES = 'C03'
+
+    def assert_removed_names(self, cui_to_remove: str, had_names: list[str],
+                             should_remove_name_info: bool):
+        if should_remove_name_info:
+            for removed_name in had_names:
+                with self.subTest(f"Removed name[KNI]: {removed_name}"):
+                    self.assertNotIn(removed_name, self.cdb.name2info)
+        else:
+            # may keep SOME names' name info but not ALL
+            self.assertTrue(any(name not in self.cdb.name2info
+                                for name in had_names))
+            for removed_name in had_names:
+                if removed_name not in self.cdb.name2info:
+                    continue  # removed as expexted
+                with self.subTest(f"Removed name[RNI]: {removed_name}"):
+                    ni = self.cdb.name2info[removed_name]
+                    self.assertNotIn(cui_to_remove, ni['per_cui_status'])
+
+    def assert_can_remove_cui(self, cui_to_remove: str,
+                              should_remove_name_info: bool):
+        had_names = self.cdb.cui2info[cui_to_remove]['names']
+        with captured_state_cdb(self.cdb):
+            self.cdb.remove_cui(cui_to_remove)
+            self.assert_removed_names(
+                cui_to_remove, had_names, should_remove_name_info)
+            self.assertNotIn(cui_to_remove, self.cdb.cui2info)
+
+    def test_can_remove_cui_unique_names(self):
+        self.assert_can_remove_cui(self.CUI_TO_REMOVE_UNIQUE_NAMES, True)
+
+    CUI_TO_REMOVE_NON_UNIQUE_NAMES = 'C04'
+
+    def test_can_remove_cui_non_unique_names(self):
+        self.assert_can_remove_cui(self.CUI_TO_REMOVE_NON_UNIQUE_NAMES, False)
