@@ -4,6 +4,7 @@ import os
 from medcat2.storage.serialisers import deserialise
 from medcat2.cdb import cdb
 from medcat2.utils.cdb_state import captured_state_cdb
+from medcat2.preprocessors.cleaners import NameDescriptor
 
 from unittest import TestCase
 
@@ -25,6 +26,21 @@ class CDBTests(TestCase):
 
     def test_cdb_has_names(self):
         self.assertTrue(self.cdb.name2info)
+
+    def test_can_add_cui(self):
+        cui = "C-NEW"
+        names = {"new~cui": NameDescriptor(tokens=['new', 'cui'],
+                                           snames={'new', 'new~cdb'},
+                                           raw_name='new cdb',
+                                           is_upper=False)}
+        with captured_state_cdb(self.cdb):
+            self.cdb.add_names(cui, names)
+            self.assertIn(cui, self.cdb.cui2info)
+            self.assertIn(list(names.keys())[0], self.cdb.name2info)
+            for sname in names['new~cui'].snames:
+                with self.subTest(f"Subname: {sname} of {cui} | "
+                                  f"({list(names.keys())[0]})"):
+                    self.assertIn(sname, self.cdb._subnames)
 
     def test_can_remove_name(self):
         cui = self.CUI_TO_REMOVE
