@@ -14,6 +14,7 @@ class CDBTests(TestCase):
     CDB_PATH = os.path.join(UNPACKED_EXAMPLE_MODEL_PACK_PATH, "cdb")
     CUI_TO_REMOVE = "C03"
     NAMES_TO_REMOVE = ['high~temperature']
+    TO_FILTER = ['C01', 'C02']
 
     @classmethod
     def setUpClass(cls):
@@ -36,3 +37,14 @@ class CDBTests(TestCase):
                     self.assertNotIn(cui, ni['per_cui_status'])
                 else:
                     self.assertNotIn(name_to_remove, self.cdb.name2info)
+
+    # filtering
+    def test_can_filter_cdb(self):
+        to_filter = self.TO_FILTER
+        removed_cui = set(self.cdb.cui2info) - set(to_filter)
+        with captured_state_cdb(self.cdb):
+            self.cdb.filter_by_cui(self.TO_FILTER)
+            self.assertEqual(len(self.cdb.cui2info), len(self.TO_FILTER))
+            self.assertEqual(set(self.TO_FILTER), set(self.cdb.cui2info))
+            for removed in removed_cui:
+                self.assertNotIn(removed, self.cdb.cui2info)
