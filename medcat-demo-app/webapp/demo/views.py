@@ -2,13 +2,13 @@ import sys
 sys.path.insert(0, '/home/ubuntu/projects/MedCAT/')
 import os
 import json
+import html
 from django.shortcuts import render
 from django.http import StreamingHttpResponse, HttpResponse
 from wsgiref.util import FileWrapper
-from medcat.cat import CAT
-from medcat.cdb import CDB
-from medcat.utils.helpers import doc2html
-from medcat.vocab import Vocab
+from medcat2.cat import CAT
+from medcat2.cdb import CDB
+from medcat2.vocab import Vocab
 from urllib.request import urlretrieve, urlopen
 from urllib.error import HTTPError
 #from medcat.meta_cat import MetaCAT
@@ -26,10 +26,47 @@ try:
 except Exception as e:
     print(str(e))
 
+
+TPL_ENT = """<mark class="entity" v-on:click="show_info({id})" style="background: {bg}; padding: 0.12em 0.6em; margin: 0 0.25em; line-height: 1; border-radius: 0.35em; box-decoration-break: clone; -webkit-box-decoration-break: clone"> {text} <span style="font-size: 0.8em; font-weight: bold; line-height: 1; border-radius: 0.35em; text-transform: uppercase; vertical-align: middle; margin-left: 0.1rem">{label}</span></mark>"""
+TPL_ENTS = """<div class="entities" style="line-height: 1.5; direction: {dir}">{content}</div>"""
+
+
+def doc2html(doc):
+    markup = ""
+    offset = 0
+    text = doc.base.text
+
+    for span in list(doc.final_ents):
+        start = span.base.start_char_index
+        end = span.base.end_char_index
+        fragments = text[offset:start].split("\n")
+
+        for i, fragment in enumerate(fragments):
+            markup += html.escape(fragment)
+            if len(fragments) > 1 and i != len(fragments) - 1:
+                markup += "</br>"
+        ent = {'label': '', 'id': span.id,
+               'bg': "rgb(74, 154, 239, {})".format(
+                   span.context_similarity * span.context_similarity + 0.12),
+               'text': html.escape(span.base.text)
+        }
+        # Add the entity
+        markup += TPL_ENT.format(**ent)
+        offset = end
+    markup += html.escape(text[offset:])
+
+    out = TPL_ENTS.format(content=markup, dir='ltr')
+
+    return out
+
+
 def get_html_and_json(text):
     doc = cat(text)
 
-    a = json.loads(cat.get_json(text))
+    a = {
+        "annotations": cat.get_entities(text)['entities'],
+        "text": text,
+    }
     for id, ent in a['annotations'].items():
         new_ent = {}
         for key in ent.keys():
