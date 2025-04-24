@@ -12,7 +12,7 @@ import unittest.mock
 import tempfile
 
 from transformers import AutoTokenizer
-from medcat2.components.addons.meta_cat.meta_cat_tokenizers import (
+from medcat2.components.addons.meta_cat.mctokenizers.bert_tokenizer import (
     TokenizerWrapperBERT)
 from medcat2.cat import CAT
 from medcat2.tokenizing.spacy_impl.tokenizers import SpacyTokenizer

@@ -17,7 +17,7 @@ from medcat2.components.addons.meta_cat.ml_utils import (
 from medcat2.components.addons.meta_cat.data_utils import (
     prepare_from_json, encode_category_values, prepare_for_oversampled_data)
 from medcat2.components.addons.addons import AddonComponent
-from medcat2.components.addons.meta_cat.meta_cat_tokenizers import (
+from medcat2.components.addons.meta_cat.mctokenizers.tokenizers import (
     TokenizerWrapperBase)
 from medcat2.storage.serialisers import serialise, deserialise
 from medcat2.storage.serialisables import (
@@ -93,13 +93,18 @@ class MetaCATAddon(AddonComponent):
             raise MisconfiguredMetaCATException(
                 "Failed to load MetaCAT tokenizer without model pack path. "
                 "When creating a new MetaCAT, please provide a tokenizer.")
+        return self.init_tokenizer(cnf, model_save_path)
+
+    @classmethod
+    def init_tokenizer(cls, cnf: ConfigMetaCAT, model_save_path: str
+                       ) -> Optional[TokenizerWrapperBase]:
         tokenizer: Optional[TokenizerWrapperBase] = None
         if cnf.general.tokenizer_name == 'bbpe':
-            from medcat2.components.addons.meta_cat.meta_cat_tokenizers import (  # noqa
+            from medcat2.components.addons.meta_cat.mctokenizers.bpe_tokenizer import (  # noqa
                 TokenizerWrapperBPE)
             tokenizer = TokenizerWrapperBPE.load(model_save_path)
         elif cnf.general.tokenizer_name == 'bert-tokenizer':
-            from medcat2.components.addons.meta_cat.meta_cat_tokenizers import (  # noqa
+            from medcat2.components.addons.meta_cat.mctokenizers.bert_tokenizer import (  # noqa
                 TokenizerWrapperBERT)
             tokenizer = TokenizerWrapperBERT.load(model_save_path,
                                                   cnf.model.model_variant)
@@ -117,27 +122,29 @@ class MetaCATAddon(AddonComponent):
     @classmethod
     def get_init_kwargs(cls, tokenizer: BaseTokenizer, cdb: CDB, vocab: Vocab,
                         model_load_path: Optional[str]) -> dict[str, Any]:
+        # cls.init_tokenizer(cnf, model_load_path)
         return {'base_tokenizer': tokenizer}
 
     def load(self, folder_path: str) -> 'MetaCAT':
         mc_path, tokenizer_folder = self._get_meta_cat_and_tokenizer_paths(
             folder_path)
         mc = cast(MetaCAT, deserialise(mc_path))
-        mc.tokenizer = self._load_tokenizer(tokenizer_folder)
+        mc.tokenizer = self._load_tokenizer(self.config, tokenizer_folder)
         return mc
 
-    def _load_tokenizer(self, tokenizer_folder: str
+    @classmethod
+    def _load_tokenizer(cls, config: ConfigMetaCAT, tokenizer_folder: str
                         ) -> Optional[TokenizerWrapperBase]:
         tokenizer: Optional[TokenizerWrapperBase] = None
-        if self.config.general.tokenizer_name == 'bbpe':
-            from medcat2.components.addons.meta_cat.meta_cat_tokenizers import (  # noqa
+        if config.general.tokenizer_name == 'bbpe':
+            from medcat2.components.addons.meta_cat.mctokenizers.bpe_tokenizer import (  # noqa
                 TokenizerWrapperBPE)
             tokenizer = TokenizerWrapperBPE.load(tokenizer_folder)
-        elif self.config.general.tokenizer_name == 'bert-tokenizer':
-            from medcat2.components.addons.meta_cat.meta_cat_tokenizers import (  # noqa
+        elif config.general.tokenizer_name == 'bert-tokenizer':
+            from medcat2.components.addons.meta_cat.mctokenizers.bert_tokenizer import (  # noqa
                 TokenizerWrapperBERT)
             tokenizer = TokenizerWrapperBERT.load(
-                tokenizer_folder, self.config.model.model_variant)
+                tokenizer_folder, config.model.model_variant)
         return tokenizer
 
     @classmethod
