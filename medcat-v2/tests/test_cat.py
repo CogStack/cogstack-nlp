@@ -4,14 +4,20 @@ import json
 from typing import Optional
 from collections import Counter
 
+from transformers import AutoTokenizer
+
 from medcat2 import cat
 from medcat2.data.model_card import ModelCard
 from medcat2.vocab import Vocab
 from medcat2.config import Config
+from medcat2.config.config_meta_cat import ConfigMetaCAT
 from medcat2.model_creation.cdb_maker import CDBMaker
 from medcat2.cdb import CDB
 from medcat2.tokenizing.tokens import UnregisteredDataPathException
 from medcat2.utils.cdb_state import captured_state_cdb
+from medcat2.components.addons.meta_cat.meta_cat import MetaCATAddon
+from medcat2.components.addons.meta_cat.meta_cat_tokenizers import (
+    TokenizerWrapperBERT)
 
 import unittest
 import unittest.mock
@@ -168,6 +174,32 @@ class CATCreationTests(CATIncludingTests):
         for key in model_card:
             with self.subTest(f"Key: {key}"):
                 self.assertIn(key, ModelCard.__annotations__)
+
+
+class CatWithMetaCATTests(CATCreationTests):
+    EXPECTED_HASH = "56bcb8cc75b5537b"  # with MetaCATs
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        meta_cat_cnf = ConfigMetaCAT()
+        # NOTE: need to set for consistent hashing
+        meta_cat_cnf.train.last_train_on = -1.0
+        meta_cat_cnf.general.category_name = 'Status'
+        meta_cat_cnf.model.model_variant = 'prajjwal1/bert-tiny'
+        tokenizer = TokenizerWrapperBERT(
+            AutoTokenizer.from_pretrained(meta_cat_cnf.model.model_variant))
+        addon = MetaCATAddon.create_new(
+            meta_cat_cnf, cls.cat._pipeline.tokenizer, tokenizer)
+        cls.cat.add_addon(addon)
+
+    def test_can_recreate_pipe(self):
+        addons_before = list(self.cat._pipeline._addons)
+        self.cat._recrate_pipe()
+        addons_after = list(self.cat._pipeline._addons)
+        self.assertGreater(len(addons_before), 0)
+        self.assertEqual(len(addons_before), len(addons_after))
+        self.assertEqual(addons_before, addons_after)
 
 
 class CATUnsupTrainingTests(CATCreationTests):
