@@ -1,5 +1,5 @@
 from typing import Optional
-from medcat2.components.addons.meta_cat.meta_cat_tokenizers import (
+from medcat2.components.addons.meta_cat.mctokenizers.tokenizers import (
     TokenizerWrapperBase)
 import logging
 
