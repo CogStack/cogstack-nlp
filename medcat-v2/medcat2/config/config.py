@@ -104,6 +104,14 @@ class ComponentConfig(SerialisableBaseModel):
     For default components, these will be automatically filled. However, if a
     custom component is used, these would need to be set manually.
     """
+    is_dirty: bool = False
+
+    def __setattr__(self, name: str, value: Any):
+        if name != 'is_dirty' and name in self.__annotations__:
+            current = getattr(self, name, None)
+            if current != value:
+                self.is_dirty = True
+        super().__setattr__(name, value)
 
     @classmethod
     def ignore_attrs(cls):
