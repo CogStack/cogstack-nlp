@@ -18,6 +18,7 @@ class FakeAddonNoInit:
 
     def __init__(self, cnf: ComponentConfig):
         assert cnf.comp_name == self.name
+        self.config = cnf
 
     def __call__(self, doc):
         return doc
@@ -53,6 +54,7 @@ class FakeAddonWithInit:
         assert cnf.comp_name == self.name
         self._token = tokenizer
         self._cdb = cdb
+        self.config = cnf
 
     def __call__(self, doc):
         return doc
