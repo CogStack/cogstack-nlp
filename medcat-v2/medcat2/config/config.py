@@ -115,7 +115,7 @@ class DirtiableBaseModel(SerialisableBaseModel):
         return False
 
     def mark_clean(self):
-        self._is_dirty = True
+        self._is_dirty = False
         for part in self.__dict__.values():
             if isinstance(part, PotentiallyDirty):
                 part.mark_clean()
