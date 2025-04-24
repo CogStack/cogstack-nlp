@@ -200,6 +200,9 @@ class CatWithMetaCATTests(CATCreationTests):
         self.assertEqual(len(self.init_addons), len(addons_after))
         if self.EXPECT_SAME_INSTANCES:
             self.assertEqual(self.init_addons, addons_after)
+        else:
+            # otherwise they should differ
+            self.assertNotEqual(self.init_addons, addons_after)
 
 
 class CatWithChangesMetaCATTests(CatWithMetaCATTests):
