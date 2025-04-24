@@ -51,7 +51,12 @@ class CAT(AbstractSerialisable):
         self._pipeline = self._recrate_pipe(model_load_path)
 
     def _recrate_pipe(self, model_load_path: Optional[str] = None) -> Pipeline:
-        self._pipeline = Pipeline(self.cdb, self.vocab, model_load_path)
+        if hasattr(self, "_pipeline"):
+            old_pipe = self._pipeline
+        else:
+            old_pipe = None
+        self._pipeline = Pipeline(self.cdb, self.vocab, model_load_path,
+                                  old_pipe=old_pipe)
         return self._pipeline
 
     @classmethod
