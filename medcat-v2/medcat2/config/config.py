@@ -1,4 +1,5 @@
 from typing import Optional, Iterator, Iterable, TypeVar, cast, Type, Any
+from typing import Protocol, runtime_checkable
 import logging
 from datetime import datetime
 from contextlib import contextmanager
@@ -83,7 +84,44 @@ class IncorrectConfigValues(ValueError):
                          f"Expected {exp_type}, but got {type(got)}: {got}")
 
 
-class ComponentConfig(SerialisableBaseModel):
+@runtime_checkable
+class PotentiallyDirty(Protocol):
+    @property
+    def is_dirty(self) -> bool:
+        pass
+
+    def mark_clean(self) -> None:
+        pass
+
+
+class DirtiableBaseModel(SerialisableBaseModel):
+    _is_dirty: bool = False
+
+    def __setattr__(self, name: str, value: Any):
+        if name != '_is_dirty' and name in self.__annotations__:
+            current = getattr(self, name, None)
+            if current != value:
+                self._is_dirty = True
+        super().__setattr__(name, value)
+
+    @property
+    def is_dirty(self) -> bool:
+        if self._is_dirty:
+            return True
+        for part in self.__annotations__.values():
+            if isinstance(part, PotentiallyDirty):
+                if part.is_dirty:
+                    return True
+        return False
+
+    def mark_clean(self):
+        self._is_dirty = True
+        for part in self.__annotations__.values():
+            if isinstance(part, PotentiallyDirty):
+                part.mark_clean()
+
+
+class ComponentConfig(DirtiableBaseModel):
     comp_name: str = 'default'
     """The name of the component.
 
@@ -104,14 +142,6 @@ class ComponentConfig(SerialisableBaseModel):
     For default components, these will be automatically filled. However, if a
     custom component is used, these would need to be set manually.
     """
-    is_dirty: bool = False
-
-    def __setattr__(self, name: str, value: Any):
-        if name != 'is_dirty' and name in self.__annotations__:
-            current = getattr(self, name, None)
-            if current != value:
-                self.is_dirty = True
-        super().__setattr__(name, value)
 
     @classmethod
     def ignore_attrs(cls):
