@@ -242,6 +242,7 @@ class Train(SerialisableBaseModel):
 
 class ConfigMetaCAT(ComponentConfig):
     """The MetaCAT part of the config"""
+    comp_name: str = 'meta_cat'
     general: General = General()
     model: Model = Model()
     train: Train = Train()
