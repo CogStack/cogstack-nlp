@@ -68,3 +68,16 @@ class ConfigTests(unittest.TestCase):
     def test_cannot_mege_new_value_not_allowed(self):
         with self.assertRaises(config.IncorrectConfigValues):
             self.cnf.merge_config(self.TO_MERGE_NEW_KEY_INCORRECT)
+
+
+class ComponentConfigTests(unittest.TestCase):
+
+    def setUp(self):
+        self.cnf = config.ComponentConfig()
+
+    def test_raw_config_not_dirty(self):
+        self.assertFalse(self.cnf.is_dirty)
+
+    def test_changed_config_dirty(self):
+        self.cnf.comp_name = 'something_else'
+        self.assertTrue(self.cnf.is_dirty)
