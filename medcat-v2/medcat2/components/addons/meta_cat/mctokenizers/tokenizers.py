@@ -53,7 +53,7 @@ def init_tokenizer(cnf: ConfigMetaCAT) -> Optional[TokenizerWrapperBase]:
     if cnf.general.tokenizer_name == 'bbpe':
         from medcat2.components.addons.meta_cat.mctokenizers.bpe_tokenizer import (  # noqa
             TokenizerWrapperBPE)
-        TokenizerWrapperBPE.create_new()
+        tokenizer = TokenizerWrapperBPE.create_new()
     elif cnf.general.tokenizer_name == 'bert-tokenizer':
         from medcat2.components.addons.meta_cat.mctokenizers.bert_tokenizer import (  # noqa
             TokenizerWrapperBERT)
