@@ -108,7 +108,7 @@ class DirtiableBaseModel(SerialisableBaseModel):
     def is_dirty(self) -> bool:
         if self._is_dirty:
             return True
-        for part in self.__annotations__.values():
+        for pn, part in self.__dict__.items():
             if isinstance(part, PotentiallyDirty):
                 if part.is_dirty:
                     return True
@@ -116,7 +116,7 @@ class DirtiableBaseModel(SerialisableBaseModel):
 
     def mark_clean(self):
         self._is_dirty = True
-        for part in self.__annotations__.values():
+        for part in self.__dict__.values():
             if isinstance(part, PotentiallyDirty):
                 part.mark_clean()
 
