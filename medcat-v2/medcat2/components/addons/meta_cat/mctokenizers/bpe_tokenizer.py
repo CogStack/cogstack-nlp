@@ -96,6 +96,11 @@ class TokenizerWrapperBPE(TokenizerWrapperBase):
         tokenizer.hf_tokenizers.add_tokens(['<PAD>'])
         return tokenizer
 
+    @classmethod
+    def create_new(cls):
+        tokenizer = ByteLevelBPETokenizer()
+        return cls(tokenizer)
+
     def get_size(self) -> int:
         self.hf_tokenizers = self.ensure_tokenizer()
         return self.hf_tokenizers.get_vocab_size()

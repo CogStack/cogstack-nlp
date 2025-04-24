@@ -82,6 +82,11 @@ class TokenizerWrapperBERT(TokenizerWrapperBase):
                 variant)
         return tokenizer
 
+    @classmethod
+    def create_new(cls, model_variant: Optional[str]
+                   ) -> 'TokenizerWrapperBERT':
+        return cls.load(FAKE_TOKENIZER_PATH, model_variant)
+
     def get_size(self) -> int:
         self.hf_tokenizers = self.ensure_tokenizer()
         return len(self.hf_tokenizers.vocab)

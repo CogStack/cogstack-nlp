@@ -64,9 +64,10 @@ class MetaCATAddon(AddonComponent):
         return self._mc
 
     @classmethod
-    def create_new(cls, config: ConfigMetaCAT, base_tokenizer: BaseTokenizer,
-                   tokenizer: TokenizerWrapperBase) -> 'MetaCATAddon':
+    def create_new(cls, config: ConfigMetaCAT, base_tokenizer: BaseTokenizer
+                   ) -> 'MetaCATAddon':
         """Factory method to create a new MetaCATAddon instance."""
+        tokenizer = init_tokenizer(config)
         meta_cat = MetaCAT(tokenizer, embeddings=None, config=config)
         return cls(config, base_tokenizer, meta_cat)
 
@@ -82,18 +83,6 @@ class MetaCATAddon(AddonComponent):
     @property
     def name(self) -> str:
         return str(self._name)
-
-    def _init_tokenizer(self, cnf: ConfigMetaCAT, pack_save_path: Optional[str]
-                        ) -> Optional[TokenizerWrapperBase]:
-        # TODO / use registry and load with that
-        if pack_save_path is not None:
-            model_save_path = os.path.join(
-                pack_save_path, self.get_folder_name())
-        else:
-            raise MisconfiguredMetaCATException(
-                "Failed to load MetaCAT tokenizer without model pack path. "
-                "When creating a new MetaCAT, please provide a tokenizer.")
-        return init_tokenizer(cnf, model_save_path)
 
     def __call__(self, doc: MutableDocument) -> MutableDocument:
         return self.mc(doc)

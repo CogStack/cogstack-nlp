@@ -48,18 +48,16 @@ class TokenizerWrapperBase(ABC):
         return self.hf_tokenizers
 
 
-def init_tokenizer(cnf: ConfigMetaCAT, model_save_path: str
-                   ) -> Optional[TokenizerWrapperBase]:
+def init_tokenizer(cnf: ConfigMetaCAT) -> Optional[TokenizerWrapperBase]:
     tokenizer: Optional[TokenizerWrapperBase] = None
     if cnf.general.tokenizer_name == 'bbpe':
         from medcat2.components.addons.meta_cat.mctokenizers.bpe_tokenizer import (  # noqa
             TokenizerWrapperBPE)
-        tokenizer = TokenizerWrapperBPE.load(model_save_path)
+        TokenizerWrapperBPE.create_new()
     elif cnf.general.tokenizer_name == 'bert-tokenizer':
         from medcat2.components.addons.meta_cat.mctokenizers.bert_tokenizer import (  # noqa
             TokenizerWrapperBERT)
-        tokenizer = TokenizerWrapperBERT.load(
-            model_save_path, cnf.model.model_variant)
+        tokenizer = TokenizerWrapperBERT.create_new(cnf.model.model_variant)
     return tokenizer
 
 
