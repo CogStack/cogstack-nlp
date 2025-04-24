@@ -2,6 +2,8 @@ from abc import ABC, abstractmethod
 from typing import Optional, Union, overload
 from tokenizers import Tokenizer
 
+from medcat2.config.config_meta_cat import ConfigMetaCAT
+
 
 FAKE_TOKENIZER_PATH = "#\n/fake-path-not-exist#/"
 
@@ -44,3 +46,33 @@ class TokenizerWrapperBase(ABC):
         if self.hf_tokenizers is None:
             raise ValueError("The tokenizer is not loaded yet")
         return self.hf_tokenizers
+
+
+def init_tokenizer(cnf: ConfigMetaCAT, model_save_path: str
+                   ) -> Optional[TokenizerWrapperBase]:
+    tokenizer: Optional[TokenizerWrapperBase] = None
+    if cnf.general.tokenizer_name == 'bbpe':
+        from medcat2.components.addons.meta_cat.mctokenizers.bpe_tokenizer import (  # noqa
+            TokenizerWrapperBPE)
+        tokenizer = TokenizerWrapperBPE.load(model_save_path)
+    elif cnf.general.tokenizer_name == 'bert-tokenizer':
+        from medcat2.components.addons.meta_cat.mctokenizers.bert_tokenizer import (  # noqa
+            TokenizerWrapperBERT)
+        tokenizer = TokenizerWrapperBERT.load(
+            model_save_path, cnf.model.model_variant)
+    return tokenizer
+
+
+def load_tokenizer(config: ConfigMetaCAT, tokenizer_folder: str
+                   ) -> Optional[TokenizerWrapperBase]:
+    tokenizer: Optional[TokenizerWrapperBase] = None
+    if config.general.tokenizer_name == 'bbpe':
+        from medcat2.components.addons.meta_cat.mctokenizers.bpe_tokenizer import (  # noqa
+            TokenizerWrapperBPE)
+        tokenizer = TokenizerWrapperBPE.load(tokenizer_folder)
+    elif config.general.tokenizer_name == 'bert-tokenizer':
+        from medcat2.components.addons.meta_cat.mctokenizers.bert_tokenizer import (  # noqa
+            TokenizerWrapperBERT)
+        tokenizer = TokenizerWrapperBERT.load(
+            tokenizer_folder, config.model.model_variant)
+    return tokenizer
