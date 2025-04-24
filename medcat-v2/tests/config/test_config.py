@@ -75,9 +75,29 @@ class ComponentConfigTests(unittest.TestCase):
     def setUp(self):
         self.cnf = config.ComponentConfig()
 
+    def _make_change(self):
+        self.cnf.comp_name = 'something_else'
+
     def test_raw_config_not_dirty(self):
         self.assertFalse(self.cnf.is_dirty)
 
     def test_changed_config_dirty(self):
-        self.cnf.comp_name = 'something_else'
+        self._make_change()
         self.assertTrue(self.cnf.is_dirty)
+
+
+class ChainedDirtiableComponentTests(ComponentConfigTests):
+    class MultiLevelDirtiable(config.DirtiableBaseModel):
+        part_a: config.ComponentConfig = config.ComponentConfig()
+        part_b: config.ComponentConfig = config.ComponentConfig()
+
+    def setUp(self):
+        self.cnf = self.MultiLevelDirtiable()
+
+    def _make_change(self):
+        # this is a change not within the outer, but within the inner dirtiable
+        self.cnf.part_a.comp_name = 'SOMETHING-else'
+
+    def test_outer_remains_undirty_raw(self):
+        self._make_change()
+        self.assertFalse(self.cnf._is_dirty)
