@@ -4,8 +4,6 @@ import json
 from typing import Optional
 from collections import Counter
 
-from transformers import AutoTokenizer
-
 from medcat2 import cat
 from medcat2.data.model_card import ModelCard
 from medcat2.vocab import Vocab
@@ -16,11 +14,8 @@ from medcat2.cdb import CDB
 from medcat2.tokenizing.tokens import UnregisteredDataPathException
 from medcat2.utils.cdb_state import captured_state_cdb
 from medcat2.components.addons.meta_cat.meta_cat import MetaCATAddon
-from medcat2.components.addons.meta_cat.meta_cat_tokenizers import (
-    TokenizerWrapperBERT)
 
 import unittest
-import unittest.mock
 
 from . import EXAMPLE_MODEL_PACK_ZIP
 from .utils.legacy.test_conversion_all import ConvertedFunctionalityTests
@@ -139,10 +134,13 @@ class CATCreationTests(CATIncludingTests):
         self.assertEqual(self.get_cui2ct(), self.EXPECT_TRAIN)
 
     def test_versioning_updates_config_hash(self):
+        self.assert_hashes_to(self.EXPECTED_HASH)
+
+    def assert_hashes_to(self, exp_hash: str) -> None:
         self.cat._versioning()
         new_hash = self.cat.config.meta.hash
         self.assertNotEqual(self.prev_hash, new_hash)
-        self.assertEqual(new_hash, self.EXPECTED_HASH)
+        self.assertEqual(new_hash, exp_hash)
         self.assertEqual(self.cat.config.meta.history[-1], new_hash)
 
     def test_versioning_does_not_overpopulate_history(self):
@@ -177,7 +175,8 @@ class CATCreationTests(CATIncludingTests):
 
 
 class CatWithMetaCATTests(CATCreationTests):
-    EXPECTED_HASH = "56bcb8cc75b5537b"  # with MetaCATs
+    EXPECTED_HASH = "04095f95f5f7c222"
+    EXPECT_SAME_INSTANCES = True
 
     @classmethod
     def setUpClass(cls):
@@ -186,20 +185,31 @@ class CatWithMetaCATTests(CATCreationTests):
         # NOTE: need to set for consistent hashing
         meta_cat_cnf.train.last_train_on = -1.0
         meta_cat_cnf.general.category_name = 'Status'
+        meta_cat_cnf.general.tokenizer_name = 'bert-tokenizer'
+        meta_cat_cnf.model.model_name = 'bert'
         meta_cat_cnf.model.model_variant = 'prajjwal1/bert-tiny'
-        tokenizer = TokenizerWrapperBERT(
-            AutoTokenizer.from_pretrained(meta_cat_cnf.model.model_variant))
-        addon = MetaCATAddon.create_new(
-            meta_cat_cnf, cls.cat._pipeline.tokenizer, tokenizer)
-        cls.cat.add_addon(addon)
+        cls.addon = MetaCATAddon.create_new(
+            meta_cat_cnf, cls.cat._pipeline.tokenizer)
+        cls.cat.add_addon(cls.addon)
+        cls.init_addons = list(cls.cat._pipeline._addons)
 
     def test_can_recreate_pipe(self):
-        addons_before = list(self.cat._pipeline._addons)
         self.cat._recrate_pipe()
         addons_after = list(self.cat._pipeline._addons)
-        self.assertGreater(len(addons_before), 0)
-        self.assertEqual(len(addons_before), len(addons_after))
-        self.assertEqual(addons_before, addons_after)
+        self.assertGreater(len(self.init_addons), 0)
+        self.assertEqual(len(self.init_addons), len(addons_after))
+        if self.EXPECT_SAME_INSTANCES:
+            self.assertEqual(self.init_addons, addons_after)
+
+
+class CatWithChangesMetaCATTests(CatWithMetaCATTests):
+    EXPECTED_HASH = "7206cc91ed3424ac"
+    EXPECT_SAME_INSTANCES = False
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.addon.config.general.batch_size_eval = 10
 
 
 class CATUnsupTrainingTests(CATCreationTests):
