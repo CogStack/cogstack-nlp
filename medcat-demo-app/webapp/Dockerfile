@@ -1,4 +1,4 @@
-FROM python:3.7
+FROM python:3.11-slim
 
 # Create the required folders
 RUN mkdir -p /webapp/models
@@ -17,6 +17,9 @@ RUN mkdir -p /medcat_data
 
 # Set the pythonpath
 WORKDIR /webapp
+
+# install git for GH repo pip install
+RUN apt-get update && apt-get install -y git
 
 RUN pip install -r requirements.txt
 
