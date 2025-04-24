@@ -5,6 +5,7 @@ import json
 import html
 from django.shortcuts import render
 from django.http import StreamingHttpResponse, HttpResponse
+import numpy as np
 from wsgiref.util import FileWrapper
 from medcat2.cat import CAT
 from medcat2.cdb import CDB
@@ -60,11 +61,22 @@ def doc2html(doc):
     return out
 
 
+# NOTE: numpy uses np.float32 and those are not json serialisable
+#       so we need to fix that
+def fix_floats(in_dict: dict) -> dict:
+    for k, v in in_dict.items():
+        if isinstance(v, np.float32):
+            in_dict[k] = float(v)
+        elif isinstance(v, dict):
+            fix_floats(v)
+    return in_dict
+
+
 def get_html_and_json(text):
     doc = cat(text)
 
     a = {
-        "annotations": cat.get_entities(text)['entities'],
+        "annotations": fix_floats(cat.get_entities(text)['entities']),
         "text": text,
     }
     for id, ent in a['annotations'].items():
