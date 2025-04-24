@@ -194,7 +194,7 @@ class CatWithMetaCATTests(CATCreationTests):
         cls.init_addons = list(cls.cat._pipeline._addons)
 
     def test_can_recreate_pipe(self):
-        self.cat._recrate_pipe()
+        self.cat._recreate_pipe()
         addons_after = list(self.cat._pipeline._addons)
         self.assertGreater(len(self.init_addons), 0)
         self.assertEqual(len(self.init_addons), len(addons_after))
@@ -301,7 +301,7 @@ class CATWithDictNERSupTrainingTests(CATSupTrainingTests):
         super().setUpClass()
         cls._perform_training = orig_training
         cls.cdb.config.components.ner.comp_name = 'dict'
-        cls.cat._recrate_pipe()
+        cls.cat._recreate_pipe()
         # cls.cat.cdb.reset_training()
         cls._perform_training()
 
