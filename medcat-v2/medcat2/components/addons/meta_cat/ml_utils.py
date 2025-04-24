@@ -10,7 +10,7 @@ from typing import Optional, Any, Union
 from torch import nn
 from scipy.special import softmax
 from medcat2.config.config_meta_cat import ConfigMetaCAT
-from medcat2.components.addons.meta_cat.meta_cat_tokenizers import (
+from medcat2.components.addons.meta_cat.mctokenizers.tokenizers import (
     TokenizerWrapperBase)
 from sklearn.metrics import (
     classification_report, precision_recall_fscore_support, confusion_matrix)
