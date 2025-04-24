@@ -6,11 +6,13 @@ import logging
 import torch
 
 from medcat2.components.addons.meta_cat.meta_cat import MetaCAT, MetaCATAddon
-from medcat2.components.addons.meta_cat.meta_cat_tokenizers import (
+from medcat2.components.addons.meta_cat.mctokenizers.tokenizers import (
     TokenizerWrapperBase)
 # NOTE: both in same module so no benefit in dynamic loading
-from medcat2.components.addons.meta_cat.meta_cat_tokenizers import (
-    TokenizerWrapperBPE, TokenizerWrapperBERT)
+from medcat2.components.addons.meta_cat.mctokenizers.bpe_tokenizer import (
+    TokenizerWrapperBPE)
+from medcat2.components.addons.meta_cat.mctokenizers.bert_tokenizer import (
+    TokenizerWrapperBERT)
 from medcat2.config.config_meta_cat import ConfigMetaCAT
 from medcat2.tokenizing.tokenizers import BaseTokenizer
 
