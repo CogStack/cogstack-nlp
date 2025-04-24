@@ -50,14 +50,13 @@ class MetaCATBaseTests(unittest.TestCase):
         cls.cnf.comp_name = meta_cat.MetaCATAddon.addon_type
         cls.cnf.general.vocab_size = cls.VOCAB_SIZE
         cls.cnf.model.padding_idx = cls.PAD_IDX
+        cls.cnf.general.tokenizer_name = 'bert-tokenizer'
+        cls.cnf.model.model_variant = 'prajjwal1/bert-tiny'
         cls.cnf.general.category_name = 'FAKE_category'
         cls.cnf.general.category_value2id = {
             'Future': 0, 'Past': 2, 'Recent': 1}
         cls.tokenizer = cls.TOKENIZER_CLS()
-        mc_tokenizer = TokenizerWrapperBERT(
-            AutoTokenizer.from_pretrained('prajjwal1/bert-tiny'))
-        cls.meta_cat = meta_cat.MetaCATAddon.create_new(
-            cls.cnf, cls.tokenizer, tokenizer=mc_tokenizer)
+        cls.meta_cat = meta_cat.MetaCATAddon.create_new(cls.cnf, cls.tokenizer)
 
 
 class MetaCATTests(MetaCATBaseTests):
