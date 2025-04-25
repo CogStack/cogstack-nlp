@@ -17,7 +17,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libsqlite3-dev
 
 # Install Python dependencies
-RUN pip install -r /webapp/requirements.txt
+RUN pip install -U pip && pip install -r /webapp/requirements.txt
 
 # Get the spacy model (for later copy)
 RUN python -m spacy download en_core_web_md
