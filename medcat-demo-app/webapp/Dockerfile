@@ -36,7 +36,10 @@ RUN mkdir -p /webapp/models && mkdir -p /medcat_data
 
 # Copy only necessary files from build stage
 COPY --from=build /webapp /webapp
-COPY --from=build /root/.cache /root/.cache
+# COPY --from=build /root/.cache /root/.cache  # Copy pip cache if needed
+
+# Copy Python site-packages (installed by pip) from build stage
+COPY --from=build /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 
 # Set environment variables
 ENV VOCAB_URL=https://medcat.rosalind.kcl.ac.uk/media/vocab.dat
