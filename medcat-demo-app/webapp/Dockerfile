@@ -32,8 +32,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libsqlite3-dev
 
 # Create the required folders (if not created already)
-RUN mkdir -p /webapp/models
-RUN mkdir -p /medcat_data
+RUN mkdir -p /webapp/models && mkdir -p /medcat_data
 
 # Copy only necessary files from build stage
 COPY --from=build /webapp /webapp
@@ -51,8 +50,7 @@ WORKDIR /webapp
 
 # Create the db backup cron job (copied from your setup)
 COPY etc/cron.d/db-backup-cron /etc/cron.d/db-backup-cron
-RUN chmod 0644 /etc/cron.d/db-backup-cron
-RUN crontab /etc/cron.d/db-backup-cron
+RUN chmod 0644 /etc/cron.d/db-backup-cron && crontab /etc/cron.d/db-backup-cron
 
 # Run migrations and collect static (could be in entrypoint script)
 RUN python manage.py makemigrations && \
