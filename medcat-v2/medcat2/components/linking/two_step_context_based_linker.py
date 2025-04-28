@@ -298,7 +298,7 @@ class TwoStepLinker(AbstractCoreComponent):
                 "Mixing type similarity of %.4f and CUI similarity of %.4f "
                 "with %.4f weight for CUI similarity",
                 cui_sim, type_sim, ts_coef)
-            new_sim = ts_coef * cui_sim + (1 - ts_coef) * type_sim
+            new_sim = (1 - ts_coef) * cui_sim + ts_coef * type_sim
             similarities[cui_index] = new_sim
             logger.debug("[Per CUI weights] CUI: %s, Name: %s, "
                          "Old sim: %.3f, New sim: %.3f",
