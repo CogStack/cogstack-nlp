@@ -5,6 +5,7 @@ import logging
 
 from medcat2.utils.legacy.conversion_all import Converter, logger as clogger
 from medcat2.storage.serialisers import AvailableSerialisers
+from medcat2.utils.legacy.helpers import logger as hlogger
 
 
 def do_conversion(file_from: str, file_to: str,
@@ -38,9 +39,12 @@ def main(argv: Optional[list[str]] = None):
                         'does not exist', action='store_true')
     args = parser.parse_args(args=argv)
     if not args.silent:
-        clogger.addHandler(logging.StreamHandler())
+        sh = logging.StreamHandler()
+        clogger.addHandler(sh)
+        hlogger.addHandler(sh)
     if args.verbose:
         clogger.setLevel(logging.DEBUG)
+        hlogger.setLevel(logging.DEBUG)
     if not os.path.exists(args.new_model) and args.new_folder:
         print("Creating new folder:", args.new_model)
         os.mkdir(args.new_model)
