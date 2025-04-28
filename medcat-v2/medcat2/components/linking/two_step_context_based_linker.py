@@ -3,6 +3,7 @@ import random
 import logging
 from itertools import chain
 from collections.abc import MutableMapping, KeysView
+from contextlib import contextmanager
 
 from medcat2.cdb.cdb import CDB
 from medcat2.vocab import Vocab
@@ -20,6 +21,7 @@ from medcat2.components.linking.vector_context_model import ContextModel
 
 
 logger = logging.getLogger(__name__)
+logger.addHandler(logging.StreamHandler())
 
 
 TYPE_ID_PREFIX: str = "TYPE_ID:"
@@ -53,6 +55,8 @@ class TwoStepLinker(AbstractCoreComponent):
         self.config = config
         self._init_cnf()
         self._linker = NormalLinker(cdb, vocab, config)
+        self._linker.context_model._disamb_preprocessors.append(
+            self._preprocess_disamb)
         add_tuis_to_cui_info(self.cdb.cui2info, self.cdb.type_id2info)
         self._tui_context_model = ContextModel(
             self.cdb.cui2info,
@@ -60,8 +64,7 @@ class TwoStepLinker(AbstractCoreComponent):
             self.cdb.weighted_average_function,
             self.vocab,
             self.config.components.linking,
-            self.config.general.separator,
-            disamb_preprocessors=[self._preprocess_disamb])
+            self.config.general.separator)
 
     def _init_cnf(self):
         if not isinstance(self.config.components.linking.additional,
@@ -147,7 +150,8 @@ class TwoStepLinker(AbstractCoreComponent):
     def _reweigh_candidates(
             self, doc: MutableDocument,
             entity: MutableEntity,
-            per_doc_valid_token_cache: PerDocumentTokenCache
+            per_doc_valid_token_cache: PerDocumentTokenCache,
+            per_entity_weights: 'PerEntityWeights',
             ) -> None:
         # Check does it have a detected concepts
         cuis = entity.link_candidates
@@ -196,28 +200,28 @@ class TwoStepLinker(AbstractCoreComponent):
             if tui is not None
             for cui in per_tui_candidates[tui.removeprefix(TYPE_ID_PREFIX)]
         }
-        self._per_entity_weights[entity] = per_cui_type_sims
+        per_entity_weights[entity] = per_cui_type_sims
         logger.debug("Adding per CUI to %s (tokens %d..%d) weights %s",
                      cui, entity.base.start_index, entity.base.end_index,
                      per_cui_type_sims)
 
-    def _weigh_on_inference(self, doc: MutableDocument) -> None:
-        self._per_entity_weights = PerEntityWeights(doc)
+    def _weigh_on_inference(self, doc: MutableDocument) -> 'PerEntityWeights':
+        per_entity_weights = PerEntityWeights(doc)
         per_doc_valid_token_cache = PerDocumentTokenCache()
         for entity in doc.all_ents:
             logger.debug("Narrowing down candidates for: '%s' from %s",
                          entity.base.text, entity.link_candidates)
             self._reweigh_candidates(
-                doc, entity, per_doc_valid_token_cache)
-        # clean up
-        self._per_entity_weights.clear()
+                doc, entity, per_doc_valid_token_cache, per_entity_weights)
+        return per_entity_weights
 
     def __call__(self, doc: MutableDocument) -> MutableDocument:
         if self.config.components.linking.train:
-            self._train_for_tuis(doc)
+            per_ent_weights = self._train_for_tuis(doc)
         else:
-            self._weigh_on_inference(doc)
-        return self._linker(doc)
+            per_ent_weights = self._weigh_on_inference(doc)
+        with temp_attribute(self, '_per_ent_weights', per_ent_weights):
+            return self._linker(doc)
 
     def train(self, cui: str,
               entity: MutableEntity,
@@ -268,12 +272,19 @@ class TwoStepLinker(AbstractCoreComponent):
                 "an instance of TwoStepLinkerConfig")
         return cnf_2step
 
+    _DEBUG_CNT = 0  # TODO: remove
+
     def _preprocess_disamb(self, ent: MutableEntity, name: str,
                            cuis: list[str], similarities: list[float]) -> None:
-        if ent not in self._per_entity_weights:
+        if cuis and all(cui.startswith(TYPE_ID_PREFIX) for cui in cuis):
+            return
+        if not hasattr(self, '_per_ent_weights'):
+            raise ValueError("No per entity weights")
+        pew = self._per_ent_weights
+        if ent not in pew:
             # ignore for stuff not in here
             return
-        per_cui_type_sims = self._per_entity_weights[ent]
+        per_cui_type_sims = pew[ent]
         cnf_2step = self.two_step_config
         for cui, type_sim in per_cui_type_sims.items():
             if cui not in cuis:
@@ -369,3 +380,21 @@ class TwoStepLinkerConfig(SerialisableBaseModel):
     around 10 000 more CUIs then types so a coefficient like 0.2 should be
     appropriate.
     """
+
+
+@contextmanager
+def temp_attribute(obj: Any, attr_name: str, attr_val: Any):
+    if hasattr(obj, attr_name):
+        prev_val = getattr(obj, attr_name)
+        logger.warning(
+            "Object '%s' already had an attribute '%s' - has type '%s'",
+            obj, attr_val, type(prev_val))
+    else:
+        prev_val = None
+    setattr(obj, attr_name, attr_val)
+    yield
+    # and reset
+    if prev_val is not None:
+        setattr(obj, attr_name, prev_val)
+    else:
+        delattr(obj, attr_name)
