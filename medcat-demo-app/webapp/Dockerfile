@@ -20,9 +20,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 ARG USE_CPU_TORCH=false
 # NOTE: Allow building without GPU so as to lower image size (disabled by default)
 RUN pip install -U pip && if [ "$USE_CPU_TORCH" = "true" ]; then \
-                              pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu/; \
+                              pip install -r /webapp/requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu/; \
                           else \
-                              pip install -r requirements.txt; \
+                              pip install -r /webapp/requirements.txt; \
                           fi
 
 # Get the spacy model (for later copy)
