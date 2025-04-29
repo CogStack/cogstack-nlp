@@ -17,7 +17,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libsqlite3-dev
 
 # Install Python dependencies
-RUN pip install -U pip && pip install -r /webapp/requirements.txt
+ARG USE_CPU_TORCH=false
+# NOTE: Allow building without GPU so as to lower image size (disabled by default)
+RUN pip install -U pip && if [ "$USE_CPU_TORCH" = "true" ]; then \
+                              pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu/; \
+                          else \
+                              pip install -r requirements.txt; \
+                          fi
 
 # Get the spacy model (for later copy)
 RUN python -m spacy download en_core_web_md
