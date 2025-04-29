@@ -322,9 +322,6 @@ class CAT(AbstractSerialisable):
         #       will be dealt with upon pipeline creation automatically
         if not isinstance(cat, CAT):
             raise ValueError(f"Unable to load CAT. Got: {cat}")
-        # NOTE: Some CDB attributes will have been set manually
-        #       after init so the CDB is likely "dirty"
-        cat.cdb._reset_subnames()
         return cat
 
     @overload
