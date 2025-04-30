@@ -23,4 +23,5 @@ def create_main_ann(doc: MutableDocument) -> None:
             for tkn in ent:
                 tkns_in.add(tkn)
             main_anns.append(ent)
-    doc.final_ents = list(doc.final_ents) + main_anns  # type: ignore
+    doc.final_ents = sorted(list(doc.final_ents) + main_anns,  # type: ignore
+                            key=lambda ent: ent.base.start_char_index)
