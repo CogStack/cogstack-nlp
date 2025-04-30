@@ -1,4 +1,5 @@
 import os
+import unittest.mock
 import pandas as pd
 import json
 from typing import Optional
@@ -14,10 +15,12 @@ from medcat2.cdb import CDB
 from medcat2.tokenizing.tokens import UnregisteredDataPathException
 from medcat2.utils.cdb_state import captured_state_cdb
 from medcat2.components.addons.meta_cat.meta_cat import MetaCATAddon
+from medcat2.utils.defaults import AVOID_LEGACY_CONVERSION_ENVIRON
 
 import unittest
 
 from . import EXAMPLE_MODEL_PACK_ZIP
+from . import V1_MODEL_PACK_PATH, UNPACKED_V1_MODEL_PACK_PATH
 from .utils.legacy.test_conversion_all import ConvertedFunctionalityTests
 
 
@@ -413,3 +416,20 @@ class CATWithEntityAddonTests(CATIncludingTests):
 
 class CATWithEntityAddonSpacyTests(CATWithEntityAddonTests):
     TOKENIZING_PROVIDER = 'spacy'
+
+
+class CATLegacyLoadTests(unittest.TestCase):
+
+    def test_can_load_legacy_model_zip(self):
+        self.assertIsInstance(
+            cat.CAT.load_model_pack(V1_MODEL_PACK_PATH), cat.CAT)
+
+    def test_can_load_legacy_model_unpacked(self):
+        self.assertIsInstance(
+            cat.CAT.load_model_pack(UNPACKED_V1_MODEL_PACK_PATH), cat.CAT)
+
+    def test_cannot_load_legacy_with_environ_set(self):
+        with unittest.mock.patch.dict(os.environ, {
+                AVOID_LEGACY_CONVERSION_ENVIRON: "true"}, clear=True):
+            with self.assertRaises(ValueError):
+                cat.CAT.load_model_pack(V1_MODEL_PACK_PATH)
