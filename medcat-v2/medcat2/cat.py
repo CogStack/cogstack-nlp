@@ -21,6 +21,8 @@ from medcat2.data.entities import Entity, Entities, OnlyCUIEntities
 from medcat2.data.model_card import ModelCard
 from medcat2.components.types import AbstractCoreComponent, HashableComponet
 from medcat2.components.addons.addons import AddonComponent
+from medcat2.utils.legacy.helpers import is_legacy_model_pack
+from medcat2.utils.defaults import AVOID_LEGACY_CONVERSION_ENVIRON
 
 
 logger = logging.getLogger(__name__)
@@ -309,6 +311,23 @@ class CAT(AbstractSerialisable):
             model_pack_path = folder_path
         logger.info("Attempting to load model from file: %s",
                     model_pack_path)
+        is_legacy = is_legacy_model_pack(model_pack_path)
+        should_avoid = os.environ.get(
+            AVOID_LEGACY_CONVERSION_ENVIRON, "False").lower() == "true"
+        if is_legacy and not should_avoid:
+            from medcat2.utils.legacy.conversion_all import Converter
+            logger.warning(
+                "Doing legacy conversion on model pack '%s'. "
+                "This will make the model load take significantly longer. "
+                "If you wish to avoid this, set the environment variable '%s' "
+                "to 'true'", model_pack_path, AVOID_LEGACY_CONVERSION_ENVIRON)
+            return Converter(model_pack_path, None).convert()
+        elif is_legacy and not should_avoid:
+            raise ValueError(
+                f"The model pack '{model_pack_path}' is a legacy model pack. "
+                "Please set the environment variable "
+                f"'{AVOID_LEGACY_CONVERSION_ENVIRON}' "
+                "to 'true' to allow automatic conversion.")
         # NOTE: ignoring addons since they will be loaded later / separately
         cat = deserialise(model_pack_path, model_load_path=model_pack_path,
                           ignore_folders_prefix={
