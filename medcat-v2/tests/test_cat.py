@@ -77,6 +77,15 @@ class InferenceFromLoadedTests(TrainedModelTests):
             with self.subTest(f"{nr}"):
                 ConvertedFunctionalityTests.assert_has_ent(ent)
 
+    def test_entities_in_correct_order(self):
+        # NOTE: the issue wouldn't show up with smaller amount of text
+        doc = self.model(ConvertedFunctionalityTests.TEXT * 3)
+        cur_start = 0
+        for ent in doc.final_ents:
+            with self.subTest(f"Ent: {ent}"):
+                self.assertGreaterEqual(ent.base.start_char_index, cur_start)
+                cur_start = ent.base.start_char_index
+
 
 class CATIncludingTests(unittest.TestCase):
     TOKENIZING_PROVIDER = 'regex'
