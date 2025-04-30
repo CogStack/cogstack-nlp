@@ -3,8 +3,6 @@ import os
 from medcat2.utils.legacy import conversion_all
 from medcat2.cat import CAT
 
-import shutil
-
 import unittest
 import unittest.mock
 
