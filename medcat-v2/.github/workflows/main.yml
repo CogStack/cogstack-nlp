@@ -32,9 +32,6 @@ jobs:
       - name: Ruff linting
         run: |
           uv run ruff check medcat2
-      - name: Flake8 lint
-        run: |
-          uv run python -m flake8 medcat2
       - name: Test
         run: |
           timeout 10m uv run python -m unittest discover
