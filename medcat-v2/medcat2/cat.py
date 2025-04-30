@@ -322,7 +322,7 @@ class CAT(AbstractSerialisable):
                 "If you wish to avoid this, set the environment variable '%s' "
                 "to 'true'", model_pack_path, AVOID_LEGACY_CONVERSION_ENVIRON)
             return Converter(model_pack_path, None).convert()
-        elif is_legacy and not should_avoid:
+        elif is_legacy and should_avoid:
             raise ValueError(
                 f"The model pack '{model_pack_path}' is a legacy model pack. "
                 "Please set the environment variable "
