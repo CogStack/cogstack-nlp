@@ -21,7 +21,7 @@ from medcat2.data.entities import Entity, Entities, OnlyCUIEntities
 from medcat2.data.model_card import ModelCard
 from medcat2.components.types import AbstractCoreComponent, HashableComponet
 from medcat2.components.addons.addons import AddonComponent
-from medcat2.utils.legacy.helpers import is_legacy_model_pack
+from medcat2.utils.legacy.identifier import is_legacy_model_pack
 from medcat2.utils.defaults import AVOID_LEGACY_CONVERSION_ENVIRON
 
 
