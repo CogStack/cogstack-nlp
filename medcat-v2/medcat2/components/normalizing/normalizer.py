@@ -101,9 +101,14 @@ class BasicSpellChecker:
         Returns:
             set[str]: The set of all edits
         """
+        return self.raw_edits1(word, self.config.general.diacritics)
+
+    @classmethod
+    def raw_edits1(cls, word: str, use_diacritics: bool = False,
+                   ) -> set[str]:
         letters = 'abcdefghijklmnopqrstuvwxyz'
 
-        if self.config.general.diacritics:
+        if use_diacritics:
             letters += 'àáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿ'
 
         splits = [(word[:i], word[i:]) for i in range(len(word) + 1)]
@@ -130,7 +135,14 @@ class BasicSpellChecker:
         Returns:
             Iterator[str]: All 2-away edits.
         """
-        return (e2 for e1 in self.edits1(word) for e2 in self.edits1(e1))
+        return self.raw_edits2(word, self.config.general.diacritics)
+
+    @classmethod
+    def raw_edits2(cls, word: str, use_diacritics: bool = False
+                   ) -> Iterator[str]:
+        return (
+            e2 for e1 in cls.raw_edits1(word, use_diacritics)
+            for e2 in cls.raw_edits1(e1, use_diacritics))
 
     def edits3(self, word):
         """All edits that are two edits away from `word`."""  # noqa
