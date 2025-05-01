@@ -105,7 +105,7 @@ class BasicSpellChecker:
 
     @classmethod
     def raw_edits1(cls, word: str, use_diacritics: bool = False,
-                   ) -> set[str]:
+                   return_ordered: bool = False) -> set[str]:
         letters = 'abcdefghijklmnopqrstuvwxyz'
 
         if use_diacritics:
@@ -124,7 +124,10 @@ class BasicSpellChecker:
             if R:
                 replaces.extend(L + c + R[1:] for c in letters)
             inserts.extend([L + c + R for c in letters])
-        return set(deletes + transposes + replaces + inserts)
+        if not return_ordered:
+            return set(deletes + transposes + replaces + inserts)
+        else:
+            return sorted(deletes + transposes + replaces + inserts)
 
     def edits2(self, word: str) -> Iterator[str]:
         """All edits that are two edits away from `word`.
@@ -138,11 +141,11 @@ class BasicSpellChecker:
         return self.raw_edits2(word, self.config.general.diacritics)
 
     @classmethod
-    def raw_edits2(cls, word: str, use_diacritics: bool = False
-                   ) -> Iterator[str]:
+    def raw_edits2(cls, word: str, use_diacritics: bool = False,
+                   return_ordered: bool = False) -> Iterator[str]:
         return (
-            e2 for e1 in cls.raw_edits1(word, use_diacritics)
-            for e2 in cls.raw_edits1(e1, use_diacritics))
+            e2 for e1 in cls.raw_edits1(word, use_diacritics, return_ordered)
+            for e2 in cls.raw_edits1(e1, use_diacritics, return_ordered))
 
     def edits3(self, word):
         """All edits that are two edits away from `word`."""  # noqa
