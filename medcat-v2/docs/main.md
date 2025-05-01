@@ -28,8 +28,7 @@ MedCAT(*v2*) can be used to extract information from Electronic Health Records (
   (with respect to potential bug fixes), after it will still be available but not updated anymore.
 
 ## Demo
-Demo for v2 is upcoming.
-<!-- A demo application is available at [MedCAT](https://medcat.rosalind.kcl.ac.uk). This was trained on MIMIC-III and all of SNOMED-CT. -->
+A demo application is available [here](https://medcatv2.rosalind.kcl.ac.uk).
 
 ## Tutorials
 Some guides on how to use MedCAT v2 are available at [MedCAT Tutorials](https://github.com/CogStack/MedCATv2tutorials).
