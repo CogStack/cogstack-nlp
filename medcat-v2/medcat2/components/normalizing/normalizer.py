@@ -1,4 +1,4 @@
-from typing import Optional, Iterable, Iterator, Any
+from typing import Optional, Iterable, Iterator, Any, Union, overload, Literal
 import re
 
 from medcat2.tokenizing.tokens import MutableDocument
@@ -103,9 +103,27 @@ class BasicSpellChecker:
         """
         return self.raw_edits1(word, self.config.general.diacritics)
 
+    @overload
     @classmethod
     def raw_edits1(cls, word: str, use_diacritics: bool = False,
-                   return_ordered: bool = False) -> set[str]:
+                   return_ordered: Literal[False] = False) -> set[str]:
+        pass
+
+    @overload
+    @classmethod
+    def raw_edits1(cls, word: str, use_diacritics: bool = False,
+                   return_ordered: Literal[True] = True) -> list[str]:
+        pass
+
+    @overload
+    @classmethod
+    def raw_edits1(cls, word: str, use_diacritics: bool = False,
+                   return_ordered: bool = False) -> Union[set[str], list[str]]:
+        pass
+
+    @classmethod
+    def raw_edits1(cls, word: str, use_diacritics: bool = False,
+                   return_ordered: bool = False) -> Union[set[str], list[str]]:
         letters = 'abcdefghijklmnopqrstuvwxyz'
 
         if use_diacritics:
