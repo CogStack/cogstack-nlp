@@ -73,7 +73,7 @@ pip install medcat --extra_index_url https://download.pytorch.org/whl/cpu/
 ``` -->
 ## Demo
 
-Demo for v2 is upcoming
+The MedCAT v2 demo web app is available [here](https://medcatv2.sites.er.kcl.ac.uk/).
 
 ## Tutorials
 A guide on how to use MedCAT v2 is available at [MedCATv2 Tutorials](https://github.com/CogStack/MedCATv2tutorials/).
