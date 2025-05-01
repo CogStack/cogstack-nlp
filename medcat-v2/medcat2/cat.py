@@ -90,6 +90,30 @@ class CAT(AbstractSerialisable):
                            "It was automatically disabled.")
             self.config.components.linking.train = False
 
+    @overload
+    def get_entities(self,
+                     text: str,
+                     only_cui: Literal[False] = False,
+                     # TODO : addl_info
+                     ) -> Entities:
+        pass
+
+    @overload
+    def get_entities(self,
+                     text: str,
+                     only_cui: Literal[True] = True,
+                     # TODO : addl_info
+                     ) -> OnlyCUIEntities:
+        pass
+
+    @overload
+    def get_entities(self,
+                     text: str,
+                     only_cui: bool = False,
+                     # TODO : addl_info
+                     ) -> Union[dict, Entities, OnlyCUIEntities]:
+        pass
+
     def get_entities(self,
                      text: str,
                      only_cui: bool = False,
