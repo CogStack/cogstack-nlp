@@ -1,4 +1,4 @@
-from typing import Iterator, Any, Type, Callable, Protocol
+from typing import Iterator, Any, Type, Callable, Protocol, Union
 
 import ast
 import inspect
@@ -278,8 +278,9 @@ def estimate_num_variants(orig_len: int, edit_distance: int) -> int:
 FAIL_AFTER_MULT = 10
 
 
-def pick_random_edits(edit_gen: Iterator[str], num_to_pick: int,
-                      orig_len: int, edit_distance: int, rng_seed: int
+def pick_random_edits(edit_gen: Union[list[str], set[str], Iterator[str]],
+                      num_to_pick: int, orig_len: int, edit_distance: int,
+                      rng_seed: int
                       ) -> Iterator[str]:
     num_vars = estimate_num_variants(orig_len, edit_distance)
     if num_to_pick > num_vars:
@@ -308,5 +309,6 @@ def pick_random_edits(edit_gen: Iterator[str], num_to_pick: int,
 class EditGetter(Protocol):
 
     def __call__(self, word: str, use_diacritics: bool = False,
-                 return_ordered: bool = False) -> Iterator[str]:
+                 return_ordered: bool = False
+                 ) -> Union[Iterator[str], set[str], list[str]]:
         pass
