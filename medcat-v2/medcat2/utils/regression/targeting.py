@@ -85,6 +85,10 @@ class TranslationLayer:
         Returns:
             str: The preferred name.
         """
+        if cui not in self.cui2info:
+            logger.warning(
+                "CUI %s Is not defined in CDB / translation layer", cui)
+            return cui
         pref_name = self.cui2info[cui]["preferred_name"]
         if pref_name is None:
             logger.warning("CUI %s does not have a preferred name. "
