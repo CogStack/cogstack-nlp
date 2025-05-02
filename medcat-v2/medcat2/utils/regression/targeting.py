@@ -64,6 +64,10 @@ class TranslationLayer:
         Returns:
             list[str]: The list of names.
         """
+        if cui not in self.cui2info:
+            logger.warning(
+                "CUI %s Is not defined in CDB / translation layer", cui)
+            return []
         if only_prefnames:
             return [self.get_preferred_name(cui).replace(
                 self.separator, self.whitespace)]
