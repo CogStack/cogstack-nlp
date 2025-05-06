@@ -10,9 +10,13 @@ class DependencyGetterTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.dir_deps = envsnapshot.get_direct_dependencies(cls.INCLUDE_EXTRAS)
-        cls.installed_deps = envsnapshot.get_installed_dependencies(
-            cls.INCLUDE_EXTRAS)
+        cls.dir_deps = [
+            dep.lower() for dep in
+            envsnapshot.get_direct_dependencies(cls.INCLUDE_EXTRAS)]
+        cls.installed_deps = {
+            dep.lower(): version for dep, version in
+            envsnapshot.get_installed_dependencies(cls.INCLUDE_EXTRAS).items()
+        }
         cls.trans_deps = envsnapshot.get_transitive_deps(
             list(cls.installed_deps.keys()))
 
