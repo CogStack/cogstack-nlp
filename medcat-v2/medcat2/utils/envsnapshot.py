@@ -32,7 +32,7 @@ def get_direct_dependencies(include_extras: bool) -> list[str]:
                 if "; extra ==" not in req]
     # only keep name, not version
     # NOTE: all correct dependency names will match this regex
-    reqs = [DEP_NAME_PATTERN.match(req).group(0)  # type: ignore
+    reqs = [DEP_NAME_PATTERN.match(req).group(0).lower()  # type: ignore
             for req in reqs]
     return reqs
 
@@ -90,7 +90,7 @@ def get_installed_dependencies(include_extras: bool) -> dict[str, str]:
     direct_deps = get_direct_dependencies(include_extras)
     installed_packages: dict[str, str] = {}
     for package in pkg_resources.working_set:
-        if package.project_name not in direct_deps:
+        if package.project_name.lower() not in direct_deps:
             continue
         installed_packages[package.project_name] = package.version
     return installed_packages
