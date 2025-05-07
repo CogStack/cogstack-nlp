@@ -344,14 +344,12 @@ def get_annotation_schema_tag(sequence_output: torch.Tensor,
     assert len(idx_start[0]) == input_ids.shape[0]
     assert len(idx_start[0]) == len(idx_end[0])
 
-    sequence_output_entities = []
+    sequence_output_entities: list[torch.Tensor] = []
 
     for i in range(len(idx_start[0])):
         to_append = sequence_output[i, idx_start[1][i] + 1:idx_end[1][i], ]
 
-        to_append, _ = torch.max(to_append, axis=0)
+        to_append, _ = torch.max(to_append, axis=0)  # type: ignore
 
         sequence_output_entities.append(to_append)
-    sequence_output_entities = torch.stack(sequence_output_entities)
-
-    return sequence_output_entities
+    return torch.stack(sequence_output_entities)
