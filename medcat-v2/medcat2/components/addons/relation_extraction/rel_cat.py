@@ -17,6 +17,7 @@ from torch.optim.lr_scheduler import MultiStepLR
 from medcat2.cdb import CDB
 from medcat2.config import Config
 from medcat2.config.config_rel_cat import ConfigRelCAT
+from medcat2.storage.serialisers import deserialise
 from medcat2.components.addons.addons import AddonComponent
 from medcat2.components.addons.relation_extraction.base_component import (
     RelExtrBaseComponent)
@@ -136,7 +137,7 @@ class RelCAT:
 
         cdb = CDB(config=Config())
         if os.path.exists(os.path.join(load_path, "cdb.dat")):
-            cdb = CDB.load(os.path.join(load_path, "cdb.dat"))
+            cdb = deserialise(os.path.join(load_path, "cdb.dat"))
         else:
             logger.info(
                 "The default CDB file name 'cdb.dat' doesn't exist in the "
