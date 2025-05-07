@@ -5,6 +5,7 @@ from torch.optim import AdamW
 from torch.optim.lr_scheduler import MultiStepLR
 
 from medcat2.config.config_rel_cat import ConfigRelCAT
+from medcat2.storage.serialisers import serialise, deserialise
 from medcat2.components.addons.relation_extraction.models import (
     RelExtrBaseModel)
 from medcat2.components.addons.relation_extraction.pad_seq import (
@@ -107,7 +108,8 @@ class RelExtrBaseComponent():
         """
 
         assert self.relcat_config is not None
-        self.relcat_config.save(os.path.join(save_path, "config.json"))
+        serialise('json', self.relcat_config,
+                  os.path.join(save_path, "config.json"))
 
         assert self.tokenizer is not None
         self.tokenizer.save(os.path.join(save_path))
