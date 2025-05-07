@@ -639,9 +639,9 @@ class RelData(Dataset):
                         ann_id = ent1_ann["id"]
                         ann_ids_ents[ann_id] = {}
                         ann_ids_ents[ann_id]["cui"] = ent1_ann["cui"]
-                        ann_ids_ents[ann_id]["type_ids"] = (
-                            list(self.cdb.cui2info[
-                                ent1_ann["cui"]]["type_ids"]))
+                        ci1 = self.cdb.cui2info.get(ent1_ann["cui"], None)
+                        ann_ids_ents[ann_id]["type_ids"] = list(
+                            ci1["type_ids"] if ci1 is not None else [])
                         ann_ids_ents[ann_id]["types"] = [
                             self.cdb.addl_info['type_id2name'].get(tui, '')
                             for tui in ann_ids_ents[ann_id]['type_ids']]
@@ -651,9 +651,10 @@ class RelData(Dataset):
                         if self.config.general.create_addl_rels:
                             for _, ent2_ann in enumerate(
                                     annotations[ent1_idx + 1:]):
+                                ci2 = self.cdb.cui2info.get(
+                                    ent2_ann["cui"], None)
                                 ent2_types = list(
-                                    self.cdb.cui2info[
-                                        ent2_ann["cui"]]["type_ids"])
+                                    ci2["type_ids"] if ci2 is not None else [])
 
                                 if ent1_ann["validated"] and ent2_ann[
                                         "validated"]:
