@@ -345,7 +345,7 @@ class RelCAT:
             self.component.model.relcat_config.train.nclasses = (
                 rc_cnf.train.nclasses)
 
-        rc_cnf.general.labels2idx.update(train_rel_data.dataset.labels2idx)
+        rc_cnf.general.labels2idx.update(train_rel_data.dataset["labels2idx"])
         rc_cnf.general.idx2labels = {
             int(v): k for k, v in rc_cnf.general.labels2idx.items()}
 
