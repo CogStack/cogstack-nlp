@@ -449,6 +449,6 @@ class UnregisteredDataPathException(ValueError):
 
     def __init__(self, cls: Type, path: str):
         super().__init__(
-            f"Unregistered path {path} for class: {cls}")
+            f"Unregistered path '{path}' for class: {cls}")
         self.cls = cls
         self.path = path
