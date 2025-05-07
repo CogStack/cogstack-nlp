@@ -2,14 +2,14 @@ import json
 import logging
 import os
 import random
-import numpy
+
 from sklearn.utils import compute_class_weight
 import torch
 import torch.nn as nn
 
 from tqdm import tqdm
 from datetime import date, datetime
-from typing import Iterable, Iterator
+from typing import Iterable, Iterator, cast
 from torch.utils.data import DataLoader, Sampler
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import MultiStepLR
@@ -135,10 +135,10 @@ class RelCAT:
     @classmethod
     def load(cls, load_path: str = "./") -> "RelCAT":
 
-        cdb = CDB(config=Config())
         if os.path.exists(os.path.join(load_path, "cdb.dat")):
-            cdb = deserialise(os.path.join(load_path, "cdb.dat"))
+            cdb = cast(CDB, deserialise(os.path.join(load_path, "cdb.dat")))
         else:
+            cdb = CDB(config=Config())
             logger.info(
                 "The default CDB file name 'cdb.dat' doesn't exist in the "
                 "specified path, you will need to load & set "
