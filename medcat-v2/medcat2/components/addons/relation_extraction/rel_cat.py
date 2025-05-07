@@ -127,6 +127,15 @@ class RelCAT:
         self.device = torch.device(
             "cuda" if self.is_cuda_available and
             self.component.relcat_config.general.device != "cpu" else "cpu")
+        self._init_data_paths()
+
+    def _init_data_paths(self):
+        entity_cls = self.base_tokenizer.get_entity_class()
+        entity_cls.register_addon_path('id', def_val=0, force=True)
+        entity_cls.register_addon_path('cui', def_val=None, force=True)
+        doc_cls = self.base_tokenizer.get_doc_class()
+        doc_cls.register_addon_path('ents', def_val=[], force=True)
+        doc_cls.register_addon_path('relations', def_val=[], force=True)
 
     def save(self, save_path: str = "./") -> None:
         self.component.save(save_path=save_path)
@@ -779,12 +788,6 @@ class RelCAT:
         Returns:
             Doc: spacy doc with the relations.
         """
-        entity_cls = self.base_tokenizer.get_entity_class()
-        entity_cls.register_addon_path('id', def_val=0, force=True)
-        entity_cls.register_addon_path('cui', def_val=None, force=True)
-        doc_cls = self.base_tokenizer.get_doc_class()
-        doc_cls.register_addon_path('ents', default=[], force=True)
-        doc_cls.register_addon_path('relations', default=[], force=True)
         # NOTE: This runs not an empty language, but the specified one
         doc = self.base_tokenizer(text)
 

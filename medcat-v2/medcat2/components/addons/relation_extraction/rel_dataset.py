@@ -421,7 +421,7 @@ class RelData(Dataset):
 
         if isinstance(doc, str):
             doc_text = doc
-        elif isinstance(doc, MutableDocument):
+        else:
             doc_text = doc.base.text
 
         tokenized_text_data = self.tokenizer(doc_text, truncation=False)
@@ -456,7 +456,7 @@ class RelData(Dataset):
                 ent1_token_end_pos=ent1_token_end_pos,
                 ent2_token_end_pos=ent2_token_end_pos
                 ))
-        elif isinstance(doc, MutableDocument):
+        elif not isinstance(doc, str):
             _ents = doc.final_ents if len(doc.final_ents) > 0 else doc.all_ents
 
             # last two can be a pair
@@ -466,8 +466,9 @@ class RelData(Dataset):
                 if ((bt := ent1_token.base.text) not in chars_to_exclude and
                         bt not in
                         self.tokenizer.hf_tokenizers.all_special_tokens):
+                    ci1 = self.cdb.cui2info.get(ent1_token.cui, None)
                     ent1_type_id = list(
-                        self.cdb.cui2info[ent1_token.cui]["type_ids"])
+                        ci1["type_ids"] if ci1 is not None else [])
                     ent1_types = [
                         self.cdb.addl_info["type_id2name"].get(tui, '')
                         for tui in ent1_type_id]
@@ -503,8 +504,9 @@ class RelData(Dataset):
                                 str(ent2_token) not in self.tokenizer.hf_tokenizers.all_special_tokens and
                                 str(ent1_token).strip() != str(ent2_token).strip()):
 
+                            ci2 = self.cdb.cui2info.get(ent2_token.cui, None)
                             ent2_type_id = list(
-                                self.cdb.cui2info[ent2_token.cui]["type_ids"])
+                                ci2["type_ids"] if ci2 is not None else [])
                             ent2_types = [
                                 self.cdb.addl_info['type_id2name'].get(tui, '')
                                 for tui in ent2_type_id]
