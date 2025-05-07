@@ -723,7 +723,9 @@ class RelCAT:
                             pred_rel_logits, dim=0).max(0)
                         predicted_label_id = int(confidence[1].item())
 
-                        doc._.relations.append(
+                        relations: list = doc.get_addon_data(  # type: ignore
+                            "relations")
+                        relations.append(
                             {
                                 "relation": rc_cnf.general.idx2labels[
                                     predicted_label_id],
