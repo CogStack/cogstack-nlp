@@ -592,6 +592,218 @@ class RelData(Dataset):
             "labels2idx": {}, "idx2label": {}
         }
 
+    def _create_relations_for_doc(
+            self, document: MutableDocument, data: dict,
+            ) -> list[list]:
+        doc_text: str = str(document["text"])
+        doc_id: str = str(document["id"])
+
+        if len(doc_text) == 0:
+            return []
+        annotations = document["annotations"]
+        relations = document["relations"]
+
+        if self.config.general.lowercase:
+            doc_text = doc_text.lower()
+
+        tokenizer_text_data = self.tokenizer(
+            doc_text, truncation=False)
+
+        doc_token_length = len(tokenizer_text_data["tokens"])
+
+        relation_instances = []
+        ann_ids_from_relations = []
+
+        ann_ids_ents: dict[Any, Any] = {}
+
+        _other_relations_subset = []
+
+        # this section creates 'Other' class relations
+        # based on validated annotations
+        for ent1_idx, ent1_ann in enumerate(annotations):
+            ann_id = ent1_ann["id"]
+            ann_ids_ents[ann_id] = {}
+            ann_ids_ents[ann_id]["cui"] = ent1_ann["cui"]
+            ci1 = self.cdb.cui2info.get(ent1_ann["cui"], None)
+            ann_ids_ents[ann_id]["type_ids"] = list(
+                ci1["type_ids"] if ci1 is not None else [])
+            ann_ids_ents[ann_id]["types"] = [
+                self.cdb.addl_info['type_id2name'].get(tui, '')
+                for tui in ann_ids_ents[ann_id]['type_ids']]
+
+            ent1_types = ann_ids_ents[ann_id]["types"]
+
+            if self.config.general.create_addl_rels:
+                for _, ent2_ann in enumerate(
+                        annotations[ent1_idx + 1:]):
+                    ci2 = self.cdb.cui2info.get(
+                        ent2_ann["cui"], None)
+                    ent2_types = list(
+                        ci2["type_ids"] if ci2 is not None else [])
+
+                    if not (ent1_ann["validated"] and ent2_ann[
+                            "validated"]):
+                        continue
+                    _relation_type = "Other"
+
+                    # create new Other subclass class if enabled
+                    if self.config.general.create_addl_rels_by_type:
+                        _relation_type = (
+                            "Other" + ent1_types[0] + "-" + ent2_types[0])
+
+                    _other_relations_subset.append({
+                        "start_entity": ent1_ann["id"],
+                        "start_entity_cui": ent1_ann["cui"],
+                        "start_entity_value": ent1_ann["value"],
+                        "start_entity_start_idx": ent1_ann["start"],
+                        "start_entity_end_idx": ent1_ann["end"],
+                        "end_entity": ent2_ann["id"],
+                        "end_entity_cui": ent2_ann["cui"],
+                        "end_entity_value": ent2_ann["value"],
+                        "end_entity_start_idx": ent2_ann["start"],
+                        "end_entity_end_idx": ent2_ann["end"],
+                        "relation": _relation_type,
+                        "validated": True
+                    })
+
+        non_rel_sample_size_limit = int(int(
+            self.config.general.addl_rels_max_sample_size) /
+            len(data['projects']))
+
+        if (non_rel_sample_size_limit > 0 and
+                len(_other_relations_subset) > 0):
+            random.shuffle(_other_relations_subset)
+            _other_relations_subset = _other_relations_subset[
+                0:non_rel_sample_size_limit]
+
+        relations.extend(_other_relations_subset)
+
+        for relation in relations:
+            ann_start_start_pos = relation['start_entity_start_idx']
+            ann_start_end_pos = relation["start_entity_end_idx"]
+
+            ann_end_start_pos = relation['end_entity_start_idx']
+            ann_end_end_pos = relation["end_entity_end_idx"]
+
+            start_entity_value = relation['start_entity_value']
+            end_entity_value = relation['end_entity_value']
+
+            start_entity_id = relation['start_entity']
+            end_entity_id = relation['end_entity']
+
+            start_entity_types = ann_ids_ents[start_entity_id]['types']
+            end_entity_types = ann_ids_ents[end_entity_id]['types']
+            start_entity_cui = ann_ids_ents[start_entity_id]['cui']
+            end_entity_cui = ann_ids_ents[end_entity_id]['cui']
+
+            # if somehow the annotations belong to the same relation but make sense in reverse
+            if ann_start_start_pos > ann_end_start_pos:
+                ann_end_start_pos = relation['start_entity_start_idx']
+                ann_end_end_pos = relation['start_entity_end_idx']
+
+                ann_start_start_pos = relation['end_entity_start_idx']
+                ann_start_end_pos = relation['end_entity_end_idx']
+
+                end_entity_value = relation['start_entity_value']
+                start_entity_value = relation['end_entity_value']
+
+                end_entity_cui = ann_ids_ents[start_entity_id]['cui']
+                start_entity_cui = ann_ids_ents[end_entity_id]['cui']
+
+                end_entity_types = ann_ids_ents[start_entity_id]['types']
+                start_entity_types = ann_ids_ents[end_entity_id]['types']
+
+                # switch ids last
+                start_entity_id = relation['end_entity']
+                end_entity_id = relation['start_entity']
+
+            for ent1type, ent2type in enumerate(
+                    self.config.general.relation_type_filter_pairs
+                    ):
+                if (ent1type not in start_entity_types and
+                        ent2type not in end_entity_types):
+                    continue
+
+            ann_ids_from_relations.extend([
+                start_entity_id, end_entity_id])
+            relation_label = relation['relation'].strip()
+
+            try:
+
+                ent1_token_start_pos = [
+                    i for i in range(0, doc_token_length)
+                    if ann_start_start_pos in range(
+                        tokenizer_text_data[
+                            "offset_mapping"][i][0],
+                        tokenizer_text_data[
+                            "offset_mapping"][i][1] + 1)][0]
+
+                ent2_token_start_pos = [
+                    i for i in range(0, doc_token_length)
+                    if ann_end_start_pos in range(
+                        tokenizer_text_data[
+                            "offset_mapping"][i][0],
+                        tokenizer_text_data[
+                            "offset_mapping"][i][1] + 1)][0]
+
+                ent1_token_end_pos = [
+                    i for i in range(0, doc_token_length)
+                    if ann_start_end_pos in range(
+                        tokenizer_text_data[
+                            "offset_mapping"][i][0],
+                        tokenizer_text_data[
+                            "offset_mapping"][i][1] + 1)][0]
+
+                ent2_token_end_pos = [
+                    i for i in range(0, doc_token_length)
+                    if ann_end_end_pos in range(
+                        tokenizer_text_data[
+                            "offset_mapping"][i][0],
+                        tokenizer_text_data[
+                            "offset_mapping"][i][1] + 1)][0]
+                assert ent1_token_start_pos
+                assert ent2_token_start_pos
+                assert ent1_token_end_pos
+                assert ent2_token_end_pos
+            except Exception:
+                logger.info(
+                    "document id: %s failed to process relation",
+                    str(doc_id))
+                continue
+
+            if (start_entity_id != end_entity_id and relation.get(
+                "validated", True) and
+                start_entity_value not in
+                self.tokenizer.hf_tokenizers.all_special_tokens
+                    and end_entity_value not in
+                    self.tokenizer.hf_tokenizers.all_special_tokens):
+                final_relation = self._create_relation_validation(
+                    text=doc_text,
+                    doc_id=doc_id,
+                    tokenized_text_data=tokenizer_text_data,
+                    ent1_start_char_pos=ann_start_start_pos,
+                    ent2_start_char_pos=ann_end_start_pos,
+                    ent1_end_char_pos=ann_start_end_pos,
+                    ent2_end_char_pos=ann_end_end_pos,
+                    ent1_token_start_pos=ent1_token_start_pos,
+                    ent2_token_start_pos=ent2_token_start_pos,
+                    ent1_token_end_pos=ent1_token_end_pos,
+                    ent2_token_end_pos=ent2_token_end_pos,
+                    is_mct_export=True
+                )
+
+                if len(final_relation) > 0:
+                    final_relation[4] = relation_label
+                    final_relation[6] = start_entity_types
+                    final_relation[7] = end_entity_types
+                    final_relation[8] = start_entity_id
+                    final_relation[9] = end_entity_id
+                    final_relation[10] = start_entity_cui
+                    final_relation[11] = end_entity_cui
+
+                    relation_instances.append(final_relation)
+        return relation_instances
+
     def create_relations_from_export(self, data: dict):
         """
             Args:
@@ -613,208 +825,9 @@ class RelData(Dataset):
 
         for project in data["projects"]:
             for _doc_id, document in enumerate(project["documents"]):
-                doc_text: str = str(document["text"])
-                doc_id: str = str(document["id"])
-
-                if len(doc_text) > 0:
-                    annotations = document["annotations"]
-                    relations = document["relations"]
-
-                    if self.config.general.lowercase:
-                        doc_text = doc_text.lower()
-
-                    tokenizer_text_data = self.tokenizer(
-                        doc_text, truncation=False)
-
-                    doc_token_length = len(tokenizer_text_data["tokens"])
-
-                    relation_instances = []
-                    ann_ids_from_relations = []
-
-                    ann_ids_ents: dict[Any, Any] = {}
-
-                    _other_relations_subset = []
-
-                    # this section creates 'Other' class relations
-                    # based on validated annotations
-                    for ent1_idx, ent1_ann in enumerate(annotations):
-                        ann_id = ent1_ann["id"]
-                        ann_ids_ents[ann_id] = {}
-                        ann_ids_ents[ann_id]["cui"] = ent1_ann["cui"]
-                        ci1 = self.cdb.cui2info.get(ent1_ann["cui"], None)
-                        ann_ids_ents[ann_id]["type_ids"] = list(
-                            ci1["type_ids"] if ci1 is not None else [])
-                        ann_ids_ents[ann_id]["types"] = [
-                            self.cdb.addl_info['type_id2name'].get(tui, '')
-                            for tui in ann_ids_ents[ann_id]['type_ids']]
-
-                        ent1_types = ann_ids_ents[ann_id]["types"]
-
-                        if self.config.general.create_addl_rels:
-                            for _, ent2_ann in enumerate(
-                                    annotations[ent1_idx + 1:]):
-                                ci2 = self.cdb.cui2info.get(
-                                    ent2_ann["cui"], None)
-                                ent2_types = list(
-                                    ci2["type_ids"] if ci2 is not None else [])
-
-                                if ent1_ann["validated"] and ent2_ann[
-                                        "validated"]:
-                                    _relation_type = "Other"
-
-                                    # create new Other subclass class if enabled
-                                    if self.config.general.create_addl_rels_by_type:
-                                        _relation_type = "Other" + ent1_types[0] + "-" + ent2_types[0]
-
-                                    _other_relations_subset.append({
-                                        "start_entity": ent1_ann["id"],
-                                        "start_entity_cui": ent1_ann["cui"],
-                                        "start_entity_value": ent1_ann["value"],
-                                        "start_entity_start_idx": ent1_ann["start"],
-                                        "start_entity_end_idx": ent1_ann["end"],
-                                        "end_entity": ent2_ann["id"],
-                                        "end_entity_cui": ent2_ann["cui"],
-                                        "end_entity_value": ent2_ann["value"],
-                                        "end_entity_start_idx": ent2_ann["start"],
-                                        "end_entity_end_idx": ent2_ann["end"],
-                                        "relation": _relation_type,
-                                        "validated": True
-                                    })
-
-                    non_rel_sample_size_limit = int(int(self.config.general.addl_rels_max_sample_size) / len(data['projects']))
-
-                    if non_rel_sample_size_limit > 0 and len(_other_relations_subset) > 0:
-                        random.shuffle(_other_relations_subset)
-                        _other_relations_subset = _other_relations_subset[0:non_rel_sample_size_limit]
-
-                    relations.extend(_other_relations_subset)
-
-                    for relation in relations:
-                        ann_start_start_pos = relation['start_entity_start_idx']
-                        ann_start_end_pos = relation["start_entity_end_idx"]
-
-                        ann_end_start_pos = relation['end_entity_start_idx']
-                        ann_end_end_pos = relation["end_entity_end_idx"]
-
-                        start_entity_value = relation['start_entity_value']
-                        end_entity_value = relation['end_entity_value']
-
-                        start_entity_id = relation['start_entity']
-                        end_entity_id = relation['end_entity']
-
-                        start_entity_types = ann_ids_ents[start_entity_id]['types']
-                        end_entity_types = ann_ids_ents[end_entity_id]['types']
-                        start_entity_cui = ann_ids_ents[start_entity_id]['cui']
-                        end_entity_cui = ann_ids_ents[end_entity_id]['cui']
-
-                        # if somehow the annotations belong to the same relation but make sense in reverse
-                        if ann_start_start_pos > ann_end_start_pos:
-                            ann_end_start_pos = relation['start_entity_start_idx']
-                            ann_end_end_pos = relation['start_entity_end_idx']
-
-                            ann_start_start_pos = relation['end_entity_start_idx']
-                            ann_start_end_pos = relation['end_entity_end_idx']
-
-                            end_entity_value = relation['start_entity_value']
-                            start_entity_value = relation['end_entity_value']
-
-                            end_entity_cui = ann_ids_ents[start_entity_id]['cui']
-                            start_entity_cui = ann_ids_ents[end_entity_id]['cui']
-
-                            end_entity_types = ann_ids_ents[start_entity_id]['types']
-                            start_entity_types = ann_ids_ents[end_entity_id]['types']
-
-                            # switch ids last
-                            start_entity_id = relation['end_entity']
-                            end_entity_id = relation['start_entity']
-
-                        for ent1type, ent2type in enumerate(
-                                self.config.general.relation_type_filter_pairs
-                                ):
-                            if (ent1type not in start_entity_types and
-                                    ent2type not in end_entity_types):
-                                continue
-
-                        ann_ids_from_relations.extend([
-                            start_entity_id, end_entity_id])
-                        relation_label = relation['relation'].strip()
-
-                        try:
-
-                            ent1_token_start_pos = [
-                                i for i in range(0, doc_token_length)
-                                if ann_start_start_pos in range(
-                                    tokenizer_text_data[
-                                        "offset_mapping"][i][0],
-                                    tokenizer_text_data[
-                                        "offset_mapping"][i][1] + 1)][0]
-
-                            ent2_token_start_pos = [
-                                i for i in range(0, doc_token_length)
-                                if ann_end_start_pos in range(
-                                    tokenizer_text_data[
-                                        "offset_mapping"][i][0],
-                                    tokenizer_text_data[
-                                        "offset_mapping"][i][1] + 1)][0]
-
-                            ent1_token_end_pos = [
-                                i for i in range(0, doc_token_length)
-                                if ann_start_end_pos in range(
-                                    tokenizer_text_data[
-                                        "offset_mapping"][i][0],
-                                    tokenizer_text_data[
-                                        "offset_mapping"][i][1] + 1)][0]
-
-                            ent2_token_end_pos = [
-                                i for i in range(0, doc_token_length)
-                                if ann_end_end_pos in range(
-                                    tokenizer_text_data[
-                                        "offset_mapping"][i][0],
-                                    tokenizer_text_data[
-                                        "offset_mapping"][i][1] + 1)][0]
-                            assert ent1_token_start_pos
-                            assert ent2_token_start_pos
-                            assert ent1_token_end_pos
-                            assert ent2_token_end_pos
-                        except Exception:
-                            logger.info(
-                                "document id: %s failed to process relation",
-                                str(doc_id))
-                            continue
-
-                        if (start_entity_id != end_entity_id and relation.get(
-                            "validated", True) and
-                            start_entity_value not in
-                            self.tokenizer.hf_tokenizers.all_special_tokens
-                                and end_entity_value not in
-                                self.tokenizer.hf_tokenizers.all_special_tokens):
-                            final_relation = self._create_relation_validation(
-                                text=doc_text,
-                                doc_id=doc_id,
-                                tokenized_text_data=tokenizer_text_data,
-                                ent1_start_char_pos=ann_start_start_pos,
-                                ent2_start_char_pos=ann_end_start_pos,
-                                ent1_end_char_pos=ann_start_end_pos,
-                                ent2_end_char_pos=ann_end_end_pos,
-                                ent1_token_start_pos=ent1_token_start_pos,
-                                ent2_token_start_pos=ent2_token_start_pos,
-                                ent1_token_end_pos=ent1_token_end_pos,
-                                ent2_token_end_pos=ent2_token_end_pos,
-                                is_mct_export=True
-                            )
-
-                            if len(final_relation) > 0:
-                                final_relation[4] = relation_label
-                                final_relation[6] = start_entity_types
-                                final_relation[7] = end_entity_types
-                                final_relation[8] = start_entity_id
-                                final_relation[9] = end_entity_id
-                                final_relation[10] = start_entity_cui
-                                final_relation[11] = end_entity_cui
-
-                                relation_instances.append(final_relation)
-
-                    output_relations.extend(relation_instances)
+                relation_instances = self._create_relations_for_doc(
+                    document, data)
+                output_relations.extend(relation_instances)
 
         all_relation_labels = [relation[4] for relation in output_relations]
 
