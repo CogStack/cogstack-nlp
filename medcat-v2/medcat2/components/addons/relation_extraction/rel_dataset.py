@@ -1,9 +1,10 @@
 from ast import literal_eval
-from typing import Any, Iterable, Union, Optional
-from torch.utils.data import Dataset
-import logging
-import pandas
+from typing import Any, Iterable, Union, Optional, cast
 import random
+import logging
+
+import pandas
+from torch.utils.data import Dataset
 import torch
 
 from medcat2.cdb import CDB
@@ -12,6 +13,7 @@ from medcat2.config.config_rel_cat import ConfigRelCAT
 from medcat2.components.addons.relation_extraction.tokenizer import (
     BaseTokenizerWrapper)
 from medcat2.tokenizing.tokens import MutableEntity, MutableDocument
+from medcat2.data.mctexport import MedCATTrainerExportDocument
 
 logger = logging.getLogger(__name__)
 
@@ -471,12 +473,11 @@ class RelData(Dataset):
                         ent2_token_end_pos=ent2_token_end_pos,
                         is_spacy_doc=True
                     ))
-        else:
-            return None
+        return None
 
     def _create_base_relations_from_mutable_doc(
             self, doc: MutableDocument, doc_text: str, doc_id: str,
-            tokenized_text_data: Union[dict[str, Any], list],
+            tokenized_text_data: dict[str, Any],
             doc_length_tokens: int, chars_to_exclude: str) -> list[list]:
         _ents = doc.final_ents if len(doc.final_ents) > 0 else doc.all_ents
 
@@ -549,7 +550,8 @@ class RelData(Dataset):
         else:
             doc_text = doc.base.text
 
-        tokenized_text_data = self.tokenizer(doc_text, truncation=False)
+        tokenized_text_data = cast(dict[str, Any],
+                                   self.tokenizer(doc_text, truncation=False))
 
         doc_length_tokens = len(tokenized_text_data["tokens"])
 
@@ -609,7 +611,8 @@ class RelData(Dataset):
         }
 
     def _create_relations_for_doc(
-            self, document: MutableDocument, data: dict,
+            self, document: MedCATTrainerExportDocument,
+            data: dict,
             ) -> list[list]:
         doc_text: str = str(document["text"])
         doc_id: str = str(document["id"])
@@ -617,7 +620,8 @@ class RelData(Dataset):
         if len(doc_text) == 0:
             return []
         annotations = document["annotations"]
-        relations = document["relations"]
+        # these are not defined in the definition
+        relations = document["relations"]  # type: ignore
 
         if self.config.general.lowercase:
             doc_text = doc_text.lower()
