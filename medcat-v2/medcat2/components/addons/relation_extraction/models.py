@@ -125,8 +125,8 @@ class RelExtrBaseModel(BaseModelBluePrint):
 
         self._reinitialize_dense_and_frozen_layers(relcat_config=relcat_config)
 
-        self.log.info("RelCAT model config: %s",
-                      str(self.model_config.hf_model_config))
+        logger.info("RelCAT model config: %s",
+                    str(self.model_config.hf_model_config))
 
     def _reinitialize_dense_and_frozen_layers(
             self, relcat_config: ConfigRelCAT) -> None:

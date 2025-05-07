@@ -579,7 +579,7 @@ class RelData(Dataset):
                     dupe_ent1_ent2_start.append(rel[1])
                     _new_rel_instances.append(rel)
                 else:
-                    self.log.debug("removing duplicate relation" + str(rel[1]))
+                    logger.debug("removing duplicate relation" + str(rel[1]))
 
         # cleanup
         relation_instances = _new_rel_instances

@@ -335,7 +335,7 @@ class RelCAT:
             self.component.scheduler, load_best=False, path=checkpoint_path,
             relcat_config=rc_cnf)
 
-        self.log.info("Starting training process...")
+        logger.info("Starting training process...")
 
         losses_per_epoch, accuracy_per_epoch, f1_per_epoch = load_results(
             path=checkpoint_path)

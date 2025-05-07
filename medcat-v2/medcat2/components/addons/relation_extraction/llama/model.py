@@ -70,7 +70,7 @@ class RelExtrLlamaModel(RelExtrBaseModel):
         # for pooled output
         self.llama_pooler = LlamaPooler(self.model_config.hidden_size)
 
-        self.log.info("RelCAT LlamaConfig: " + str(self.model_config))
+        logger.info("RelCAT LlamaConfig: " + str(self.model_config))
 
     def output2logits(self, pooled_output: torch.Tensor,
                       sequence_output: torch.Tensor, input_ids: torch.Tensor,
