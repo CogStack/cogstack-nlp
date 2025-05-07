@@ -822,7 +822,7 @@ class RelData(Dataset):
                     MedCAT Export data.
 
             Returns:
-                dict : {  
+                dict : {
                     # NOTE: see create_base_relations_from_doc/csv
                             for data columns
                     "output_relations": relation_instances,
