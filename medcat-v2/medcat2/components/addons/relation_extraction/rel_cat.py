@@ -366,133 +366,155 @@ class RelCAT:
         _epochs = self.epoch + rc_cnf.train.nepochs
 
         for epoch in range(0, _epochs):
-            start_time = datetime.now().time()
-            total_loss = 0.0
+            epoch_losses, epoch_precision, epoch_f1 = self._train_epoch(
+                epoch, gradient_acc_steps, max_grad_norm, train_dataset_size,
+                train_dataloader, test_dataloader, criterion, _epochs,
+                checkpoint_path)
+            losses_per_epoch.extend(epoch_losses)
+            accuracy_per_epoch.extend(epoch_precision)
+            f1_per_epoch.extend(epoch_f1)
 
-            loss_per_batch = []
-            accuracy_per_batch = []
+    def _train_epoch(self, epoch: int,
+                     gradient_acc_steps: int,
+                     max_grad_norm: float,
+                     train_dataset_size: int,
+                     train_dataloader: DataLoader,
+                     test_dataloader: DataLoader,
+                     criterion: nn.CrossEntropyLoss,
+                     _epochs: int,
+                     checkpoint_path: str) -> tuple[list, list, list]:
+        rc_cnf = self.component.relcat_config
+        start_time = datetime.now().time()
+        total_loss = 0.0
 
-            logger.info(
-                "Total epochs on this model: %d | currently training "
-                "epoch %d", _epochs, epoch)
+        loss_per_batch = []
+        accuracy_per_batch = []
 
-            pbar = tqdm(total=train_dataset_size)
+        logger.info(
+            "Total epochs on this model: %d | currently training "
+            "epoch %d", _epochs, epoch)
 
-            for i, data in enumerate(train_dataloader, 0):
-                self.component.model.train()
-                self.component.model.zero_grad()
+        pbar = tqdm(total=train_dataset_size)
 
-                current_batch_size = len(data[0])
-                token_ids, e1_e2_start, labels, _, _ = data
+        for i, data in enumerate(train_dataloader, 0):
+            self.component.model.train()
+            self.component.model.zero_grad()
 
-                attention_mask = (
-                    token_ids != self.component.pad_id).float().to(self.device)
+            current_batch_size = len(data[0])
+            token_ids, e1_e2_start, labels, _, _ = data
 
-                token_type_ids = torch.zeros(
-                    (token_ids.shape[0], token_ids.shape[1])).long().to(
-                        self.device)
+            attention_mask = (
+                token_ids != self.component.pad_id).float().to(self.device)
 
-                labels = labels.to(self.device)
+            token_type_ids = torch.zeros(
+                (token_ids.shape[0], token_ids.shape[1])).long().to(
+                    self.device)
 
-                model_output, classification_logits = self.component.model(
-                    input_ids=token_ids,
-                    token_type_ids=token_type_ids,
-                    attention_mask=attention_mask,
-                    e1_e2_start=e1_e2_start
-                )
+            labels = labels.to(self.device)
 
-                batch_loss = criterion(
-                    classification_logits.view(
-                        -1, rc_cnf.train.nclasses).to(self.device),
-                    labels.squeeze(1))
+            model_output, classification_logits = self.component.model(
+                input_ids=token_ids,
+                token_type_ids=token_type_ids,
+                attention_mask=attention_mask,
+                e1_e2_start=e1_e2_start
+            )
 
-                batch_loss.backward()
-                batch_loss = batch_loss / gradient_acc_steps
+            batch_loss = criterion(
+                classification_logits.view(
+                    -1, rc_cnf.train.nclasses).to(self.device),
+                labels.squeeze(1))
 
-                total_loss += batch_loss.item() / current_batch_size
+            batch_loss.backward()
+            batch_loss = batch_loss / gradient_acc_steps
 
-                (batch_acc, _, batch_precision, batch_f1,
-                 _, _, batch_stats_per_label) = self.evaluate_(
-                    classification_logits, labels, ignore_idx=-1)
+            total_loss += batch_loss.item() / current_batch_size
 
-                loss_per_batch.append(batch_loss / current_batch_size)
-                accuracy_per_batch.append(batch_acc)
+            (batch_acc, _, batch_precision, batch_f1,
+                _, _, batch_stats_per_label) = self.evaluate_(
+                classification_logits, labels, ignore_idx=-1)
 
-                torch.nn.utils.clip_grad_norm_(
-                    self.component.model.parameters(), max_grad_norm)
+            loss_per_batch.append(batch_loss / current_batch_size)
+            accuracy_per_batch.append(batch_acc)
 
-                if (i % gradient_acc_steps) == 0:
-                    self.component.optimizer.step()
-                    self.component.scheduler.step()
-                if ((i + 1) % current_batch_size == 0):
-                    logger.debug(
-                        "[Epoch: %d, loss per batch, accuracy per batch: %.3f,"
-                        " %.3f, average total loss %.3f , total loss %.3f]",
-                        epoch, loss_per_batch[-1], accuracy_per_batch[-1],
-                        total_loss / (i + 1), total_loss)
+            torch.nn.utils.clip_grad_norm_(
+                self.component.model.parameters(), max_grad_norm)
 
-                pbar.update(current_batch_size)
+            if (i % gradient_acc_steps) == 0:
+                self.component.optimizer.step()
+                self.component.scheduler.step()
+            if ((i + 1) % current_batch_size == 0):
+                logger.debug(
+                    "[Epoch: %d, loss per batch, accuracy per batch: %.3f,"
+                    " %.3f, average total loss %.3f , total loss %.3f]",
+                    epoch, loss_per_batch[-1], accuracy_per_batch[-1],
+                    total_loss / (i + 1), total_loss)
 
-            pbar.close()
+            pbar.update(current_batch_size)
 
-            if len(loss_per_batch) > 0:
-                losses_per_epoch.append(
-                    sum(loss_per_batch) / len(loss_per_batch))
-                logger.info("Losses at Epoch %d: %.5f" %
-                            (epoch, losses_per_epoch[-1]))
+        pbar.close()
 
-            if len(accuracy_per_batch) > 0:
-                accuracy_per_epoch.append(
-                    sum(accuracy_per_batch) / len(accuracy_per_batch))
-                logger.info("Train accuracy at Epoch %d: %.5f" %
-                            (epoch, accuracy_per_epoch[-1]))
+        losses_per_epoch = []
+        accuracy_per_epoch = []
+        f1_per_epoch = []
+        if len(loss_per_batch) > 0:
+            losses_per_epoch.append(
+                sum(loss_per_batch) / len(loss_per_batch))
+            logger.info("Losses at Epoch %d: %.5f" %
+                        (epoch, losses_per_epoch[-1]))
 
-            total_loss = total_loss / (i + 1)
+        if len(accuracy_per_batch) > 0:
+            accuracy_per_epoch.append(
+                sum(accuracy_per_batch) / len(accuracy_per_batch))
+            logger.info("Train accuracy at Epoch %d: %.5f" %
+                        (epoch, accuracy_per_epoch[-1]))
 
-            end_time = datetime.now().time()
+        total_loss = total_loss / (i + 1)
 
-            logger.info(
-                "========================"
-                " TRAIN SET TEST RESULTS "
-                "========================")
-            _ = self.evaluate_results(train_dataloader, self.component.pad_id)
+        end_time = datetime.now().time()
 
-            logger.info(
-                "========================"
-                " TEST SET TEST RESULTS "
-                "========================")
-            results = self.evaluate_results(
-                test_dataloader, self.component.pad_id)
+        logger.info(
+            "========================"
+            " TRAIN SET TEST RESULTS "
+            "========================")
+        _ = self.evaluate_results(train_dataloader, self.component.pad_id)
 
-            f1_per_epoch.append(results['f1'])
+        logger.info(
+            "========================"
+            " TEST SET TEST RESULTS "
+            "========================")
+        results = self.evaluate_results(
+            test_dataloader, self.component.pad_id)
 
-            logger.info("Epoch finished, took %s seconds",
-                        str(datetime.combine(date.today(), end_time)
-                            - datetime.combine(date.today(), start_time)))
+        f1_per_epoch.append(results['f1'])
 
-            self.epoch += 1
+        logger.info("Epoch finished, took %s seconds",
+                    str(datetime.combine(date.today(), end_time)
+                        - datetime.combine(date.today(), start_time)))
 
-            if len(f1_per_epoch) > 0 and f1_per_epoch[-1] > self.best_f1:
-                self.best_f1 = f1_per_epoch[-1]
-                save_state(
-                    self.component.model, self.component.optimizer,
-                    self.component.scheduler, self.epoch, self.best_f1,
-                    checkpoint_path, model_name=rc_cnf.general.model_name,
-                    task=self.task, is_checkpoint=False)
+        self.epoch += 1
 
-            if (epoch % 1) == 0:
-                save_results(
-                    {
-                        "losses_per_epoch": losses_per_epoch,
-                        "accuracy_per_epoch": accuracy_per_epoch,
-                        "f1_per_epoch": f1_per_epoch,
-                        "epoch": epoch
-                    }, file_prefix="train", path=checkpoint_path)
-                save_state(self.component.model, self.component.optimizer,
-                           self.component.scheduler, self.epoch, self.best_f1,
-                           checkpoint_path,
-                           model_name=rc_cnf.general.model_name,
-                           task=self.task, is_checkpoint=True)
+        if len(f1_per_epoch) > 0 and f1_per_epoch[-1] > self.best_f1:
+            self.best_f1 = f1_per_epoch[-1]
+            save_state(
+                self.component.model, self.component.optimizer,
+                self.component.scheduler, self.epoch, self.best_f1,
+                checkpoint_path, model_name=rc_cnf.general.model_name,
+                task=self.task, is_checkpoint=False)
+
+        if (epoch % 1) == 0:
+            save_results(
+                {
+                    "losses_per_epoch": losses_per_epoch,
+                    "accuracy_per_epoch": accuracy_per_epoch,
+                    "f1_per_epoch": f1_per_epoch,
+                    "epoch": epoch
+                }, file_prefix="train", path=checkpoint_path)
+            save_state(self.component.model, self.component.optimizer,
+                       self.component.scheduler, self.epoch, self.best_f1,
+                       checkpoint_path,
+                       model_name=rc_cnf.general.model_name,
+                       task=self.task, is_checkpoint=True)
+        return losses_per_epoch, accuracy_per_epoch, f1_per_epoch
 
     def evaluate_(self, output_logits, labels, ignore_idx):
         # ignore index (padding) when calculating accuracy
