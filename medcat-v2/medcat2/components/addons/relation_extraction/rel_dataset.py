@@ -373,6 +373,126 @@ class RelData(Dataset):
                     en1_start, en1_end, en2_start, en2_end]
         return []
 
+    def _create_base_relations_from_mutable_doc(
+            self, doc: MutableDocument, doc_text: str, doc_id: str,
+            tokenized_text_data: Union[dict[str, Any], list],
+            doc_length_tokens: int, chars_to_exclude: str) -> list[list]:
+        _ents = doc.final_ents if len(doc.final_ents) > 0 else doc.all_ents
+
+        relation_instances: list[list] = []
+
+        # last two can be a pair
+        for ent1_idx in range(0, len(_ents) - 2):
+            ent1_token = _ents[ent1_idx]
+
+            if ((bt := ent1_token.base.text) not in chars_to_exclude and
+                    bt not in
+                    self.tokenizer.hf_tokenizers.all_special_tokens):
+                ci1 = self.cdb.cui2info.get(ent1_token.cui, None)
+                ent1_type_id = list(
+                    ci1["type_ids"] if ci1 is not None else [])
+                ent1_types = [
+                    self.cdb.addl_info["type_id2name"].get(tui, '')
+                    for tui in ent1_type_id]
+
+                ent1_start_char_pos = ent1_token.base.start_char_index
+                ent1_end_char_pos = ent1_token.base.end_char_index
+
+                ent1_token_start_pos = [
+                    i for i in range(0, doc_length_tokens)
+                    if ent1_start_char_pos in range(
+                        tokenized_text_data["offset_mapping"][i][0],
+                        tokenized_text_data["offset_mapping"][i][1] + 1)
+                        ][0]
+                ent1_token_end_pos = [
+                    i for i in range(0, doc_length_tokens)
+                    if ent1_end_char_pos in range(
+                        tokenized_text_data["offset_mapping"][i][0],
+                        tokenized_text_data["offset_mapping"][i][1] + 1)
+                        ][0]
+
+                for ent2_idx in range((ent1_idx + 1), len(_ents) - 1):
+                    ent2_token = _ents[ent2_idx]
+
+                    tmp_ent1 = ent1_token
+
+                    if (ent1_token.base.start_char_index >
+                            ent2_token.base.start_char_index):
+                        tmp_ent1 = ent1_token
+                        ent1_token = ent2_token
+                        ent2_token = tmp_ent1
+
+                    tkn1_str = str(ent1_token)
+                    tkn2_str = str(ent2_token)
+                    if (tkn2_str not in chars_to_exclude and
+                        tkn2_str not in
+                        self.tokenizer.hf_tokenizers.all_special_tokens and
+                            tkn1_str.strip() != tkn2_str.strip()):
+
+                        ci2 = self.cdb.cui2info.get(ent2_token.cui, None)
+                        ent2_type_id = list(
+                            ci2["type_ids"] if ci2 is not None else [])
+                        ent2_types = [
+                            self.cdb.addl_info['type_id2name'].get(tui, '')
+                            for tui in ent2_type_id]
+
+                        ent2_start_char_pos = (
+                            ent2_token.base.start_char_index)
+                        ent2_end_char_pos = ent2_token.base.end_char_index
+
+                        ent2_token_start_pos = [
+                            i for i in range(0, doc_length_tokens) if
+                            ent2_start_char_pos in range(
+                                tokenized_text_data["offset_mapping"][i][0],
+                                tokenized_text_data["offset_mapping"][i][1] + 1)][0]
+
+                        ent2_token_end_pos = [
+                            i for i in range(0, doc_length_tokens) if
+                            ent2_end_char_pos in range(
+                                tokenized_text_data["offset_mapping"][i][0],
+                                tokenized_text_data["offset_mapping"][i][1] + 1)][0]
+
+                        if self.config.general.relation_type_filter_pairs:
+                            for rel_pair in self.config.general.relation_type_filter_pairs:
+                                if not (rel_pair[0] in ent1_types and
+                                        rel_pair[1] in ent2_types):
+                                    continue
+                                relation_instances.append(
+                                    self._create_relation_validation(
+                                        text=doc_text,
+                                        doc_id=doc_id,
+                                        tokenized_text_data=tokenized_text_data,
+                                        ent1_start_char_pos=ent1_start_char_pos,
+                                        ent2_start_char_pos=ent2_start_char_pos,
+                                        ent1_end_char_pos=ent1_end_char_pos,
+                                        ent2_end_char_pos=ent2_end_char_pos,
+                                        ent1_token_start_pos=ent1_token_start_pos,
+                                        ent2_token_start_pos=ent2_token_start_pos,
+                                        ent1_token_end_pos=ent1_token_end_pos,
+                                        ent2_token_end_pos=ent2_token_end_pos,
+                                        is_spacy_doc=True
+                                    ))
+                        else:
+                            relation_instances.append(
+                                self._create_relation_validation(
+                                    text=doc_text,
+                                    doc_id=doc_id,
+                                    tokenized_text_data=tokenized_text_data,
+                                    ent1_start_char_pos=ent1_start_char_pos,
+                                    ent2_start_char_pos=ent2_start_char_pos,
+                                    ent1_end_char_pos=ent1_end_char_pos,
+                                    ent2_end_char_pos=ent2_end_char_pos,
+                                    ent1_token_start_pos=ent1_token_start_pos,
+                                    ent2_token_start_pos=ent2_token_start_pos,
+                                    ent1_token_end_pos=ent1_token_end_pos,
+                                    ent2_token_end_pos=ent2_token_end_pos,
+                                    is_spacy_doc=True
+                                ))
+
+                    # restore ent1
+                    ent1_token = tmp_ent1
+        return relation_instances
+
     def create_base_relations_from_doc(
             self, doc: Union[MutableDocument, str], doc_id: str,
             ent1_ent2_tokens_start_pos: Union[list, tuple] = (-1, -1)) -> dict:
@@ -457,119 +577,10 @@ class RelData(Dataset):
                 ent2_token_end_pos=ent2_token_end_pos
                 ))
         elif not isinstance(doc, str):
-            _ents = doc.final_ents if len(doc.final_ents) > 0 else doc.all_ents
-
-            # last two can be a pair
-            for ent1_idx in range(0, len(_ents) - 2):
-                ent1_token = _ents[ent1_idx]
-
-                if ((bt := ent1_token.base.text) not in chars_to_exclude and
-                        bt not in
-                        self.tokenizer.hf_tokenizers.all_special_tokens):
-                    ci1 = self.cdb.cui2info.get(ent1_token.cui, None)
-                    ent1_type_id = list(
-                        ci1["type_ids"] if ci1 is not None else [])
-                    ent1_types = [
-                        self.cdb.addl_info["type_id2name"].get(tui, '')
-                        for tui in ent1_type_id]
-
-                    ent1_start_char_pos = ent1_token.base.start_char_index
-                    ent1_end_char_pos = ent1_token.base.end_char_index
-
-                    ent1_token_start_pos = [
-                        i for i in range(0, doc_length_tokens)
-                        if ent1_start_char_pos in range(
-                            tokenized_text_data["offset_mapping"][i][0],
-                            tokenized_text_data["offset_mapping"][i][1] + 1)
-                            ][0]
-                    ent1_token_end_pos = [
-                        i for i in range(0, doc_length_tokens)
-                        if ent1_end_char_pos in range(
-                            tokenized_text_data["offset_mapping"][i][0],
-                            tokenized_text_data["offset_mapping"][i][1] + 1)
-                            ][0]
-
-                    for ent2_idx in range((ent1_idx + 1), len(_ents) - 1):
-                        ent2_token = _ents[ent2_idx]
-
-                        tmp_ent1 = ent1_token
-
-                        if (ent1_token.base.start_char_index >
-                                ent2_token.base.start_char_index):
-                            tmp_ent1 = ent1_token
-                            ent1_token = ent2_token
-                            ent2_token = tmp_ent1
-
-                        if (str(ent2_token) not in chars_to_exclude and
-                                str(ent2_token) not in self.tokenizer.hf_tokenizers.all_special_tokens and
-                                str(ent1_token).strip() != str(ent2_token).strip()):
-
-                            ci2 = self.cdb.cui2info.get(ent2_token.cui, None)
-                            ent2_type_id = list(
-                                ci2["type_ids"] if ci2 is not None else [])
-                            ent2_types = [
-                                self.cdb.addl_info['type_id2name'].get(tui, '')
-                                for tui in ent2_type_id]
-
-                            ent2_start_char_pos = (
-                                ent2_token.base.start_char_index)
-                            ent2_end_char_pos = ent2_token.base.end_char_index
-
-                            ent2_token_start_pos = [
-                                i for i in range(0, doc_length_tokens) if
-                                ent2_start_char_pos in range(
-                                    tokenized_text_data[
-                                        "offset_mapping"][i][0],
-                                    tokenized_text_data[
-                                        "offset_mapping"][i][1] + 1)][0]
-
-                            ent2_token_end_pos = [
-                                i for i in range(0, doc_length_tokens) if
-                                ent2_end_char_pos in range(
-                                    tokenized_text_data[
-                                        "offset_mapping"][i][0],
-                                    tokenized_text_data[
-                                        "offset_mapping"][i][1] + 1)][0]
-
-                            if self.config.general.relation_type_filter_pairs:
-                                for rel_pair in self.config.general.relation_type_filter_pairs:
-                                    if not (rel_pair[0] in ent1_types and
-                                            rel_pair[1] in ent2_types):
-                                        continue
-                                    relation_instances.append(
-                                        self._create_relation_validation(
-                                            text=doc_text,
-                                            doc_id=doc_id,
-                                            tokenized_text_data=tokenized_text_data,
-                                            ent1_start_char_pos=ent1_start_char_pos,
-                                            ent2_start_char_pos=ent2_start_char_pos,
-                                            ent1_end_char_pos=ent1_end_char_pos,
-                                            ent2_end_char_pos=ent2_end_char_pos,
-                                            ent1_token_start_pos=ent1_token_start_pos,
-                                            ent2_token_start_pos=ent2_token_start_pos,
-                                            ent1_token_end_pos=ent1_token_end_pos,
-                                            ent2_token_end_pos=ent2_token_end_pos,
-                                            is_spacy_doc=True
-                                        ))
-                            else:
-                                relation_instances.append(
-                                    self._create_relation_validation(
-                                        text=doc_text,
-                                        doc_id=doc_id,
-                                        tokenized_text_data=tokenized_text_data,
-                                        ent1_start_char_pos=ent1_start_char_pos,
-                                        ent2_start_char_pos=ent2_start_char_pos,
-                                        ent1_end_char_pos=ent1_end_char_pos,
-                                        ent2_end_char_pos=ent2_end_char_pos,
-                                        ent1_token_start_pos=ent1_token_start_pos,
-                                        ent2_token_start_pos=ent2_token_start_pos,
-                                        ent1_token_end_pos=ent1_token_end_pos,
-                                        ent2_token_end_pos=ent2_token_end_pos,
-                                        is_spacy_doc=True
-                                    ))
-
-                        # restore ent1
-                        ent1_token = tmp_ent1
+            relation_instances.extend(
+                self._create_base_relations_from_mutable_doc(
+                    doc, doc_text, doc_id, tokenized_text_data,
+                    doc_length_tokens, chars_to_exclude))
 
         # remove duplicates by using ent1_ent2_start_pos
         dupe_ent1_ent2_start = []
@@ -760,11 +771,11 @@ class RelData(Dataset):
                 assert ent2_token_start_pos
                 assert ent1_token_end_pos
                 assert ent2_token_end_pos
-            except Exception:
+            except Exception as e:
                 logger.info(
                     "document id: %s failed to process relation",
-                    str(doc_id))
-                continue
+                    str(doc_id), exc_info=e)
+                raise e
 
             if (start_entity_id != end_entity_id and relation.get(
                 "validated", True) and
