@@ -167,9 +167,9 @@ class RelData(Dataset):
         output_relations = df.values.tolist()
 
         logger.info(
-            "CSV dataset | No. of relations detected: %s "
-            "| from : %s | nclasses: %s | idx2label: %s",
-            str(len(output_relations)), csv_path, str(nclasses),
+            "CSV dataset | No. of relations detected: %d "
+            "| from : %s | nclasses: %d | idx2label: %s",
+            len(output_relations), csv_path, nclasses,
             str(idx2label))
 
         logger.info("Samples per class: ")
@@ -178,8 +178,8 @@ class RelData(Dataset):
             for output_relation in output_relations:
                 if idx2label[label_num] == output_relation[4]:
                     sample_count += 1
-            logger.info(" label: %s | samples: %s",
-                        idx2label[label_num], str(sample_count))
+            logger.info(" label: %s | samples: %d",
+                        idx2label[label_num], sample_count)
 
         # replace/update label_id with actual detected label number
         for idx in range(len(output_relations)):
@@ -824,8 +824,8 @@ class RelData(Dataset):
             output_relations[idx][5] = int(
                 labels2idx[output_relations[idx][4]])
 
-        logger.info("MCT export dataset | nclasses: %s | idx2label: ",
-                    str(nclasses), str(idx2label))
+        logger.info("MCT export dataset | nclasses: %d | idx2label: %s",
+                    nclasses, str(idx2label))
         logger.info("Samples per class: ")
 
         logger.error(str(idx2label))
@@ -836,7 +836,7 @@ class RelData(Dataset):
                 if idx2label[label_num] == output_relation[4]:
                     sample_count += 1
             logger.info(
-                " label: %s | samples: ",
+                " label: %s | samples: %s",
                 idx2label[label_num], str(sample_count))
 
         return {"output_relations": output_relations, "nclasses": nclasses,
