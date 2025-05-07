@@ -27,7 +27,7 @@ from medcat2.components.addons.relation_extraction.ml_utils import (
     load_results, load_state, save_results, save_state,
     split_list_train_test_by_class)
 from medcat2.components.addons.relation_extraction.rel_dataset import RelData
-from medcat2.tokenizing.tokenizers import BaseTokenizer
+from medcat2.tokenizing.tokenizers import BaseTokenizer, create_tokenizer
 from medcat2.tokenizing.tokens import MutableDocument
 
 
@@ -151,6 +151,7 @@ class RelCAT:
             component.relcat_config.general.device != "cpu" else "cpu")
 
         rel_cat = RelCAT(
+            create_tokenizer(cdb.config.general.nlp.provider),
             cdb=cdb, config=component.relcat_config, task=component.task)
         rel_cat.device = device
         rel_cat.component = component
