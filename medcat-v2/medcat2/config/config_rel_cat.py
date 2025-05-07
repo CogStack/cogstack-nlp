@@ -228,8 +228,8 @@ class ConfigRelCAT(SerialisableBaseModel):
         """
         config = cls()
         if os.path.exists(load_path):
-            if "config.json" not in load_path:
-                load_path = os.path.join(load_path, "config.json")
+            if os.path.sep + "config" not in load_path:
+                load_path = os.path.join(load_path, "config")
             config: ConfigRelCAT = deserialise(load_path)  # type: ignore
             logging.info("Loaded config.json")
 
