@@ -2,7 +2,7 @@ import os
 import logging
 from typing import Any, Union, Optional
 
-from medcat2.config.config import SerialisableBaseModel
+from medcat2.config.config import SerialisableBaseModel, ComponentConfig
 from medcat2.storage.serialisers import deserialise
 
 
@@ -206,7 +206,7 @@ class Train(SerialisableBaseModel):
         validate_assignment = True
 
 
-class ConfigRelCAT(SerialisableBaseModel):
+class ConfigRelCAT(ComponentConfig):
     """The RelCAT part of the config"""
     general: General = General()
     model: Model = Model()
