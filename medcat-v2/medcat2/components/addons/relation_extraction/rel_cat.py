@@ -13,6 +13,7 @@ from typing import Iterable, Iterator, cast
 from torch.utils.data import DataLoader, Sampler
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import MultiStepLR
+import numpy
 
 from medcat2.cdb import CDB
 from medcat2.config import Config
@@ -104,11 +105,9 @@ class RelCAT:
     output_key = 'rel_'
 
     def __init__(self, base_tokenizer: BaseTokenizer,
-                 just_tokenizer: BaseTokenizer,
                  cdb: CDB, config: ConfigRelCAT = ConfigRelCAT(),
                  task: str = "train", init_model: bool = False):
         self.base_tokenizer = base_tokenizer
-        self.just_tokenizer = just_tokenizer
         self.component = RelExtrBaseComponent()
         self.task: str = task
         self.checkpoint_path: str = "./"
@@ -786,7 +785,7 @@ class RelCAT:
         doc_cls.register_addon_path('ents', default=[], force=True)
         doc_cls.register_addon_path('relations', default=[], force=True)
         # NOTE: This runs not an empty language, but the specified one
-        doc = self.just_tokenizer(text)
+        doc = self.base_tokenizer(text)
 
         for ann in annotations:
             tkn_idx = []
