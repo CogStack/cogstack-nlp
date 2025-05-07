@@ -4,10 +4,12 @@ from collections import Counter
 
 
 class MedCATTrainerExportAnnotation(TypedDict):
+    id: str
     start: int
     end: int
     cui: str
     value: str
+    validated: Optional[bool]
 
 
 class MedCATTrainerExportDocument(TypedDict):
