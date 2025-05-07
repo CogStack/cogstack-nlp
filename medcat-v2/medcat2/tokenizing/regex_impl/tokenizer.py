@@ -239,6 +239,9 @@ class Document:
         else:
             raise ValueError(f"Unknown index: {index}")
 
+    def __len__(self) -> int:
+        return len(self._tokens)
+
     def get_tokens(self, start_index: int, end_index: int
                    ) -> list[MutableToken]:
         tkns = []
