@@ -696,7 +696,8 @@ class RelData(Dataset):
             start_entity_cui = ann_ids_ents[start_entity_id]['cui']
             end_entity_cui = ann_ids_ents[end_entity_id]['cui']
 
-            # if somehow the annotations belong to the same relation but make sense in reverse
+            # if somehow the annotations belong to the same relation
+            # but make sense in reverse
             if ann_start_start_pos > ann_end_start_pos:
                 ann_end_start_pos = relation['start_entity_start_idx']
                 ann_end_end_pos = relation['start_entity_end_idx']
@@ -722,6 +723,8 @@ class RelData(Dataset):
                     ):
                 if (ent1type not in start_entity_types and
                         ent2type not in end_entity_types):
+                    # TODO: Does this make any sense? I don't think so...
+                    #       It's probably meant to continue on the wider loop
                     continue
 
             ann_ids_from_relations.extend([
@@ -733,34 +736,26 @@ class RelData(Dataset):
                 ent1_token_start_pos = [
                     i for i in range(0, doc_token_length)
                     if ann_start_start_pos in range(
-                        tokenizer_text_data[
-                            "offset_mapping"][i][0],
-                        tokenizer_text_data[
-                            "offset_mapping"][i][1] + 1)][0]
+                        tokenizer_text_data["offset_mapping"][i][0],
+                        tokenizer_text_data["offset_mapping"][i][1] + 1)][0]
 
                 ent2_token_start_pos = [
                     i for i in range(0, doc_token_length)
                     if ann_end_start_pos in range(
-                        tokenizer_text_data[
-                            "offset_mapping"][i][0],
-                        tokenizer_text_data[
-                            "offset_mapping"][i][1] + 1)][0]
+                        tokenizer_text_data["offset_mapping"][i][0],
+                        tokenizer_text_data["offset_mapping"][i][1] + 1)][0]
 
                 ent1_token_end_pos = [
                     i for i in range(0, doc_token_length)
                     if ann_start_end_pos in range(
-                        tokenizer_text_data[
-                            "offset_mapping"][i][0],
-                        tokenizer_text_data[
-                            "offset_mapping"][i][1] + 1)][0]
+                        tokenizer_text_data["offset_mapping"][i][0],
+                        tokenizer_text_data["offset_mapping"][i][1] + 1)][0]
 
                 ent2_token_end_pos = [
                     i for i in range(0, doc_token_length)
                     if ann_end_end_pos in range(
-                        tokenizer_text_data[
-                            "offset_mapping"][i][0],
-                        tokenizer_text_data[
-                            "offset_mapping"][i][1] + 1)][0]
+                        tokenizer_text_data["offset_mapping"][i][0],
+                        tokenizer_text_data["offset_mapping"][i][1] + 1)][0]
                 assert ent1_token_start_pos
                 assert ent2_token_start_pos
                 assert ent1_token_end_pos
