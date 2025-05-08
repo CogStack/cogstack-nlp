@@ -177,8 +177,8 @@ class RelExtrBaseModel(BaseModelBluePrint):
 
         # NOTE: the wrapping of the method means that mypy can't
         #       properly understand it
-        self.hf_model = self.hf_model.to(  # type: ignore
-            self.relcat_config.general.device)
+        self.hf_model = self.hf_model.to(
+            self.relcat_config.general.device)  # type: ignore
 
         model_output = self.hf_model(
             input_ids=input_ids, attention_mask=attention_mask,
