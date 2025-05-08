@@ -154,7 +154,12 @@ def get_config_from_nested_dict(old_data: dict) -> Config:
     # v1 models always used spacy
     # but we now default to regex
     cnf.general.nlp.provider = 'spacy'
-    return _make_changes(cnf, old_data)
+    cnf = _make_changes(cnf, old_data)
+    if cnf.general.nlp.modelname == 'spacy_model':
+        logger.info("Fixing spacy model. "
+                    "Moving from 'spacy_model' to 'en_core_web_md'!")
+        cnf.general.nlp.modelname = 'en_core_web_md'
+    return cnf
 
 
 def get_config_from_old(path: str) -> Config:

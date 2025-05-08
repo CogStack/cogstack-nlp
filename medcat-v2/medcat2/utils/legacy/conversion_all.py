@@ -13,6 +13,7 @@ from medcat2.utils.legacy.convert_config import get_config_from_old
 from medcat2.utils.legacy.convert_vocab import get_vocab_from_old
 from medcat2.utils.legacy.convert_meta_cat import get_meta_cat_from_old
 from medcat2.utils.legacy.convert_deid import get_trf_ner_from_old
+from medcat2.utils.legacy.helpers import fix_subnames
 
 
 logger = logging.getLogger(__name__)
@@ -77,6 +78,7 @@ class Converter:
         else:
             config = cdb.config
         cat = CAT(cdb, vocab, config)
+        fix_subnames(cat)
         # MetaCATs
         meta_cats = [
             get_meta_cat_from_old(

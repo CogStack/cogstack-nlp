@@ -76,7 +76,9 @@ class Pipeline:
     """
 
     def __init__(self, cdb: CDB, vocab: Optional[Vocab],
-                 model_load_path: Optional[str]):
+                 model_load_path: Optional[str],
+                 # NOTE: upon reload, old pipe can be useful
+                 old_pipe: Optional['Pipeline'] = None):
         # NOTE: this only sets the default arguments if the
         #       default tokenizer is used
         set_tokenizer_defaults(cdb.config)
@@ -89,7 +91,7 @@ class Pipeline:
         set_addon_defaults(cdb, vocab, self._tokenizer, model_load_path)
         # NOTE: this only sets the default arguments if the
         #       a specific default component is used
-        self._init_components(model_load_path)
+        self._init_components(model_load_path, old_pipe)
 
     @property
     def tokenizer(self) -> BaseTokenizer:
@@ -178,7 +180,8 @@ class Pipeline:
                 f"'{comp.get_type().name}' instead.")
         return comp
 
-    def _init_components(self, model_load_path: Optional[str]) -> None:
+    def _init_components(self, model_load_path: Optional[str],
+                         old_pipe: Optional['Pipeline']) -> None:
         (loaded_core_component_paths,
          loaded_addon_component_paths) = self._get_loaded_components_paths(
              model_load_path)
@@ -190,7 +193,10 @@ class Pipeline:
                 comp = self._init_component(CoreComponentType[cct_name])
             self._components.append(comp)
         for addon_cnf in self.config.components.addons:
-            addon = self._init_addon(addon_cnf, loaded_addon_component_paths)
+            addon = self._init_addon(
+                addon_cnf, loaded_addon_component_paths, old_pipe)
+            # mark as not dirty at loat / init time
+            addon.config.mark_clean()
             self._addons.append(addon)
 
     def _get_loaded_addon_path(
@@ -224,8 +230,22 @@ class Pipeline:
 
     def _init_addon(
             self, cnf: ComponentConfig,
-            loaded_addon_component_paths: dict[tuple[str, str], str]
+            loaded_addon_component_paths: dict[tuple[str, str], str],
+            old_pipe: Optional['Pipeline'],
             ) -> AddonComponent:
+        if old_pipe:
+            # If we are recreating a pipe and the addon configs haven't
+            # changed then we can reuse existing addon instances.
+            # This can be useful since otherwise we may need to load them
+            # back off of disk, but we do not (necessarily) know where they
+            # are or they may have changed after loading
+            for old_addon in old_pipe._addons:
+                if old_addon.config is cnf and not cnf.is_dirty:
+                    return old_addon
+                elif old_addon.config is cnf and cnf.is_dirty:
+                    logger.warning(
+                        "Not reusing existing addon '%s' because its config "
+                        "has changed", old_addon.config.comp_name)
         loaded_path = self._get_loaded_addon_path(
             cnf, loaded_addon_component_paths)
         if loaded_path:
@@ -288,6 +308,8 @@ class Pipeline:
 
     def add_addon(self, addon: AddonComponent) -> None:
         self._addons.append(addon)
+        # mark clean as of adding
+        addon.config.mark_clean()
 
     def save_components(self,
                         serialiser_type: Union[AvailableSerialisers, str],

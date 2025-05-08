@@ -1,5 +1,0 @@
-ruff~=0.1.7
-flake8~=7.1.1
-mypy~=1.12.1
-types-tqdm
-types-setuptools

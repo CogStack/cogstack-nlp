@@ -1,19 +1,20 @@
-# Medical  <img src="https://github.com/CogStack/MedCAT/blob/master/media/cat-logo.png?raw=true" width=45>oncept Annotation Tool
+# Medical  <img src="https://github.com/CogStack/MedCAT/blob/master/media/cat-logo.png?raw=true" width=45>oncept Annotation Tool (v2)
 
 [![Build Status](https://github.com/CogStack/MedCAT2/actions/workflows/main.yml/badge.svg?branch=main)](https://github.com/CogStack/MedCAT/actions/workflows/main.yml?query=branch%3Amaster)
-<!-- [![Documentation Status](https://readthedocs.org/projects/medcat/badge/?version=latest)](https://medcat.readthedocs.io/en/latest/?badge=latest) -->
+[![Documentation Status](https://readthedocs.org/projects/medcat/badge/?version=latest)](https://medcat2.readthedocs.io/en/latest/?badge=latest)
 [![Latest release](https://img.shields.io/github/v/release/CogStack/MedCAT2)](https://github.com/CogStack/MedCAT2/releases/latest)
 [![pypi Version](https://img.shields.io/pypi/v/medcat.svg?style=flat-square&logo=pypi&logoColor=white)](https://pypi.org/project/medcat/)
 
-MedCAT can be used to extract information from Electronic Health Records (EHRs) and link it to biomedical ontologies like SNOMED-CT and UMLS. Paper on [arXiv](https://arxiv.org/abs/2010.01165).
+MedCAT(*v2*) can be used to extract information from Electronic Health Records (EHRs) and link it to biomedical ontologies like SNOMED-CT and UMLS. Paper on [arXiv](https://arxiv.org/abs/2010.01165).
 
-<!-- **Official Docs [here](https://medcat.readthedocs.io/en/latest/)** -->
+**Official Docs [here](https://medcat2.readthedocs.io/en/latest/)**
 
 **Discussion Forum [here](https://discourse.cogstack.org/)**
 
 <!-- **Available Models (requires UMLS license) [here](https://uts.nlm.nih.gov/uts/login?service=https://medcat.rosalind.kcl.ac.uk/auth-callback)** -->
 
 ## News
+- **MedCAT v2 beta** \[1. April 2025\] MedCATv2 beta 0.1.5 was released 1. April 2025.
 - **Paper** [A New Public Corpus for Clinical Section Identification: MedSecId](https://aclanthology.org/2022.coling-1.326.pdf)
 - **New Release** \[5. October 2022\]**: Logging changes, and various small updates. [Full changelog](https://github.com/CogStack/MedCAT/compare/v1.3.0...v1.4.0)
 - **New Downloader \[15. March 2022\]**: You can now [download](https://uts.nlm.nih.gov/uts/login?service=https://medcat.rosalind.kcl.ac.uk/auth-callback) the latest SNOMED-CT and UMLS model packs via UMLS user authentication.
@@ -27,12 +28,10 @@ MedCAT can be used to extract information from Electronic Health Records (EHRs) 
   (with respect to potential bug fixes), after it will still be available but not updated anymore.
 
 ## Demo
-Demo for v2 is upcoming.
-<!-- A demo application is available at [MedCAT](https://medcat.rosalind.kcl.ac.uk). This was trained on MIMIC-III and all of SNOMED-CT. -->
+A demo application is available [here](https://medcatv2.rosalind.kcl.ac.uk).
 
 ## Tutorials
-Tutorials for v2 are upcoming.
-<!-- A guide on how to use MedCAT is available at [MedCAT Tutorials](https://github.com/CogStack/MedCATtutorials). Read more about MedCAT on [Towards Data Science](https://towardsdatascience.com/medcat-introduction-analyzing-electronic-health-records-e1c420afa13a). -->
+Some guides on how to use MedCAT v2 are available at [MedCAT Tutorials](https://github.com/CogStack/MedCATv2tutorials).
 
 ## Related Projects
 - [MedCAT](https://github.com/CogStack/MedCAT/) - the original version of MedCAT that this v2 is based one.

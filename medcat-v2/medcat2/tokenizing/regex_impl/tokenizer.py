@@ -183,7 +183,7 @@ class Entity:
         # NOTE: registering for document since that should be constant
         # whereas the entities may be created and recreated
         # it'll map the entity start and end index to the value
-        def_val = defaultdict(def_val)
+        def_val = defaultdict(lambda: def_val)
         Document.register_addon_path(
             f"{cls.ENTITY_INFO_PREFIX}{path}", def_val=def_val, force=force)
 

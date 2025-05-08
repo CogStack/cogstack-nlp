@@ -216,7 +216,7 @@ class Vocab(AbstractSerialisable):
             raw_freqs.append(self[word])
             index_list.append(word_index)
 
-        freqs = np.array(raw_freqs) ** (3/4)
+        freqs = np.array(raw_freqs) ** (3 / 4)
         freqs /= freqs.sum()
 
         self.cum_probs = np.cumsum(freqs)

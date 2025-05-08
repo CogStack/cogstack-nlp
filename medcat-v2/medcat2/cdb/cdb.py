@@ -1,4 +1,4 @@
-from typing import Iterable, Any
+from typing import Iterable, Any, Collection
 
 from medcat2.storage.serialisables import AbstractSerialisable
 from medcat2.cdb.concepts import CUIInfo, NameInfo, TypeInfo
@@ -8,6 +8,7 @@ from medcat2.utils.defaults import default_weighted_average, StatusTypes as ST
 from medcat2.utils.hasher import Hasher
 from medcat2.preprocessors.cleaners import NameDescriptor
 from medcat2.config import Config
+from medcat2.data.model_card import CDBInfo
 
 import logging
 
@@ -284,6 +285,92 @@ class CDB(AbstractSerialisable):
         self.config.meta.sup_trained.clear()
         self.is_dirty = True
 
+    def filter_by_cui(self, cuis_to_keep: Collection[str]) -> None:
+        """Subset the core CDB fields (dictionaries/maps).
+
+        Note that this will potenitally keep a bit more CUIs
+        then in cuis_to_keep. It will first find all names that
+        link to the cuis_to_keep and then find all CUIs that
+        link to those names and keep all of them.
+
+        This also will not remove any data from cdb.addl_info -
+        as this field can contain data of unknown structure.
+
+        Args:
+            cuis_to_keep (Collection[str]):
+                CUIs that will be kept, the rest will be removed
+                (not completely, look above).
+
+        Raises:
+            Exception: If no snames and subsetting is not possible.
+        """
+        # First get all names/snames that should be kept based on this CUIs
+        names_to_keep = set()
+        snames_to_keep = set()
+        for cui in cuis_to_keep:
+            if cui not in self.cui2info:
+                logger.warning(
+                    "While filtering for CUIs asked to keep CUI '%s'"
+                    "which is not a part of the existing CDB", cui)
+                continue
+            ci = self.cui2info[cui]
+            names_to_keep.update(ci['names'])
+            snames_to_keep.update(ci['subnames'])
+
+        # Based on the names get also the indirect CUIs that have to be kept
+        all_cuis_to_keep: set[str] = set()
+        for name in names_to_keep:
+            # NOTE: since this was based on the cui2info they
+            #       should all have a name info
+            ni = self.name2info[name]
+            all_cuis_to_keep.update(ni['per_cui_status'].keys())
+
+        new_cui2info: dict[str, CUIInfo] = {}
+        new_name2info: dict[str, NameInfo] = {}
+
+        # get kept
+        for cui in all_cuis_to_keep:
+            if cui not in self.cui2info:
+                # NOTE: already warned above
+                continue
+            new_cui2info[cui] = self.cui2info[cui]
+
+        for name in names_to_keep:
+            # NOTE: should all be in name2info since got from cui2info
+            new_name2info[name] = self.name2info[name]
+
+        # set filtered dicts
+        self.cui2info = new_cui2info
+        self.name2info = new_name2info
+        # redo all subnames
+        self._reset_subnames()
+        self.is_dirty = True
+
+    def remove_cui(self, cui: str) -> None:
+        """This function takes a CUI and removes it the CDB.
+
+        It also removes the CUI from name specific per_cui_status
+        maps as well as well as removes all the names that do not
+        correspond to any CUIs after the removal of this one.
+
+        Args:
+            cui (str): The CUI to remove.
+        """
+        if cui not in self.cui2info:
+            logger.warning(
+                "Trying remove CUI '%s' which does not exist in CDB", cui)
+            return
+        ci = self.cui2info.pop(cui)
+        for name in ci['names']:
+            ni = self.name2info[name]
+            del ni['per_cui_status'][cui]
+            # if name name corresponds to no CUIs
+            if not ni['per_cui_status']:
+                del self.name2info[name]
+        # need to reset subnames
+        self._reset_subnames()
+        self.is_dirty = True
+
     def _remove_names(self, cui: str, names: Iterable[str]) -> None:
         """Remove names from an existing concept - effect is this name will
         never again be used to link to this concept. This will only remove the
@@ -307,7 +394,7 @@ class CDB(AbstractSerialisable):
                 if len(info['per_cui_status']) == 0:
                     del self.name2info[name]
 
-            # Remove from name2cuis2status
+            # Remove from per_cui_status
             if name in self.name2info:
                 info = self.name2info[name]
                 cuis2status = info['per_cui_status']
@@ -365,3 +452,29 @@ class CDB(AbstractSerialisable):
         hasher.update(self.get_cui2count_train())
         hasher.update(self.get_name2count_train())
         return hasher.hexdigest()
+
+    def get_basic_info(self) -> CDBInfo:
+        cui2ct = self.get_cui2count_train()
+        cuis_trained = len(cui2ct)
+        examples_seen = sum(cui2ct.values())
+        if cuis_trained:
+            average_count_train = examples_seen / cuis_trained
+        else:
+            average_count_train = 0.5
+        unsup_history = [
+            history.model_dump(mode='json')
+            for history in self.config.meta.unsup_trained
+        ]
+        sup_history = [
+            history.model_dump(mode='json')
+            for history in self.config.meta.sup_trained
+        ]
+        return {
+            "Number of concepts": len(self.cui2info),
+            "Number of names": len(self.name2info),
+            "Number of concepts that received training": cuis_trained,
+            "Number of seen training examples in total": examples_seen,
+            "Average training examples per concept": average_count_train,
+            "Unsupervised training history": unsup_history,
+            "Supervised training history": sup_history,
+        }

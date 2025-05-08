@@ -169,7 +169,7 @@ class StatsBuilder:
     def _create_annotation(self, project_name: str, project_id: str, cui: str,
                            doc: MedCATTrainerExportDocument,
                            ann: MedCATTrainerExportAnnotation) -> dict:
-        return {"text": doc['text'][max(0, ann['start']-60):ann['end']+60],
+        return {"text": doc['text'][max(0, ann['start'] - 60):ann['end'] + 60],
                 "cui": cui,
                 "start": ann['start'],
                 "end": ann['end'],
@@ -241,7 +241,7 @@ class StatsBuilder:
         try:
             prec = self.tp / (self.tp + self.fp)
             rec = self.tp / (self.tp + self.fn)
-            f1 = 2*(prec*rec) / (prec + rec)
+            f1 = 2 * (prec * rec) / (prec + rec)
             if do_print:
                 print("Epoch: {}, Prec: {}, Rec: {}, F1: {}\n".format(
                     epoch, prec, rec, f1))
@@ -262,7 +262,7 @@ class StatsBuilder:
             for cui in tps.keys():
                 prec = tps[cui] / (tps.get(cui, 0) + fps.get(cui, 0))
                 rec = tps[cui] / (tps.get(cui, 0) + fns.get(cui, 0))
-                f1 = 2*(prec*rec) / (prec + rec)
+                f1 = 2 * (prec * rec) / (prec + rec)
                 self.cui_prec[cui] = prec
                 self.cui_rec[cui] = rec
                 self.cui_f1[cui] = f1
@@ -291,7 +291,7 @@ class StatsBuilder:
                     print("{:70} - {:20} - {:10}".format(str(one[0])[0:69],
                                                          str(one[1])[0:19],
                                                          one[2]))
-                print("*"*110 + "\n")
+                print("*" * 110 + "\n")
 
         except Exception:
             traceback.print_exc()

@@ -1,21 +1,26 @@
 import os
+import unittest.mock
 import pandas as pd
 import json
 from typing import Optional
 from collections import Counter
 
 from medcat2 import cat
+from medcat2.data.model_card import ModelCard
 from medcat2.vocab import Vocab
 from medcat2.config import Config
+from medcat2.config.config_meta_cat import ConfigMetaCAT
 from medcat2.model_creation.cdb_maker import CDBMaker
 from medcat2.cdb import CDB
 from medcat2.tokenizing.tokens import UnregisteredDataPathException
 from medcat2.utils.cdb_state import captured_state_cdb
+from medcat2.components.addons.meta_cat.meta_cat import MetaCATAddon
+from medcat2.utils.defaults import AVOID_LEGACY_CONVERSION_ENVIRON
 
 import unittest
-import unittest.mock
 
 from . import EXAMPLE_MODEL_PACK_ZIP
+from . import V1_MODEL_PACK_PATH, UNPACKED_V1_MODEL_PACK_PATH
 from .utils.legacy.test_conversion_all import ConvertedFunctionalityTests
 
 
@@ -75,6 +80,15 @@ class InferenceFromLoadedTests(TrainedModelTests):
             with self.subTest(f"{nr}"):
                 ConvertedFunctionalityTests.assert_has_ent(ent)
 
+    def test_entities_in_correct_order(self):
+        # NOTE: the issue wouldn't show up with smaller amount of text
+        doc = self.model(ConvertedFunctionalityTests.TEXT * 3)
+        cur_start = 0
+        for ent in doc.final_ents:
+            with self.subTest(f"Ent: {ent}"):
+                self.assertGreaterEqual(ent.base.start_char_index, cur_start)
+                cur_start = ent.base.start_char_index
+
 
 class CATIncludingTests(unittest.TestCase):
     TOKENIZING_PROVIDER = 'regex'
@@ -132,10 +146,13 @@ class CATCreationTests(CATIncludingTests):
         self.assertEqual(self.get_cui2ct(), self.EXPECT_TRAIN)
 
     def test_versioning_updates_config_hash(self):
+        self.assert_hashes_to(self.EXPECTED_HASH)
+
+    def assert_hashes_to(self, exp_hash: str) -> None:
         self.cat._versioning()
         new_hash = self.cat.config.meta.hash
         self.assertNotEqual(self.prev_hash, new_hash)
-        self.assertEqual(new_hash, self.EXPECTED_HASH)
+        self.assertEqual(new_hash, exp_hash)
         self.assertEqual(self.cat.config.meta.history[-1], new_hash)
 
     def test_versioning_does_not_overpopulate_history(self):
@@ -147,6 +164,67 @@ class CATCreationTests(CATIncludingTests):
         sorted_set = sorted(set(self.cat.config.meta.history))
         sorted_list = sorted(self.cat.config.meta.history)
         self.assertEqual(sorted_set, sorted_list)
+
+    def test_can_get_model_card_str(self):
+        model_card = self.cat.get_model_card(as_dict=False)
+        self.assertIsInstance(model_card, str)
+
+    def test_can_get_model_card_dict(self):
+        model_card = self.cat.get_model_card(as_dict=True)
+        self.assertIsInstance(model_card, dict)
+
+    def test_model_card_has_required_keys(self):
+        model_card = self.cat.get_model_card(as_dict=True)
+        for ann in ModelCard.__annotations__:
+            with self.subTest(f"Ann: {ann}"):
+                self.assertIn(ann, model_card)
+
+    def test_model_card_has_no_extra_keys(self):
+        model_card = self.cat.get_model_card(as_dict=True)
+        for key in model_card:
+            with self.subTest(f"Key: {key}"):
+                self.assertIn(key, ModelCard.__annotations__)
+
+
+class CatWithMetaCATTests(CATCreationTests):
+    EXPECTED_HASH = "04095f95f5f7c222"
+    EXPECT_SAME_INSTANCES = True
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        meta_cat_cnf = ConfigMetaCAT()
+        # NOTE: need to set for consistent hashing
+        meta_cat_cnf.train.last_train_on = -1.0
+        meta_cat_cnf.general.category_name = 'Status'
+        meta_cat_cnf.general.tokenizer_name = 'bert-tokenizer'
+        meta_cat_cnf.model.model_name = 'bert'
+        meta_cat_cnf.model.model_variant = 'prajjwal1/bert-tiny'
+        cls.addon = MetaCATAddon.create_new(
+            meta_cat_cnf, cls.cat._pipeline.tokenizer)
+        cls.cat.add_addon(cls.addon)
+        cls.init_addons = list(cls.cat._pipeline._addons)
+
+    def test_can_recreate_pipe(self):
+        self.cat._recreate_pipe()
+        addons_after = list(self.cat._pipeline._addons)
+        self.assertGreater(len(self.init_addons), 0)
+        self.assertEqual(len(self.init_addons), len(addons_after))
+        if self.EXPECT_SAME_INSTANCES:
+            self.assertEqual(self.init_addons, addons_after)
+        else:
+            # otherwise they should differ
+            self.assertNotEqual(self.init_addons, addons_after)
+
+
+class CatWithChangesMetaCATTests(CatWithMetaCATTests):
+    EXPECTED_HASH = "7206cc91ed3424ac"
+    EXPECT_SAME_INSTANCES = False
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.addon.config.general.batch_size_eval = 10
 
 
 class CATUnsupTrainingTests(CATCreationTests):
@@ -235,7 +313,7 @@ class CATWithDictNERSupTrainingTests(CATSupTrainingTests):
         super().setUpClass()
         cls._perform_training = orig_training
         cls.cdb.config.components.ner.comp_name = 'dict'
-        cls.cat._recrate_pipe()
+        cls.cat._recreate_pipe()
         # cls.cat.cdb.reset_training()
         cls._perform_training()
 
@@ -338,3 +416,20 @@ class CATWithEntityAddonTests(CATIncludingTests):
 
 class CATWithEntityAddonSpacyTests(CATWithEntityAddonTests):
     TOKENIZING_PROVIDER = 'spacy'
+
+
+class CATLegacyLoadTests(unittest.TestCase):
+
+    def test_can_load_legacy_model_zip(self):
+        self.assertIsInstance(
+            cat.CAT.load_model_pack(V1_MODEL_PACK_PATH), cat.CAT)
+
+    def test_can_load_legacy_model_unpacked(self):
+        self.assertIsInstance(
+            cat.CAT.load_model_pack(UNPACKED_V1_MODEL_PACK_PATH), cat.CAT)
+
+    def test_cannot_load_legacy_with_environ_set(self):
+        with unittest.mock.patch.dict(os.environ, {
+                AVOID_LEGACY_CONVERSION_ENVIRON: "true"}, clear=True):
+            with self.assertRaises(ValueError):
+                cat.CAT.load_model_pack(V1_MODEL_PACK_PATH)

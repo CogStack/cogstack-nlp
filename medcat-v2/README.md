@@ -8,7 +8,7 @@
 MedCAT can be used to extract information from Electronic Health Records (EHRs) and link it to biomedical ontologies like SNOMED-CT, UMLS, or HPO (and potentially other ontologies).
 Original paper for v1 on [arXiv](https://arxiv.org/abs/2010.01165). 
 
-<!-- **Official Docs [here](https://medcat.readthedocs.io/en/latest/)** -->
+**Official Docs [here](https://medcat2.readthedocs.io/en/latest/)**
 
 **Discussion Forum [discourse](https://discourse.cogstack.org/)**
 
@@ -19,6 +19,7 @@ You can still use models for v1, however (see the [README](https://github.com/Co
 If you wish you can also convert the v1 models into the v2 format (see tutorial (TODO + link)).
 
 ## News
+- **MedCAT v2 beta** \[1. April 2025\] MedCATv2 beta 0.1.5 was released 1. April 2025.
 <!-- - **Paper** van Es, B., Reteig, L.C., Tan, S.C. et al. [Negation detection in Dutch clinical texts: an evaluation of rule-based and machine learning methods](https://doi.org/10.1186/s12859-022-05130-x). BMC Bioinformatics 24, 10 (2023). 
 - **New tool in the Cogstack ecosystem \[19. December 2022\]** [Foresight -- Deep Generative Modelling of Patient Timelines using Electronic Health Records](https://arxiv.org/abs/2212.08072)
 - **New Paper using MedCAT \[21. October 2022\]**: [A New Public Corpus for Clinical Section Identification: MedSecId.](https://aclanthology.org/2022.coling-1.326.pdf)
@@ -72,7 +73,7 @@ pip install medcat --extra_index_url https://download.pytorch.org/whl/cpu/
 ``` -->
 ## Demo
 
-Demo for v2 is upcoming
+The MedCAT v2 demo web app is available [here](https://medcatv2.sites.er.kcl.ac.uk/).
 
 ## Tutorials
 A guide on how to use MedCAT v2 is available at [MedCATv2 Tutorials](https://github.com/CogStack/MedCATv2tutorials/).

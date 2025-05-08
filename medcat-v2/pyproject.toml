@@ -77,9 +77,9 @@ dependencies = [ # Optional
 dev = [
   "ruff~=0.1.7",
   "mypy",
-  "flake8",
   "types-tqdm",
   "types-setuptools",
+  "types-PyYAML",
 ]
 spacy = [
   "spacy",
@@ -109,3 +109,9 @@ test = []  # TODO - list
 # https://pip.pypa.io/en/stable/reference/pip/#pep-517-and-518-support
 requires = ["setuptools>=43.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[tool.ruff.lint]
+# 1. Enable some extra checks for ruff
+select = ["E", "F"]
+# ignore unused local variables
+ignore = ["F841"]

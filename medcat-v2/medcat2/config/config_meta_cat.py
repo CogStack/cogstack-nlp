@@ -1,10 +1,10 @@
 from typing import Any, Optional
 
-from medcat2.config.config import SerialisableBaseModel, ComponentConfig
+from medcat2.config.config import DirtiableBaseModel, ComponentConfig
 from medcat2.storage.serialisers import AvailableSerialisers
 
 
-class General(SerialisableBaseModel):
+class General(DirtiableBaseModel):
     """The General part of the MetaCAT config"""
     device: str = 'cpu'
     """
@@ -80,7 +80,7 @@ class General(SerialisableBaseModel):
         validate_assignment = True
 
 
-class Model(SerialisableBaseModel):
+class Model(DirtiableBaseModel):
     """The model part of the metaCAT config"""
     model_name: str = 'lstm'
     """
@@ -200,7 +200,7 @@ class Model(SerialisableBaseModel):
         validate_assignment = True
 
 
-class Train(SerialisableBaseModel):
+class Train(DirtiableBaseModel):
     """The train part of the metaCAT config"""
     batch_size: int = 100
     nepochs: int = 50
@@ -242,6 +242,7 @@ class Train(SerialisableBaseModel):
 
 class ConfigMetaCAT(ComponentConfig):
     """The MetaCAT part of the config"""
+    comp_name: str = 'meta_cat'
     general: General = General()
     model: Model = Model()
     train: Train = Train()

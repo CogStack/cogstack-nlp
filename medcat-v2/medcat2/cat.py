@@ -1,5 +1,6 @@
-from typing import Optional, Union, Any
+from typing import Optional, Union, Any, overload, Literal
 import os
+import json
 
 import shutil
 import logging
@@ -7,7 +8,7 @@ import logging
 from medcat2.utils.defaults import DEFAULT_PACK_NAME, COMPONENTS_FOLDER
 from medcat2.cdb import CDB
 from medcat2.vocab import Vocab
-from medcat2.config.config import Config
+from medcat2.config.config import Config, get_important_config_parameters
 from medcat2.trainer import Trainer
 from medcat2.storage.serialisers import serialise, AvailableSerialisers
 from medcat2.storage.serialisers import deserialise
@@ -17,8 +18,11 @@ from medcat2.utils.hasher import Hasher
 from medcat2.pipeline.pipeline import Pipeline
 from medcat2.tokenizing.tokens import MutableDocument, MutableEntity
 from medcat2.data.entities import Entity, Entities, OnlyCUIEntities
+from medcat2.data.model_card import ModelCard
 from medcat2.components.types import AbstractCoreComponent, HashableComponet
 from medcat2.components.addons.addons import AddonComponent
+from medcat2.utils.legacy.identifier import is_legacy_model_pack
+from medcat2.utils.defaults import AVOID_LEGACY_CONVERSION_ENVIRON
 
 
 logger = logging.getLogger(__name__)
@@ -46,10 +50,16 @@ class CAT(AbstractSerialisable):
         self.config = config
 
         self._trainer: Optional[Trainer] = None
-        self._pipeline = self._recrate_pipe(model_load_path)
+        self._pipeline = self._recreate_pipe(model_load_path)
 
-    def _recrate_pipe(self, model_load_path: Optional[str] = None) -> Pipeline:
-        self._pipeline = Pipeline(self.cdb, self.vocab, model_load_path)
+    def _recreate_pipe(self, model_load_path: Optional[str] = None
+                       ) -> Pipeline:
+        if hasattr(self, "_pipeline"):
+            old_pipe = self._pipeline
+        else:
+            old_pipe = None
+        self._pipeline = Pipeline(self.cdb, self.vocab, model_load_path,
+                                  old_pipe=old_pipe)
         return self._pipeline
 
     @classmethod
@@ -79,6 +89,30 @@ class CAT(AbstractSerialisable):
             logger.warning("Training was enabled during inference. "
                            "It was automatically disabled.")
             self.config.components.linking.train = False
+
+    @overload
+    def get_entities(self,
+                     text: str,
+                     only_cui: Literal[False] = False,
+                     # TODO : addl_info
+                     ) -> Entities:
+        pass
+
+    @overload
+    def get_entities(self,
+                     text: str,
+                     only_cui: Literal[True] = True,
+                     # TODO : addl_info
+                     ) -> OnlyCUIEntities:
+        pass
+
+    @overload
+    def get_entities(self,
+                     text: str,
+                     only_cui: bool = False,
+                     # TODO : addl_info
+                     ) -> Union[dict, Entities, OnlyCUIEntities]:
+        pass
 
     def get_entities(self,
                      text: str,
@@ -248,6 +282,10 @@ class CAT(AbstractSerialisable):
         ensure_folder_if_parent(model_pack_path)
         # serialise
         serialise(serialiser_type, self, model_pack_path)
+        model_card: str = self.get_model_card(as_dict=False)
+        model_card_path = os.path.join(model_pack_path, "model_card.json")
+        with open(model_card_path, 'w') as f:
+            f.write(model_card)
         # components
         components_folder = os.path.join(
             model_pack_path, COMPONENTS_FOLDER)
@@ -297,6 +335,23 @@ class CAT(AbstractSerialisable):
             model_pack_path = folder_path
         logger.info("Attempting to load model from file: %s",
                     model_pack_path)
+        is_legacy = is_legacy_model_pack(model_pack_path)
+        should_avoid = os.environ.get(
+            AVOID_LEGACY_CONVERSION_ENVIRON, "False").lower() == "true"
+        if is_legacy and not should_avoid:
+            from medcat2.utils.legacy.conversion_all import Converter
+            logger.warning(
+                "Doing legacy conversion on model pack '%s'. "
+                "This will make the model load take significantly longer. "
+                "If you wish to avoid this, set the environment variable '%s' "
+                "to 'true'", model_pack_path, AVOID_LEGACY_CONVERSION_ENVIRON)
+            return Converter(model_pack_path, None).convert()
+        elif is_legacy and should_avoid:
+            raise ValueError(
+                f"The model pack '{model_pack_path}' is a legacy model pack. "
+                "Please set the environment variable "
+                f"'{AVOID_LEGACY_CONVERSION_ENVIRON}' "
+                "to 'true' to allow automatic conversion.")
         # NOTE: ignoring addons since they will be loaded later / separately
         cat = deserialise(model_pack_path, model_load_path=model_pack_path,
                           ignore_folders_prefix={
@@ -310,10 +365,51 @@ class CAT(AbstractSerialisable):
         #       will be dealt with upon pipeline creation automatically
         if not isinstance(cat, CAT):
             raise ValueError(f"Unable to load CAT. Got: {cat}")
-        # NOTE: Some CDB attributes will have been set manually
-        #       after init so the CDB is likely "dirty"
-        cat.cdb._reset_subnames()
         return cat
+
+    @overload
+    def get_model_card(self, as_dict: Literal[True]) -> ModelCard:
+        pass
+
+    @overload
+    def get_model_card(self, as_dict: Literal[False]) -> str:
+        pass
+
+    def get_model_card(self, as_dict: bool = False) -> Union[str, ModelCard]:
+        """Get the model card either a (nested) `dict` or a json string.
+
+        Args:
+            as_dict (bool): Whether to return as dict. Defaults to False.
+
+        Returns:
+            Union[str, ModelCard]: The model card.
+        """
+        meta_cat_categories = [
+            cnf.general.category_name  # type: ignore
+            for cnf in self.config.components.addons
+            if cnf.comp_name == 'meta_cat' and
+            # NOTE: not the best way to check this,
+            #       but I don't want to import the addon config
+            type(cnf).__name__ == 'ConfigMetaCAT']
+        cdb_info = self.cdb.get_basic_info()
+        model_card: ModelCard = {
+            'Model ID': self.config.meta.hash,
+            'Last Modified On': self.config.meta.last_saved.isoformat(),
+            'History (from least to most recent)': self.config.meta.history,
+            'Description': self.config.meta.description,
+            'Source Ontology': self.config.meta.ontology,
+            'Location': self.config.meta.location,
+            'MetaCAT models': meta_cat_categories,
+            'Basic CDB Stats': cdb_info,
+            'Performance': {},  # TODO
+            'Important Parameters (Partial view, '
+            'all available in cat.config)': get_important_config_parameters(
+                self.config),
+            'MedCAT Version': self.config.meta.medcat_version,
+        }
+        if as_dict:
+            return model_card
+        return json.dumps(model_card, indent=2, sort_keys=False)
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, CAT):

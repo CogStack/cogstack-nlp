@@ -1,4 +1,4 @@
-from typing import Optional, cast
+from typing import Optional
 import os
 import json
 import logging
@@ -6,11 +6,8 @@ import logging
 import torch
 
 from medcat2.components.addons.meta_cat.meta_cat import MetaCAT, MetaCATAddon
-from medcat2.components.addons.meta_cat.meta_cat_tokenizers import (
-    TokenizerWrapperBase)
-# NOTE: both in same module so no benefit in dynamic loading
-from medcat2.components.addons.meta_cat.meta_cat_tokenizers import (
-    TokenizerWrapperBPE, TokenizerWrapperBERT)
+from medcat2.components.addons.meta_cat.mctokenizers.tokenizers import (
+    TokenizerWrapperBase, load_tokenizer)
 from medcat2.config.config_meta_cat import ConfigMetaCAT
 from medcat2.tokenizing.tokenizers import BaseTokenizer
 
@@ -21,11 +18,7 @@ logger = logging.getLogger(__name__)
 def _load_legacy(config: ConfigMetaCAT, save_dir_path: str) -> MetaCAT:
     tokenizer: Optional[TokenizerWrapperBase] = None
     # Load tokenizer
-    if config.general.tokenizer_name == 'bbpe':
-        tokenizer = TokenizerWrapperBPE.load(save_dir_path)
-    elif config.general.tokenizer_name == 'bert-tokenizer':
-        tokenizer = TokenizerWrapperBERT.load(save_dir_path,
-                                              config.model.model_variant)
+    tokenizer = load_tokenizer(config, save_dir_path)
 
     # Create meta_cat
     meta_cat = MetaCAT(tokenizer=tokenizer, embeddings=None, config=config)
@@ -98,7 +91,6 @@ def get_meta_cat_from_old(old_path: str, tokenizer: BaseTokenizer
     """
     cnf = load_cnf(os.path.join(old_path, "config.json"))
     mc = _load_legacy(cnf, old_path)
-    addon = MetaCATAddon.create_new(
-        cnf, tokenizer, tokenizer=cast(TokenizerWrapperBase, mc.tokenizer))
+    addon = MetaCATAddon.create_new(cnf, tokenizer)
     addon._mc = mc
     return addon

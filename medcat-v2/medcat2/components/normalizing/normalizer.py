@@ -1,4 +1,4 @@
-from typing import Optional, Iterable, Iterator, Any
+from typing import Optional, Iterable, Iterator, Any, Union, overload, Literal
 import re
 
 from medcat2.tokenizing.tokens import MutableDocument
@@ -101,9 +101,32 @@ class BasicSpellChecker:
         Returns:
             set[str]: The set of all edits
         """
+        return self.raw_edits1(word, self.config.general.diacritics)
+
+    @overload
+    @classmethod
+    def raw_edits1(cls, word: str, use_diacritics: bool = False,
+                   return_ordered: Literal[False] = False) -> set[str]:
+        pass
+
+    @overload
+    @classmethod
+    def raw_edits1(cls, word: str, use_diacritics: bool = False,
+                   return_ordered: Literal[True] = True) -> list[str]:
+        pass
+
+    @overload
+    @classmethod
+    def raw_edits1(cls, word: str, use_diacritics: bool = False,
+                   return_ordered: bool = False) -> Union[set[str], list[str]]:
+        pass
+
+    @classmethod
+    def raw_edits1(cls, word: str, use_diacritics: bool = False,
+                   return_ordered: bool = False) -> Union[set[str], list[str]]:
         letters = 'abcdefghijklmnopqrstuvwxyz'
 
-        if self.config.general.diacritics:
+        if use_diacritics:
             letters += 'àáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿ'
 
         splits = [(word[:i], word[i:]) for i in range(len(word) + 1)]
@@ -119,7 +142,10 @@ class BasicSpellChecker:
             if R:
                 replaces.extend(L + c + R[1:] for c in letters)
             inserts.extend([L + c + R for c in letters])
-        return set(deletes + transposes + replaces + inserts)
+        if not return_ordered:
+            return set(deletes + transposes + replaces + inserts)
+        else:
+            return sorted(deletes + transposes + replaces + inserts)
 
     def edits2(self, word: str) -> Iterator[str]:
         """All edits that are two edits away from `word`.
@@ -130,7 +156,14 @@ class BasicSpellChecker:
         Returns:
             Iterator[str]: All 2-away edits.
         """
-        return (e2 for e1 in self.edits1(word) for e2 in self.edits1(e1))
+        return self.raw_edits2(word, self.config.general.diacritics)
+
+    @classmethod
+    def raw_edits2(cls, word: str, use_diacritics: bool = False,
+                   return_ordered: bool = False) -> Iterator[str]:
+        return (
+            e2 for e1 in cls.raw_edits1(word, use_diacritics, return_ordered)
+            for e2 in cls.raw_edits1(e1, use_diacritics, return_ordered))
 
     def edits3(self, word):
         """All edits that are two edits away from `word`."""  # noqa

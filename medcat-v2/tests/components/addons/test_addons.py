@@ -18,6 +18,7 @@ class FakeAddonNoInit:
 
     def __init__(self, cnf: ComponentConfig):
         assert cnf.comp_name == self.name
+        self.config = cnf
 
     def __call__(self, doc):
         return doc
@@ -53,6 +54,7 @@ class FakeAddonWithInit:
         assert cnf.comp_name == self.name
         self._token = tokenizer
         self._cdb = cdb
+        self.config = cnf
 
     def __call__(self, doc):
         return doc
@@ -96,6 +98,7 @@ class AddonsRegistrationTests(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         addons._ADDON_REGISTRY.unregister_all_components()
+        addons._ADDON_REGISTRY._lazy_defaults.update(addons._DEFAULT_ADDONS)
 
     def test_has_registration(self):
         addon_cls = addons.get_addon_creator(self.addon_cls.name)
@@ -137,6 +140,7 @@ class AddonUsageTests(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         addons._ADDON_REGISTRY.unregister_all_components()
+        addons._ADDON_REGISTRY._lazy_defaults.update(addons._DEFAULT_ADDONS)
 
     def test_can_create_cat_with_addon(self):
         self.assertIsInstance(self.cat, CAT)

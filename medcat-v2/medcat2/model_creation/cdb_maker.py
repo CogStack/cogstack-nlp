@@ -148,7 +148,7 @@ class CDBMaker(object):
                     logger.info(
                         "Current progress: %.0f%% at %.3fs per %d rows",
                         (row_id / len(df)) * 100,
-                        timediff.microseconds/10**6 + timediff.seconds,
+                        timediff.microseconds / 10**6 + timediff.seconds,
                         (len(df[cols]) // 100))
                     # Set previous time to current time
                     _time = ctime
