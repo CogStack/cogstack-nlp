@@ -816,7 +816,7 @@ class RelCAT:
         for ann in annotations:
             tkn_idx = []
             for ind, word in enumerate(doc):
-                end_char = word.idx + len(word.text)
+                end_char = word.base.char_index + len(word.base.text)
                 if end_char <= ann['end'] and end_char > ann['start']:
                     tkn_idx.append(ind)
             entity = self.base_tokenizer.create_entity(
