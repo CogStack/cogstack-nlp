@@ -211,6 +211,9 @@ class Document:
             return Token(delegated)
         return Entity(delegated)
 
+    def __len__(self) -> int:
+        return len(self._delegate)
+
     def get_tokens(self, start_index: int, end_index: int
                    ) -> list[MutableToken]:
         tkns = []

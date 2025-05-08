@@ -231,6 +231,7 @@ class Serialiser(ABC):
 class AvailableSerialisers(Enum):
     """Describes the available serialisers."""
     dill = auto()
+    json = auto()
 
     def write_to(self, file_path: str) -> None:
         with open(file_path, 'w') as f:
@@ -277,6 +278,9 @@ def get_serialiser(
         serialiser_type = AvailableSerialisers[serialiser_type.lower()]
     if serialiser_type is AvailableSerialisers.dill:
         return DillSerialiser()
+    elif serialiser_type is AvailableSerialisers.json:
+        from medcat2.storage.jsonserialiser import JsonSerialiser
+        return JsonSerialiser()
     raise ValueError("Unknown or unimplemented serialsier type: "
                      f"{serialiser_type}")
 
