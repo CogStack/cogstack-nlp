@@ -3,12 +3,16 @@ from typing_extensions import TypedDict
 from collections import Counter
 
 
-class MedCATTrainerExportAnnotation(TypedDict):
-    id: str
+class MedCATTrainerExportAnnotationRequired(TypedDict):
     start: int
     end: int
     cui: str
     value: str
+
+
+class MedCATTrainerExportAnnotation(
+        MedCATTrainerExportAnnotationRequired, total=False):
+    id: str
     validated: Optional[bool]
 
 
