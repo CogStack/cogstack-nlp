@@ -2,12 +2,10 @@ import logging
 import torch
 from typing import Any, Optional, Union
 from torch import nn
-from transformers import PretrainedConfig, PreTrainedModel
+from transformers import PretrainedConfig
+from transformers.modeling_utils import PreTrainedModel
 
 from medcat2.config.config_rel_cat import ConfigRelCAT
-from transformers.models.llama import LlamaModel
-from transformers import BertModel
-from transformers import ModernBertModel
 from medcat2.components.addons.relation_extraction.config import (
     RelExtrBaseConfig)
 from medcat2.components.addons.relation_extraction.ml_utils import (
@@ -45,7 +43,7 @@ class BaseModelBluePrint(nn.Module):
             relcat_config (ConfigRelCAT): relcat config.
             model_config (PretrainedConfig): HF bert config for model.
         """
-        super(BaseModelBluePrint, self).__init__()
+        super().__init__()
 
     def forward(
             self,
@@ -118,9 +116,7 @@ class RelExtrBaseModel(BaseModelBluePrint):
 
         self.relcat_config: ConfigRelCAT = relcat_config
         self.model_config: RelExtrBaseConfig = model_config
-        self.hf_model: Union[ModernBertModel, BertModel,
-                             LlamaModel, PreTrainedModel] = PreTrainedModel(
-                                 config=model_config.hf_model_config)
+        self.hf_model = PreTrainedModel(config=model_config.hf_model_config)
         self.pretrained_model_name_or_path: str = pretrained_model_name_or_path
 
         self._reinitialize_dense_and_frozen_layers(relcat_config=relcat_config)
@@ -179,7 +175,9 @@ class RelExtrBaseModel(BaseModelBluePrint):
         encoder_attention_mask = encoder_attention_mask.to(
             self.relcat_config.general.device)
 
-        self.hf_model = self.hf_model.to(
+        # NOTE: the wrapping of the method means that mypy can't
+        #       properly understand it
+        self.hf_model = self.hf_model.to(  # type: ignore
             self.relcat_config.general.device)
 
         model_output = self.hf_model(
@@ -230,9 +228,10 @@ class RelExtrBaseModel(BaseModelBluePrint):
                 seq_tags.append(get_annotation_schema_tag(
                     sequence_output, input_ids, each_tags))
 
-            seq_tags = torch.stack(seq_tags, dim=0)
+            stacked_tensor = torch.stack(seq_tags, dim=0)
 
-            new_pooled_output = torch.cat((pooled_output, *seq_tags), dim=1)
+            new_pooled_output = torch.cat(
+                (pooled_output, *stacked_tensor), dim=1)
         else:
             e1e2_output = []
             temp_e1 = []
