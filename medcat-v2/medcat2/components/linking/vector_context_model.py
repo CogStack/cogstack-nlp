@@ -67,14 +67,14 @@ class ContextModel(AbstractSerialisable):
         start_ind = entity.base.start_index
         end_ind = entity.base.end_index
 
-        _left_tokens = doc[max(0, start_ind-size):start_ind]
+        _left_tokens = doc[max(0, start_ind - size):start_ind]
         tokens_left = [tkn for tkn in _left_tokens if
                        per_doc_valid_token_cache[tkn]]
         # Reverse because the first token should be the one closest to center
         tokens_left.reverse()
         tokens_center: list[MutableToken] = list(
             cast(Iterable[MutableToken], entity))
-        _right_tokens = doc[end_ind+1:end_ind + 1 + size]
+        _right_tokens = doc[end_ind + 1:end_ind + 1 + size]
         tokens_right = [tkn for tkn in _right_tokens if
                         per_doc_valid_token_cache[tkn]]
 
@@ -215,11 +215,11 @@ class ContextModel(AbstractSerialisable):
             cnts = [self.cui2info[cui]['count_train'] for cui in cuis]
             m = min(cnts) or 1
             pref_freq = self.config.prefer_frequent_concepts
-            scales = [np.log10(cnt/m) * pref_freq if cnt > 10 else 0
+            scales = [np.log10(cnt / m) * pref_freq if cnt > 10 else 0
                       for cnt in cnts]
             old_sims = list(similarities)
             similarities.clear()
-            similarities += [min(0.99, sim + sim*scale)
+            similarities += [min(0.99, sim + sim * scale)
                              for sim, scale in zip(old_sims, scales)]
 
     def disambiguate(self, cuis: list[str], entity: MutableEntity, name: str,
@@ -427,7 +427,7 @@ def get_similarity(cur_vectors: dict[str, np.ndarray],
         sim += w * s
         logger.debug("Similarity for CUI: %s, Count: %s, Context Type: %.10s, "
                      "Weight: %s.2f, Similarity: %s.3f, S*W: %s.3f",
-                     cui, cui2info[cui]['count_train'], vec_type, w, s, s*w)
+                     cui, cui2info[cui]['count_train'], vec_type, w, s, s * w)
     return sim
 
 
@@ -444,10 +444,10 @@ def update_context_vectors(to_update: dict[str, np.ndarray], cui: str,
             if negative:
                 # Add negative context
                 b = max(0, similarity) * lr
-                to_update[context_type] = cv*(1-b) - vector*b
+                to_update[context_type] = cv * (1 - b) - vector * b
             else:
                 b = (1 - max(0, similarity)) * lr
-                to_update[context_type] = cv*(1-b) + vector*b
+                to_update[context_type] = cv * (1 - b) + vector * b
 
             # DEBUG
             logger.debug("Updated vector embedding.\n"
