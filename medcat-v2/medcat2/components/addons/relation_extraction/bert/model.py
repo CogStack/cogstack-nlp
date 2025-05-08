@@ -1,10 +1,8 @@
 import logging
 import os
 import torch
-from typing import Union
 
 from torch import nn
-from transformers import PreTrainedModel
 from transformers.models.bert.modeling_bert import BertModel
 
 from medcat2.config.config_rel_cat import ConfigRelCAT
@@ -12,8 +10,6 @@ from medcat2.components.addons.relation_extraction.ml_utils import (
     create_dense_layers)
 from medcat2.components.addons.relation_extraction.models import (
     RelExtrBaseModel)
-from medcat2.components.addons.relation_extraction.config import (
-    RelExtrBaseConfig)
 from medcat2.components.addons.relation_extraction.bert.config import (
     RelExtrBertConfig)
 
@@ -29,8 +25,7 @@ class RelExtrBertModel(RelExtrBaseModel):
 
     def __init__(self, pretrained_model_name_or_path: str,
                  relcat_config: ConfigRelCAT,
-                 model_config: Union[RelExtrBaseConfig,
-                                     RelExtrBertConfig]):
+                 model_config: RelExtrBertConfig):
         """ Class to hold the BERT model + model_config
 
         Args:
@@ -49,12 +44,10 @@ class RelExtrBertModel(RelExtrBaseModel):
             relcat_config=relcat_config, model_config=model_config)
 
         self.relcat_config: ConfigRelCAT = relcat_config
-        self.model_config: Union[RelExtrBaseConfig,
-                                 RelExtrBertConfig] = model_config
+        self.model_config: RelExtrBertConfig = model_config
         self.pretrained_model_name_or_path: str = pretrained_model_name_or_path
 
-        self.hf_model: Union[BertModel, PreTrainedModel] = BertModel(
-            model_config.hf_model_config)
+        self.hf_model = BertModel(model_config.hf_model_config)
 
         for param in self.hf_model.parameters():
             if self.relcat_config.model.freeze_layers:
@@ -68,11 +61,10 @@ class RelExtrBertModel(RelExtrBaseModel):
         self.fc1, self.fc2, self.fc3 = create_dense_layers(self.relcat_config)
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path: str,
-             relcat_config: ConfigRelCAT,
-             model_config: Union[RelExtrBaseConfig,
-                                 RelExtrBertConfig], **kwargs
-             ) -> "RelExtrBertModel":
+    def load_specific(cls, pretrained_model_name_or_path: str,
+                      relcat_config: ConfigRelCAT,
+                      model_config: RelExtrBertConfig, **kwargs
+                      ) -> "RelExtrBertModel":
 
         model = RelExtrBertModel(
             pretrained_model_name_or_path=pretrained_model_name_or_path,

@@ -1,19 +1,15 @@
 import logging
-from typing import Union
 import torch
 import os
 
 from torch import nn
-from transformers import ModernBertModel
-from transformers import PreTrainedModel
+from transformers.models.modernbert import ModernBertModel
 
 from medcat2.config.config_rel_cat import ConfigRelCAT
 from medcat2.components.addons.relation_extraction.ml_utils import (
     create_dense_layers)
 from medcat2.components.addons.relation_extraction.models import (
     RelExtrBaseModel)
-from medcat2.components.addons.relation_extraction.config import (
-    RelExtrBaseConfig)
 from medcat2.components.addons.relation_extraction.modernbert.config import (
     RelExtrModernBertConfig)
 
@@ -29,8 +25,7 @@ class RelExtrModernBertModel(RelExtrBaseModel):
 
     def __init__(self, pretrained_model_name_or_path: str,
                  relcat_config: ConfigRelCAT,
-                 model_config: Union[RelExtrBaseConfig,
-                                     RelExtrModernBertConfig]):
+                 model_config: RelExtrModernBertConfig):
         """ Class to hold the ModernBERT model + model_config
 
         Args:
@@ -49,13 +44,10 @@ class RelExtrModernBertModel(RelExtrBaseModel):
             relcat_config=relcat_config, model_config=model_config)
 
         self.relcat_config: ConfigRelCAT = relcat_config
-        self.model_config: Union[RelExtrBaseConfig,
-                                 RelExtrModernBertConfig] = (
-                                     model_config)
+        self.model_config: RelExtrModernBertConfig = model_config
         self.pretrained_model_name_or_path: str = pretrained_model_name_or_path
 
-        self.hf_model: Union[ModernBertModel, PreTrainedModel] = (
-            ModernBertModel(config=model_config.hf_model_config))
+        self.hf_model = ModernBertModel(config=model_config.hf_model_config)
 
         for param in self.hf_model.parameters():
             if self.relcat_config.model.freeze_layers:
@@ -69,11 +61,10 @@ class RelExtrModernBertModel(RelExtrBaseModel):
         self.fc1, self.fc2, self.fc3 = create_dense_layers(self.relcat_config)
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path: str,
-             relcat_config: ConfigRelCAT,
-             model_config: Union[RelExtrBaseConfig,
-                                 RelExtrModernBertConfig],
-             **kwargs) -> "RelExtrModernBertModel":
+    def load_specific(cls, pretrained_model_name_or_path: str,
+                      relcat_config: ConfigRelCAT,
+                      model_config: RelExtrModernBertConfig,
+                      **kwargs) -> "RelExtrModernBertModel":
 
         model = RelExtrModernBertModel(
             pretrained_model_name_or_path=pretrained_model_name_or_path,

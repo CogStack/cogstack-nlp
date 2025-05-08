@@ -1,6 +1,6 @@
 import logging
 import torch
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, cast
 from torch import nn
 from transformers import PretrainedConfig
 from transformers.modeling_utils import PreTrainedModel
@@ -283,21 +283,24 @@ class RelExtrBaseModel(BaseModelBluePrint):
         if "modern-bert" in relcat_config.general.tokenizer_name or \
                 "modern-bert" in relcat_config.general.model_name:
             from medcat2.components.addons.relation_extraction.modernbert.model import RelExtrModernBertModel  # noqa
-            model = RelExtrModernBertModel.load(
+            from medcat2.components.addons.relation_extraction.modernbert.config import RelExtrModernBertConfig  # noqa
+            model = RelExtrModernBertModel.load_specific(
                 pretrained_model_name_or_path, relcat_config=relcat_config,
-                model_config=model_config)
+                model_config=cast(RelExtrModernBertConfig, model_config))
         elif "bert" in relcat_config.general.tokenizer_name or \
              "bert" in relcat_config.general.model_name:
             from medcat2.components.addons.relation_extraction.bert.model import RelExtrBertModel # noqa
-            model = RelExtrBertModel.load(
+            from medcat2.components.addons.relation_extraction.bert.config import RelExtrBertConfig  # noqa
+            model = RelExtrBertModel.load_specific(
                 pretrained_model_name_or_path, relcat_config=relcat_config,
-                model_config=model_config)
+                model_config=cast(RelExtrBertConfig, model_config))
         elif "llama" in relcat_config.general.tokenizer_name or \
              "llama" in relcat_config.general.model_name:
             from medcat2.components.addons.relation_extraction.llama.model import RelExtrLlamaModel # noqa
-            model = RelExtrLlamaModel.load(
+            from medcat2.components.addons.relation_extraction.llama.config import RelExtrLlamaConfig # noqa
+            model = RelExtrLlamaModel.load_specific(
                 pretrained_model_name_or_path, relcat_config=relcat_config,
-                model_config=model_config)
+                model_config=cast(RelExtrLlamaConfig, model_config))
         else:
             if pretrained_model_name_or_path:
                 model.hf_model = PreTrainedModel.from_pretrained(

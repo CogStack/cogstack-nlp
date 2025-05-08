@@ -1,5 +1,6 @@
 import logging
 import os
+from typing import cast
 
 from transformers import LlamaConfig
 
@@ -16,6 +17,7 @@ class RelExtrLlamaConfig(RelExtrBaseConfig):
 
     name = 'llama-config'
     pretrained_model_name_or_path = "meta-llama/Llama-3.1-8B"
+    hf_model_config: LlamaConfig
 
     @classmethod
     def load(cls, pretrained_model_name_or_path: str,
@@ -25,15 +27,17 @@ class RelExtrLlamaConfig(RelExtrBaseConfig):
 
         if pretrained_model_name_or_path and os.path.exists(
                 pretrained_model_name_or_path):
-            model_config.hf_model_config = LlamaConfig.from_json_file(
-                pretrained_model_name_or_path)
+            model_config.hf_model_config = cast(
+                LlamaConfig, LlamaConfig.from_json_file(
+                    pretrained_model_name_or_path))
             logger.info("Loaded config from file: %s",
                         pretrained_model_name_or_path)
         else:
             pretrained_model = relcat_config.general.model_name = (
                 cls.pretrained_model_name_or_path)
-            model_config.hf_model_config = LlamaConfig.from_pretrained(
-                pretrained_model_name_or_path=pretrained_model, **kwargs)
+            model_config.hf_model_config = cast(
+                LlamaConfig, LlamaConfig.from_pretrained(
+                    pretrained_model_name_or_path=pretrained_model, **kwargs))
             logger.info("Loaded config from pretrained: %s", pretrained_model)
 
         return model_config

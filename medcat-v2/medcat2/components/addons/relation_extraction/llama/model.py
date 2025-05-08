@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Optional, Union
+from typing import Any, Optional
 import os
 
 import torch
@@ -7,8 +7,6 @@ from torch import nn
 from transformers.models.llama import LlamaModel
 
 from medcat2.config.config_rel_cat import ConfigRelCAT
-from medcat2.components.addons.relation_extraction.config import (
-    RelExtrBaseConfig)
 from medcat2.components.addons.relation_extraction.llama.config import (
     RelExtrLlamaConfig)
 from medcat2.components.addons.relation_extraction.models import (
@@ -28,8 +26,7 @@ class RelExtrLlamaModel(RelExtrBaseModel):
 
     def __init__(self, pretrained_model_name_or_path: str,
                  relcat_config: ConfigRelCAT,
-                 model_config: Union[RelExtrBaseConfig,
-                                     RelExtrLlamaConfig]):
+                 model_config: RelExtrLlamaConfig):
         """Class to hold the Llama model + model_config
 
         Args:
@@ -48,11 +45,10 @@ class RelExtrLlamaModel(RelExtrBaseModel):
             pretrained_model_name_or_path=pretrained_model_name_or_path,
             relcat_config=relcat_config, model_config=model_config)
 
-        self.relcat_config: ConfigRelCAT = relcat_config
-        self.model_config: Union[RelExtrBaseConfig,
-                                 RelExtrLlamaConfig] = model_config
+        self.relcat_config = relcat_config
+        self.model_config = model_config
 
-        self.hf_model: LlamaModel = LlamaModel(config=model_config)
+        self.hf_model = LlamaModel(config=model_config.hf_model_config)
 
         if pretrained_model_name_or_path != "":
             self.hf_model = LlamaModel.from_pretrained(
@@ -96,14 +92,14 @@ class RelExtrLlamaModel(RelExtrBaseModel):
                 for i in
                 range(0, len(
                     self.relcat_config.general.annotation_schema_tag_ids), 2)]
-            seq_tags = []
+            seq_tags_list: list[torch.Tensor] = []
 
             # for each pair of tags (e1,s1) and (e2,s2)
             for each_tags in annotation_schema_tag_ids_:
-                seq_tags.append(get_annotation_schema_tag(
+                seq_tags_list.append(get_annotation_schema_tag(
                     sequence_output, input_ids, each_tags))
 
-            seq_tags = torch.stack(seq_tags, dim=0)
+            seq_tags = torch.stack(seq_tags_list, dim=0)
 
             if self.relcat_config.model.llama_use_pooled_output:
                 new_pooled_output = torch.cat(
@@ -171,7 +167,10 @@ class RelExtrLlamaModel(RelExtrBaseModel):
         encoder_attention_mask = encoder_attention_mask.to(
             self.relcat_config.general.device)
 
-        self.hf_model = self.hf_model.to(self.relcat_config.general.device)
+        # NOTE: the wrapping of the method means that mypy can't
+        #       properly understand it
+        self.hf_model = self.hf_model.to(
+            self.relcat_config.general.device)  # type: ignore
 
         model_output = self.hf_model(input_ids=input_ids,
                                      attention_mask=attention_mask,
@@ -191,11 +190,10 @@ class RelExtrLlamaModel(RelExtrBaseModel):
             self.relcat_config.general.device)
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path: str,
-             relcat_config: ConfigRelCAT,
-             model_config: Union[RelExtrBaseConfig,
-                                 RelExtrLlamaConfig], **kwargs
-             ) -> "RelExtrLlamaModel":
+    def load_specific(cls, pretrained_model_name_or_path: str,
+                      relcat_config: ConfigRelCAT,
+                      model_config: RelExtrLlamaConfig, **kwargs
+                      ) -> "RelExtrLlamaModel":
 
         model = RelExtrLlamaModel(
             pretrained_model_name_or_path=pretrained_model_name_or_path,
