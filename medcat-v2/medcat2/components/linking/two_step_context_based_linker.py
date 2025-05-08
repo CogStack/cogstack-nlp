@@ -216,8 +216,9 @@ class TwoStepLinker(AbstractCoreComponent):
         return per_entity_weights
 
     def __call__(self, doc: MutableDocument) -> MutableDocument:
+        per_ent_weights: Optional[PerEntityWeights] = None
         if self.config.components.linking.train:
-            per_ent_weights = self._train_for_tuis(doc)
+            self._train_for_tuis(doc)
         else:
             per_ent_weights = self._weigh_on_inference(doc)
         with temp_attribute(self, '_per_ent_weights', per_ent_weights):
