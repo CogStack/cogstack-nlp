@@ -218,7 +218,7 @@ class ContextModel(AbstractSerialisable):
                     cui, ST.AUTOMATIC)
                 if status in ST.PRIMARY_STATUS:
                     new_sim = sim * (1 + self.config.prefer_primary_name)
-                    similarities[i] = min(0.99, new_sim)
+                    similarities[i] = float(min(0.99, new_sim))
                     # DEBUG
                     logger.debug("CUI: %s, Name: %s, Old sim: %.3f, New "
                                  "sim: %.3f", cui, name, sim, similarities[i])
@@ -233,7 +233,7 @@ class ContextModel(AbstractSerialisable):
                       for cnt in cnts]
             old_sims = list(similarities)
             similarities.clear()
-            similarities += [min(0.99, sim + sim*scale)
+            similarities += [float(min(0.99, sim + sim*scale))
                              for sim, scale in zip(old_sims, scales)]
 
     def get_all_similarities(self, cuis: list[str], entity: MutableEntity,
@@ -258,7 +258,8 @@ class ContextModel(AbstractSerialisable):
 
         if cuis:    # Maybe none are left after filtering
             # Calculate similarity for each cui
-            similarities = [self._similarity(cui, vectors) for cui in cuis]
+            similarities = [float(self._similarity(cui, vectors))
+                            for cui in cuis]
             # DEBUG
             logger.debug("Similarities: %s", list(zip(cuis, similarities)))
 
@@ -457,7 +458,7 @@ def get_similarity(cur_vectors: dict[str, np.ndarray],
         logger.debug("Similarity for CUI: %s, Count: %s, Context Type: %.10s, "
                      "Weight: %s.2f, Similarity: %s.3f, S*W: %s.3f",
                      cui, cui2info[cui]['count_train'], vec_type, w, s, s*w)
-    return sim
+    return float(sim)
 
 
 def update_context_vectors(to_update: dict[str, np.ndarray], cui: str,
