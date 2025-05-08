@@ -1,4 +1,4 @@
-from typing import Iterator, Any, Optional
+from typing import Iterator, Any, Optional, Union
 from typing_extensions import TypedDict
 from collections import Counter
 
@@ -12,7 +12,7 @@ class MedCATTrainerExportAnnotationRequired(TypedDict):
 
 class MedCATTrainerExportAnnotation(
         MedCATTrainerExportAnnotationRequired, total=False):
-    id: str
+    id: Union[str, int]
     validated: Optional[bool]
 
 
