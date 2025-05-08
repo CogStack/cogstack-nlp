@@ -48,8 +48,8 @@ class RelExtrBaseComponent:
         self.tokenizer: BaseTokenizerWrapper = tokenizer
         self.relcat_config: ConfigRelCAT = config
         self.model_config: RelExtrBaseConfig = model_config
-        self.optimizer: AdamW = None # type: ignore
-        self.scheduler: MultiStepLR = None # type: ignore
+        self.optimizer: AdamW = None  # type: ignore
+        self.scheduler: MultiStepLR = None  # type: ignore
         self.task: str = task
         self.epoch: int = 0
         self.best_f1: float = 0.0

@@ -124,7 +124,7 @@ class BertForMetaAnnotation(nn.Module):
         # relu activation function
         self.relu = nn.ReLU()
         # dense layer 1
-        self.fc1 = nn.Linear(_bertconfig.hidden_size*2,
+        self.fc1 = nn.Linear(_bertconfig.hidden_size * 2,
                              config.model.hidden_size)
         # dense layer 2
         self.fc2 = nn.Linear(config.model.hidden_size, hidden_size_2)

@@ -679,11 +679,11 @@ class RelCAT:
             "f1": total_f1
         }
 
-        logger.info("="*20 + " Evaluation Results " + "="*20)
+        logger.info("=" * 20 + " Evaluation Results " + "=" * 20)
         logger.info(" no. of batches:" + str(i + 1))
         for key in sorted(results.keys()):
             logger.info(" %s = %0.3f" % (key, results[key]))
-        logger.info("-"*23 + " class stats " + "-"*23)
+        logger.info("-" * 23 + " class stats " + "-" * 23)
         for label_id, stat_dict in final_stats_per_label.items():
             logger.info(
                 "label: %s | f1: %0.3f | prec : %0.3f | acc: %0.3f | "
@@ -694,8 +694,8 @@ class RelCAT:
                 stat_dict["acc"],
                 stat_dict["recall"]
             )
-        logger.info("-"*59)
-        logger.info("="*59)
+        logger.info("-" * 59)
+        logger.info("=" * 59)
 
         return results
 

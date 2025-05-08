@@ -12,7 +12,7 @@ from medcat2.components.addons.relation_extraction.llama.config import (
 from medcat2.components.addons.relation_extraction.models import (
     RelExtrBaseModel)
 from medcat2.components.addons.relation_extraction.ml_utils import (
-    create_dense_layers,  get_annotation_schema_tag)
+    create_dense_layers, get_annotation_schema_tag)
 
 
 logger = logging.getLogger(__name__)
