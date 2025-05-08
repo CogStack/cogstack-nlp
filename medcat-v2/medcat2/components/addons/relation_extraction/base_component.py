@@ -20,15 +20,15 @@ from medcat2.components.addons.relation_extraction.ml_utils import (
 logger = logging.getLogger(__name__)
 
 
-class RelExtrBaseComponent():
+class RelExtrBaseComponent:
 
     name = "base_component_rel"
 
     def __init__(
             self,
             tokenizer: BaseTokenizerWrapper = BaseTokenizerWrapper(),
-            model: RelExtrBaseModel = None,
-            model_config: RelExtrBaseConfig = None,
+            model: RelExtrBaseModel = None,  # type: ignore
+            model_config: RelExtrBaseConfig = None,  # type: ignore
             config: ConfigRelCAT = ConfigRelCAT(),
             task: str = "train",
             init_model: bool = False):
