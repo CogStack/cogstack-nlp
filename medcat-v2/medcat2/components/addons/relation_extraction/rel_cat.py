@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import random
+from typing import Optional, Any
 
 from sklearn.utils import compute_class_weight
 import torch
@@ -16,9 +17,11 @@ from torch.optim.lr_scheduler import MultiStepLR
 import numpy
 
 from medcat2.cdb import CDB
+from medcat2.vocab import Vocab
 from medcat2.config import Config
 from medcat2.config.config_rel_cat import ConfigRelCAT
 from medcat2.storage.serialisers import deserialise
+from medcat2.storage.serialisables import SerialisingStrategy
 from medcat2.components.addons.addons import AddonComponent
 from medcat2.components.addons.relation_extraction.base_component import (
     RelExtrBaseComponent)
@@ -35,9 +38,76 @@ logger = logging.getLogger(__name__)
 
 
 class RelCATAddon(AddonComponent):
+    addon_type = 'rel_cat'
+    output_key = 'relations'
+    config: ConfigRelCAT
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, config: ConfigRelCAT,
+                 base_tokenizer: BaseTokenizer,
+                 rel_cat: "RelCAT"):
+        self.config = config
+        self.base_tokenizer = base_tokenizer
+        self._rel_cat = rel_cat
+
+    @classmethod
+    def create_new(cls, config: ConfigRelCAT, base_tokenizer: BaseTokenizer,
+                   cdb: CDB) -> 'RelCATAddon':
+        """Factory method to create a new MetaCATAddon instance."""
+        return cls(config, base_tokenizer,
+                   RelCAT(base_tokenizer, cdb, config=config, init_model=True))
+
+    @classmethod
+    def load_existing(cls, cnf: ConfigRelCAT,
+                      base_tokenizer: BaseTokenizer,
+                      cdb: CDB,
+                      load_path: str) -> 'RelCATAddon':
+        """Factory method to load an existing RelCAT addon from disk."""
+        return cls(cnf, base_tokenizer, RelCAT.load(load_path))
+
+    def serialise_to(self, folder_path: str) -> None:
+        os.mkdir(folder_path)
+        self._rel_cat.save(folder_path)
+
+    @classmethod
+    def get_init_args(cls, tokenizer: BaseTokenizer, cdb: CDB, vocab: Vocab,
+                      model_load_path: Optional[str]) -> list[Any]:
+        # NOTE: cnf is silent init parameter
+        return []
+
+    @classmethod
+    def get_init_kwargs(cls, tokenizer: BaseTokenizer, cdb: CDB, vocab: Vocab,
+                        model_load_path: Optional[str]) -> dict[str, Any]:
+        # cls.init_tokenizer(cnf, model_load_path)
+        return {
+            'base_tokenizer': tokenizer,
+            "cdb": cdb
+        }
+
+    # for ManualSerialisable:
+
+    @classmethod
+    def deserialise_from(cls, folder_path: str, **init_kwargs
+                         ) -> 'RelCATAddon':
+        # NOTE: model load path sent by kwargs
+        return cls.load_existing(load_path=folder_path, **init_kwargs)
+
+    def get_strategy(self) -> SerialisingStrategy:
+        return SerialisingStrategy.MANUAL
+
+    @classmethod
+    def get_init_attrs(cls) -> list[str]:
+        return []
+
+    @classmethod
+    def ignore_attrs(cls) -> list[str]:
+        return []
+
+    @classmethod
+    def include_properties(cls) -> list[str]:
+        return []
+
+    def __call__(self, doc: MutableDocument):
+        return self._rel_cat(doc)
 
 
 class BalancedBatchSampler(Sampler):
@@ -75,7 +145,6 @@ class BalancedBatchSampler(Sampler):
                     if self.max_samples_per_class[label] > self.max_minority:
                         indices.remove(index)
 
-                print("class_counts:", class_counts)
             yield batch
             batch_counter += 1
 
