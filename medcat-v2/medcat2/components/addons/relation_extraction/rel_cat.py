@@ -83,6 +83,10 @@ class RelCATAddon(AddonComponent):
             "cdb": cdb
         }
 
+    @property
+    def name(self) -> str:
+        return str(self.addon_type)
+
     # for ManualSerialisable:
 
     @classmethod
