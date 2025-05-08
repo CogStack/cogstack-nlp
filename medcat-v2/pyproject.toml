@@ -111,3 +111,5 @@ build-backend = "setuptools.build_meta"
 [tool.ruff.lint]
 # 1. Enable some extra checks for ruff
 select = ["E", "F"]
+# ignore unused local variables
+ignore = ["F841"]
