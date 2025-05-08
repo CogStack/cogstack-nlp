@@ -36,10 +36,10 @@ def metrics(p, return_df=False, plus_recall=0, tokenizer=None, dataset=None,
             for j in range(len(preds[i])):
                 _p = preds[i][j]
                 _l = p.label_ids[i][j]
-                if (len(p.label_ids[i]) > (j+1) and
-                        p.label_ids[i][j+1] != padding_label):
-                    _p2 = preds[i][j+1]
-                    _l2 = p.label_ids[i][j+1]
+                if (len(p.label_ids[i]) > (j + 1) and
+                        p.label_ids[i][j + 1] != padding_label):
+                    _p2 = preds[i][j + 1]
+                    _l2 = p.label_ids[i][j + 1]
                 else:
                     _p2 = None
                     _l2 = None
@@ -51,7 +51,7 @@ def metrics(p, return_df=False, plus_recall=0, tokenizer=None, dataset=None,
                     # We ignore padding and subwords
                     if _l != _p:
                         if st is None:
-                            st = max(0, j-csize)
+                            st = max(0, j - csize)
                             _j = j
 
                         if not (_l2 is not None and
@@ -60,9 +60,9 @@ def metrics(p, return_df=False, plus_recall=0, tokenizer=None, dataset=None,
                             # and same prediction when recording the examples,
                             # that is why we have the if
                             dc1 = tokenizer.hf_tokenizer.decode(_d[st:_j])
-                            dc2 = tokenizer.hf_tokenizer.decode(_d[_j:j+1])
+                            dc2 = tokenizer.hf_tokenizer.decode(_d[_j:j + 1])
                             dc3 = tokenizer.hf_tokenizer.decode(
-                                _d[j+1:j+csize])
+                                _d[j + 1:j + csize])
                             t = (dc1 + "<<" + str(dc2) + ">>" + dc3)
                             value = str(dc2).strip()
                             examples['fp'][ilbl[_p]].append(

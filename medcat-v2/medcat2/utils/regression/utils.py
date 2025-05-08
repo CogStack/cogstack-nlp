@@ -267,7 +267,7 @@ def estimate_num_variants(orig_len: int, edit_distance: int) -> int:
                     "distance greater than 2 (%d used) can be extremely "
                     "inaccurate.")
     # NOTE: This is a low ball estimate - the real number could be a lot bigger
-    powers = list(range(0, edit_distance+1))[::-1]
+    powers = list(range(0, edit_distance + 1))[::-1]
     estimate_coefs = [(2 * 26) ** ed for ed in powers]
     estimated = 0
     for coef, power in zip(estimate_coefs, powers):

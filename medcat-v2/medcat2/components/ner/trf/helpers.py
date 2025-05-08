@@ -14,7 +14,7 @@ def replace_entities_in_text(text: str,
     new_text = str(text)
     for ent in sorted(entities.values(), key=lambda ent: ent['start'],
                       reverse=True):
-        r = "*"*(ent['end']-ent['start']
+        r = "*" * (ent['end'] - ent['start']
                  ) if redact else get_cui_name(ent['cui'])
         new_text = new_text[:ent['start']] + f'[{r}]' + new_text[ent['end']:]
     return new_text

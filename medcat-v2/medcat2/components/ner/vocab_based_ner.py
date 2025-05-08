@@ -68,8 +68,8 @@ class NER(AbstractCoreComponent):
                 continue
             # if name is a part of a concept
             # we start adding onto it to get a match
-            for j in range(i+1, len(_doc)):
-                if (_doc[j].base.index - _doc[j-1].base.index - 1
+            for j in range(i + 1, len(_doc)):
+                if (_doc[j].base.index - _doc[j - 1].base.index - 1
                         > max_skip_tokens):
                     # Do not allow to skip more than limit
                     break
