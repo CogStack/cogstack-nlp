@@ -1,6 +1,7 @@
 import unittest
 
 from medcat2.cdb import concepts
+from medcat2.utils.defaults import StatusTypes
 
 
 class CUIInfoTests(unittest.TestCase):
@@ -12,27 +13,28 @@ class CUIInfoTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        cls.info = concepts.CUIInfo(cui=cls.cui, preferred_name=cls.pref_name,
-                                    names=cls.names, subnames=cls.subnames,
-                                    type_ids=cls.type_ids)
+        cls.info = concepts.get_new_cui_info(
+            cui=cls.cui, preferred_name=cls.pref_name,
+            names=cls.names, subnames=cls.subnames,
+            type_ids=cls.type_ids)
 
     def setUp(self) -> None:
-        self.info.count_train = 10
-        self.info.average_confidence = 0.6
-        self.info.context_vectors = {"F": concepts.np.array(2)}
+        self.info['count_train'] = 10
+        self.info['average_confidence'] = 0.6
+        self.info['context_vectors'] = {"F": concepts.np.array(2)}
         return super().setUp()
 
     def test_training_reset_works_cnt_train(self):
-        self.info.reset_training()
-        self.assertEqual(self.info.count_train, 0)
+        concepts.reset_cui_training(self.info)
+        self.assertEqual(self.info['count_train'], 0)
 
     def test_training_reset_works_average_confidence(self):
-        self.info.reset_training()
-        self.assertEqual(self.info.average_confidence, 0.0)
+        concepts.reset_cui_training(self.info)
+        self.assertEqual(self.info['average_confidence'], 0.0)
 
     def test_training_reset_works_context_vectors(self):
-        self.info.reset_training()
-        self.assertIs(self.info.context_vectors, None)
+        concepts.reset_cui_training(self.info)
+        self.assertIs(self.info['context_vectors'], None)
 
 
 class NameInfoTests(unittest.TestCase):
@@ -41,10 +43,13 @@ class NameInfoTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        cls.info = concepts.NameInfo(name=cls.name, cuis=cls.cuis)
+        cls.info = concepts.get_new_name_info(name=cls.name,
+                                              per_cui_status={
+                                                  cui: StatusTypes.AUTOMATIC
+                                                  for cui in cls.cuis})
 
     def test_def_cuistatus_is_automatic(self):
         for cui in self.cuis:
             with self.subTest(cui):
-                status = self.info.per_cui_status[cui]
-                self.assertEqual(status, concepts.ST.AUTOMATIC)
+                status = self.info['per_cui_status'][cui]
+                self.assertEqual(status, StatusTypes.AUTOMATIC)

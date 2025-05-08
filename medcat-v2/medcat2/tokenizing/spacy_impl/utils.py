@@ -1,4 +1,5 @@
 import logging
+import sys
 
 
 logger = logging.getLogger(__name__)
@@ -31,7 +32,7 @@ def ensure_spacy_model(model_name: str) -> None:
     # running in subprocess so that we can catch the exception
     # if the model name is unknown. Otherwise we'd just be bumped
     # out of python (sys.exit).
+    cmd = f"{sys.executable} -m spacy download {model_name}"
     logger.info("Installing the spacy model %s using the CLI command "
-                "'python -m spacy download %s'", model_name, model_name)
-    subprocess.run(["python", "-m", "spacy", "download", model_name],
-                   check=True)
+                "'%s'", model_name, cmd)
+    subprocess.run(cmd.split(" "), check=True)

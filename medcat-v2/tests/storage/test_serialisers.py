@@ -1,9 +1,18 @@
 from typing import Optional
 import os
+from datetime import datetime
 
-from medcat2.storage.serialisables import Serialisable, AbstractSerialisable
+from medcat2.storage.serialisables import (
+    Serialisable, AbstractSerialisable, ManualSerialisable,
+    AbstractManualSerialisable)
 from medcat2.storage import serialisers
+from medcat2.cat import CAT
+from medcat2.cdb import CDB
+from medcat2.vocab import Vocab
+from medcat2.config import Config
+from medcat2.preprocessors.cleaners import NameDescriptor
 
+import numpy as np
 import unittest
 import tempfile
 
@@ -13,7 +22,7 @@ class DummyClassWithDefValues(AbstractSerialisable):
     def __init__(self,
                  attr1: Optional[Serialisable] = None,
                  attr2: Optional[int] = None,
-                 attr3: Optional[str] = None,
+                 attr3: Optional[datetime] = None,
                  attr4: Optional[Serialisable] = None,
                  ):
         super().__init__()
@@ -27,7 +36,7 @@ class DummyClassWithDefValues(AbstractSerialisable):
         return cls(
             attr1=AbstractSerialisable(),
             attr2=-1,
-            attr3='some string',
+            attr3=datetime.now(),
             attr4=AbstractSerialisable(),
         )
 
@@ -85,7 +94,7 @@ class SerialiserWorksTests(unittest.TestCase):
                               self.temp_folder)
 
     def deserialise(self):
-        return serialisers.deserialise(self.SERIALISER_TYPE, self.temp_folder)
+        return serialisers.deserialise(self.temp_folder)
 
     def tearDown(self):
         self._temp_folder.cleanup()
@@ -103,6 +112,11 @@ class SerialiserWorksTests(unittest.TestCase):
     def test_deserialised_instance_same(self):
         got = self.deserialise()
         self.assertEqual(got, self.SERIALISABLE_INSTANCE)
+
+    def test_used_correct_ser(self):
+        ser_file = os.path.join(self.temp_folder, serialisers.SER_TYPE_FILE)
+        got = serialisers.AvailableSerialisers.from_file(ser_file)
+        self.assertIs(got, self.SERIALISER_TYPE)
 
 
 class SerialiserFailsTests(SerialiserWorksTests):
@@ -167,3 +181,95 @@ class NestedSameInstanceSerialisableTests(SerialiserWorksTests):
     def test_has_same_config(self):
         got = self.deserialise()
         self.assertIs(got.config, got.obj_w_config.config)
+
+
+class CanSerialiseCATSimple(SerialiserWorksTests):
+    CONFIG = Config()
+    CDB = CDB(CONFIG)
+    VOCAB = Vocab()
+    SERIALISABLE_INSTANCE = CAT(CDB, VOCAB, CONFIG)
+    TARGET_CLASS = CAT
+
+
+def get_slightly_complex_cat() -> CAT:
+    cnf = Config()
+    cdb = CDB(cnf)
+    vocab = Vocab()
+    # aff a few words to vocab
+    vocab.add_word("Word#1", -1)
+    vocab.add_word("Word#2", 10, np.arange(4))
+    # add a concept to CDB
+    cdb.add_names("CUI#1", {"CUI#1NAME": NameDescriptor(
+        tokens=["CUI#1", "NAME"], snames=["CUI#1", "NAME"],
+        raw_name="CUI#1NAME", is_upper=True)})
+    cnf.meta.mark_saved_now()
+    return CAT(cdb, vocab, cnf)
+
+
+class CanSerialiseCATSlightlyComplex(SerialiserWorksTests):
+    SERIALISABLE_INSTANCE = get_slightly_complex_cat()
+    TARGET_CLASS = CAT
+
+
+class DummyManualSerialisable(AbstractManualSerialisable):
+    FN = "DUMMY_FILY"
+
+    def __init__(self, payload: str):
+        self.payload = payload
+
+    @classmethod
+    def fp(cls, folder_path: str) -> str:
+        return os.path.join(folder_path, cls.FN)
+
+    def serialise_to(self, folder_path: str) -> None:
+        with open(self.fp(folder_path), 'w') as f:
+            f.write(self.payload)
+
+    @classmethod
+    def deserialise_from(cls, folder_path: str) -> 'ManualSerialisable':
+        with open(cls.fp(folder_path)) as f:
+            payload = f.read()
+        return cls(payload=payload)
+
+    def __eq__(self, other):
+        if not isinstance(other, DummyManualSerialisable):
+            return False
+        return self.payload == other.payload
+
+
+class ManualSerialisableTests(unittest.TestCase):
+    ser_type = serialisers.AvailableSerialisers.dill
+    payload = "Some text..."
+
+    def setUp(self):
+        self.dummy = DummyManualSerialisable(payload=self.payload)
+
+    def test_dummy_class_appropriate(self):
+        self.assertIsInstance(self.dummy, ManualSerialisable)
+
+    def test_dummy_file_can_save(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            serialisers.serialise(self.ser_type, self.dummy, temp_dir)
+
+    def test_dummy_file_can_save_and_load(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            serialisers.serialise(self.ser_type, self.dummy, temp_dir)
+            loaded = serialisers.deserialise(temp_dir)
+        self.assertEqual(self.dummy, loaded)
+
+
+class PartlyManuallySerialisableTests(unittest.TestCase):
+    SER_TYPE = serialisers.AvailableSerialisers.dill
+    PAYLOAD = "Some payload"
+    OBJ = DummyClassWithDefValues(attr1=DummyManualSerialisable(PAYLOAD))
+
+    def test_dummy_file_can_save(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            serialisers.serialise(self.SER_TYPE, self.OBJ, temp_dir)
+
+    def test_dummy_file_can_save_and_load(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            serialisers.serialise(self.SER_TYPE, self.OBJ, temp_dir)
+            loaded = serialisers.deserialise(temp_dir)
+        self.assertEqual(self.OBJ, loaded)
+        self.assertEqual(self.OBJ.attr1, loaded.attr1)

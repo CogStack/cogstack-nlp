@@ -1,4 +1,4 @@
-from typing import Optional, Callable, cast
+from typing import Optional, Callable, cast, Any, Type
 import re
 import os
 
@@ -39,7 +39,7 @@ class SpacyTokenizer(BaseTokenizer):
     def __init__(self, spacy_model_name: str,
                  spacy_disabled_components: list[str],
                  use_diacritics: bool,
-                 max_document_lenth: int,
+                 max_document_length: int,
                  tokenizer_getter: Callable[[Language, bool], Tokenizer
                                             ] = spacy_split_all,
                  stopwords: Optional[set[str]] = None,):
@@ -51,7 +51,7 @@ class SpacyTokenizer(BaseTokenizer):
         self._nlp = spacy.load(spacy_model_name,
                                disable=spacy_disabled_components)
         self._nlp.tokenizer = tokenizer_getter(self._nlp, use_diacritics)
-        self._nlp.max_length = max_document_lenth
+        self._nlp.max_length = max_document_length
 
     def create_entity(self, doc: MutableDocument,
                       token_start_index: int, token_end_index: int,
@@ -71,15 +71,22 @@ class SpacyTokenizer(BaseTokenizer):
     def __call__(self, text: str) -> MutableDocument:
         return Document(self._nlp(text))
 
+    @classmethod
+    def get_init_args(cls, config: Config) -> list[Any]:
+        nlp_cnf = config.general.nlp
+        return [
+            nlp_cnf.modelname,
+            nlp_cnf.disabled_components,
+            config.general.diacritics,
+            config.preprocessing.max_document_length,
+        ]
 
-def set_def_args_kwargs(config: Config) -> None:
-    nlp_cnf = config.general.nlp
-    nlp_cnf.init_args = [
-        nlp_cnf.modelname,
-        nlp_cnf.disabled_components,
-        config.general.diacritics,
-        config.preprocessing.max_document_length,
-    ]
-    nlp_cnf.init_kwargs = {
-        "stopwords": config.preprocessing.stopwords
-    }
+    @classmethod
+    def get_init_kwargs(cls, config: Config) -> dict[str, Any]:
+        return {"stopwords": config.preprocessing.stopwords}
+
+    def get_doc_class(self) -> Type[MutableDocument]:
+        return Document
+
+    def get_entity_class(self) -> Type[MutableEntity]:
+        return Entity

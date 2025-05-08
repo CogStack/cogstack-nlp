@@ -17,24 +17,21 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
+        run: uv python install ${{ matrix.python-version }}
+      - name: Install the project
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install .
-          pip install -r requirements-dev.txt
+          uv sync --all-extras --dev
+          uv run python -m ensurepip
+          uv run python -m pip install --upgrade pip
       - name: Check types
         run: |
-          python -m mypy --follow-imports=normal medcat2
+          uv run python -m mypy --follow-imports=normal medcat2
       - name: Ruff linting
         run: |
-          ruff check medcat2
-      - name: Flake8 lint
-        run: |
-          flake8 medcat2
+          uv run ruff check medcat2 --preview
       - name: Test
         run: |
-          timeout 10m python -m unittest discover
+          timeout 10m uv run python -m unittest discover

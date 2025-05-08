@@ -29,8 +29,20 @@ class VocabCreationTests(unittest.TestCase):
         "vec": np.array([100, 100,   0]),
         "replace": False,
     }
+    word5 = {
+        "word": "WORD5", "cnt": 3,
+        "vec": None,
+        "replace": False
+    }
+    word6 = {
+        "word": "WORD6", "cnt": 10,
+        "vec": np.array([50,  50,  25]),
+        "replace": False
+    }
     all_words = [
         word1, word2, word3, word4,
+        # for negative sampling stuff
+        word5, word6
     ]
 
     def setUp(self):
@@ -52,7 +64,6 @@ class VocabCreationTests(unittest.TestCase):
 
     def test_can_overwrite_word(self):
         word = self.word3.copy()  # allows to overwrite
-        # print("WORD", word)
         self.vocab.add_word(**word)
         word_cp = word.copy()
         word_cp["vec"] = 2 * word["vec"]
@@ -138,6 +149,20 @@ class VocabTests(unittest.TestCase):
             with self.subTest(f"INDEX: {index} @ {inum}"):
                 self.assertIsInstance(index, int)
 
+    def test_neg_sampling_does_not_include_vectorless(
+            self, num_to_get: int = 30):
+        inds = self.vocab.get_negative_samples(num_to_get)
+        for index in inds:
+            with self.subTest(f"Index: {index}"):
+                # in the right list
+                self.assertIn(index, self.vocab.vec_index2word)
+                word = self.vocab.vec_index2word[index]
+                info = self.vocab.vocab[word]
+                # the info has vector
+                self.assertIn("vector", info)
+                # the vector is an array or a list
+                self.assertIsInstance(self.vocab.vec(word), (np.ndarray, list))
+
 
 class DefaultVocabTests(unittest.TestCase):
     VOCAB_PATH = os.path.join(UNPACKED_EXAMPLE_MODEL_PACK_PATH, 'vocab')
@@ -145,7 +170,7 @@ class DefaultVocabTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.vocab: Vocab = deserialise('dill', cls.VOCAB_PATH)
+        cls.vocab: Vocab = deserialise(cls.VOCAB_PATH)
 
     # NOTE: the MCTv1 vocab has a vector (for 'chronic')
     #       that is longer than the rest (the reast are 7 length,

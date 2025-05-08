@@ -83,7 +83,7 @@ def prepare_name(raw_name: str, nlp: BaseTokenizer,
 
     Args:
         nlp (BaseTokenizer): The tokenizer.
-        names (Dict[str, NameDescriptor]):
+        names (dict[str, NameDescriptor]):
             Dictionary of existing names for this concept in this row of a CSV.
             The new generated name versions and other required information will
             be added here.
@@ -91,7 +91,7 @@ def prepare_name(raw_name: str, nlp: BaseTokenizer,
             Applicable configs for medcat.
 
     Returns:
-        names (Dict):
+        names (dict):
             The updated dictionary of prepared names.
     """
     sc_name = nlp(raw_name)

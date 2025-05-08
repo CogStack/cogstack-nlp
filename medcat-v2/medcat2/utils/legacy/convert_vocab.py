@@ -4,6 +4,14 @@ from medcat2.vocab import Vocab
 
 
 def get_vocab_from_old(old_path: str) -> Vocab:
+    """Convert a v1 vocab file to a v2 Vocab.
+
+    Args:
+        old_path (str): The v1 vocab file path.
+
+    Returns:
+        Vocab: The v2 Vocab.
+    """
     with open(old_path, 'rb') as f:
         data = dill.load(f)
     v = Vocab()

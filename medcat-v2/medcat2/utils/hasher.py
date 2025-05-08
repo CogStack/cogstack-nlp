@@ -10,7 +10,7 @@ def dumps(obj: Any, length: bool = False) -> bytes:
 
     This method uses dill to dump the contents of an
     object into a BytesIO object and then either
-    reads its bytes or (or lenght == True) simply
+    reads its bytes or (or length == True) simply
     reruns the process on the length of the byte array.
 
     Args:
@@ -64,7 +64,7 @@ class Hasher:
         self.m.update(self._dumper(obj, length))
 
     def update_bytes(self, b: bytes) -> None:
-        """Udpate the hasher with a byte array.
+        """Update the hasher with a byte array.
 
         Args:
             b (bytes): The byte array to update with.

@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, cast
 import numpy as np
 
 from medcat2.cdb import CDB
@@ -52,8 +52,10 @@ class TestTrainSplitter:
         test_set: MedCATTrainerExport = {'projects': []}
         train_set: MedCATTrainerExport = {'projects': []}
 
-        perm_arr: list[int] = np.random.permutation(range(
-            len(self.data['projects']))).tolist()
+        perm_arr: list[int] = cast(
+            list[int],
+            np.random.permutation(range(
+                len(self.data['projects']))).tolist())
 
         for i_project in perm_arr:
             project = self.data['projects'][i_project]
@@ -118,16 +120,11 @@ class TestTrainSplitter:
 
     def _should_add_to_test(self, _cnts: dict[str, int]) -> bool:
         # Did we get more than 30% of concepts for any CUI with >=10 cnt
-        for cui, v in _cnts.items():
-            if ((v + self.test_cnts.get(cui, 0))
-                    / self.cnts[cui] <= self.MAX_TEST_FRACTION):
-                continue
-            if self.cnts[cui] < self.MIN_CNT_FOR_TEST:
-                continue
-            # We only care for concepts if count >= 10, else they will be
-            # ignored during the test phase (for all metrics and similar)
-            return False
-        return True
+        return any(
+            self.cnts[cui] >= 10 and
+            (v + self.test_cnts.get(cui, 0)) / self.cnts[cui] < 0.3
+            for cui, v in _cnts.items()
+        )
 
 
 def make_mc_train_test(data: MedCATTrainerExport,
@@ -142,7 +139,7 @@ def make_mc_train_test(data: MedCATTrainerExport,
         test_size (float): The test size. Defaults to 0.2.
 
     Returns:
-        Tuple:
+        tuple:
             The train set, the test set, the test annotations,
             and the total annotations
     """
@@ -152,6 +149,15 @@ def make_mc_train_test(data: MedCATTrainerExport,
 def get_false_positives(doc: MedCATTrainerExportDocument,
                         spacy_doc: MutableDocument
                         ) -> list[MutableEntity]:
+    """Get the false positives within a trainer export.
+
+    Args:
+        doc (MedCATTrainerExportDocument): The trainer export.
+        spacy_doc (MutableDocument): The annotated document.
+
+    Returns:
+        list[MutableEntity]: The list of false positive entities.
+    """
     truth = set([(ent['start'], ent['cui']) for ent in doc['annotations']])
 
     fps = []

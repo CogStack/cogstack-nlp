@@ -1,11 +1,15 @@
+from typing import Any, Optional
 import re
 
-from medcat2.config.config import Preprocessing, Config
-from medcat2.components.types import CoreComponentType
+from medcat2.config.config import Preprocessing
+from medcat2.components.types import CoreComponentType, AbstractCoreComponent
 from medcat2.tokenizing.tokens import MutableDocument
+from medcat2.tokenizing.tokenizers import BaseTokenizer
+from medcat2.cdb import CDB
+from medcat2.vocab import Vocab
 
 
-class TagAndSkipTagger:
+class TagAndSkipTagger(AbstractCoreComponent):
     name = 'tag-and-skip-tagger'
 
     def __init__(self, preprocessing: Preprocessing) -> None:
@@ -33,6 +37,12 @@ class TagAndSkipTagger:
 
         return doc
 
+    @classmethod
+    def get_init_args(cls, tokenizer: BaseTokenizer, cdb: CDB, vocab: Vocab,
+                      model_load_path: Optional[str]) -> list[Any]:
+        return [cdb.config.preprocessing]
 
-def set_def_args_kwargs(config: Config):
-    config.components.tagging.init_args = [config.preprocessing]
+    @classmethod
+    def get_init_kwargs(cls, tokenizer: BaseTokenizer, cdb: CDB, vocab: Vocab,
+                        model_load_path: Optional[str]) -> dict[str, Any]:
+        return {}

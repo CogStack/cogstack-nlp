@@ -46,6 +46,7 @@ class ContextModel(AbstractSerialisable):
 
     def get_context_tokens(self, entity: MutableEntity, doc: MutableDocument,
                            size: int,
+                           per_doc_valid_token_cache: 'PerDocumentTokenCache',
                            ) -> tuple[list[MutableToken],
                                       list[MutableToken],
                                       list[MutableToken]]:
@@ -56,6 +57,8 @@ class ContextModel(AbstractSerialisable):
             entity (BaseEntity): The entity to look for.
             doc (BaseDocument): The document look in.
             size (int): The size of the entity.
+            per_doc_valid_token_cache (PerDocumentTokenCache):
+                Per document cache for token validation.
 
         Returns:
             tuple[list[BaseToken], list[BaseToken], list[BaseToken]]:
@@ -64,14 +67,16 @@ class ContextModel(AbstractSerialisable):
         start_ind = entity.base.start_index
         end_ind = entity.base.end_index
 
-        _left_tokens = doc[max(0, start_ind-size):start_ind]
-        tokens_left = [tkn for tkn in _left_tokens if tkn.should_include()]
+        _left_tokens = doc[max(0, start_ind - size):start_ind]
+        tokens_left = [tkn for tkn in _left_tokens if
+                       per_doc_valid_token_cache[tkn]]
         # Reverse because the first token should be the one closest to center
         tokens_left.reverse()
         tokens_center: list[MutableToken] = list(
             cast(Iterable[MutableToken], entity))
-        _right_tokens = doc[end_ind+1:end_ind + 1 + size]
-        tokens_right = [tkn for tkn in _right_tokens if tkn.should_include()]
+        _right_tokens = doc[end_ind + 1:end_ind + 1 + size]
+        tokens_right = [tkn for tkn in _right_tokens if
+                        per_doc_valid_token_cache[tkn]]
 
         return tokens_left, tokens_center, tokens_right
 
@@ -95,7 +100,7 @@ class ContextModel(AbstractSerialisable):
                                   tokens_center: list[MutableToken]
                                   ) -> Iterable[np.ndarray]:
         if cui is not None and self._should_change_name(cui):
-            new_name: str = random.choice(list(self.cui2info[cui].names))
+            new_name: str = random.choice(list(self.cui2info[cui]['names']))
             new_tokens_center = new_name.split(self.name_separator)
             return self._tokens2vecs(new_tokens_center)
         else:
@@ -103,7 +108,8 @@ class ContextModel(AbstractSerialisable):
 
     def get_context_vectors(self, entity: MutableEntity,
                             doc: MutableDocument,
-                            cui: Optional[str] = None
+                            per_doc_valid_token_cache: 'PerDocumentTokenCache',
+                            cui: Optional[str] = None,
                             ) -> dict[str, np.ndarray]:
         """Given an entity and the document it will return the context
         representation for the given entity.
@@ -111,6 +117,8 @@ class ContextModel(AbstractSerialisable):
         Args:
             entity (BaseEntity): The entity to look for.
             doc (BaseDocument): The document to look in.
+            per_doc_valid_token_cache (PerDocumentTokenCache):
+                Per documnet cache for token validation
             cui (Optional[str]): The CUI or None if not specified.
 
         Returns:
@@ -121,7 +129,7 @@ class ContextModel(AbstractSerialisable):
         context_vector_sizes = self.config.context_vector_sizes
         for context_type, window_size in context_vector_sizes.items():
             tokens_left, tokens_center, tokens_right = self.get_context_tokens(
-                entity, doc, window_size)
+                entity, doc, window_size, per_doc_valid_token_cache)
 
             values: list[np.ndarray] = []
             # Add left
@@ -140,7 +148,8 @@ class ContextModel(AbstractSerialisable):
                 vectors[context_type] = value
         return vectors
 
-    def similarity(self, cui: str, entity: MutableEntity, doc: MutableDocument
+    def similarity(self, cui: str, entity: MutableEntity, doc: MutableDocument,
+                   per_doc_valid_token_cache: 'PerDocumentTokenCache'
                    ) -> float:
         """Calculate the similarity between the learnt context for this CUI
         and the context in the given `doc`.
@@ -149,11 +158,14 @@ class ContextModel(AbstractSerialisable):
             cui (str): The CUI.
             entity (BaseEntity): The entity to look for.
             doc (BaseDocument): The document to look in.
+            per_doc_valid_token_cache (PerDocumentTokenCache):
+                Per document cache for valid tokens
 
         Returns:
-            float: The simularity.
+            float: The similarity.
         """
-        vectors = self.get_context_vectors(entity, doc)
+        vectors = self.get_context_vectors(
+            entity, doc, per_doc_valid_token_cache)
         sim = self._similarity(cui, vectors)
 
         return sim
@@ -170,10 +182,10 @@ class ContextModel(AbstractSerialisable):
         """
         cui_info = self.cui2info[cui]
 
-        cui_vectors = cui_info.context_vectors
+        cui_vectors = cui_info['context_vectors']
 
         train_threshold = self.config.train_count_threshold
-        if cui_vectors and cui_info.count_train >= train_threshold:
+        if cui_vectors and cui_info['count_train'] >= train_threshold:
             return get_similarity(cui_vectors, vectors,
                                   self.config.context_vector_weights,
                                   cui, self.cui2info)
@@ -188,7 +200,8 @@ class ContextModel(AbstractSerialisable):
             for i, (cui, sim) in enumerate(zip(cuis, similarities)):
                 if sim <= 0:
                     continue
-                status = self.name2info[name].per_cui_status[cui]
+                status = self.name2info[name]['per_cui_status'].get(
+                    cui, ST.AUTOMATIC)
                 if status in ST.PRIMARY_STATUS:
                     new_sim = sim * (1 + self.config.prefer_primary_name)
                     similarities[i] = min(0.99, new_sim)
@@ -199,19 +212,22 @@ class ContextModel(AbstractSerialisable):
         if self.config.prefer_frequent_concepts > 0:
             logger.debug("Preferring frequent concepts")
             #  Prefer frequent concepts
-            cnts = [self.cui2info[cui].count_train for cui in cuis]
+            cnts = [self.cui2info[cui]['count_train'] for cui in cuis]
             m = min(cnts) or 1
             pref_freq = self.config.prefer_frequent_concepts
-            scales = [np.log10(cnt/m) * pref_freq if cnt > 10 else 0
+            scales = [np.log10(cnt / m) * pref_freq if cnt > 10 else 0
                       for cnt in cnts]
             old_sims = list(similarities)
             similarities.clear()
-            similarities += [min(0.99, sim + sim*scale)
+            similarities += [min(0.99, sim + sim * scale)
                              for sim, scale in zip(old_sims, scales)]
 
     def disambiguate(self, cuis: list[str], entity: MutableEntity, name: str,
-                     doc: MutableDocument) -> tuple[Optional[str], float]:
-        vectors = self.get_context_vectors(entity, doc)
+                     doc: MutableDocument,
+                     per_doc_valid_token_cache: 'PerDocumentTokenCache'
+                     ) -> tuple[Optional[str], float]:
+        vectors = self.get_context_vectors(
+            entity, doc, per_doc_valid_token_cache)
         filters = self.config.filters
 
         # If it is trainer we want to filter concepts before disambiguation
@@ -239,7 +255,8 @@ class ContextModel(AbstractSerialisable):
             return None, 0
 
     def train(self, cui: str, entity: MutableEntity, doc: MutableDocument,
-              negative: bool = False, names: Union[list[str], dict] = []
+              per_doc_valid_token_cache: 'PerDocumentTokenCache',
+              negative: bool = False, names: Union[list[str], dict] = [],
               ) -> None:
         """Update the context representation for this CUI, given it's correct
         location (entity) in a document (doc).
@@ -248,6 +265,8 @@ class ContextModel(AbstractSerialisable):
             cui (str): The CUI to train.
             entity (BaseEntity): The entity we're at.
             doc (BaseDocument): The document within which we're working.
+            per_doc_valid_token_cache (PerDocumentTokenCache):
+                Per document cache for token validation.
             negative (bool): Whether or not the example is negative.
                 Defaults to False.
             names (list[str]/dict):
@@ -259,37 +278,42 @@ class ContextModel(AbstractSerialisable):
             logger.warning("The provided entity for cui <%s> was empty, "
                            "nothing to train", cui)
             return
-        vectors = self.get_context_vectors(entity, doc, cui=cui)
+        vectors = self.get_context_vectors(
+            entity, doc, per_doc_valid_token_cache, cui=cui)
         cui_info = self.cui2info[cui]
-        lr = get_lr_linking(self.config, cui_info.count_train)
-        if not cui_info.context_vectors:
-            cui_info.context_vectors = vectors
+        lr = get_lr_linking(self.config, cui_info['count_train'])
+        if not cui_info['context_vectors']:
+            cui_info['context_vectors'] = vectors
         else:
             update_context_vectors(
-                cui_info.context_vectors, cui, vectors, lr, negative=negative
-            )
+                cui_info['context_vectors'], cui, vectors, lr,
+                negative=negative)
         if not negative:
-            cui_info.count_train += 1
+            cui_info['count_train'] += 1
         # Debug
         logger.debug("Updating CUI: %s with negative=%s", cui, negative)
 
         if not negative:
             # Update the name count, if possible
             if entity.detected_name:
-                self.name2info[entity.detected_name].count_train += 1
+                self.name2info[entity.detected_name]['count_train'] += 1
 
             if self.config.calculate_dynamic_threshold:
                 # Update average confidence for this CUI
-                sim = self.similarity(cui, entity, doc)
+                sim = self.similarity(
+                    cui, entity, doc, per_doc_valid_token_cache)
                 new_conf = get_updated_average_confidence(
-                    cui_info.average_confidence, cui_info.count_train, sim)
-                cui_info.average_confidence = new_conf
+                    cui_info['average_confidence'],
+                    cui_info['count_train'], sim)
+                cui_info['average_confidence'] = new_conf
 
         if negative:
             # Change the status of the name so that it has
             # to be disambiguated always
             for name in names:
-                per_cui_status = self.name2info[name].per_cui_status
+                if name not in self.name2info:
+                    continue
+                per_cui_status = self.name2info[name]['per_cui_status']
                 cui_status = per_cui_status[cui]
                 if cui_status == ST.PRIMARY_STATUS_NO_DISAMB:
                     # Set this name to always be disambiguated, even
@@ -307,18 +331,19 @@ class ContextModel(AbstractSerialisable):
         if not negative and self.config.devalue_linked_concepts:
             # Find what other concepts can be disambiguated against this
             _other_cuis_chain = chain(*[
-                self.name2info[name].cuis
-                for name in self.cui2info[cui].names])
+                self.name2info[name]['per_cui_status'].keys()
+                for name in self.cui2info[cui]['names']])
             # Remove the cui of the current concept
             _other_cuis = set(_other_cuis_chain) - {cui}
 
             for _cui in _other_cuis:
                 info = self.cui2info[_cui]
-                if not info.context_vectors:
-                    info.context_vectors = vectors
+                if not info['context_vectors']:
+                    info['context_vectors'] = vectors
                 else:
-                    update_context_vectors(info.context_vectors, cui, vectors,
-                                           lr, negative=True)
+                    update_context_vectors(
+                        info['context_vectors'], cui, vectors, lr,
+                        negative=True)
 
             logger.debug("Devalued via names.\n\tBase cui: %s \n\t"
                          "To be devalued: %s\n", cui, _other_cuis)
@@ -343,13 +368,27 @@ class ContextModel(AbstractSerialisable):
                          cui, len(inds))
 
         cui_info = self.cui2info[cui]
-        lr = get_lr_linking(self.config, cui_info.count_train)
+        lr = get_lr_linking(self.config, cui_info['count_train'])
         # Do the update for all context types
-        if not cui_info.context_vectors:
-            cui_info.context_vectors = vectors
+        if not cui_info['context_vectors']:
+            cui_info['context_vectors'] = vectors
         else:
-            update_context_vectors(cui_info.context_vectors, cui, vectors,
+            update_context_vectors(cui_info['context_vectors'], cui, vectors,
                                    lr, negative=True)
+
+
+class PerDocumentTokenCache(dict[MutableToken, bool]):
+
+    def __getitem__(self, key: MutableToken):
+        index = key.base.index
+        if index not in self:
+            val = (not key.to_skip and not key.base.is_stop and
+                   not key.base.is_digit and not key.is_punctuation)
+            # NOTE: internally just using the token index
+            self[index] = val  # type: ignore
+            return val
+        # NOTE: internally just using the token index
+        return super().__getitem__(index)  # type: ignore
 
 
 def get_lr_linking(config: Linking, cui_count: int) -> float:
@@ -357,7 +396,7 @@ def get_lr_linking(config: Linking, cui_count: int) -> float:
         return config.optim['lr']
     elif config.optim['type'] == 'linear':
         lr = config.optim['base_lr']
-        cui_count += 1  # Just in case incrase by 1
+        cui_count += 1  # Just in case increase by 1
         return max(lr / cui_count, config.optim['min_lr'])
     else:
         raise Exception("Optimizer not implemented")
@@ -378,7 +417,7 @@ def get_similarity(cur_vectors: dict[str, np.ndarray],
         if vec_type not in cur_vectors:
             # NOTE: this means that the saved vector doesn't have
             #       context at this vector type. This should be a
-            #       rare occurance, but is definitely present in
+            #       rare occurrence, but is definitely present in
             #       models converted from v1
             continue
         w = weights[vec_type]
@@ -388,7 +427,7 @@ def get_similarity(cur_vectors: dict[str, np.ndarray],
         sim += w * s
         logger.debug("Similarity for CUI: %s, Count: %s, Context Type: %.10s, "
                      "Weight: %s.2f, Similarity: %s.3f, S*W: %s.3f",
-                     cui, cui2info[cui].count_train, vec_type, w, s, s*w)
+                     cui, cui2info[cui]['count_train'], vec_type, w, s, s * w)
     return sim
 
 
@@ -405,10 +444,10 @@ def update_context_vectors(to_update: dict[str, np.ndarray], cui: str,
             if negative:
                 # Add negative context
                 b = max(0, similarity) * lr
-                to_update[context_type] = cv*(1-b) - vector*b
+                to_update[context_type] = cv * (1 - b) - vector * b
             else:
                 b = (1 - max(0, similarity)) * lr
-                to_update[context_type] = cv*(1-b) + vector*b
+                to_update[context_type] = cv * (1 - b) + vector * b
 
             # DEBUG
             logger.debug("Updated vector embedding.\n"

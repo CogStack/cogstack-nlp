@@ -1,11 +1,13 @@
 import logging
 import contextlib
 from typing import TypedDict, cast
-import numpy as np
 import tempfile
 import dill
 
 from copy import deepcopy
+
+from medcat2.cdb.concepts import NameInfo, CUIInfo
+from medcat2.config.config import ModelMeta
 
 
 logger = logging.getLogger(__name__)
@@ -14,9 +16,11 @@ logger = logging.getLogger(__name__)
 CDBState = TypedDict(
     'CDBState',
     {
-        'name2info': dict[str, list[str]],
-        'cui2info': dict[str, dict[str, np.ndarray]],
+        'name2info': dict[str, NameInfo],
+        'cui2info': dict[str, CUIInfo],
         'token_counts': dict[str, int],
+        '_subnames': set[str],
+        'config.meta': ModelMeta,
     })
 """CDB State.
 
@@ -28,7 +32,27 @@ Currently, the following fields are saved:
  - name2info
  - cui2info
  - token_counts
+ - _subnames
+ - config.meta
 """
+
+
+def _get_attr(cdb, path: str) -> object:
+    cur_obj = cdb
+    cur_path = path
+    while "." in cur_path:
+        cur_left, cur_path = cur_path.split(".", 1)
+        cur_obj = getattr(cur_obj, cur_left)
+    return getattr(cur_obj, cur_path)
+
+
+def _set_attr(cdb, path: str, val: object) -> None:
+    cur_obj = cdb
+    cur_path = path
+    while "." in cur_path:
+        cur_left, cur_path = cur_path.split(".", 1)
+        cur_obj = getattr(cur_obj, cur_left)
+    setattr(cur_obj, cur_path, val)
 
 
 def copy_cdb_state(cdb) -> CDBState:
@@ -44,7 +68,7 @@ def copy_cdb_state(cdb) -> CDBState:
         CDBState: The copied state.
     """
     return cast(CDBState, {
-        k: deepcopy(getattr(cdb, k)) for k in CDBState.__annotations__
+        k: deepcopy(_get_attr(cdb, k)) for k in CDBState.__annotations__
     })
 
 
@@ -61,7 +85,7 @@ def save_cdb_state(cdb, file_path: str) -> None:
     #       That is so that we don't have to occupy the memory for
     #       both copies
     the_dict = {
-        k: getattr(cdb, k) for k in CDBState.__annotations__
+        k: _get_attr(cdb, k) for k in CDBState.__annotations__
     }
     logger.debug("Saving CDB state on disk at: '%s'", file_path)
     with open(file_path, 'wb') as f:
@@ -77,8 +101,41 @@ def apply_cdb_state(cdb, state: CDBState) -> None:
         cdb: The CDB to apply the state to.
         state (CDBState): The state to use.
     """
+    _clear_state(cdb)
+    _reapply_state(cdb, state)
+
+
+def _clear_state(cdb) -> None:
+    for k in CDBState.__annotations__:
+        val = _get_attr(cdb, k)
+        if not isinstance(val, (dict, set, ModelMeta)):
+            raise ValueError(
+                "A part of the CDB state was not a dict, set, or ModelMeta "
+                f"(during clearing). Got {type(val).__name__}. The "
+                "re-setting of the sate needs to be implemented per type.")
+        if isinstance(val, (dict, set)):
+            val.clear()
+        else:
+            val.sup_trained.clear()
+            val.unsup_trained.clear()
+
+
+def _reapply_state(cdb, state: CDBState):
     for k, v in state.items():
-        setattr(cdb, k, v)
+        # trying to preserve the instances
+        prev_ver = _get_attr(cdb, k)
+        if (not isinstance(prev_ver, (dict, set, ModelMeta)) or
+                not isinstance(v, (dict, set, ModelMeta))):
+            raise ValueError(
+                "A part of the CDB state was not a dict, set, ModelMeta "
+                f"(during setting). Got {type(prev_ver).__name__} | "
+                f"{type(v).__name__}. The re-setting of the sate needs to be"
+                "implemented per type.")
+        if isinstance(prev_ver, (dict, set)):
+            prev_ver.update(v)
+        elif isinstance(prev_ver, ModelMeta):
+            # just set, shouldn't matter
+            _set_attr(cdb, k, v)
 
 
 def load_and_apply_cdb_state(cdb, file_path: str) -> None:
@@ -98,13 +155,11 @@ def load_and_apply_cdb_state(cdb, file_path: str) -> None:
     # this is so that we don't occupy the memory for both the loaded
     # and the on-CDB data
     logger.debug("Clearing CDB state in memory")
-    for k in CDBState.__annotations__:
-        delattr(cdb, k)
+    _clear_state(cdb)
     logger.debug("Loading CDB state from disk from '%s'", file_path)
     with open(file_path, 'rb') as f:
-        data = dill.load(f)
-    for k in CDBState.__annotations__:
-        setattr(cdb, k, data[k])
+        state: CDBState = dill.load(f)
+    _reapply_state(cdb, state)
 
 
 @contextlib.contextmanager

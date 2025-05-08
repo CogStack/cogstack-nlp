@@ -30,8 +30,3 @@ class NormaliserInitTests(ComponentInitTests, unittest.TestCase):
         cls.cdb_vocab = dict()
         cls.vocab = Vocab()
         return super().setUpClass()
-
-    @classmethod
-    def set_def_args(cls):
-        normalizer.set_default_args(cls.cnf, cls.tokenizer,
-                                    cls.cdb_vocab, cls.vocab)

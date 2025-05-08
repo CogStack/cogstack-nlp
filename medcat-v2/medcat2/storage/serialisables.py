@@ -3,6 +3,7 @@ from enum import Enum, auto
 
 
 class SerialisingStrategy(Enum):
+    """Describes the strategy for serialising."""
     SERIALISABLE_ONLY = auto()
     """Only serialise attributes that are of Serialisable type"""
     SERIALISABLES_AND_DICT = auto()
@@ -10,6 +11,12 @@ class SerialisingStrategy(Enum):
     the rest of .__dict__"""
     DICT_ONLY = auto()
     """Only include the object's .__dict__"""
+    MANUAL = auto()
+    """Use manual serialisation defined by the object itself.
+
+    NOTE: In this case, most of the logic defined within here will
+          likely be ignored.
+    """
 
     def _is_suitable_in_dict(self, attr_name: str,
                              attr: Any, obj: 'Serialisable') -> bool:
@@ -49,13 +56,38 @@ class SerialisingStrategy(Enum):
             yield val
 
     def get_dict(self, obj: 'Serialisable') -> dict[str, Any]:
-        return {
+        """Gets the appropriate parts of the __dict__ of the object.
+
+        I.e this filters out parts that shouldn't be included.
+
+        Args:
+            obj (Serialisable): The serialisable object.
+
+        Returns:
+            dict[str, Any]: The filtered attributes map.
+        """
+        out_dict = {
             attr_name: attr for attr_name, attr in self._iter_obj_items(obj)
             if self._is_suitable_in_dict(attr_name, attr, obj)
         }
+        # do properties
+        # NOTE: these are explicitly declared, so suitability is not checked
+        out_dict.update({
+            property_name: getattr(obj, property_name)
+            for property_name in obj.include_properties()
+        })
+        return out_dict
 
     def get_parts(self, obj: 'Serialisable'
                   ) -> list[tuple['Serialisable', str]]:
+        """Gets the matching serialisable parts of the object.
+
+        This includes only serialisable parts, and only if specified
+        by the strategy.
+
+        Returns:
+            list[tuple[Serialisable, str]]: The serialisable parts with names.
+        """
         out_list: list[tuple[Serialisable, str]] = [
             (attr, attr_name) for attr_name, attr in self._iter_obj_items(obj)
             if self._is_suitable_part(attr_name, attr, obj)
@@ -65,20 +97,44 @@ class SerialisingStrategy(Enum):
 
 @runtime_checkable
 class Serialisable(Protocol):
+    """The base serialisable protocol."""
 
     def get_strategy(self) -> SerialisingStrategy:
+        """Get the serialisation strategy.
+
+        Returns:
+            SerialisingStrategy: The strategy.
+        """
         pass
 
     @classmethod
     def get_init_attrs(cls) -> list[str]:
+        """Get the names of the arguments needed for init upon deserialisation.
+
+        Returns:
+            list[str]: The list of init arguments' names.
+        """
         pass
 
     @classmethod
     def ignore_attrs(cls) -> list[str]:
+        """Get the names of attributes not to serialise.
+
+        Returns:
+            list[str]: The attribute names that should not be serialised.
+        """
+        pass
+
+    @classmethod
+    def include_properties(cls) -> list[str]:
         pass
 
 
 class AbstractSerialisable:
+    """The abstract serialisable base class.
+
+    This defines some common defaults.
+    """
 
     def get_strategy(self) -> SerialisingStrategy:
         return SerialisingStrategy.SERIALISABLES_AND_DICT
@@ -89,6 +145,10 @@ class AbstractSerialisable:
 
     @classmethod
     def ignore_attrs(cls) -> list[str]:
+        return []
+
+    @classmethod
+    def include_properties(cls) -> list[str]:
         return []
 
     def __eq__(self, other: Any) -> bool:
@@ -103,6 +163,36 @@ class AbstractSerialisable:
             if attr_value != other_value:
                 return False
         return True
+
+
+@runtime_checkable
+class ManualSerialisable(Serialisable, Protocol):
+
+    def serialise_to(self, folder_path: str) -> None:
+        pass
+
+    @classmethod
+    def deserialise_from(cls, folder_path: str, **init_kwargs
+                         ) -> 'ManualSerialisable':
+        pass
+
+
+class AbstractManualSerialisable:
+
+    def get_strategy(self) -> SerialisingStrategy:
+        return SerialisingStrategy.MANUAL
+
+    @classmethod
+    def get_init_attrs(cls) -> list[str]:
+        return []
+
+    @classmethod
+    def ignore_attrs(cls) -> list[str]:
+        return []
+
+    @classmethod
+    def include_properties(cls) -> list[str]:
+        return []
 
 
 def name_all_serialisable_elements(target_list: Union[list, tuple],

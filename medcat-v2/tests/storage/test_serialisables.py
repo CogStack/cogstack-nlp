@@ -24,6 +24,10 @@ class MyDummyTestClass1:
         return ['']
 
     @classmethod
+    def include_properties(cls) -> list[str]:
+        return []
+
+    @classmethod
     def get_def_correct_inst(cls) -> tuple['MyDummyTestClass1', set[str]]:
         return cls(
             attr1=serialisables.AbstractSerialisable(),

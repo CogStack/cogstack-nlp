@@ -35,6 +35,7 @@ class FakeCDB:
 
 
 class LinkingInitTests(ComponentInitTests, unittest.TestCase):
+    expected_def_components = 2
     comp_type = types.CoreComponentType.linking
     default_cls = context_based_linker.Linker
     module = context_based_linker
@@ -44,11 +45,6 @@ class LinkingInitTests(ComponentInitTests, unittest.TestCase):
         cls.vocab = Vocab()
         cls.cdb = FakeCDB(Config())
         return super().setUpClass()
-
-    @classmethod
-    def set_def_args(cls):
-        context_based_linker.set_def_args_kwargs(
-            cls.cnf, cls.cdb, cls.vocab)
 
 
 class TrainableLinkerTests(unittest.TestCase):

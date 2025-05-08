@@ -1,11 +1,12 @@
-from typing import Optional, Iterable, Iterator
+from typing import Optional, Iterable, Iterator, Any, Union, overload, Literal
 import re
 
 from medcat2.tokenizing.tokens import MutableDocument
 from medcat2.tokenizing.tokenizers import BaseTokenizer
 from medcat2.config.config import Config
 from medcat2.vocab import Vocab
-from medcat2.components.types import CoreComponentType
+from medcat2.cdb import CDB
+from medcat2.components.types import CoreComponentType, AbstractCoreComponent
 
 
 CONTAINS_NUMBER = re.compile('[0-9]+')
@@ -87,7 +88,7 @@ class BasicSpellChecker:
             words (Iterable[str]): The words.
 
         Returns:
-            Set[str]: The set of candidates.
+            set[str]: The set of candidates.
         """
         return set(w for w in words if w in self.vocab)
 
@@ -98,11 +99,34 @@ class BasicSpellChecker:
             word (str): The word.
 
         Returns:
-            Set[str]: The set of all edits
+            set[str]: The set of all edits
         """
+        return self.raw_edits1(word, self.config.general.diacritics)
+
+    @overload
+    @classmethod
+    def raw_edits1(cls, word: str, use_diacritics: bool = False,
+                   return_ordered: Literal[False] = False) -> set[str]:
+        pass
+
+    @overload
+    @classmethod
+    def raw_edits1(cls, word: str, use_diacritics: bool = False,
+                   return_ordered: Literal[True] = True) -> list[str]:
+        pass
+
+    @overload
+    @classmethod
+    def raw_edits1(cls, word: str, use_diacritics: bool = False,
+                   return_ordered: bool = False) -> Union[set[str], list[str]]:
+        pass
+
+    @classmethod
+    def raw_edits1(cls, word: str, use_diacritics: bool = False,
+                   return_ordered: bool = False) -> Union[set[str], list[str]]:
         letters = 'abcdefghijklmnopqrstuvwxyz'
 
-        if self.config.general.diacritics:
+        if use_diacritics:
             letters += 'àáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿ'
 
         splits = [(word[:i], word[i:]) for i in range(len(word) + 1)]
@@ -118,7 +142,10 @@ class BasicSpellChecker:
             if R:
                 replaces.extend(L + c + R[1:] for c in letters)
             inserts.extend([L + c + R for c in letters])
-        return set(deletes + transposes + replaces + inserts)
+        if not return_ordered:
+            return set(deletes + transposes + replaces + inserts)
+        else:
+            return sorted(deletes + transposes + replaces + inserts)
 
     def edits2(self, word: str) -> Iterator[str]:
         """All edits that are two edits away from `word`.
@@ -129,7 +156,14 @@ class BasicSpellChecker:
         Returns:
             Iterator[str]: All 2-away edits.
         """
-        return (e2 for e1 in self.edits1(word) for e2 in self.edits1(e1))
+        return self.raw_edits2(word, self.config.general.diacritics)
+
+    @classmethod
+    def raw_edits2(cls, word: str, use_diacritics: bool = False,
+                   return_ordered: bool = False) -> Iterator[str]:
+        return (
+            e2 for e1 in cls.raw_edits1(word, use_diacritics, return_ordered)
+            for e2 in cls.raw_edits1(e1, use_diacritics, return_ordered))
 
     def edits3(self, word):
         """All edits that are two edits away from `word`."""  # noqa
@@ -137,7 +171,7 @@ class BasicSpellChecker:
         raise ValueError("No implementation")
 
 
-class TokenNormalizer:
+class TokenNormalizer(AbstractCoreComponent):
     """Will normalize all tokens in a spacy document.    """
     name = 'token_normalizer'
 
@@ -187,10 +221,12 @@ class TokenNormalizer:
                             token.norm = tmp.lemma.lower()
         return doc
 
+    @classmethod
+    def get_init_args(cls, tokenizer: BaseTokenizer, cdb: CDB, vocab: Vocab,
+                      model_load_path: Optional[str]) -> list[Any]:
+        return [tokenizer, cdb.config, cdb.token_counts, vocab]
 
-def set_default_args(config: Config, tokenizer: BaseTokenizer,
-                     cdb_vocab: dict[str, int], vocab: Optional[Vocab]
-                     ) -> None:
-    config.components.token_normalizing.init_args = [
-        tokenizer, config, cdb_vocab, vocab
-    ]
+    @classmethod
+    def get_init_kwargs(cls, tokenizer: BaseTokenizer, cdb: CDB, vocab: Vocab,
+                        model_load_path: Optional[str]) -> dict[str, Any]:
+        return {}

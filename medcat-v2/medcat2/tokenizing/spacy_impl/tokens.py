@@ -1,4 +1,4 @@
-from typing import Iterator, Union, Optional, overload, cast
+from typing import Iterator, Union, Optional, overload, cast, Any
 import logging
 
 from spacy.tokens import Token as SpacyToken
@@ -7,7 +7,8 @@ from spacy.tokens import Doc as SpacyDoc
 
 from medcat2.tokenizing.tokens import (BaseToken, MutableToken,
                                        BaseEntity, MutableEntity,
-                                       BaseDocument)
+                                       BaseDocument,
+                                       UnregisteredDataPathException)
 
 
 logger = logging.getLogger(__name__)
@@ -23,10 +24,6 @@ class Token:
 
     def __init__(self, delegate: SpacyToken) -> None:
         self._delegate = delegate
-        # defaults
-        if self.norm is None:
-            # force spacy to init ''
-            self.norm = ''
 
     @property
     def is_punctuation(self) -> bool:
@@ -46,7 +43,7 @@ class Token:
 
     @property
     def norm(self) -> str:
-        return self._delegate._.norm
+        return self._delegate._.norm or ''
 
     @norm.setter
     def norm(self, new_val: str) -> None:
@@ -100,10 +97,6 @@ class Token:
     def index(self) -> int:
         return self._delegate.i
 
-    def should_include(self) -> bool:
-        return (not self.to_skip and not self.is_stop and
-                not self.is_digit and not self.is_punctuation)
-
     def __str__(self):
         return "M2W[T]:" + str(self._delegate)
 
@@ -134,6 +127,21 @@ class Entity:
     @property
     def base(self) -> BaseEntity:
         return cast(BaseEntity, self)
+
+    def set_addon_data(self, path: str, val: Any) -> None:
+        if not self._delegate.has_extension(path):
+            raise UnregisteredDataPathException(self.__class__, path)
+        return setattr(self._delegate._, path, val)
+
+    def get_addon_data(self, path: str) -> Any:
+        if not self._delegate.has_extension(path):
+            raise UnregisteredDataPathException(self.__class__, path)
+        return getattr(self._delegate._, path)
+
+    @classmethod
+    def register_addon_path(cls, path: str, def_val: Any = None,
+                            force: bool = True) -> None:
+        SpacySpan.set_extension(path, default=def_val, force=force)
 
     @property
     def text(self) -> str:
@@ -204,17 +212,28 @@ class Document:
         return Entity(delegated)
 
     def get_tokens(self, start_index: int, end_index: int
-                   ) -> Union[MutableEntity, list[MutableToken]]:
-        for ent in self.all_ents:
-            if (ent.base.start_index == start_index and
-                    ent.base.end_index == end_index):
-                return ent
+                   ) -> list[MutableToken]:
         tkns = []
         for tkn in self:
             if (tkn.base.char_index >= start_index and
                     tkn.base.char_index <= end_index):
                 tkns.append(tkn)
         return tkns
+
+    def set_addon_data(self, path: str, val: Any) -> None:
+        if not self._delegate.has_extension(path):
+            raise UnregisteredDataPathException(self.__class__, path)
+        setattr(self._delegate._, path, val)
+
+    def get_addon_data(self, path: str) -> Any:
+        if not self._delegate.has_extension(path):
+            raise UnregisteredDataPathException(self.__class__, path)
+        return getattr(self._delegate._, path)
+
+    @classmethod
+    def register_addon_path(cls, path: str, def_val: Any = None,
+                            force: bool = True) -> None:
+        SpacyDoc.set_extension(path, default=def_val, force=force)
 
     def __iter__(self) -> Iterator[MutableToken]:
         for tkn in iter(self._delegate):

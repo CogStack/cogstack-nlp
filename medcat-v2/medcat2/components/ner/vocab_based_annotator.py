@@ -13,6 +13,29 @@ from medcat2.tokenizing.tokenizers import BaseTokenizer
 logger = logging.getLogger(__name__)
 
 
+def annotate_name(tokenizer: BaseTokenizer, name: str,
+                  tkns: list[MutableToken],
+                  doc: MutableDocument, cdb: CDB,
+                  label: str):
+    entity: MutableEntity = tokenizer.create_entity(
+        doc, tkns[0].base.index, tkns[-1].base.index + 1, label=label)
+    # Only set this property when using a vocab approach
+    # and where this name fits a name in the cdb.
+    # All standard name entity recognition models will not set this.
+    entity.detected_name = name
+    entity.link_candidates = list(cdb.name2info[name]['per_cui_status'])
+    entity.id = len(doc.all_ents)
+    entity.confidence = -1  # This does not calculate confidence
+    # Append the entity to the document
+    doc.all_ents.append(entity)
+
+    # Not necessary, but why not
+    logger.debug("NER detected an entity.\n\tDetected name: %s" +
+                 "\n\tLink candidates: %s\n", entity.detected_name,
+                 entity.link_candidates)
+    return entity
+
+
 def maybe_annotate_name(tokenizer: BaseTokenizer, name: str,
                         tkns: list[MutableToken],
                         doc: MutableDocument, cdb: CDB, config: Config,
@@ -22,11 +45,11 @@ def maybe_annotate_name(tokenizer: BaseTokenizer, name: str,
     If yes the annotation will be added to the doc.entities array.
 
     Args:
-        platform (Platform):
-            The tokenizer platform (probably SpaCy).
+        tokenizer (BaseTokenizer):
+            The tokenizer (probably SpaCy).
         name (str):
             The name found in the text of the document.
-        tkns (List[MutableToken]):
+        tkns (list[MutableToken]):
             Tokens that belong to this name in the spacy document.
         doc (BaseDocument):
             Spacy document to be annotated with named entities.
@@ -48,7 +71,7 @@ def maybe_annotate_name(tokenizer: BaseTokenizer, name: str,
     # words that have a different meaning.
     if config.components.ner.check_upper_case_names:
         # Check whether name is completely uppercase in CDB.
-        is_upper = (cdb.name2info[name].is_upper
+        is_upper = (cdb.name2info[name]['is_upper']
                     if name in cdb.name2info else False)
         if is_upper:
             # Check whether tokens are also in uppercase. If tokens
@@ -62,23 +85,6 @@ def maybe_annotate_name(tokenizer: BaseTokenizer, name: str,
         if (len(name) >= config.components.ner.upper_case_limit_len or
                 (len(tkns) == 1 and tkns[0].base.is_upper)):
             # Everything is fine, mark name
-            entity: MutableEntity = tokenizer.create_entity(
-                doc, tkns[0].base.index, tkns[-1].base.index + 1, label=label)
-            # Only set this property when using a vocab approach
-            # and where this name fits a name in the cdb.
-            # All standard name entity recognition models will not set this.
-            entity.detected_name = name
-            entity.link_candidates = list(cdb.name2info[name].cuis)
-            entity.id = len(doc.all_ents)
-            entity.confidence = -1  # This does not calculate confidence
-            # Append the entity to the document
-            doc.all_ents.append(entity)
-
-            # Not necessary, but why not
-            logger.debug("NER detected an entity." +
-                         "\n\tDetected name: %s" +
-                         "\n\tLink candidates: %s\n", entity.detected_name,
-                         entity.link_candidates)
-            return entity
+            return annotate_name(tokenizer, name, tkns, doc, cdb, label)
 
     return None

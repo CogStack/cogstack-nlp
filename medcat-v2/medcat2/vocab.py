@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Any, cast
 from typing_extensions import TypedDict
 
 # import dill
@@ -35,7 +35,7 @@ class Vocab(AbstractSerialisable):
 
     def inc_or_add(self, word: str, cnt: int = 1,
                    vec: Optional[np.ndarray] = None) -> None:
-        """Add a word or incrase its count.
+        """Add a word or increase its count.
 
         Args:
             word(str):
@@ -90,7 +90,7 @@ class Vocab(AbstractSerialisable):
             word(str):
                 For which word to increase the count
             cnt(int):
-                By how muhc to incrase the count (Default value = 1)
+                By how muhc to increase the count (Default value = 1)
         """
         self.item(word)['count'] += cnt
 
@@ -202,15 +202,26 @@ class Vocab(AbstractSerialisable):
         word.
         """
         raw_freqs = []
-
-        words = list(self.vec_index2word.values())
-        for word in words:
+        index_list = []
+        # index list maps the slot in which a word index
+        # sits in vec_index2word to the actual index for said word
+        # e.g:
+        #    if we have words indexed 0, 1, and 2
+        #    but only 0, and 2 have corresponding vectors
+        #    then only 0 and 2 will occur in vec_index2word
+        #    and while 0 will be in the 0th position (as expected)
+        #    in the final probability list, 2 will be in 1st position
+        #    so we need to mark that conversion down
+        for word_index, word in self.vec_index2word.items():
             raw_freqs.append(self[word])
+            index_list.append(word_index)
 
-        freqs = np.array(raw_freqs) ** (3/4)
+        freqs = np.array(raw_freqs) ** (3 / 4)
         freqs /= freqs.sum()
 
         self.cum_probs = np.cumsum(freqs)
+        # the mapping from vector index order to word indices
+        self._index_list = index_list
 
     def get_negative_samples(self, n: int = 6,
                              ignore_punct_and_num: bool = False) -> list[int]:
@@ -232,8 +243,12 @@ class Vocab(AbstractSerialisable):
         if len(self.cum_probs) == 0:
             self.init_cumsums()
         random_vals = np.random.rand(n)
-        inds: list[int] = np.searchsorted(self.cum_probs,
-                                          random_vals).tolist()
+        # NOTE: These indices are in terms of the cum_probs array
+        #       which only has word data for words with vectors.
+        vec_slots = cast(
+            list[int], np.searchsorted(self.cum_probs, random_vals).tolist())
+        # so we need to translate these back to word indices
+        inds = list(map(self._index_list.__getitem__, vec_slots))
 
         if ignore_punct_and_num:
             # Do not return anything that does not have letters in it
@@ -262,3 +277,17 @@ class Vocab(AbstractSerialisable):
             return True
 
         return False
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, Vocab):
+            return False
+        return (self.vocab.keys() == other.vocab.keys() and
+                all(v1.keys() == v2.keys()
+                    and all(
+                        np.all(sv1 == sv2) if isinstance(sv1, np.ndarray)
+                        else sv1 == sv2
+                        for sv1, sv2 in zip(v1.values(), v2.values()))
+                    for v1, v2
+                    in zip(self.vocab.values(), other.vocab.values())) and
+                self.index2word == other.index2word and
+                self.vec_index2word == other.vec_index2word)

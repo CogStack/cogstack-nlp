@@ -9,7 +9,7 @@ readme = "README.md"
 
 requires-python = ">=3.9"
 
-license = {file = "LICENSE.txt"}
+license = {file = "LICENSE"}
 
 keywords = ["ML", "NLP", "NER+L"]
 
@@ -59,10 +59,10 @@ classifiers = [
 dependencies = [ # Optional
   "numpy>2.0",
   "dill",
-  "spacy",
   "pandas>=2.2,<3.0",
   "tqdm>=4.64,<5.0",
   "xxhash>=3.5.0,<4.0",
+  "pydantic>2.0",
   # TODO - others
 ]
 
@@ -78,7 +78,23 @@ dependencies = [ # Optional
 dev = [
   "ruff~=0.1.7",
   "mypy",
-  "pydantic>2.0",
+  "types-PyYAML",
+]
+spacy = [
+  "spacy",
+  "spacy<3.8.4; python_version == '3.9'"
+]
+meta_cat = [
+  "peft>0.8.2,<1.0",
+  "torch>=2.4.0,<3.0",
+  "scikit-learn>=1.1.3,<2.0",
+]
+dict_ner = [
+  "pyahocorasick>=2.1.0,<3.0"
+]
+deid = [
+  "datasets>=2.2.2,<3.0.0",
+  "transformers>=4.41.0,<5.0" # avoid major bump
 ]
 test = []  # TODO - list
 
@@ -92,3 +108,9 @@ test = []  # TODO - list
 # https://pip.pypa.io/en/stable/reference/pip/#pep-517-and-518-support
 requires = ["setuptools>=43.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[tool.ruff.lint]
+# 1. Enable some extra checks for ruff
+select = ["E", "F"]
+# ignore unused local variables
+ignore = ["F841"]

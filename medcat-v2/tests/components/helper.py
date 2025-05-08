@@ -1,36 +1,54 @@
-from typing import runtime_checkable, Protocol, Type
+from typing import runtime_checkable, Type
 
 from medcat2.components import types
-from medcat2.config.config import Config, CoreComponentConfig
+from medcat2.config.config import Config, ComponentConfig
+from medcat2.utils.default_args import set_components_defaults
 
 
-class FModule(Protocol):
+class FakeCDB:
 
-    def set_def_args_kwargs(config: Config):
-        pass
+    def __init__(self, cnf: Config):
+        self.config = cnf
+        self.token_counts = {}
+        self.cui2info = {}
+        self.name2info = {}
+
+    def weighted_average_function(self, v: int) -> float:
+        return v * 0.5
+
+
+class FVocab:
+    pass
+
+
+class FTokenizer:
+    pass
 
 
 class ComponentInitTests:
+    expected_def_components = 1
     default = 'default'
     # these need to be specified when overriding
     comp_type: types.CoreComponentType
     default_cls: Type[types.BaseComponent]
-    module: FModule
 
     @classmethod
-    def set_def_args(cls):
-        cls.module.set_def_args_kwargs(cls.cnf)
+    def set_def_args(cls, cdb: FakeCDB, vocab: FVocab, tokenizer: FTokenizer):
+        set_components_defaults(cdb, vocab, tokenizer, None)
 
     @classmethod
     def setUpClass(cls):
         cls.cnf = Config()
-        cls.set_def_args()
-        cls.comp_cnf: CoreComponentConfig = getattr(
+        cls.fcdb = FakeCDB(cls.cnf)
+        cls.fvocab = FVocab()
+        cls.vtokenizer = FTokenizer()
+        cls.set_def_args(cls.fcdb, cls.fvocab, cls.vtokenizer)
+        cls.comp_cnf: ComponentConfig = getattr(
             cls.cnf.components, cls.comp_type.name)
 
     def test_has_default(self):
         avail_components = types.get_registered_components(self.comp_type)
-        self.assertEqual(len(avail_components), 1)
+        self.assertEqual(len(avail_components), self.expected_def_components)
         name, cls_name = avail_components[0]
         self.assertEqual(name, self.default)
         self.assertIs(cls_name, self.default_cls.__name__)

@@ -1,16 +1,18 @@
+from typing import Any, Optional
+
 import logging
 from medcat2.tokenizing.tokens import MutableDocument
-from medcat2.components.types import CoreComponentType
+from medcat2.components.types import CoreComponentType, AbstractCoreComponent
 from medcat2.components.ner.vocab_based_annotator import maybe_annotate_name
 from medcat2.tokenizing.tokenizers import BaseTokenizer
-from medcat2.config import Config
+from medcat2.vocab import Vocab
 from medcat2.cdb import CDB
 
 
 logger = logging.getLogger(__name__)
 
 
-class NER:
+class NER(AbstractCoreComponent):
     name = 'cat_ner'
 
     def __init__(self, tokenizer: BaseTokenizer,
@@ -55,15 +57,19 @@ class NER:
                     else:
                         name = name_version
                     break
+            # if name is in CDB
             if name in self.cdb.name2info and not tkn.base.is_stop:
                 maybe_annotate_name(self.tokenizer, name, tkns, doc,
                                     self.cdb, self.config)
+            # if name is not a subname CDB (explicitly)
             if not name:
                 # There has to be at least something appended to the name
                 # to go forward
                 continue
-            for j in range(i+1, len(_doc)):
-                if (_doc[j].base.index - _doc[j-1].base.index - 1
+            # if name is a part of a concept
+            # we start adding onto it to get a match
+            for j in range(i + 1, len(_doc)):
+                if (_doc[j].base.index - _doc[j - 1].base.index - 1
                         > max_skip_tokens):
                     # Do not allow to skip more than limit
                     break
@@ -101,8 +107,12 @@ class NER:
 
         return doc
 
+    @classmethod
+    def get_init_args(cls, tokenizer: BaseTokenizer, cdb: CDB, vocab: Vocab,
+                      model_load_path: Optional[str]) -> list[Any]:
+        return [tokenizer, cdb]
 
-def set_def_args_kwargs(config: Config, tokenizer: BaseTokenizer, cdb: CDB):
-    config.components.ner.init_args = [
-        tokenizer, cdb,
-    ]
+    @classmethod
+    def get_init_kwargs(cls, tokenizer: BaseTokenizer, cdb: CDB, vocab: Vocab,
+                        model_load_path: Optional[str]) -> dict[str, Any]:
+        return {}

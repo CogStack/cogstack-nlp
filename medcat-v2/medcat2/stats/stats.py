@@ -10,7 +10,7 @@ from medcat2.data.mctexport import (
     MedCATTrainerExportDocument, MedCATTrainerExportAnnotation)
 # from medcat2.utils.matutils import intersect_nonempty_set
 from medcat2.config.config import LinkingFilters
-from medcat2.cdb.concepts import CUIInfo
+from medcat2.cdb.concepts import CUIInfo, get_new_cui_info
 from medcat2.tokenizing.tokens import MutableEntity, MutableDocument
 
 
@@ -53,8 +53,13 @@ class StatsBuilder:
         self.fn_docs: set = set()
 
     def process_project(self, project: MedCATTrainerExportProject) -> None:
-        self.filters.cuis = set()
+        """Process the project.
 
+        This processes each document in the project.
+
+        Args:
+            project (MedCATTrainerExportProject): The trainer export project.
+        """
         project_name = cast(str, project.get('name'))
         project_id = cast(str, project.get('id'))
 
@@ -70,6 +75,13 @@ class StatsBuilder:
     def process_document(self, project_name: str, project_id: str,
                          doc: MedCATTrainerExportDocument
                          ) -> None:
+        """Process the trainer export document.
+
+        Args:
+            project_name (str): The project within which this document lies.
+            project_id (str): The project ID for the project.
+            doc (MedCATTrainerExportDocument): The trainer export document.
+        """
         anns = doc['annotations']
 
         # Apply document level filtering, in this case project_filter is
@@ -157,7 +169,7 @@ class StatsBuilder:
     def _create_annotation(self, project_name: str, project_id: str, cui: str,
                            doc: MedCATTrainerExportDocument,
                            ann: MedCATTrainerExportAnnotation) -> dict:
-        return {"text": doc['text'][max(0, ann['start']-60):ann['end']+60],
+        return {"text": doc['text'][max(0, ann['start'] - 60):ann['end'] + 60],
                 "cui": cui,
                 "start": ann['start'],
                 "end": ann['end'],
@@ -217,10 +229,19 @@ class StatsBuilder:
         return anns_norm, anns_norm_neg, anns_examples, anns_norm_cui
 
     def finalise_report(self, epoch: int, do_print: bool = True):
+        """Finalise the report / metrics.
+
+        This prints out the overall metrics and calculates per CUI metrics.
+
+        Args:
+            epoch (int): The number of the current epoch.
+            do_print (bool, optional): Whether to print the output.
+                Defaults to True.
+        """
         try:
             prec = self.tp / (self.tp + self.fp)
             rec = self.tp / (self.tp + self.fn)
-            f1 = 2*(prec*rec) / (prec + rec)
+            f1 = 2 * (prec * rec) / (prec + rec)
             if do_print:
                 print("Epoch: {}, Prec: {}, Rec: {}, F1: {}\n".format(
                     epoch, prec, rec, f1))
@@ -241,7 +262,7 @@ class StatsBuilder:
             for cui in tps.keys():
                 prec = tps[cui] / (tps.get(cui, 0) + fps.get(cui, 0))
                 rec = tps[cui] / (tps.get(cui, 0) + fns.get(cui, 0))
-                f1 = 2*(prec*rec) / (prec + rec)
+                f1 = 2 * (prec * rec) / (prec + rec)
                 self.cui_prec[cui] = prec
                 self.cui_rec[cui] = rec
                 self.cui_f1[cui] = f1
@@ -270,20 +291,21 @@ class StatsBuilder:
                     print("{:70} - {:20} - {:10}".format(str(one[0])[0:69],
                                                          str(one[1])[0:19],
                                                          one[2]))
-                print("*"*110 + "\n")
+                print("*" * 110 + "\n")
 
         except Exception:
             traceback.print_exc()
 
     def _empty(self, cui: str) -> CUIInfo:
-        return CUIInfo(cui=cui, preferred_name=cui, names=set((cui, )))
+        return get_new_cui_info(
+            cui=cui, preferred_name=cui, names=set((cui, )))
 
     def _get_or_empty(self, cui: str) -> CUIInfo:
         return self.cui2info.get(cui, self._empty(cui))
 
     def _get_pref_name(self, cui: str) -> str:
         info = self._get_or_empty(cui)
-        return info.preferred_name or list(info.names)[0]
+        return info['preferred_name'] or list(info['names'])[0]
 
     def unwrap(self) -> tuple[
         dict[str, int], dict[str, int], dict[str, int],
@@ -302,6 +324,21 @@ class StatsBuilder:
                  #  use_groups: bool = False,
                  extra_cui_filter: Optional[set[str]] = None
                  ) -> 'StatsBuilder':
+        """Get the stats builder from a model pack and some extra information.
+
+        Args:
+            cat (CAT):
+                The model pack.
+            use_project_filters (bool, optional):
+                Whether to use per project filters. Defaults to False.
+            use_overlaps (bool, optional):
+                Whether to allow overlaps. Defaults to False.
+            extra_cui_filter (Optional[set[str]], optional):
+                Extra CUI filter. Defaults to None.
+
+        Returns:
+            StatsBuilder: The stats builder.
+        """
         return StatsBuilder(addl_info=cat.cdb.addl_info,
                             filters=cat.config.components.linking.filters,
                             doc_getter=cat.__call__,
@@ -335,7 +372,7 @@ def get_stats(cat: CAT,
     Args:
         cat: (CAT):
             The model pack.
-        data (Dict):
+        data (dict):
             The json object that we get from MedCATtrainer on export.
         epoch (int):
             Used during training, so we know what epoch is it.
@@ -353,7 +390,7 @@ def get_stats(cat: CAT,
         use_groups (bool):
             If True concepts that have groups will be combined and stats will
             be reported on groups.
-        extra_cui_filter(Optional[Set]):
+        extra_cui_filter(Optional[set]):
             This filter will be intersected with all other filters, or if all
             others are not set then only this one will be used.
         do_print (bool):

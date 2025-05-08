@@ -63,12 +63,12 @@ class TestWithTMAndCDBBase(TestWithTransformationMatrixBase):
                     # get the original vector
                     cv += random.choice(WORDS)[2]
                 cui_cv[cv_type] = cv
-            cui2info[cui].context_vectors = cui_cv
+            cui2info[cui]['context_vectors'] = cui_cv
 
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.cdb: CDB = deserialise('dill', cls.CDB_PATH)
+        cls.cdb: CDB = deserialise(cls.CDB_PATH)
         cls.assertIsInstance(cls, cls.cdb, CDB)
         cls.add_fake_context_vectors()
 
@@ -93,7 +93,7 @@ class VocabTransformationTests(TestWithTMAndCDBBase):
 
     def test_can_transform_cdb(self):
         for cui, cuiinfo in self.cdb.cui2info.items():
-            cv = cuiinfo.context_vectors
+            cv = cuiinfo['context_vectors']
             for cvt, vec in cv.items():
                 with self.subTest(f"{cui}-{cvt}"):
                     self.assertEqual(len(vec), self.TARGET_SIZE)

@@ -5,8 +5,11 @@ from typing import Callable, Any, Dict
 import tempfile
 import json
 
+import numpy as np
+
+from medcat2.config.config import ModelMeta
 from medcat2.utils.cdb_state import (
-    captured_state_cdb, CDBState, copy_cdb_state)
+    captured_state_cdb, CDBState, copy_cdb_state, _get_attr)
 from medcat2.storage.serialisers import deserialise
 from medcat2.cdb import CDB
 from medcat2.vocab import Vocab
@@ -16,11 +19,11 @@ from .. import UNPACKED_EXAMPLE_MODEL_PACK_PATH
 
 
 def load_cdb(path: str) -> CDB:
-    return deserialise('dill', path)
+    return deserialise(path)
 
 
 def load_vocab(path: str) -> Vocab:
-    return deserialise('dill', path)
+    return deserialise(path)
 
 
 class StateTests(unittest.TestCase):
@@ -48,8 +51,26 @@ class StateTests(unittest.TestCase):
                                    callback: Callable[[str, Any], None]
                                    ) -> None:
         for k in CDBState.__annotations__:
-            v = getattr(cdb, k)
+            v = _get_attr(cdb, k)
             callback(k, v)
+
+    def assertDictWithNdarrayEqual(self, dict1: dict, dict2: dict):
+        self.assertEqual(dict1.keys(), dict2.keys())
+        for key in dict1:
+            val1, val2 = dict1[key], dict2[key]
+            if isinstance(val1, np.ndarray):
+                self.assertTrue(
+                    np.array_equal(val1, val2),
+                    f"Arrays at {key} are not equal: {val1} vs {val2}")
+            elif isinstance(val1, dict):
+                self.assertDictWithNdarrayEqual(val1, val2)
+            else:
+                self.assertEqual(
+                    val1, val2,
+                    f"Values at {key} are not equal: {val1} vs {val2}")
+
+    def assertStateEqual(self, state1: CDBState, state2: CDBState):
+        self.assertDictWithNdarrayEqual(state1, state2)
 
 
 class StateSavedTests(StateTests):
@@ -61,7 +82,9 @@ class StateSavedTests(StateTests):
         # capture state
         with captured_state_cdb(cls.cdb, save_state_to_disk=cls.on_disk):
             # clear state
-            cls.do_smth_for_each_state_var(cls.cdb, lambda k, v: v.clear())
+            cls.do_smth_for_each_state_var(
+                cls.cdb, lambda k, v: v.clear()
+                if isinstance(v, (dict, set, list)) else None)
             cls.cleared_state = copy_cdb_state(cls.cdb)
         # save after state - should be equal to before
         cls.restored_state = copy_cdb_state(cls.cdb)
@@ -78,10 +101,14 @@ class StateSavedTests(StateTests):
         for k, v in self.cleared_state.items():
             with self.subTest(k):
                 # length is 0
-                self.assertFalse(v)
+                if isinstance(v, ModelMeta):
+                    self.assertFalse(v.unsup_trained)
+                    self.assertFalse(v.sup_trained)
+                else:
+                    self.assertFalse(v)
 
     def test_state_restored(self):
-        self.assertEqual(self.initial_state, self.restored_state)
+        self.assertStateEqual(self.initial_state, self.restored_state)
 
 
 class StateSavedOnDiskTests(StateSavedTests):
@@ -134,4 +161,4 @@ class StateRestoredAfterTrain(StateWithTrainingTests):
         self.assertNotEqual(self.initial_state, self.after_train_state)
 
     def test_restored_state_same(self):
-        self.assertDictEqual(self.initial_state, self.restored_state)
+        self.assertStateEqual(self.initial_state, self.restored_state)

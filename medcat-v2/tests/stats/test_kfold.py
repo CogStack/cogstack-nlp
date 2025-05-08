@@ -126,33 +126,15 @@ class KFoldCreatorTests(MCTExportTests):
             fold_counter += self.count_cuis(fold)
         self.assertEqual(orig_cntr, fold_counter)
 
-    # def _inspect(self, export: MedCATTrainerExport):
-    #     for proj in export['projects']:
-    #         print(" PROJ", proj['id'], ':', proj['name'])
-    #         for doc in proj['documents']:
-    #             print("  DOC", doc['id'], doc['name'],
-    #                   'ANNS', len(doc['annotations']))
-
     def test_has_reasonable_annotations_per_folds(self,
                                                   tolerance: float = 0.8):
         all_anns = kfold.count_all_annotations(self.mct_export)
         all_docs = kfold.count_all_docs(self.mct_export)
-        anns_per_folds = [kfold.count_all_annotations(fold)
-                          for fold in self.folds]
-        # print("ORIG")
-        # self._inspect(self.mct_export)
-        print(f"ANNS per folds:\n{anns_per_folds} vs {all_anns} total")
-        docs_per_folds = [kfold.count_all_docs(fold)
-                          for fold in self.folds]
-        print(f"DOCS per folds:\n{docs_per_folds} vs {all_docs} total")
-        # print("PER FOLD")
         mean_anns = all_anns / self.K
         mean_docs = all_docs / self.K
         for fnum, fold in enumerate(self.folds):
             fold_anns = kfold.count_all_annotations(fold)
             fold_docs = kfold.count_all_docs(fold)
-            # print("FNUM", fnum, "D", fold_docs, "A", fold_anns)
-            # self._inspect(fold)
             with self.subTest(f"Fold {fnum}"):
                 self.assertLess(
                     abs(mean_anns - fold_anns) / mean_anns,

@@ -1,4 +1,4 @@
-from medcat2.platform import platform
+from medcat2.pipeline import pipeline
 from medcat2.vocab import Vocab
 from medcat2.config import Config
 
@@ -27,6 +27,6 @@ class PlatformInitTests(unittest.TestCase):
         cls.cdb = FakeCDB(cls.cnf)
         cls.vocab = Vocab()
 
-    def test_can_create_platform(self):
-        pf = platform.Platform(self.cdb, self.vocab)
-        self.assertIsInstance(pf, platform.Platform)
+    def test_can_create_pipeline(self):
+        pf = pipeline.Pipeline(self.cdb, self.vocab, None)
+        self.assertIsInstance(pf, pipeline.Pipeline)

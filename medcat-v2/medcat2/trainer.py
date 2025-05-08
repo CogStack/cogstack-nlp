@@ -15,7 +15,7 @@ from medcat2.data.mctexport import (MedCATTrainerExport,
                                     MedCATTrainerExportDocument)
 from medcat2.preprocessors.cleaners import prepare_name, NameDescriptor
 from medcat2.components.types import CoreComponentType, TrainableComponent
-from medcat2.platform.platform import Platform
+from medcat2.pipeline.pipeline import Pipeline
 
 
 logger = logging.getLogger(__name__)
@@ -26,11 +26,11 @@ logger = logging.getLogger(__name__)
 class Trainer:
 
     def __init__(self, cdb: CDB, caller: Callable[[str], MutableDocument],
-                 platform: Platform):
+                 pipeline: Pipeline):
         self.cdb = cdb
         self.config = cdb.config
         self.caller = caller
-        self._platform = platform
+        self._pipeline = pipeline
 
     def train_unsupervised(self,
                            data_iterator: Iterable[str],
@@ -112,8 +112,8 @@ class Trainer:
                         for ann in doc['annotations']):
                 cuis.append(ann['cui'])
         for cui in set(cuis):
-            if self.cdb.cui2info[cui].count_train != 0:
-                self.cdb.cui2info[cui].count_train = reset_val
+            if self.cdb.cui2info[cui]['count_train'] != 0:
+                self.cdb.cui2info[cui]['count_train'] = reset_val
 
     def train_supervised_raw(self,
                              data: MedCATTrainerExport,
@@ -165,7 +165,7 @@ class Trainer:
         extra_cui_filter ⊆ MCT filter ⊆ Model/config filter.
 
         Args:
-            data (Dict[str, List[Dict[str, dict]]]):
+            data (dict[str, list[dict[str, dict]]]):
                 The raw data, e.g from MedCATtrainer on export.
             reset_cui_count (bool):
                 Used for training with weight_decay (annealing). Each concept
@@ -205,7 +205,7 @@ class Trainer:
             train_from_false_positives (bool):
                 If True it will use false positive examples detected by medcat
                 and train from them as negative examples.
-            extra_cui_filter(Optional[Set]):
+            extra_cui_filter(Optional[set]):
                 This filter will be intersected with all other filters, or if
                 all others are not set then only this one will be used.
             checkpoint (Optional[Optional[medcat.utils.checkpoint.Checkpoint]):
@@ -215,7 +215,7 @@ class Trainer:
                 False.
 
         Returns:
-            Tuple: Consisting of the following parts
+            tuple: Consisting of the following parts
                 fp (dict):
                     False positives for each CUI.
                 fn (dict):
@@ -352,9 +352,11 @@ class Trainer:
         with self.config.meta.prepare_and_report_training(
                 project['documents'], 1, True, project_name=project['name']
                 ) as docs:
-            self._train_supervised_for_project2(
-                docs, current_document, train_from_false_positives,
-                devalue_others)
+            with temp_changed_config(self.config.components.linking,
+                                     'train', True):
+                self._train_supervised_for_project2(
+                    docs, current_document, train_from_false_positives,
+                    devalue_others)
 
     def _train_supervised_for_project2(self,
                                        docs: list[MedCATTrainerExportDocument],
@@ -368,7 +370,9 @@ class Trainer:
                               total=len(docs),
                               desc='Document', leave=False):
             doc = docs[idx_doc]
-            mut_doc = self.caller(doc['text'])  # type: ignore
+            with temp_changed_config(self.config.components.linking,
+                                     'train', False):
+                mut_doc = self.caller(doc['text'])
 
             # Compatibility with old output where annotations are a list
             for ann in doc['annotations']:
@@ -425,7 +429,7 @@ class Trainer:
             names: dict[str, NameDescriptor] = {
                 name: NameDescriptor([], set(), name, name.isupper())}
         else:
-            names = prepare_name(name, self._platform.tokenizer, {},
+            names = prepare_name(name, self._pipeline.tokenizer, {},
                                  self._pn_configs)
 
         # If full unlink find all CUIs
@@ -436,7 +440,7 @@ class Trainer:
             for n in names:
                 if n not in self.cdb.name2info:
                     continue
-                cuis.extend(self.cdb.name2info[n].cuis)
+                cuis.extend(self.cdb.name2info[n]['per_cui_status'].keys())
 
         # Remove name from all CUIs
         for c in cuis:
@@ -475,11 +479,11 @@ class Trainer:
                                                    MutableEntity]]):
                 Given the spacy document, this is the annotated span of text -
                 list of annotated tokens that are marked with this CUI.
-            ontologies (Set[str]):
+            ontologies (set[str]):
                 ontologies in which the concept exists (e.g. SNOMEDCT, HPO)
             name_status (str):
                 One of `P`, `N`, `A`
-            type_ids (Set[str]):
+            type_ids (set[str]):
                 Semantic type identifier (have a look at TUIs in UMLS or
                 SNOMED-CT)
             description (str):
@@ -497,7 +501,7 @@ class Trainer:
             do_add_concept (bool):
                 Whether to add concept to CDB.
         """
-        names = prepare_name(name, self._platform.tokenizer, {},
+        names = prepare_name(name, self._pipeline.tokenizer_with_tag, {},
                              self._pn_configs)
         if (not names and cui not in self.cdb.cui2info and
                 name_status == 'P'):
@@ -516,7 +520,7 @@ class Trainer:
 
         if mut_entity is None or mut_doc is None:
             return
-        linker = self._platform.get_component(
+        linker = self._pipeline.get_component(
             CoreComponentType.linking)
         if not isinstance(linker, TrainableComponent):
             logger.warning(
@@ -525,17 +529,17 @@ class Trainer:
         else:
             # Train Linking
             if isinstance(mut_entity, list):
-                mut_entity = self._platform.entity_from_tokens(mut_entity)
+                mut_entity = self._pipeline.entity_from_tokens(mut_entity)
             linker.train(cui=cui, entity=mut_entity, doc=mut_doc,
                          negative=negative, names=names)
 
             if not negative and devalue_others:
                 # Find all cuis
-                cuis = set()
+                cuis: set[str] = set()
                 for n in names:
                     if n in self.cdb.name2info:
                         info = self.cdb.name2info[n]
-                        cuis.update(info.cuis)
+                        cuis.update(info['per_cui_status'].keys())
                 # Remove the cui for which we just added positive training
                 if cui in cuis:
                     cuis.remove(cui)

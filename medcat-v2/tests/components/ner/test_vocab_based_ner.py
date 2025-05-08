@@ -26,6 +26,7 @@ class FakeCDB:
 
 
 class NerInitTests(ComponentInitTests, unittest.TestCase):
+    expected_def_components = 3
     comp_type = types.CoreComponentType.ner
     default_cls = vocab_based_ner.NER
     module = vocab_based_ner
@@ -36,8 +37,3 @@ class NerInitTests(ComponentInitTests, unittest.TestCase):
         cls.cdb_vocab = dict()
         cls.cdb = FakeCDB(Config())
         return super().setUpClass()
-
-    @classmethod
-    def set_def_args(cls):
-        vocab_based_ner.set_def_args_kwargs(cls.cnf, cls.tokenizer,
-                                            cls.cdb)

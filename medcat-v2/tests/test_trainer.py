@@ -11,7 +11,7 @@ import unittest
 import random
 import pandas as pd
 
-from .platform.test_platform import FakeCDB as BFakeCDB
+from .pipeline.test_pipeline import FakeCDB as BFakeCDB
 from .utils.legacy.test_convert_config import TESTS_PATH
 from .test_cat import TrainedModelTests
 
@@ -61,9 +61,12 @@ class FakeComponent:
     pass
 
 
-class FakePlatform:
+class FakePipeline:
 
     def tokenizer(self, text: str) -> FakeMutDoc:
+        return FakeMutDoc(text)
+
+    def tokenizer_with_tag(self, text: str) -> FakeMutDoc:
         return FakeMutDoc(text)
 
     def get_component(self, comp_type):
@@ -83,7 +86,7 @@ class TrainerTestsBase(unittest.TestCase):
         cls.cdb = FakeCDB(cls.cnf)
         cls.vocab = Vocab()
         cls.trainer = Trainer(cls.cdb,
-                              cls.caller, FakePlatform())
+                              cls.caller, FakePipeline())
 
     def setUp(self):
         self.cnf = Config()
@@ -213,7 +216,8 @@ class TrainFromScratchTests(FromSratchBase):
     def test_can_train_unsupervised(self):
         for cui, _ in self.all_concepts:
             with self.subTest(cui):
-                self.assertGreater(self.model.cdb.cui2info[cui].count_train, 0)
+                self.assertGreater(
+                    self.model.cdb.cui2info[cui]['count_train'], 0)
 
 
 class TrainFromScratchSupervisedTests(TrainFromScratchTests):
@@ -225,7 +229,7 @@ class TrainFromScratchSupervisedTests(TrainFromScratchTests):
     def setUpClass(cls):
         super().setUpClass()
         cls.cnts_before = {
-            cui: info.count_train
+            cui: info['count_train']
             for cui, info in cls.model.cdb.cui2info.items()
         }
         cls.model.trainer.train_supervised_raw(
@@ -241,4 +245,4 @@ class TrainFromScratchSupervisedTests(TrainFromScratchTests):
         for cui, prev_count in self.cnts_before.items():
             with self.subTest(cui):
                 info = self.model.cdb.cui2info[cui]
-                self.assertGreater(info.count_train, prev_count)
+                self.assertGreater(info['count_train'], prev_count)

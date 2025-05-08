@@ -64,12 +64,9 @@ class FoldCreator(ABC):
     def _find_or_add_doc(self, project: MedCATTrainerExportProject,
                          orig_doc: MedCATTrainerExportDocument
                          ) -> MedCATTrainerExportDocument:
-        # print("FIND OR ADD DOC", orig_doc['name'])
         for existing_doc in project['documents']:
             if existing_doc['name'] == orig_doc['name']:
-                # print("GOT EXISTING")
                 return existing_doc
-        # print("ADD NEW")
         new_doc: MedCATTrainerExportDocument = deepcopy(orig_doc)
         new_doc['annotations'].clear()
         project['documents'].append(new_doc)
@@ -117,7 +114,7 @@ class FoldCreator(ABC):
             ValueError: If something went wrong.
 
         Returns:
-            List[MedCATTrainerExport]: The created folds.
+            list[MedCATTrainerExport]: The created folds.
         """
 
 
@@ -197,8 +194,6 @@ class PerAnnsFoldCreator(SimpleFoldCreator):
     def _create_fold(self, fold_nr: int) -> MedCATTrainerExport:
         per_fold = self.per_fold[fold_nr]
         already_done = sum(self.per_fold[fn] for fn in range(fold_nr))
-        # print("CREATING FOLD num", fold_nr, 'with', per_fold,
-        #       'annotations and', already_done, 'already taken')
         cur_fold: MedCATTrainerExport = {
             'projects': []
         }
@@ -281,6 +276,19 @@ def get_fold_creator(mct_export: MedCATTrainerExport,
 
 def get_per_fold_metrics(cat: CAT, folds: list[MedCATTrainerExport],
                          *args, **kwargs) -> list[tuple]:
+    """Get per fold metrics for a given set of folds.
+
+    This method captures the state of the before processing each fold.
+    For each fold, it trains on all other folds, and runs metrics on
+    the fold itself.
+
+    Args:
+        cat (CAT): The model pack.
+        folds (list[MedCATTrainerExport]): The folds.
+
+    Returns:
+        list[tuple]: The metrics for each fold.
+    """
     metrics = []
     for fold_nr, cur_fold in enumerate(folds):
         others = list(folds)
@@ -364,7 +372,7 @@ def get_metrics_mean(metrics: list[tuple[dict, dict, dict,
     """The the mean of the provided metrics.
 
     Args:
-        metrics (List[Tuple[dict, dict, dict, dict, dict, dict, dict, dict]):
+        metrics (list[tuple[dict, dict, dict, dict, dict, dict, dict, dict]):
             The metrics.
         include_std (bool): Whether to include the standard deviation.
 
@@ -477,7 +485,7 @@ def get_k_fold_stats(cat: CAT, mct_export_data: MedCATTrainerExport,
             method.
 
     Returns:
-        Tuple: The averaged metrics. Potentially with their corresponding
+        tuple: The averaged metrics. Potentially with their corresponding
             standard deviations.
     """
     creator = get_fold_creator(mct_export_data, k, split_type=split_type)

@@ -84,7 +84,9 @@ def convert_context_vectors(cdb: CDB, matrix: np.ndarray) -> None:
         matrix (np.ndarray): The transformation matrix.
     """
     for cuiinfo in cdb.cui2info.values():
-        per_cui_dict = cuiinfo.context_vectors
+        if 'context_vectors' not in cuiinfo:
+            continue
+        per_cui_dict = cuiinfo['context_vectors']
         if per_cui_dict is None:
             continue
         for type_name, cur_vec in list(per_cui_dict.items()):
@@ -102,7 +104,7 @@ def convert_vocab_vector_size(cdb: CDB, vocab: Vocab, vec_size: int):
     This produces a transformation matrix of shape (vec_size, N),
     where N is the current vector length in the vocab.
 
-    After that, we perform the tranformation. First we transform all
+    After that, we perform the transformation. First we transform all
     the vectors in the Vocab. And then we transform all the context
     vectors defined within the CDB.
 
