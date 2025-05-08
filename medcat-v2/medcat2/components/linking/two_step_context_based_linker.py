@@ -302,7 +302,7 @@ class TwoStepLinker(AbstractCoreComponent):
             similarities[cui_index] = new_sim
             logger.debug("[Per CUI weights] CUI: %s, Name: %s, "
                          "Old sim: %.3f, New sim: %.3f",
-                         cui_sim, new_sim)
+                         cui, name, cui_sim, new_sim)
 
 
 class PerEntityWeights(MutableMapping[MutableEntity, dict[str, float]]):
