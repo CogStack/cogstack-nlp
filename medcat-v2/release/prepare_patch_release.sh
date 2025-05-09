@@ -90,8 +90,42 @@ fi
 
 # do the cherry-picking
 for HASH in "${CHERRYPICK_HASHES[@]}"; do
-    run_or_echo git cherry-pick "$HASH" || error_exit "Failed to cherry-pick $HASH."
+    if ! run_or_echo git cherry-pick "$HASH"; then
+        echo "Conflict detected when cherry-picking $HASH."
+        echo
+        echo "Options:"
+        echo "1. Resolve the conflict manually now:"
+        echo "   - Edit the conflicted files"
+        echo "   - git add <resolved-files>"
+        echo "   - git cherry-pick --continue"
+        echo
+        echo "2. Abort this process and try a different approach:"
+        echo "   - git cherry-pick --abort"
+        echo "   - Create a separate branch from $RELEASE_BRANCH"
+        echo "   - Apply changes manually and commit"
+        echo "   - Use the new commit hash with this script"
+        echo
+        read -p "Do you want to resolve conflicts now? (y/n): " choice
+        if [[ "$choice" =~ ^[Yy]$ ]]; then
+            echo "Please resolve conflicts and then press Enter to continue..."
+            read -r
+
+            # Check if cherry-pick is still in progress
+            if [[ -d "$(git rev-parse --git-dir)/CHERRY_PICK_HEAD" ]]; then
+                error_exit "Cherry-pick is still in progress. Please complete it before continuing."
+            fi
+        else
+            run_or_echo git cherry-pick --abort
+            echo "Cherry-pick aborted. You may want to:"
+            echo "1. Create a new branch: git checkout -b fix-for-$RELEASE_BRANCH"
+            echo "2. Apply changes manually"
+            echo "3. Commit: git commit -m 'Backport $HASH to $VERSION_MAJOR_MINOR'"
+            echo "4. Run this script again with the new commit hash"
+            exit 1
+        fi
+    fi
 done
+
 
 # Update version in pyproject.toml
 if [[ "$(uname)" == "Darwin" ]]; then
