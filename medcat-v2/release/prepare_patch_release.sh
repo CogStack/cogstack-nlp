@@ -88,6 +88,19 @@ if $MANUAL; then
     exit 0
 fi
 
+if $DRY_RUN; then
+    echo "Checking for potential cherry-pick conflicts... this would not run in non-dry-run scenarios!"
+    for HASH in "${CHERRYPICK_HASHES[@]}"; then
+        if ! git cherry-pick --no-commit --no-gpg-sign --quit "$HASH" >/dev/null 2>&1; then
+            echo "Warning: Commit $HASH may cause conflicts"
+            git cherry-pick --abort >/dev/null 2>&1
+        else
+            echo "Commit $HASH should apply cleanly"
+            git reset --hard HEAD >/dev/null 2>&1
+        fi
+    done
+fi
+
 # do the cherry-picking
 for HASH in "${CHERRYPICK_HASHES[@]}"; do
     if ! run_or_echo git cherry-pick "$HASH"; then
@@ -107,7 +120,7 @@ for HASH in "${CHERRYPICK_HASHES[@]}"; do
         echo
         read -p "Do you want to resolve conflicts now? (y/n): " choice
         if [[ "$choice" =~ ^[Yy]$ ]]; then
-            echo "Please resolve conflicts and then press Enter to continue..."
+            echo "Please resolve conflicts (in an editor) and then press Enter to continue..."
             read -r
 
             # Check if cherry-pick is still in progress
@@ -118,7 +131,7 @@ for HASH in "${CHERRYPICK_HASHES[@]}"; do
             run_or_echo git cherry-pick --abort
             echo "Cherry-pick aborted. You may want to:"
             echo "1. Create a new branch: git checkout -b fix-for-$RELEASE_BRANCH"
-            echo "2. Apply changes manually"
+            echo "2. Merge commit manually and resolve conflicts"
             echo "3. Commit: git commit -m 'Backport $HASH to $VERSION_MAJOR_MINOR'"
             echo "4. Run this script again with the new commit hash"
             exit 1
