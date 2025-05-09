@@ -89,16 +89,22 @@ if $MANUAL; then
 fi
 
 if $DRY_RUN; then
-    echo "Checking for potential cherry-pick conflicts... this would not run in non-dry-run scenarios!"
-    for HASH in "${CHERRYPICK_HASHES[@]}"; then
-        if ! git cherry-pick --no-commit --no-gpg-sign --quit "$HASH" >/dev/null 2>&1; then
-            echo "Warning: Commit $HASH may cause conflicts"
-            git cherry-pick --abort >/dev/null 2>&1
+    echo "Checking for potential cherry-pick conflicts... this would not run in non-dry-run scenarios"
+
+    ORIGINAL_REF=$(git rev-parse --abbrev-ref HEAD)
+    git fetch origin "$RELEASE_BRANCH" >/dev/null 2>&1 || error_exit "Could not fetch release branch"
+    git checkout --detach "origin/$RELEASE_BRANCH" >/dev/null 2>&1 || error_exit "Could not check out release branch (detached)"
+
+    for HASH in "${CHERRYPICK_HASHES[@]}"; do
+        if git cherry-pick --no-commit --no-gpg-sign "$HASH" >/dev/null 2>&1; then
+            echo "✓ Commit $HASH should apply cleanly"
         else
-            echo "Commit $HASH should apply cleanly"
-            git reset --hard HEAD >/dev/null 2>&1
+            echo "⚠️ Commit $HASH may cause conflicts"
         fi
+        git reset --hard HEAD >/dev/null 2>&1
     done
+
+    git checkout "$ORIGINAL_REF" >/dev/null 2>&1 || error_exit "Could not return to original branch"
 fi
 
 # do the cherry-picking
