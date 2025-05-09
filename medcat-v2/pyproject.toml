@@ -9,7 +9,7 @@ readme = "README.md"
 
 requires-python = ">=3.9"
 
-license = "Elastic-License-2.0"
+license = "Elastic-2.0"
 
 keywords = ["ML", "NLP", "NER+L"]
 
