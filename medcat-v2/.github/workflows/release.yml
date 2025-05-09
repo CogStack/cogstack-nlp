@@ -35,20 +35,6 @@ jobs:
           # Ensure the branch is up-to-date with the remote
           git pull origin $BRANCH_NAME
 
-      - name: Extract version from tag
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
-
-      - name: Update pyproject.toml version
-        run: |
-          sed -i 's/^version = ".*"/version = "'$VERSION'"/' pyproject.toml
-
-      - name: Commit version update
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git commit -am "Update version to $VERSION"
-          git push
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
