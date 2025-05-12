@@ -245,7 +245,7 @@ class MetaCAT(AbstractSerialisable):
 
         self.tokenizer = tokenizer
         if tokenizer is not None:
-            self.reset_tokenizer_info()
+            self._reset_tokenizer_info()
 
         self.embeddings = (torch.tensor(
             embeddings, dtype=torch.float32) if embeddings is not None
@@ -254,7 +254,7 @@ class MetaCAT(AbstractSerialisable):
         if _model_state_dict:
             self.model.load_state_dict(_model_state_dict)
 
-    def reset_tokenizer_info(self):
+    def _reset_tokenizer_info(self):
         # Set it in the config
         self.config.general.tokenizer_name = self.tokenizer.name
         self.config.general.vocab_size = self.tokenizer.get_size()
