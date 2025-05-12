@@ -4,7 +4,7 @@ import logging
 import numpy
 from multiprocessing import Lock
 from datetime import datetime
-from typing import Iterable, Optional, cast, Union, Any, TypedDict
+from typing import Iterable, Optional, cast, Union, Any, TypedDict, Callable
 
 from medcat2.utils.hasher import Hasher
 
@@ -44,6 +44,10 @@ class MedCATTrainerExportDocument(TypedDict):
     value: str
 
 
+TokenizerPreprocessor = Optional[
+    Callable[[Optional[TokenizerWrapperBase]], None]]
+
+
 class MetaCATAddon(AddonComponent):
     addon_type = 'meta_cat'
     output_key = 'meta_anns'
@@ -64,10 +68,13 @@ class MetaCATAddon(AddonComponent):
         return self._mc
 
     @classmethod
-    def create_new(cls, config: ConfigMetaCAT, base_tokenizer: BaseTokenizer
+    def create_new(cls, config: ConfigMetaCAT, base_tokenizer: BaseTokenizer,
+                   tknzer_preprocessor: TokenizerPreprocessor = None
                    ) -> 'MetaCATAddon':
         """Factory method to create a new MetaCATAddon instance."""
         tokenizer = init_tokenizer(config)
+        if tknzer_preprocessor is not None:
+            tknzer_preprocessor(tokenizer)
         meta_cat = MetaCAT(tokenizer, embeddings=None, config=config)
         return cls(config, base_tokenizer, meta_cat)
 
@@ -236,13 +243,9 @@ class MetaCAT(AbstractSerialisable):
         self.config = config
         set_all_seeds(config.general.seed)
 
-        if tokenizer is not None:
-            # Set it in the config
-            config.general.tokenizer_name = tokenizer.name
-            config.general.vocab_size = tokenizer.get_size()
-            # We will also set the padding
-            config.model.padding_idx = cast(int, tokenizer.get_pad_id())
         self.tokenizer = tokenizer
+        if tokenizer is not None:
+            self._reset_tokenizer_info()
 
         self.embeddings = (torch.tensor(
             embeddings, dtype=torch.float32) if embeddings is not None
@@ -250,6 +253,13 @@ class MetaCAT(AbstractSerialisable):
         self.model = self.get_model(embeddings=self.embeddings)
         if _model_state_dict:
             self.model.load_state_dict(_model_state_dict)
+
+    def _reset_tokenizer_info(self):
+        # Set it in the config
+        self.config.general.tokenizer_name = self.tokenizer.name
+        self.config.general.vocab_size = self.tokenizer.get_size()
+        # We will also set the padding
+        self.config.model.padding_idx = cast(int, self.tokenizer.get_pad_id())
 
     def get_model(self, embeddings: Optional[Tensor]) -> nn.Module:
         """Get the model

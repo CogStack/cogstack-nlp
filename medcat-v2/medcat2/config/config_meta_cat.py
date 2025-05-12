@@ -198,6 +198,7 @@ class Model(DirtiableBaseModel):
     class Config:
         extra = 'allow'
         validate_assignment = True
+        protected_namespaces = ()
 
 
 class Train(DirtiableBaseModel):
