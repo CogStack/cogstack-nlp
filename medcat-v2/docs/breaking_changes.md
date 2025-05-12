@@ -15,3 +15,10 @@ This affects the following methods (assumption is that `cat` is an instance of `
 | --------------------------- | ---------------------------------- |
 | `cat.train`                 | `cat.trainer.train_unsupervised`   |
 | `cat.train_supervised_raw`  | `cat.trainer.train_supervised_raw` |
+
+### Model saving
+
+|          v1 method          |           v2 method                |
+| --------------------------- | ---------------------------------- |
+| `cat.create_model_pack`     | `cat.save_model_pack`              |
+
