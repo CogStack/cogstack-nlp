@@ -35,3 +35,29 @@ If you were previously relying on some of the behaviour provided by these, don't
 | `cat.multiprocessing_batch_docs_size` |                 ==||==                 |
 | `cat.get_json`                 | Unclear usecases                              |
 | `def destroy_pipe`             | Unclear usecases                              |
+
+## API Changes to CDB
+
+The `CDB` class is now located in `medcat.cdb.cdb` module.
+However, it can be imported from the package directly as well, same as before (`from medcat2.cdb import CDB`).
+
+### Names and CUIs are now mapped to variables differently
+
+Instead of `cui2<stuff>` and `name2stuff` `dict`s, v2 provides `cui2info` and `name2info` mappings.
+Either of these have a `dict` that defines per concept or name information.
+Below you can see how to access the same things in the new version.
+
+|          v1 method                |           v2 method                            | Notes |
+| --------------------------------- | ---------------------------------------------- | ----- |
+| `cdb.cui2names[cui]`              | `cdb.cui2info[cui]['names']`                   |       |
+| `cdb.cui2snames[cui]`             | `cdb.cui2info[cui]['subnames']`                |       |
+| `cdb.cui2count_train[cui]`        | `cdb.cui2info[cui]['count_train']`             |       |
+| `cdb.cui2context_vectors[cui]`    | `cdb.cui2info[cui]['context_vectors']`         |       |
+| `cdb.cui2type_ids[cui]`           | `cdb.cui2info[cui]['type_ids']`                |       |
+| `cdb.cui2preferred_name[cui]`     | `cdb.cui2info[cui]['preferred_name']`          |       |
+| `cdb.cui2average_confidence[cui]` | `cdb.cui2info[cui]['average_confidence']`      |       |
+| `cdb.name2cuis[name]`             | `cdb.name2info[name]['per_cui_status'].keys()` | There's no need to track per CUI status (on a per name basis) and per name CUIs separately |
+| `cdb.name2cuis2status[name]`      | `cdb.name2info[name]['per_cui_status']`        |       |
+| `cdb.name2count_train[name]`      | `cdb.name2info[name]['count_train']`           |       |
+| `cdb.snames`                      | `cdb._subnames`                                |       |
+
