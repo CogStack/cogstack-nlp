@@ -236,13 +236,9 @@ class MetaCAT(AbstractSerialisable):
         self.config = config
         set_all_seeds(config.general.seed)
 
-        if tokenizer is not None:
-            # Set it in the config
-            config.general.tokenizer_name = tokenizer.name
-            config.general.vocab_size = tokenizer.get_size()
-            # We will also set the padding
-            config.model.padding_idx = cast(int, tokenizer.get_pad_id())
         self.tokenizer = tokenizer
+        if tokenizer is not None:
+            self.reset_tokenizer_info()
 
         self.embeddings = (torch.tensor(
             embeddings, dtype=torch.float32) if embeddings is not None
@@ -250,6 +246,13 @@ class MetaCAT(AbstractSerialisable):
         self.model = self.get_model(embeddings=self.embeddings)
         if _model_state_dict:
             self.model.load_state_dict(_model_state_dict)
+
+    def reset_tokenizer_info(self):
+        # Set it in the config
+        self.config.general.tokenizer_name = self.tokenizer.name
+        self.config.general.vocab_size = self.tokenizer.get_size()
+        # We will also set the padding
+        self.config.model.padding_idx = cast(int, self.tokenizer.get_pad_id())
 
     def get_model(self, embeddings: Optional[Tensor]) -> nn.Module:
         """Get the model
