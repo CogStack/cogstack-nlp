@@ -22,3 +22,16 @@ This affects the following methods (assumption is that `cat` is an instance of `
 | --------------------------- | ---------------------------------- |
 | `cat.create_model_pack`     | `cat.save_model_pack`              |
 
+### Removals
+
+These methods were removed either due to a difference in approach or due to preceived unimportance.
+Protected (starting with `_`) or private (starting with `__`) methods won't be recorded here.
+If you were previously relying on some of the behaviour provided by these, don't hesitate to get in touch.
+
+|            v1 method           |              Reason removed                   |
+| ------------------------------ | --------------------------------------------- |
+| `cat.get_entities_multi_texts` | Multiprocessing will be addressed differently |
+| `cat.multiprocessing_batch_char_size` |                 ==||==                 |
+| `cat.multiprocessing_batch_docs_size` |                 ==||==                 |
+| `cat.get_json`                 | Unclear usecases                              |
+| `def destroy_pipe`             | Unclear usecases                              |
