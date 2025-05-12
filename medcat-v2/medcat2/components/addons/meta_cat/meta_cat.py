@@ -4,7 +4,7 @@ import logging
 import numpy
 from multiprocessing import Lock
 from datetime import datetime
-from typing import Iterable, Optional, cast, Union, Any, TypedDict
+from typing import Iterable, Optional, cast, Union, Any, TypedDict, Callable
 
 from medcat2.utils.hasher import Hasher
 
@@ -44,6 +44,10 @@ class MedCATTrainerExportDocument(TypedDict):
     value: str
 
 
+TokenizerPreprocessor = Optional[
+    Callable[[Optional[TokenizerWrapperBase]], None]]
+
+
 class MetaCATAddon(AddonComponent):
     addon_type = 'meta_cat'
     output_key = 'meta_anns'
@@ -64,10 +68,13 @@ class MetaCATAddon(AddonComponent):
         return self._mc
 
     @classmethod
-    def create_new(cls, config: ConfigMetaCAT, base_tokenizer: BaseTokenizer
+    def create_new(cls, config: ConfigMetaCAT, base_tokenizer: BaseTokenizer,
+                   tknzer_preprocessor: TokenizerPreprocessor = None
                    ) -> 'MetaCATAddon':
         """Factory method to create a new MetaCATAddon instance."""
         tokenizer = init_tokenizer(config)
+        if tknzer_preprocessor is not None:
+            tknzer_preprocessor(tokenizer)
         meta_cat = MetaCAT(tokenizer, embeddings=None, config=config)
         return cls(config, base_tokenizer, meta_cat)
 
