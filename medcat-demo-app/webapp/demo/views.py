@@ -7,6 +7,7 @@ from django.shortcuts import render
 from django.http import StreamingHttpResponse, HttpResponse
 import numpy as np
 from wsgiref.util import FileWrapper
+from medcat2 import __version__ as medcat_version
 from medcat2.cat import CAT
 from medcat2.cdb import CDB
 from medcat2.vocab import Vocab
@@ -125,6 +126,7 @@ def show_annotations(request):
         context['doc_html'] = doc_html
         context['doc_json'] = doc_json
         context['text'] = request.POST['text']
+        context['medcat_version'] = medcat_version
     return render(request, 'train_annotations.html', context=context)
 
 
@@ -147,6 +149,7 @@ def validate_umls_user(request):
             'message': 'Something went wrong. Please try again.'
         }
     finally:
+        context['medcat_version'] = medcat_version
         return render(request, 'umls_user_validation.html', context=context)
 
 
@@ -173,6 +176,7 @@ def download_model(request):
                 'downloader_form': downloader_form,
                 'message': 'All non-optional fields must be filled out:'
             }
+            context['medcat_version'] = medcat_version
             return render(request, 'umls_user_validation.html', context=context)
     else:
         return HttpResponse('Erorr: Unknown HTTP method.')
