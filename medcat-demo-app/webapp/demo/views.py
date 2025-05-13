@@ -50,7 +50,7 @@ def doc2html(doc):
                'bg': "rgb(74, 154, 239, {})".format(
                    span.context_similarity * span.context_similarity + 0.12),
                'text': html.escape(span.base.text)
-        }
+               }
         # Add the entity
         markup += TPL_ENT.format(**ent)
         offset = end
