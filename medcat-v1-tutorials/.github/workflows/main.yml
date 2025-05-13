@@ -18,6 +18,7 @@ jobs:
           introductory/Part_4_*.ipynb,
           introductory/Part_5_*.ipynb,
           introductory/Part_1_*.ipynb,
+          introductory/Part_6_*.ipynb,
           specialised/Comparing_Models_with_RegressionSuite.ipynb  # this should work still
           # specialised/*.ipynb         # To make it run, the SnomedCT file needs to be mocked
         ]
