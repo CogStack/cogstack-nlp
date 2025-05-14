@@ -62,6 +62,18 @@ Below you can see how to access the same things in the new version.
 | `cdb.snames`                      | `cdb._subnames`                                |       |
 
 
+## API changes for Config
+
+Some config parts have been moved around for clarity.
+The below is the list of config parts that have been relocated.
+**It must be noted that the ability to use `config[path] = value` was also removed.**
+
+|          v1 location                    |           v2 location                                        | Notes |
+| --------------------------------------- | ------------------------------------------------------------ | ----- |
+| `config.linking`                        | `config.components.linking`                                  |       |
+| `config.ner`                            | `config.components.ner`                                      |       |
+| `config.ner`                            | `config.components.ner`                                      |       |
+
 ## Relocated packages / modules
 
 Some packages and modules were relocated.
