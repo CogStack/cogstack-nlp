@@ -31,6 +31,7 @@ If you were previously relying on some of the behaviour provided by these, don't
 |            v1 method           |              Reason removed                   |
 | ------------------------------ | --------------------------------------------- |
 | `cat.get_entities_multi_texts` | Multiprocessing will be addressed differently |
+| `cat.train_supervised_from_json` | Don't want to be tightly coupled to a file format here |
 | `cat.multiprocessing_batch_char_size` |                 ==||==                 |
 | `cat.multiprocessing_batch_docs_size` |                 ==||==                 |
 | `cat.get_json`                 | Unclear usecases                              |
