@@ -23,6 +23,8 @@ CONFIG_MOVE = {
     'general.spacy_model': 'general.nlp.modelname',
     'general.spacy_disabled_components': 'general.nlp.disabled_components',
 }
+CONFIG_MOVE_OPTIONAL = {
+    "version.description", "version.id", "version.ontology"}
 MOVE_WITH_REMOVES = {
     'general': {'checkpoint',  # TODO: Start supporitn checkpoints again
                 'spacy_model', 'spacy_disabled_components', 'usage_monitor'},
@@ -62,6 +64,11 @@ def get_val_and_parent_model(old_data: Optional[dict],
         else:
             name = ''
         if val is not None:
+            if path in CONFIG_MOVE_OPTIONAL and cname not in val:
+                logger.warning(
+                    "Optional path '%s' not found in old config. Ignoring",
+                    path)
+                break
             val = val[cname]
     return val, target_model
 
