@@ -162,9 +162,10 @@ def get_config_from_nested_dict(old_data: dict) -> Config:
     # but we now default to regex
     cnf.general.nlp.provider = 'spacy'
     cnf = _make_changes(cnf, old_data)
-    if cnf.general.nlp.modelname == 'spacy_model':
+    if cnf.general.nlp.modelname in ('spacy_model', 'en_core_sci_md'):
         logger.info("Fixing spacy model. "
-                    "Moving from 'spacy_model' to 'en_core_web_md'!")
+                    "Moving from '%s' to 'en_core_web_md'!",
+                    cnf.general.nlp.modelname)
         cnf.general.nlp.modelname = 'en_core_web_md'
     return cnf
 
