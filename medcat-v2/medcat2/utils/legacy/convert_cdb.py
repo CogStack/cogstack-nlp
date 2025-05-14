@@ -65,6 +65,7 @@ NAME2KEYS = {'name2cuis', 'name2cuis2status', 'name2count_train',
 CUI2KEYS = {'cui2names', 'cui2snames', 'cui2context_vectors',
             'cui2count_train', 'cui2info', 'cui2tags', 'cui2type_ids',
             'cui2preferred_name', 'cui2average_confidence', }
+CUI2KEYS_OPTIONAL = {"cui2info", }
 TO_RENAME = {'vocab': 'token_counts'}
 
 
@@ -105,6 +106,11 @@ _DEFAULT_SNOMED_TYPE_ID2NAME = {
 def _add_cui_info(cdb: CDB, data: dict) -> CDB:
     all_cuis = set()
     for key in CUI2KEYS:
+        if key in CUI2KEYS_OPTIONAL and key not in data:
+            logger.info(
+                "Optional key to be converted was not found in target "
+                "data: %s. Ignoring", key)
+            continue
         ccuis = data[key].keys()
         logger.debug("Adding %d cuis based on '%s", len(ccuis), key)
         all_cuis.update(ccuis)
