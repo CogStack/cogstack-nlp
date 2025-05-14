@@ -61,3 +61,16 @@ Below you can see how to access the same things in the new version.
 | `cdb.name2count_train[name]`      | `cdb.name2info[name]['count_train']`           |       |
 | `cdb.snames`                      | `cdb._subnames`                                |       |
 
+
+## Relocated packages / modules
+
+Some packages and modules were relocated.
+We can see the list of relocations here.
+
+|          v1 location                    |           v2 location                                        | Notes |
+| --------------------------------------- | ------------------------------------------------------------ | ----- |
+| `medcat.meta_cat`                       | `medcat2.components.addons.meta_cat.meta_cat`                |       |
+| `medcat.utils.meta_cat`                 | `medcat2.components.addons.meta_cat`                         |       |
+| `medcat.config_meta_cat`                | `medcat2.config.config_meta_cat`                             |       |
+| `medcat.cdb_maker`                      | `medcat2.model_creation.cdb_maker`                           |       |
+| `medcat.tokenizers.meta_cat_tokenizers` | `medcat2.components.addons.meta_cat.mctokenizers.tokenizers` |       |
