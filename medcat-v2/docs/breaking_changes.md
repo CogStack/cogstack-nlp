@@ -60,6 +60,7 @@ Below you can see how to access the same things in the new version.
 | `cdb.name2cuis2status[name]`      | `cdb.name2info[name]['per_cui_status']`        |       |
 | `cdb.name2count_train[name]`      | `cdb.name2info[name]['count_train']`           |       |
 | `cdb.snames`                      | `cdb._subnames`                                |       |
+| `cdb.make_stats()`                | `cdb.get_basic_info()`                         |       |
 
 
 ## API changes for Config
