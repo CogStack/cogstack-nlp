@@ -9,7 +9,7 @@ on:
 jobs:
   main:
 
-    runs-on: macos-latest
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         part: [
