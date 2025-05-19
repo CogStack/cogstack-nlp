@@ -76,7 +76,7 @@ dependencies = [ # Optional
 # projects.
 [project.optional-dependencies] # Optional
 dev = [
-  "ruff~=0.1.7",
+  "ruff~=0.11.10",
   "mypy",
   "types-tqdm",
   "types-setuptools",
