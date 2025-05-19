@@ -23,6 +23,7 @@ jobs:
         run: uv python install ${{ matrix.python-version }}
       - name: Install the project
         run: |
+          uv venv
           uv pip install --dry-run ".[spacy,deid,meta-cat]"
           uv --verbose sync --all-extras --dev
           uv run python -m ensurepip
