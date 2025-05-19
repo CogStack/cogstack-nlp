@@ -1,8 +1,8 @@
-medcat~=1.14.0
+medcat~=1.16.0
 pandas<2.0.0
 seaborn~=0.11.2
 pytest-xdist~=2.5.0
-nbmake<1.4
+nbmake<1.5
 nbconvert<6
 jinja2<=3.0
 matplotlib>=3.4.0,<3.8.0
