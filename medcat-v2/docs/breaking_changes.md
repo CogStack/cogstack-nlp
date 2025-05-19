@@ -62,6 +62,7 @@ Below you can see how to access the same things in the new version.
 | `cdb.name2count_train[name]`      | `cdb.name2info[name]['count_train']`           |       |
 | `cdb.snames`                      | `cdb._subnames`                                |       |
 | `cdb.make_stats()`                | `cdb.get_basic_info()`                         |       |
+| `CDB.load`                        | `deserialise()`                                | Most end users shouldn't need to load the CDB on its own |
 
 
 ## API changes for Config
