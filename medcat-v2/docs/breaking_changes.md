@@ -62,7 +62,7 @@ Below you can see how to access the same things in the new version.
 | `cdb.name2count_train[name]`      | `cdb.name2info[name]['count_train']`           |       |
 | `cdb.snames`                      | `cdb._subnames`                                |       |
 | `cdb.make_stats()`                | `cdb.get_basic_info()`                         |       |
-| `CDB.load`                        | `deserialise()`                                | Most end users shouldn't need to load the CDB on its own |
+| `CDB.load`                        | `cdb: CDB deserialise(<path>)`                 | Most end users shouldn't need to load the CDB on its own |
 
 
 ## API changes for Config
@@ -76,6 +76,17 @@ The below is the list of config parts that have been relocated.
 | `config.linking`                        | `config.components.linking`                                  |       |
 | `config.ner`                            | `config.components.ner`                                      |       |
 | `config.ner`                            | `config.components.ner`                                      |       |
+
+
+## API changes for Vocab
+
+There weren't many changes to `Vocab`.
+But we'll list them here nonetheless.
+
+|          v1 method                |           v2 method                            | Notes |
+| --------------------------------- | ---------------------------------------------- | ----- |
+| `Vocab.load`                        | `vocab: Vocab = deserialise(<path>)`         | Most end users shouldn't need to load the Vocab on its own |
+
 
 ## Relocated packages / modules
 
