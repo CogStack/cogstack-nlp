@@ -85,7 +85,7 @@ But we'll list them here nonetheless.
 
 |          v1 method                |           v2 method                            | Notes |
 | --------------------------------- | ---------------------------------------------- | ----- |
-| `Vocab.load`                        | `vocab: Vocab = deserialise(<path>)`         | Most end users shouldn't need to load the Vocab on its own |
+| `Vocab.load`                      | `vocab: Vocab = deserialise(<path>)`         | Most end users shouldn't need to load the Vocab on its own |
 
 
 ## Relocated packages / modules
