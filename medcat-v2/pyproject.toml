@@ -81,6 +81,7 @@ dev = [
   "types-tqdm",
   "types-setuptools",
   "types-PyYAML",
+  "scipy==1.15.3",
 ]
 spacy = [
   "spacy",
