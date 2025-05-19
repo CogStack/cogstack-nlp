@@ -84,7 +84,7 @@ dev = [
   "scipy~=1.15.0; python_version == '3.13'",
 ]
 spacy = [
-  "spacy",
+  "spacy>=3.8.4; python_version >= '3.10'",
   "spacy<3.8.4; python_version == '3.9'"
 ]
 meta_cat = [
