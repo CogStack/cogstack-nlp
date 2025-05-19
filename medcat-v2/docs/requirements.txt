@@ -31,7 +31,7 @@ MarkupSafe==3.0.2
 langcodes==3.4.1
 language_data==1.2.0
 marisa-trie==1.2.1
-setuptools==65.5.0
+setuptools==78.1.1
 murmurhash==1.0.10
 packaging==24.1
 preshed==3.0.9
