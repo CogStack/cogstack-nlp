@@ -383,6 +383,9 @@ class MutableDocument(Protocol):
     def __getitem__(self, index: slice) -> MutableEntity:
         pass
 
+    def __len__(self) -> int:
+        pass
+
     def get_tokens(self, start_index: int, end_index: int
                    ) -> list[MutableToken]:
         """Get the tokens that span the specified character indices.
@@ -449,6 +452,6 @@ class UnregisteredDataPathException(ValueError):
 
     def __init__(self, cls: Type, path: str):
         super().__init__(
-            f"Unregistered path {path} for class: {cls}")
+            f"Unregistered path '{path}' for class: {cls}")
         self.cls = cls
         self.path = path

@@ -376,17 +376,50 @@ class Trainer:
 
             # Compatibility with old output where annotations are a list
             for ann in doc['annotations']:
-                if not ann.get('killed', False):
-                    cui = ann['cui']
-                    start = ann['start']
-                    end = ann['end']
-                    mut_entity = mut_doc.get_tokens(start, end)
-                    deleted = bool(ann.get('deleted', False))
-                    if cnf_linking.filters.check_filters(cui):
-                        self.add_and_train_concept(
-                            cui=cui, name=ann['value'], mut_doc=mut_doc,
-                            mut_entity=mut_entity, negative=deleted,
-                            devalue_others=devalue_others)
+                if ann.get('killed', False):
+                    continue
+                logger.info("    Annotation %s (%s) [%d:%d]",
+                            ann['value'], ann['cui'], ann['start'], ann['end'])
+                cui = ann['cui']
+                start = ann['start']
+                end = ann['end']
+                mut_entity = mut_doc.get_tokens(start, end)
+                if not mut_entity:
+                    logger.warning(
+                        "When looking for CUI '%s' (value '%s') [%d...%d] "
+                        "within the document '%s' (ID %s) was unable "
+                        "to get any tokens that match the start and end. ",
+                        cui, ann['value'], start, end,
+                        doc['name'], doc['id'])
+                    continue
+                deleted = bool(ann.get('deleted', False))
+                if not cnf_linking.filters.check_filters(cui):
+                    continue
+                try:
+                    self.add_and_train_concept(
+                        cui=cui, name=ann['value'], mut_doc=mut_doc,
+                        mut_entity=mut_entity, negative=deleted,
+                        devalue_others=devalue_others)
+                except ValueError as ve:
+                    context_window = 20  # characters
+                    splitter_left, splitter_right = "<", ">"
+                    cur_text = doc['text']
+                    context_start = max(start - context_window, 0)
+                    context_end = min(end + context_window, len(cur_text) - 1)
+                    context = (cur_text[context_start: start] +
+                               splitter_left +
+                               cur_text[start: end] +
+                               splitter_right +
+                               cur_text[end: context_end])
+                    if context_start > 0:
+                        context = "[...]" + context
+                    if context_end < len(cur_text) - 1:
+                        context += "[...]"
+                    raise ValueError(
+                        f"Failed to identify '{cui}' ({ann['value']}) "
+                        f"([{ann['start']}:{ann['end']}]) "
+                        f"in '{context}' {mut_entity} within document "
+                        f"{doc['id']} | {doc['name']}") from ve
             if train_from_false_positives:
                 fps: list[MutableEntity] = get_false_positives(doc, mut_doc)
 

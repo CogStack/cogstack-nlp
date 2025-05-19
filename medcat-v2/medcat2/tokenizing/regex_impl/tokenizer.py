@@ -183,9 +183,10 @@ class Entity:
         # NOTE: registering for document since that should be constant
         # whereas the entities may be created and recreated
         # it'll map the entity start and end index to the value
-        def_val = defaultdict(lambda: def_val)
+        def_val_doc: dict = defaultdict(lambda: def_val)
         Document.register_addon_path(
-            f"{cls.ENTITY_INFO_PREFIX}{path}", def_val=def_val, force=force)
+            f"{cls.ENTITY_INFO_PREFIX}{path}", def_val=def_val_doc,
+            force=force)
 
     def __iter__(self) -> Iterator[MutableToken]:
         for tkn in self._doc._tokens[self.start_index: self.end_index]:
@@ -238,6 +239,9 @@ class Document:
                                        index.start, index.stop)
         else:
             raise ValueError(f"Unknown index: {index}")
+
+    def __len__(self) -> int:
+        return len(self._tokens)
 
     def get_tokens(self, start_index: int, end_index: int
                    ) -> list[MutableToken]:

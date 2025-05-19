@@ -346,6 +346,11 @@ class Linking(ComponentConfig):
     context_ignore_center_tokens: bool = False
     """If true when the context of a concept is calculated (embedding)
     the words making that concept are not taken into account"""
+    additional: Optional[Any] = None
+    """Some additional config for non-default linkers.
+    E.g the 2-step linker uses this for alpha calculations
+    and learning rate for type contexts.
+    """
 
 
 class Preprocessing(SerialisableBaseModel):

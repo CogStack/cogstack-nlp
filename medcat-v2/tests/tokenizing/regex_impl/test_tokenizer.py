@@ -32,3 +32,61 @@ class TokenizerTests(TestCase):
     def test_doc_has_correct_tokens(self):
         self.assertEqual([tkn.base.text for tkn in self.tokens],
                          self.EXP_TOKENS)
+
+
+class EntitySimpleAddonDataTests(TestCase):
+    EXAMPLE_TEXT = "Some example text"
+    ADDON_PATH = "test_time_addon"
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tokenizer = tokenizer.RegexTokenizer()
+        cls.tokenizer.get_entity_class().register_addon_path(cls.ADDON_PATH)
+
+    def _make_tokens_entities(self):
+        num_tokens = len(self.doc)
+        for ent_num in range(num_tokens):
+            ent = self.doc[ent_num: ent_num + 1]
+            self.doc.all_ents.append(ent)
+
+    def _set_single_entity_data(self, ent_num: int,
+                                entity: tokenizer.MutableEntity):
+        entity.set_addon_data(self.ADDON_PATH, ent_num)
+
+    def _get_expected_data(self, ent_num: int,
+                           entity: tokenizer.MutableEntity):
+        return ent_num
+
+    def _set_per_entity_data(self):
+        for ent_num, entity in enumerate(self.doc.all_ents):
+            self._set_single_entity_data(ent_num, entity)
+
+    def setUp(self):
+        self.doc = self.tokenizer(self.EXAMPLE_TEXT)
+        # add all tokens as entities
+        self._make_tokens_entities()
+        # set addon data for all tokens
+        self._set_per_entity_data()
+
+    def test_can_get_addon_data(self):
+        self.assertGreater(len(self.doc.all_ents), 0)
+        for ent_num, entity in enumerate(self.doc.all_ents):
+            with self.subTest(f"Entity {ent_num}: {entity}"):
+                data_val = entity.get_addon_data(self.ADDON_PATH)
+                self.assertEqual(data_val, self._get_expected_data(
+                    ent_num, entity))
+
+
+class EntityComplexAddonTests(EntitySimpleAddonDataTests):
+    ADDON_PATH = "complex_data_path"
+
+    def _set_single_entity_data(self, ent_num: int,
+                                entity: tokenizer.MutableEntity):
+        if (data := entity.get_addon_data(self.ADDON_PATH)) is not None:
+            data[len(data)] = ent_num
+        else:
+            entity.set_addon_data(self.ADDON_PATH, {0: ent_num})
+
+    def _get_expected_data(self, ent_num: int,
+                           entity: tokenizer.MutableEntity):
+        return {0: ent_num}

@@ -38,7 +38,9 @@ class AddonComponent(BaseComponent, Protocol):
 
 _DEFAULT_ADDONS: dict[str, tuple[str, str]] = {
     'meta_cat': ('medcat2.components.addons.meta_cat.meta_cat',
-                 'MetaCATAddon.create_new')
+                 'MetaCATAddon.create_new'),
+    'rel_cat': ('medcat2.components.addons.relation_extraction.rel_cat',
+                'RelCATAddon.create_new')
 }
 
 # NOTE: type error due to non-concrete type

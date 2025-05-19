@@ -9,7 +9,7 @@ readme = "README.md"
 
 requires-python = ">=3.9"
 
-license = {file = "LICENSE"}
+license = "Elastic-2.0"
 
 keywords = ["ML", "NLP", "NER+L"]
 
@@ -78,6 +78,8 @@ dependencies = [ # Optional
 dev = [
   "ruff~=0.1.7",
   "mypy",
+  "types-tqdm",
+  "types-setuptools",
   "types-PyYAML",
 ]
 spacy = [

@@ -174,6 +174,8 @@ class Linker(AbstractCoreComponent):
             # No name detected, just disambiguate
             cui, context_similarity = self.context_model.disambiguate(
                 cuis, entity, 'unk-unk', doc, per_doc_valid_token_cache)
+        logger.debug("Considering CUI %s with sim %f",
+                     cui, context_similarity)
 
         # Add the annotation if it exists and if above threshold and in filters
         cnf_l = self.config.components.linking

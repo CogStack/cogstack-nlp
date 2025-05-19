@@ -1,13 +1,19 @@
-from typing import Iterator, Any, Optional
+from typing import Iterator, Any, Optional, Union
 from typing_extensions import TypedDict
 from collections import Counter
 
 
-class MedCATTrainerExportAnnotation(TypedDict):
+class MedCATTrainerExportAnnotationRequired(TypedDict):
     start: int
     end: int
     cui: str
     value: str
+
+
+class MedCATTrainerExportAnnotation(
+        MedCATTrainerExportAnnotationRequired, total=False):
+    id: Union[str, int]
+    validated: Optional[bool]
 
 
 class MedCATTrainerExportDocument(TypedDict):

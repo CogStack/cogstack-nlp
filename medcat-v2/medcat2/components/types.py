@@ -138,7 +138,10 @@ _DEFAULT_NER: dict[str, tuple[str, str]] = {
 _DEFAULT_LINKING: dict[str, tuple[str, str]] = {
     "default": ("medcat2.components.linking.context_based_linker", "Linker"),
     "no_action": ("medcat2.components.linking.no_action_linker",
-                  "NoActionLinker")
+                  "NoActionLinker"),
+    "medcat2_two_step_linker": (
+        "medcat2.components.linking.two_step_context_based_linker",
+        "TwoStepLinker")
 }
 
 

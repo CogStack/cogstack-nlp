@@ -1,4 +1,5 @@
 from typing import Optional, Iterable, Union, Sequence, cast, Callable
+from typing import Protocol
 
 import numpy as np
 import random
@@ -16,6 +17,13 @@ from medcat2.storage.serialisables import AbstractSerialisable
 
 
 logger = logging.getLogger(__name__)
+
+
+class DisambPreprocessor(Protocol):
+
+    def __call__(self, ent: MutableEntity, name: str, cuis: list[str],
+                 similarities: list[float]) -> None:
+        pass
 
 
 class ContextModel(AbstractSerialisable):
@@ -36,13 +44,16 @@ class ContextModel(AbstractSerialisable):
                  name2info: dict[str, NameInfo],
                  weighted_average_function: Callable[[int], float],
                  vocab: Vocab, config: Linking,
-                 name_separator: str) -> None:
+                 name_separator: str,
+                 disamb_preprocessors: list[DisambPreprocessor] = []) -> None:
         self.cui2info = cui2info
         self.name2info = name2info
         self.weighted_average_function = weighted_average_function
         self.vocab = vocab
         self.config = config
         self.name_separator = name_separator
+        self._disamb_preprocessors = (  # copy if default/empty
+            disamb_preprocessors or disamb_preprocessors.copy())
 
     def get_context_tokens(self, entity: MutableEntity, doc: MutableDocument,
                            size: int,
@@ -192,8 +203,11 @@ class ContextModel(AbstractSerialisable):
         else:
             return -1
 
-    def _preprocess_disamb_similarities(self, name: str, cuis: list[str],
+    def _preprocess_disamb_similarities(self, entity: MutableEntity,
+                                        name: str, cuis: list[str],
                                         similarities: list[float]) -> None:
+        for preprocessor in self._disamb_preprocessors:
+            preprocessor(entity, name, cuis, similarities)
         # NOTE: Has side effects on similarities
         if self.config.prefer_primary_name > 0:
             logger.debug("Preferring primary names")
@@ -204,7 +218,7 @@ class ContextModel(AbstractSerialisable):
                     cui, ST.AUTOMATIC)
                 if status in ST.PRIMARY_STATUS:
                     new_sim = sim * (1 + self.config.prefer_primary_name)
-                    similarities[i] = min(0.99, new_sim)
+                    similarities[i] = float(min(0.99, new_sim))
                     # DEBUG
                     logger.debug("CUI: %s, Name: %s, Old sim: %.3f, New "
                                  "sim: %.3f", cui, name, sim, similarities[i])
@@ -219,13 +233,14 @@ class ContextModel(AbstractSerialisable):
                       for cnt in cnts]
             old_sims = list(similarities)
             similarities.clear()
-            similarities += [min(0.99, sim + sim * scale)
+            similarities += [float(min(0.99, sim + sim * scale))
                              for sim, scale in zip(old_sims, scales)]
 
-    def disambiguate(self, cuis: list[str], entity: MutableEntity, name: str,
-                     doc: MutableDocument,
-                     per_doc_valid_token_cache: 'PerDocumentTokenCache'
-                     ) -> tuple[Optional[str], float]:
+    def get_all_similarities(self, cuis: list[str], entity: MutableEntity,
+                             name: str, doc: MutableDocument,
+                             per_doc_valid_token_cache: 'PerDocumentTokenCache'
+                             ) -> tuple[Union[list[str], list[None]],
+                                        list[float], int]:
         vectors = self.get_context_vectors(
             entity, doc, per_doc_valid_token_cache)
         filters = self.config.filters
@@ -243,16 +258,27 @@ class ContextModel(AbstractSerialisable):
 
         if cuis:    # Maybe none are left after filtering
             # Calculate similarity for each cui
-            similarities = [self._similarity(cui, vectors) for cui in cuis]
+            similarities = [float(self._similarity(cui, vectors))
+                            for cui in cuis]
             # DEBUG
             logger.debug("Similarities: %s", list(zip(cuis, similarities)))
 
-            self._preprocess_disamb_similarities(name, cuis, similarities)
+            self._preprocess_disamb_similarities(
+                entity, name, cuis, similarities)
 
-            mx = np.argmax(similarities)
-            return cuis[mx], similarities[mx]
+            # technically, could be a np.int64 or something like that
+            mx = int(np.argmax(similarities))
+            return cuis, similarities, mx
         else:
-            return None, 0
+            return [None], [0], 0
+
+    def disambiguate(self, cuis: list[str], entity: MutableEntity, name: str,
+                     doc: MutableDocument,
+                     per_doc_valid_token_cache: 'PerDocumentTokenCache'
+                     ) -> tuple[Optional[str], float]:
+        suitable_cuis, sims, best_index = self.get_all_similarities(
+            cuis, entity, name, doc, per_doc_valid_token_cache)
+        return suitable_cuis[best_index], sims[best_index]
 
     def train(self, cui: str, entity: MutableEntity, doc: MutableDocument,
               per_doc_valid_token_cache: 'PerDocumentTokenCache',
@@ -283,7 +309,11 @@ class ContextModel(AbstractSerialisable):
         cui_info = self.cui2info[cui]
         lr = get_lr_linking(self.config, cui_info['count_train'])
         if not cui_info['context_vectors']:
-            cui_info['context_vectors'] = vectors
+            if not negative:
+                cui_info['context_vectors'] = vectors
+            else:
+                cui_info['context_vectors'] = {ct: -1 * vec for
+                                               ct, vec in vectors.items()}
         else:
             update_context_vectors(
                 cui_info['context_vectors'], cui, vectors, lr,
@@ -428,7 +458,7 @@ def get_similarity(cur_vectors: dict[str, np.ndarray],
         logger.debug("Similarity for CUI: %s, Count: %s, Context Type: %.10s, "
                      "Weight: %s.2f, Similarity: %s.3f, S*W: %s.3f",
                      cui, cui2info[cui]['count_train'], vec_type, w, s, s * w)
-    return sim
+    return float(sim)
 
 
 def update_context_vectors(to_update: dict[str, np.ndarray], cui: str,

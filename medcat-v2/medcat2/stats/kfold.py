@@ -275,6 +275,7 @@ def get_fold_creator(mct_export: MedCATTrainerExport,
 
 
 def get_per_fold_metrics(cat: CAT, folds: list[MedCATTrainerExport],
+                         use_project_filters: bool,
                          *args, **kwargs) -> list[tuple]:
     """Get per fold metrics for a given set of folds.
 
@@ -285,6 +286,7 @@ def get_per_fold_metrics(cat: CAT, folds: list[MedCATTrainerExport],
     Args:
         cat (CAT): The model pack.
         folds (list[MedCATTrainerExport]): The folds.
+        use_project_filters (bool): Whether to use project filters.
 
     Returns:
         list[tuple]: The metrics for each fold.
@@ -298,7 +300,7 @@ def get_per_fold_metrics(cat: CAT, folds: list[MedCATTrainerExport],
                 cat.trainer.train_supervised_raw(
                     cast(dict[str, Any], other), *args, **kwargs)
             stats = get_stats(cat, cast(MedCATTrainerExport, cur_fold),
-                              do_print=False)
+                              use_project_filters=use_project_filters)
             metrics.append(stats)
     return metrics
 
@@ -459,7 +461,7 @@ def get_metrics_mean(metrics: list[tuple[dict, dict, dict,
 
 
 def get_k_fold_stats(cat: CAT, mct_export_data: MedCATTrainerExport,
-                     k: int = 3,
+                     k: int = 3, use_project_filters: bool = False,
                      split_type: SplitType = SplitType.DOCUMENTS_WEIGHTED,
                      include_std: bool = False, *args, **kwargs) -> tuple:
     """Get the k-fold stats for the model with the specified data.
@@ -476,6 +478,8 @@ def get_k_fold_stats(cat: CAT, mct_export_data: MedCATTrainerExport,
         cat (CAT): The model pack.
         mct_export_data (MedCATTrainerExport): The MCT export.
         k (int): The number of folds. Defaults to 3.
+        use_project_filters (bool): Whether to use per project filters.
+            Defaults to `False`.
         split_type (SplitType): Whether to use annodations or docs.
             Defaults to DOCUMENTS_WEIGHTED.
         include_std (bool): Whether to include stanrdard deviation.
@@ -490,6 +494,7 @@ def get_k_fold_stats(cat: CAT, mct_export_data: MedCATTrainerExport,
     """
     creator = get_fold_creator(mct_export_data, k, split_type=split_type)
     folds = creator.create_folds()
-    per_fold_metrics = get_per_fold_metrics(cat, folds, *args, **kwargs)
+    per_fold_metrics = get_per_fold_metrics(
+        cat, folds, use_project_filters, *args, **kwargs)
     means = get_metrics_mean(per_fold_metrics, include_std)
     return means
