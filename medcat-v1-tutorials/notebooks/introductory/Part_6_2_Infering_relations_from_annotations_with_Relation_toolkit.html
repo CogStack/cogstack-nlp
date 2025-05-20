@@ -13286,7 +13286,15 @@ HTTP request sent, awaiting response... </pre>
 <div class="prompt input_prompt">In&nbsp;[&nbsp;]:</div>
 <div class="inner_cell">
     <div class="input_area">
-<div class=" highlight hl-ipython3"><pre><span></span><span class="n">relCAT</span> <span class="o">=</span> <span class="n">RelCAT</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">cwd</span><span class="si">}</span><span class="s2">/ade_relcat_model&quot;</span><span class="p">)</span>
+<div class=" highlight hl-ipython3"><pre><span></span><span class="k">try</span><span class="p">:</span>
+    <span class="n">relcat_path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">cwd</span><span class="si">}</span><span class="s2">/ade_relcat_model&quot;</span>
+    <span class="n">relCAT</span> <span class="o">=</span> <span class="n">RelCAT</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">relcat_path</span><span class="p">)</span>
+<span class="k">except</span> <span class="ne">FileNotFoundError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;Failed loading RelCAT model from &#39;</span><span class="si">{</span><span class="n">relcat_path</span><span class="si">}</span><span class="s2">&#39;. &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;Folder exists? </span><span class="si">{</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">relcat_path</span><span class="p">)</span><span class="si">}</span><span class="s2"> &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;Is dir? </span><span class="si">{</span><span class="p">(</span><span class="n">is_dir</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">relcat_path</span><span class="p">))</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;In dir: </span><span class="si">{</span><span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">relcat_path</span><span class="p">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">is_dir</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">[</span><span class="s1">&#39;!!NOT DIR!!&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">e</span>
 </pre></div>
 
     </div>
