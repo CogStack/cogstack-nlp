@@ -1,5 +1,5 @@
 medcat~=1.16.0
-pandas<2.0.0
+pandas>=1.4.2
 seaborn~=0.11.2
 pytest-xdist~=2.5.0
 nbmake<1.5
