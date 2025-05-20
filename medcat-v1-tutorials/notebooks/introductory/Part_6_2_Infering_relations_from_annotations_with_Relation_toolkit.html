@@ -13227,7 +13227,7 @@ Requirement already satisfied: pure-eval in /Users/vladd/Library/Python/3.11/lib
 <span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
 <span class="n">cwd</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span>
 <span class="o">!</span><span class="w"> </span>wget<span class="w"> </span><span class="s2">&quot;https://drive.usercontent.google.com/download?id=1nGI3Igrd7V0fayUAMVafZU9C8GSgEmDS&amp;export=download&amp;confirm=t&amp;uuid=da8b7d44-401a-40f4-8e16-f1adc0ff827f&quot;</span><span class="w"> </span>-O<span class="w"> </span><span class="o">{</span>cwd<span class="o">}</span>/ade_relcat_model.zip
-<span class="n">shutil</span><span class="o">.</span><span class="n">unpack_archive</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">cwd</span><span class="si">}</span><span class="s2">/ade_relcat_model.zip&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">cwd</span><span class="si">}</span><span class="s2">/ade_relcat_model&quot;</span><span class="p">)</span>
+<span class="n">shutil</span><span class="o">.</span><span class="n">unpack_archive</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">cwd</span><span class="si">}</span><span class="s2">/ade_relcat_model.zip&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">cwd</span><span class="si">}</span><span class="s2">/part_6_2_ade_relcat_model&quot;</span><span class="p">)</span>
 </pre></div>
 
     </div>
@@ -13288,7 +13288,7 @@ HTTP request sent, awaiting response... </pre>
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="k">try</span><span class="p">:</span>
-    <span class="n">relcat_path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">cwd</span><span class="si">}</span><span class="s2">/ade_relcat_model&quot;</span>
+    <span class="n">relcat_path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">cwd</span><span class="si">}</span><span class="s2">/part_6_2_ade_relcat_model&quot;</span>
     <span class="n">relCAT</span> <span class="o">=</span> <span class="n">RelCAT</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">relcat_path</span><span class="p">)</span>
 <span class="k">except</span> <span class="ne">FileNotFoundError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
     <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
