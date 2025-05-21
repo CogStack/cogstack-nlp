@@ -18,6 +18,7 @@ from medcat2.cdb import CDB
 from medcat2.config import Config
 from medcat2.config.config import ComponentConfig
 from medcat2.config.config_meta_cat import ConfigMetaCAT
+from medcat2.config.config_rel_cat import ConfigRelCAT
 from medcat2.utils.default_args import (set_tokenizer_defaults,
                                         set_components_defaults,
                                         set_addon_defaults)
@@ -207,11 +208,18 @@ class Pipeline:
             comp_name, subname = key
             if comp_name != cnf.comp_name:
                 continue
-            if not isinstance(cnf, ConfigMetaCAT):
+            if not isinstance(cnf, (ConfigMetaCAT, ConfigRelCAT)):
                 raise UnkownAddonConfig(cnf, ConfigMetaCAT)
-            if cnf.general.category_name == subname:
-                del loaded_addon_component_paths[key]
-                return folder
+            if isinstance(cnf, ConfigMetaCAT):
+                if cnf.general.category_name == subname:
+                    del loaded_addon_component_paths[key]
+                    return folder
+            elif isinstance(cnf, ConfigRelCAT):
+                if subname == 'rel_cat':
+                    # NOTE: there can currently only ever be 1 RelCAT
+                    #       this wasn't a limitation in v1
+                    del loaded_addon_component_paths[key]
+                    return folder
         return None
 
     def _load_addon(self, cnf: ComponentConfig, load_from: str
