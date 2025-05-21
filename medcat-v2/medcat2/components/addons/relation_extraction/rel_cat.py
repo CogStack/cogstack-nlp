@@ -61,6 +61,7 @@ class RelCATAddon(AddonComponent):
                       load_path: str) -> 'RelCATAddon':
         """Factory method to load an existing RelCAT addon from disk."""
         rc = RelCAT.load(load_path)
+        # set the correct base tokenizer and redo data paths
         rc.base_tokenizer = base_tokenizer
         rc._init_data_paths()
         return cls(cnf, rc)
