@@ -60,7 +60,10 @@ class RelCATAddon(AddonComponent):
                       cdb: CDB,
                       load_path: str) -> 'RelCATAddon':
         """Factory method to load an existing RelCAT addon from disk."""
-        return cls(cnf, RelCAT.load(load_path))
+        rc = RelCAT.load(load_path)
+        rc.base_tokenizer = base_tokenizer
+        rc._init_data_paths()
+        return cls(cnf, rc)
 
     def serialise_to(self, folder_path: str) -> None:
         os.mkdir(folder_path)
