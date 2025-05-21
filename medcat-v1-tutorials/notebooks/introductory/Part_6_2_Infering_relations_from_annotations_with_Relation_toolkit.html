@@ -13224,7 +13224,7 @@ Requirement already satisfied: pure-eval in /Users/vladd/Library/Python/3.11/lib
 <div class="inner_cell">
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="o">!</span><span class="w"> </span>wget<span class="w"> </span><span class="s2">&quot;https://drive.usercontent.google.com/download?id=1nGI3Igrd7V0fayUAMVafZU9C8GSgEmDS&amp;export=download&amp;confirm=t&amp;uuid=da8b7d44-401a-40f4-8e16-f1adc0ff827f&quot;</span><span class="w"> </span>-O<span class="w"> </span>part_6_2_ade_relcat_model.zip
-<span class="o">!</span><span class="w"> </span>unzip<span class="w"> </span>part_6_2_ade_relcat_model.zip
+<span class="o">!</span><span class="w"> </span>unzip<span class="w"> </span>part_6_2_ade_relcat_model.zip<span class="w"> </span>-d<span class="w"> </span>part_6_2
 </pre></div>
 
     </div>
@@ -13286,7 +13286,7 @@ HTTP request sent, awaiting response... </pre>
     <div class="input_area">
 <div class=" highlight hl-ipython3"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="k">try</span><span class="p">:</span>
-    <span class="n">rc_path</span> <span class="o">=</span> <span class="s2">&quot;./part_6_2_ade_relcat_model&quot;</span>
+    <span class="n">rc_path</span> <span class="o">=</span> <span class="s2">&quot;./part_6_2/ade_relcat_model&quot;</span>
     <span class="n">relCAT</span> <span class="o">=</span> <span class="n">RelCAT</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">rc_path</span><span class="p">)</span>
 <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
     <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
