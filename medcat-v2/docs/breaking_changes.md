@@ -100,3 +100,5 @@ We can see the list of relocations here.
 | `medcat.config_meta_cat`                | `medcat2.config.config_meta_cat`                             |       |
 | `medcat.cdb_maker`                      | `medcat2.model_creation.cdb_maker`                           |       |
 | `medcat.tokenizers.meta_cat_tokenizers` | `medcat2.components.addons.meta_cat.mctokenizers.tokenizers` |       |
+| `medcat.rel_cat`                        | `medcat2.components.addons.relation_extraction.rel_cat`      |       |
+| `medcat.utils.relation_extraction.*`    | `medcat2.components.addons.relation_extraction.*`            |       |
