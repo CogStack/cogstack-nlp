@@ -99,6 +99,13 @@ We can see the list of relocations here.
 | `medcat.utils.meta_cat`                 | `medcat2.components.addons.meta_cat`                         |       |
 | `medcat.config_meta_cat`                | `medcat2.config.config_meta_cat`                             |       |
 | `medcat.cdb_maker`                      | `medcat2.model_creation.cdb_maker`                           |       |
-| `medcat.tokenizers.meta_cat_tokenizers` | `medcat2.components.addons.meta_cat.mctokenizers.tokenizers` |       |
-| `medcat.rel_cat`                        | `medcat2.components.addons.relation_extraction.rel_cat`      |       |
+| `medcat.tokenizers.meta_cat_tokenizers` | `medcat2.components.addons.meta_cat.mctokenizers.tokenizers` | All MetACAT stuff now here |
+| `medcat.rel_cat`                        | `medcat2.components.addons.relation_extraction.rel_cat`      | All RelCAT stuff now here |
 | `medcat.utils.relation_extraction.*`    | `medcat2.components.addons.relation_extraction.*`            |       |
+| `medcat.utils.ner.deid`                 | `medcat2.components.ner.trf.deid`                            | Most DeID stuff now here |
+| `medcat.utils.ner.model`                | `medcat2.components.ner.trf.model`                           |       |
+| `medcat.utils.ner.helpers`              | `medcat2.components.ner.trf.helpers`                         |       |
+| `medcat.tokenizer.transformers_ner`     | `medcat2.components.ner.trf.tokenizer`                       |       |
+| `medcat.ner.transformers_ner`           | `medcat2.components.ner.tf.transformers_ner`                 |       |
+| `medcat.datasets.transformers_ner`      | `medcat2.utils.ner.transformers_ner`                         |       |
+| `medcat.datasets.data_collator`         | `medcat2.utils.ner.data_collator`                            |       |
