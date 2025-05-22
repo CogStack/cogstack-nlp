@@ -43,17 +43,15 @@ class RelCATAddon(AddonComponent):
     config: ConfigRelCAT
 
     def __init__(self, config: ConfigRelCAT,
-                 base_tokenizer: BaseTokenizer,
                  rel_cat: "RelCAT"):
         self.config = config
-        self.base_tokenizer = base_tokenizer
         self._rel_cat = rel_cat
 
     @classmethod
     def create_new(cls, config: ConfigRelCAT, base_tokenizer: BaseTokenizer,
                    cdb: CDB) -> 'RelCATAddon':
         """Factory method to create a new MetaCATAddon instance."""
-        return cls(config, base_tokenizer,
+        return cls(config,
                    RelCAT(base_tokenizer, cdb, config=config, init_model=True))
 
     @classmethod
@@ -62,7 +60,11 @@ class RelCATAddon(AddonComponent):
                       cdb: CDB,
                       load_path: str) -> 'RelCATAddon':
         """Factory method to load an existing RelCAT addon from disk."""
-        return cls(cnf, base_tokenizer, RelCAT.load(load_path))
+        rc = RelCAT.load(load_path)
+        # set the correct base tokenizer and redo data paths
+        rc.base_tokenizer = base_tokenizer
+        rc._init_data_paths()
+        return cls(cnf, rc)
 
     def serialise_to(self, folder_path: str) -> None:
         os.mkdir(folder_path)
@@ -233,6 +235,7 @@ class RelCAT:
             component.relcat_config.general.device != "cpu" else "cpu")
 
         rel_cat = RelCAT(
+            # NOTE: this is a throaway tokenizer just for registrations
             create_tokenizer(cdb.config.general.nlp.provider),
             cdb=cdb, config=component.relcat_config, task=component.task)
         rel_cat.device = device
@@ -884,7 +887,8 @@ class RelCAT:
             Doc: spacy doc with the relations.
         """
         # NOTE: This runs not an empty language, but the specified one
-        doc = self.base_tokenizer(text)
+        base_tokenizer = create_tokenizer(self.cdb.config.general.nlp.provider)
+        doc = base_tokenizer(text)
 
         for ann in annotations:
             tkn_idx = []
@@ -892,7 +896,7 @@ class RelCAT:
                 end_char = word.base.char_index + len(word.base.text)
                 if end_char <= ann['end'] and end_char > ann['start']:
                     tkn_idx.append(ind)
-            entity = self.base_tokenizer.create_entity(
+            entity = base_tokenizer.create_entity(
                 doc, min(tkn_idx), max(tkn_idx) + 1, label=ann["value"])
             entity.cui = ann["cui"]
             doc.all_ents.append(entity)
