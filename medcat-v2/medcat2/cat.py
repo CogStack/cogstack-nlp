@@ -1,6 +1,7 @@
 from typing import Optional, Union, Any, overload, Literal
 import os
 import json
+from datetime import date
 
 import shutil
 import logging
@@ -253,6 +254,7 @@ class CAT(AbstractSerialisable):
             self, target_folder: str, pack_name: str = DEFAULT_PACK_NAME,
             serialiser_type: Union[str, AvailableSerialisers] = 'dill',
             make_archive: bool = True,
+            change_description: Optional[str] = None,
             ) -> str:
         """Save model pack.
 
@@ -268,13 +270,16 @@ class CAT(AbstractSerialisable):
                 The serialiser type. Defaults to 'dill'.
             make_archive (bool):
                 Whether to make the arhive /.zip file. Defaults to True.
+            change_description (Optional[str]):
+                If provided, this the description will be added to the
+                model description. Defaults to None.
 
         Returns:
             str: The final model pack path.
         """
         self.config.meta.mark_saved_now()
         # figure out the location/folder of the saved files
-        hex_hash = self._versioning()
+        hex_hash = self._versioning(change_description)
         if pack_name == DEFAULT_PACK_NAME:
             pack_name = f"{pack_name}_{hex_hash}"
         model_pack_path = os.path.join(target_folder, pack_name)
@@ -296,7 +301,11 @@ class CAT(AbstractSerialisable):
                                 root_dir=model_pack_path)
         return model_pack_path
 
-    def _versioning(self) -> str:
+    def _versioning(self, change_description: Optional[str]) -> str:
+        date_today = date.today().strftime("%d %B %Y")
+        if change_description is not None:
+            self.config.meta.description += (
+                f"\n[{date_today}] {change_description}")
         hasher = Hasher()
         logger.debug("Hashing the CDB")
         hasher.update(self.cdb.get_hash())
