@@ -187,7 +187,7 @@ class CATCreationTests(CATIncludingTests):
 
 
 class CatWithMetaCATTests(CATCreationTests):
-    EXPECTED_HASH = "04095f95f5f7c222"
+    EXPECTED_HASH = "9104103a2f191822"
     EXPECT_SAME_INSTANCES = True
 
     @classmethod
@@ -218,7 +218,7 @@ class CatWithMetaCATTests(CATCreationTests):
 
 
 class CatWithChangesMetaCATTests(CatWithMetaCATTests):
-    EXPECTED_HASH = "7206cc91ed3424ac"
+    EXPECTED_HASH = "28f20b1460960b1e"
     EXPECT_SAME_INSTANCES = False
 
     @classmethod
