@@ -1,4 +1,4 @@
-from typing import Iterable, Callable, Optional, Union
+from typing import Iterable, Callable, Optional, Union, cast
 import logging
 from itertools import chain, repeat, islice
 from tqdm import trange
@@ -10,11 +10,12 @@ from medcat2.config.config import General, Preprocessing, CDBMaker
 from medcat2.utils.config_utils import temp_changed_config
 from medcat2.utils.data_utils import make_mc_train_test, get_false_positives
 from medcat2.utils.filters import project_filters
-from medcat2.data.mctexport import (MedCATTrainerExport,
-                                    MedCATTrainerExportProject,
-                                    MedCATTrainerExportDocument)
+from medcat2.data.mctexport import (
+    MedCATTrainerExport, MedCATTrainerExportProject,
+    MedCATTrainerExportDocument, count_all_annotations, iter_anns)
 from medcat2.preprocessors.cleaners import prepare_name, NameDescriptor
 from medcat2.components.types import CoreComponentType, TrainableComponent
+from medcat2.components.addons.addons import AddonComponent
 from medcat2.pipeline.pipeline import Pipeline
 
 
@@ -132,6 +133,7 @@ class Trainer:
                              extra_cui_filter: Optional[set[str]] = None,
                              #  checkpoint: Optional[Checkpoint] = None,
                              disable_progress: bool = False,
+                             train_addons: bool = False,
                              ) -> tuple:
         """Train supervised based on the raw data provided.
 
@@ -213,6 +215,9 @@ class Trainer:
             disable_progress (bool):
                 Whether to disable the progress output (tqdm). Defaults to
                 False.
+            train_addons (bool):
+                Whether to also train the addons (e.g MetaCATs). Defaults
+                to False.
 
         Returns:
             tuple: Consisting of the following parts
@@ -304,7 +309,41 @@ class Trainer:
         # # reset the state of filters
         # self.config.linking.filters = orig_filters
 
+        if (train_addons and
+                # NOTE if no annnotaitons, no point
+                count_all_annotations(data) > 0):
+            self._train_addons(data)
+
         return fp, fn, tp, p, r, f1, cui_counts, examples
+
+    def _train_meta_cat(self, addon: AddonComponent,
+                        data: MedCATTrainerExport) -> None:
+        # NOTE: dynamic import to avoid circular imports
+        from medcat2.components.addons.meta_cat.meta_cat import (
+            MetaCATAddon)
+        _, _, ann0 = next(iter_anns(data))
+        if not isinstance(addon, MetaCATAddon):
+            raise TypeError(
+                f"Expected MetaCATAddon, got {type(addon)}")
+        if 'meta_anns' not in ann0:
+            logger.info("No Meta Annotations found to train MetaCATs")
+            return
+        # only consider meta-cats that have been defined
+        # for the category
+        ann_names = ann0['meta_anns'].keys()  # type: ignore
+        # adapt to alternative names if applicable
+        cnf = addon.config
+        cat_name = cnf.general.get_applicable_category_name(ann_names)
+        if cat_name in ann_names:
+            logger.debug("Training MetaCAT %s", cnf.general.category_name)
+            # NOTE: this is a mypy quirk - the types are compatible
+            addon.mc.train_raw(cast(dict, data))
+
+    def _train_addons(self, data: MedCATTrainerExport):
+        logger.info("Training addons within train_supervised_raw")
+        for addon in self._pipeline._addons:
+            if addon.addon_type == "meta_cat":
+                self._train_meta_cat(addon, data)
 
     def _perform_epoch(self, current_project: int,
                        current_document: int,
