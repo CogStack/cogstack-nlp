@@ -18,6 +18,7 @@ from medcat2.components.addons.meta_cat.meta_cat import MetaCATAddon
 from medcat2.utils.defaults import AVOID_LEGACY_CONVERSION_ENVIRON
 
 import unittest
+import tempfile
 
 from . import EXAMPLE_MODEL_PACK_ZIP
 from . import V1_MODEL_PACK_PATH, UNPACKED_V1_MODEL_PACK_PATH
@@ -433,3 +434,25 @@ class CATLegacyLoadTests(unittest.TestCase):
                 AVOID_LEGACY_CONVERSION_ENVIRON: "true"}, clear=True):
             with self.assertRaises(ValueError):
                 cat.CAT.load_model_pack(V1_MODEL_PACK_PATH)
+
+
+class CATSaveTests(CATIncludingTests):
+    DESCRIPTION = "Test CAT save functionality"
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.temp_folder = tempfile.TemporaryDirectory()
+        cls.saved_path = cls.cat.save_model_pack(
+            cls.temp_folder.name, change_description=cls.DESCRIPTION)
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        cls.temp_folder.cleanup()
+
+    def test_can_save_model_pack(self):
+        self.assertTrue(os.path.exists(self.saved_path))
+
+    def test_model_adds_description(self):
+        self.assertIn(self.DESCRIPTION, self.cat.config.meta.description)
