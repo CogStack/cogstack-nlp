@@ -150,7 +150,7 @@ class CATCreationTests(CATIncludingTests):
         self.assert_hashes_to(self.EXPECTED_HASH)
 
     def assert_hashes_to(self, exp_hash: str) -> None:
-        self.cat._versioning()
+        self.cat._versioning(None)
         new_hash = self.cat.config.meta.hash
         self.assertNotEqual(self.prev_hash, new_hash)
         self.assertEqual(new_hash, exp_hash)
@@ -158,8 +158,8 @@ class CATCreationTests(CATIncludingTests):
 
     def test_versioning_does_not_overpopulate_history(self):
         # run multiple times
-        self.cat._versioning()
-        self.cat._versioning()
+        self.cat._versioning(None)
+        self.cat._versioning(None)
         # and expect it not to append multiple times in the history
         # if there were multiple instances, the set would remove duplicates
         sorted_set = sorted(set(self.cat.config.meta.history))
