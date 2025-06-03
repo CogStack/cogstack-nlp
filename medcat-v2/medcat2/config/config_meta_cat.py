@@ -1,7 +1,13 @@
 from typing import Any, Optional
+from collections.abc import Container
 
 from medcat2.config.config import DirtiableBaseModel, ComponentConfig
 from medcat2.storage.serialisers import AvailableSerialisers
+
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 
 class General(DirtiableBaseModel):
@@ -34,9 +40,28 @@ class General(DirtiableBaseModel):
 
     NB! For these changes to take effect, the pipe would need to be recreated.
     """
-    category_value2id: dict = {}
+    alternative_category_names: list[str] = []
+    """List that stores the variations of possible category names
+    Example: For Experiencer, the alternate name is Subject
+    alternative_category_names: ['Experiencer','Subject']
+    In the case that one specified in `category_name` parameter does not match
+    the data, this ensures no error is raised and it is automatically mapped
+    """
+    category_value2id: dict[str, int] = {}
     """Map from category values to ID, if empty it will be autocalculated
     during training"""
+    alternative_class_names: list[list[str]] = [[]]
+    """List of lists that stores the variations of possible class names
+    for each class mentioned in self.general.category_value2id.
+    Example: For Presence task, the class names vary across NHS sites.
+    To accommodate for this, alternative_class_names is populated as:
+        [
+         ["Hypothetical (N/A)","Hypothetical"],
+         ["Not present (False)","False"],
+         ["Present (True)","True"]
+        ]
+    Each sub list contains the possible variations of the given class.
+    """
     vocab_size: int = -1
     """Will be set automatically if the tokenizer is provided during
     meta_cat init"""
@@ -74,6 +99,22 @@ class General(DirtiableBaseModel):
     annotate_overlapping settings"""
     serialiser: AvailableSerialisers = AvailableSerialisers.dill
     """The serialiser to use when saving."""
+
+    def get_applicable_category_name(
+            self, available_names: Container[str]) -> Optional[str]:
+        if self.category_name in available_names:
+            return self.category_name
+        matches = [cat for cat in self.alternative_category_names
+                   if cat in available_names]
+        if len(matches) > 0:
+            logger.info(
+                "The category name provided in the config - '%s' is not "
+                "present in the data. However, the corresponding name - '%s' "
+                "from the category_name_mapping has been found. Updating the "
+                "category name...", self.category_name, *matches)
+            self.category_name = matches[0]
+            return self.category_name
+        return None
 
     class Config:
         extra = 'allow'

@@ -454,12 +454,16 @@ class MetaCAT(AbstractSerialisable):
             prerequisites=t_config.prerequisites, lowercase=g_config.lowercase)
 
         # Check is the name present
-        category_name = g_config.category_name
-        if category_name not in data_in:
+        category_name = category_name = g_config.get_applicable_category_name(
+            data_in)
+        if category_name is None:
             raise Exception(
                 "The category name does not exist in this json file. "
                 f"You've provided '{category_name}', while the possible "
-                f"options are: {' | '.join(list(data_in.keys()))}")
+                f"options are: {' | '.join(list(data_in.keys()))}. "
+                "Additionally, ensure the populate the "
+                "'alternative_category_names' attribute to accommodate "
+                "for variations.")
 
         data = data_in[category_name]
         if data_oversampled:
@@ -473,15 +477,17 @@ class MetaCAT(AbstractSerialisable):
             (full_data, data_undersampled,
              category_value2id) = encode_category_values(
                  data,
-                 category_undersample=self.config.model.category_undersample)
-            g_config.category_value2id = category_value2id
+                 category_undersample=self.config.model.category_undersample,
+                 alternative_class_names=g_config.alternative_class_names)
         else:
             # We already have everything, just get the data
             (full_data, data_undersampled,
              category_value2id) = encode_category_values(
                  data, existing_category_value2id=category_value2id,
-                 category_undersample=self.config.model.category_undersample)
+                 category_undersample=self.config.model.category_undersample,
+                 alternative_class_names=g_config.alternative_class_names)
             g_config.category_value2id = category_value2id
+            self.config.model.nclasses = len(category_value2id)
         # Make sure the config number of classes is the same
         # as the one found in the data
         if len(category_value2id) != self.config.model.nclasses:
@@ -499,9 +505,8 @@ class MetaCAT(AbstractSerialisable):
             try:
                 self.model.load_state_dict(torch.load(
                     model_save_path, map_location=device))
-                logger.info(
-                    "Model state loaded from dict for 2 phase learning")
-
+                logger.info("Training model for Phase 2, with model dict "
+                            "loaded from disk")
             except FileNotFoundError:
                 raise FileNotFoundError(
                     f"\nError: Model file not found at path: {model_save_path}"
@@ -524,6 +529,7 @@ class MetaCAT(AbstractSerialisable):
                 logger.info("For phase 1, model state has to be saved. "
                             "Saving model...")
                 t_config.auto_save_model = True
+            logger.info("Training model for Phase 1 now...")
 
         report = train_model(self.model, data=data, config=self.config,
                              save_dir_path=save_dir_path)
@@ -576,8 +582,8 @@ class MetaCAT(AbstractSerialisable):
             prerequisites=t_config.prerequisites, lowercase=g_config.lowercase)
 
         # Check is the name there
-        category_name = g_config.category_name
-        if category_name not in data_in:
+        category_name = g_config.get_applicable_category_name(data_in)
+        if category_name is None:
             raise Exception(
                 "The category name does not exist in this json file.")
 

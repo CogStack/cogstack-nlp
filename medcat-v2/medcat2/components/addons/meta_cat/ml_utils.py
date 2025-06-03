@@ -360,7 +360,8 @@ def train_model(model: nn.Module, data: list, config: ConfigMetaCAT,
                      name='Test')
 
         _report = classification_report(y_test, np.argmax(np.concatenate(
-            all_logits_test, axis=0), axis=1), output_dict=True)
+            all_logits_test, axis=0), axis=1), output_dict=True,
+            zero_division=0)
         if not winner_report or _report[config.train.metric['base']][
             config.train.metric['score']] > \
                 winner_report['report'][config.train.metric['base']][
@@ -371,7 +372,8 @@ def train_model(model: nn.Module, data: list, config: ConfigMetaCAT,
             cm = confusion_matrix(y_test, np.argmax(np.concatenate(
                 all_logits_test, axis=0), axis=1), normalize='true')
             report_train = classification_report(y_train, np.argmax(
-                np.concatenate(all_logits, axis=0), axis=1), output_dict=True)
+                np.concatenate(all_logits, axis=0), axis=1), output_dict=True,
+                zero_division=0)
 
             winner_report['confusion_matrix'] = cm
             winner_report['report'] = report
