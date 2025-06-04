@@ -11,14 +11,18 @@ from medcat2.cdb import CDB
 from medcat2.components.ner.trf.transformers_ner import (
     TransformersNER, TransformersNERComponent, _save_component)
 from medcat2.config.config_transformers_ner import ConfigTransformersNER
+from medcat2.model_creation.cdb_maker import CDBMaker
+from transformers import TrainerCallback
 
 from unittest import TestCase
+import unittest.mock
 
 from ...addons.meta_cat.test_meta_cat import FakeTokenizer
 from ....pipeline.test_pipeline import FakeCDB, Config
+from .... import RESOURCES_PATH
 
 
-class TransformersNERTestS(TestCase):
+class TransformersNERTests(TestCase):
 
     @classmethod
     def setUpClass(cls):
@@ -273,3 +277,42 @@ class TestTransformersNER(TestCase):
             expected_labels,
             "Label map missing expected labels"
         )
+
+
+class AdditionalTransfromersNERTests(TestCase):
+    TOKENIZER = FakeTokenizer()
+    CNF = ConfigTransformersNER()
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        config = Config()
+        config.general.nlp.modelname = "en_core_web_md"
+        cdb_maker = CDBMaker(config)
+        cdb_csv = os.path.join(RESOURCES_PATH, "cdb_example.csv")
+        cdb = cdb_maker.prepare_csvs([cdb_csv], full_build=True)
+        cls.undertest = TransformersNER(cdb, base_tokenizer=cls.TOKENIZER,
+                                        component=TransformersNERComponent(
+                                            cdb, cls.TOKENIZER, cls.CNF),
+                                        config=cls.CNF)
+        cls.undertest._component.create_eval_pipeline()
+
+    def test_train_with_test_file(self):
+        tracker = unittest.mock.Mock()
+
+        class _DummyCallback(TrainerCallback):
+            def __init__(self, trainer) -> None:
+                self._trainer = trainer
+
+            def on_epoch_end(self, *args, **kwargs) -> None:
+                tracker.call()
+
+        train_data = os.path.join(RESOURCES_PATH, "deid_train_data.json")
+        test_data = os.path.join(RESOURCES_PATH, "deid_test_data.json")
+        self.undertest._component.training_arguments.num_train_epochs = 1
+        df, examples, dataset = self.undertest._component.train(
+            train_json_path=train_data, test_json_path=test_data,
+            trainer_callbacks=[_DummyCallback])
+        assert "fp" in examples
+        assert "fn" in examples
+        assert dataset["train"].num_rows == 60
+        self.assertEqual(tracker.call.call_count, 1)

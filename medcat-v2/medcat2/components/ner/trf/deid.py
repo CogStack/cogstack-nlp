@@ -35,6 +35,7 @@ The wrapper also exposes some CAT parts directly:
 - cdb
 """
 from typing import Union, Any, Optional
+import re
 import logging
 
 from medcat2.cat import CAT
@@ -44,6 +45,7 @@ from medcat2.components.types import CoreComponentType
 from medcat2.components.ner.trf.model import NerModel
 from medcat2.components.ner.trf.helpers import replace_entities_in_text
 from medcat2.components.ner.trf.transformers_ner import TransformersNER
+from medcat2.data.entities import Entity
 
 
 logger = logging.getLogger(__name__)
@@ -141,3 +143,136 @@ class DeIdModel(NerModel):
         cdb.config.components.linking.comp_name = 'no_action'
         cat = CAT(cdb=cdb, vocab=None, config=cdb.config)
         return cls(cat)
+
+
+def match_rules(rules: list[tuple[str, str]], texts: list[str],
+                cui2preferred_name: dict[str, str]) -> list[list[Entity]]:
+    """Match a set of rules - pat / cui combos as post processing labels.
+    Uses a cat DeID model for pretty name mapping.
+    Args:
+        rules (list[tuple[str, str]]): List of tuples of pattern and cui
+        texts (list[str]): List of texts to match rules on
+        cui2preferred_name (dict[str, str]): Dictionary of CUI to
+            preferred name, likely to be cat.cdb.cui2preferred_name.
+    Examples:
+        >>> cat = CAT.load_model_pack(model_pack_path)
+        ...
+        >>> rules = [
+            ('(123) 456-7890', '134'),
+            ('1234567890', '134'),
+            ('123.456.7890', '134'),
+            ('1234567890', '134'),
+            ('1234567890', '134'),
+        ]
+        >>> texts = [
+            'My phone number is (123) 456-7890',
+            'My phone number is 1234567890',
+            'My phone number is 123.456.7890',
+            'My phone number is 1234567890',
+        ]
+        >>> matches = match_rules(rules, texts, cat.cdb.cui2preferred_name)
+    Returns:
+        List[List[Dict]]: List of lists of predictions from `match_rules`
+    """
+    # Iterate through each text and pattern combination
+    rule_matches_per_text: list[list[Entity]] = []
+    for i, text in enumerate(texts):
+        matches_in_text: list[Entity] = []
+        for pattern, concept in rules:
+            # Find all matches of current pattern in current text
+            text_matches = re.finditer(pattern, text, flags=re.M)
+            # Add each match with its pattern and text info
+            for match in text_matches:
+                matches_in_text.append({
+                    'source_value': match.group(),
+                    'pretty_name': cui2preferred_name[concept],
+                    'start': match.start(),
+                    'end': match.end(),
+                    'cui': concept,
+                    'acc': 1.0
+                })
+        rule_matches_per_text.append(matches_in_text)
+    return rule_matches_per_text
+
+
+def merge_all_preds(model_preds_by_text: list[list[Entity]],
+                    rule_matches_per_text: list[list[Entity]],
+                    accept_preds: bool = True) -> list[list[Entity]]:
+    """Conveniance method to merge predictions from rule based and deID model
+    predictions.
+
+    Args:
+        model_preds_by_text (list[list[Entity]]):
+            List of predictions from `cat.get_entities()`, then
+            `[list(m['entities'].values()) for m in model_preds]`
+        rule_matches_per_text (list[list[Entity]]):
+            List of predictions from output of running `match_rules`
+        accept_preds (bool):
+            Uses the predicted label from the model,
+            model_preds_by_text, over the rule matches if they overlap.
+            Defaults to using model preds over rules.
+    Returns:
+        list[list[Entity]]: List of lists of predictions from `merge_all_preds`
+    """
+    assert len(model_preds_by_text) == len(rule_matches_per_text), (
+        "model_preds_by_text and rule_matches_per_text must have the same "
+        "length as they should be CAT.get_entities and match_rules outputs of "
+        "the same text")
+    return [
+        merge_preds(model_preds_by_text[i],
+                    rule_matches_per_text[i],
+                    accept_preds)
+        for i in range(len(model_preds_by_text))]
+
+
+def merge_preds(model_preds: list[Entity],
+                rule_matches: list[Entity],
+                accept_preds: bool = True) -> list[Entity]:
+    """Merge predictions from rule based and deID model predictions.
+    Args:
+        model_preds (list[Entity]): predictions from `cat.get_entities()`
+        rule_matches (list[Entity]): predictions from output of running
+            `match_rules` on the same text
+        accept_preds (bool): uses the predicted label from the model,
+            model_preds, over the rule matches if they overlap.
+            Defaults to using model preds over rules.
+    Examples:
+        >>> # a list of predictions from `cat.get_entities()`
+        >>> model_preds = [
+            [
+                {'cui': '134', 'start': 10, 'end': 20, 'acc': 1.0,
+                 'pretty_name': 'Phone Number'},
+                {'cui': '134', 'start': 25, 'end': 35, 'acc': 1.0,
+                 'pretty_name': 'Phone Number'}
+            ]
+        ]
+        >>> # a list of predictions from `match_rules`
+        >>> rule_matches = [
+            [
+                {'cui': '134', 'start': 10, 'end': 20, 'acc': 1.0,
+                 'pretty_name': 'Phone Number'},
+                {'cui': '134', 'start': 25, 'end': 35, 'acc': 1.0,
+                 'pretty_name': 'Phone Number'}
+            ]
+        ]
+        >>> merged_preds = merge_preds(model_preds, rule_matches)
+    Returns:
+        list[Entity]: List of predictions from `merge_preds`
+    """
+    if accept_preds:
+        labels1 = model_preds
+        labels2 = rule_matches
+    else:
+        labels1 = rule_matches
+        labels2 = model_preds
+
+    # Keep only non-overlapping model predictions
+    labels2 = [span2 for span2 in labels2
+               if not any(not (span2['end'] <= span1['start'] or
+                               span1['end'] <= span2['start'])
+                          for span1 in labels1)]
+    # merge preds and sort on start
+    merged_preds = labels1 + labels2
+    merged_preds.sort(key=lambda x: x['start'])
+    merged_preds
+    return merged_preds

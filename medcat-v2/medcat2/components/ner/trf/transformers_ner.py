@@ -379,6 +379,8 @@ class TransformersNERComponent:
               ignore_extra_labels=False,
               dataset=None,
               meta_requirements=None,
+              train_json_path: Union[str, list, None] = None,
+              test_json_path: Union[str, list, None] = None,
               trainer_callbacks: Optional[list[TrCBCreator]] = None
               ) -> tuple:
         """Train or continue training a model give a json_path containing a
@@ -395,6 +397,10 @@ class TransformersNERComponent:
                 in the old model.
             dataset: Defaults to None.
             meta_requirements: Defaults to None
+            train_json_path (Union[str, list, None]):
+                The json path for the training data. Defaults to None.
+            test_json_path (Union[str, list, None]):
+                The json path for the test data. Defaults to None.
             trainer_callbacks (list[TrCBCreator]):
                 A list of trainer callbacks for collecting metrics during the
                 training at the client side. The transformers Trainer object
@@ -404,12 +410,22 @@ class TransformersNERComponent:
             Tuple: The dataframe, examples, and the dataset
         """
 
-        if dataset is None and json_path is not None:
+        if dataset is None:
             # Load the medcattrainer export
-            json_path = self._prepare_dataset(
-                json_path, ignore_extra_labels=ignore_extra_labels,
-                meta_requirements=meta_requirements,
-                file_name='data_eval.json')
+            if json_path is not None:
+                json_path = self._prepare_dataset(
+                    json_path, ignore_extra_labels=ignore_extra_labels,
+                    meta_requirements=meta_requirements,
+                    file_name='data_eval.json')
+            elif test_json_path is not None and train_json_path is not None:
+                train_json_path = self._prepare_dataset(
+                    train_json_path, ignore_extra_labels=ignore_extra_labels,
+                    meta_requirements=meta_requirements,
+                    file_name='data_train.json')
+                test_json_path = self._prepare_dataset(
+                    test_json_path, ignore_extra_labels=ignore_extra_labels,
+                    meta_requirements=meta_requirements,
+                    file_name='data_test.json')
             # Load dataset
 
             # NOTE: The following is for backwards comppatibility
@@ -424,15 +440,27 @@ class TransformersNERComponent:
                                           trust_remote_code=True)
             else:
                 ds_load_dataset = datasets.load_dataset
-            dataset = ds_load_dataset(os.path.abspath(
-                transformers_ner.__file__),
-                data_files={'train': json_path},  # type: ignore
-                split='train',
-                cache_dir='/tmp/')
-            # We split before encoding so the split is document level,
-            # as encoding  does the document splitting into max_seq_len
-            dataset = dataset.train_test_split(
-                test_size=self.config.general.test_size)  # type: ignore
+            if json_path:
+                dataset = ds_load_dataset(os.path.abspath(
+                    transformers_ner.__file__),
+                    data_files={'train': json_path},  # type: ignore
+                    split='train',
+                    cache_dir='/tmp/')
+                # We split before encoding so the split is document level,
+                # as encoding  does the document splitting into max_seq_len
+                dataset = dataset.train_test_split(
+                    test_size=self.config.general.test_size)  # type: ignore
+            elif train_json_path and test_json_path:
+                dataset = ds_load_dataset(
+                    os.path.abspath(transformers_ner.__file__),
+                    data_files={
+                        'train': train_json_path,
+                        'test': test_json_path},  # type: ignore
+                    cache_dir='/tmp/')
+            else:
+                raise ValueError(
+                    "Either json_path or train_json_path and test_json_path "
+                    "must be provided when no dataset is provided")
 
         # Update labelmap in case the current dataset has more labels
         # than what we had before
