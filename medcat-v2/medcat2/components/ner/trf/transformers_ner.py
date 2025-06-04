@@ -448,7 +448,8 @@ class TransformersNERComponent:
                            len(self.tokenizer.label_map))
             self.model = AutoModelForTokenClassification.from_pretrained(
                 self.config.general.model_name,
-                num_labels=len(self.tokenizer.label_map))
+                num_labels=len(self.tokenizer.label_map),
+                ignore_mismatched_sizes=True)
             self.tokenizer.cui2name = {
                 k: self.cdb.get_name(k)
                 for k in self.tokenizer.label_map.keys()}
