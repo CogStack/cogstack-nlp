@@ -121,9 +121,20 @@ class CATIncludingTests(unittest.TestCase):
 
         cls.cdb: CDB = maker.prepare_csvs([cls.CDB_PREPROCESSED_PATH])
 
+        # usage monitoring
+        cls._temp_logs_folder = tempfile.TemporaryDirectory()
+        config.general.usage_monitor.enabled = True
+        config.general.usage_monitor.log_folder = cls._temp_logs_folder.name
+
         # CAT
         cls.cat = cat.CAT(cls.cdb, vocab)
         cls.cat.config.components.linking.train = False
+
+    def tearDown(self):
+        # remove existing contents / empty file log file
+        log_file_path = self.cat.usage_monitor.log_file
+        if os.path.exists(log_file_path):
+            os.remove(log_file_path)
 
 
 class CATCreationTests(CATIncludingTests):
@@ -216,6 +227,31 @@ class CatWithMetaCATTests(CATCreationTests):
         else:
             # otherwise they should differ
             self.assertNotEqual(self.init_addons, addons_after)
+
+    def test_get_entities_gets_monitored(self,
+                                         text="Some text"):
+        repeats = self.cat.config.general.usage_monitor.batch_size
+        # ensure something gets written to the file
+        for _ in range(repeats):
+            self.cat.get_entities(text)
+        log_file_path = self.cat.usage_monitor.log_file
+        self.assertTrue(os.path.exists(log_file_path))
+        with open(log_file_path) as f:
+            contents = f.readline()
+        self.assertTrue(contents)
+
+    def test_get_entities_logs_usage(
+            self,
+            text="The dog is sitting outside the house."):
+        # clear usage monitor buffer
+        self.cat.usage_monitor.log_buffer.clear()
+        self.cat.get_entities(text)
+        self.assertTrue(self.cat.usage_monitor.log_buffer)
+        self.assertEqual(len(self.cat.usage_monitor.log_buffer), 1)
+        line = self.cat.usage_monitor.log_buffer[0]
+        # the 1st element is the input text length
+        input_text_length = line.split(",")[1]
+        self.assertEqual(str(len(text)), input_text_length)
 
 
 class CatWithChangesMetaCATTests(CatWithMetaCATTests):

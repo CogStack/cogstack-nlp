@@ -24,6 +24,7 @@ from medcat2.components.types import AbstractCoreComponent, HashableComponet
 from medcat2.components.addons.addons import AddonComponent
 from medcat2.utils.legacy.identifier import is_legacy_model_pack
 from medcat2.utils.defaults import AVOID_LEGACY_CONVERSION_ENVIRON
+from medcat2.utils.usage_monitoring import UsageMonitor
 
 
 logger = logging.getLogger(__name__)
@@ -52,6 +53,8 @@ class CAT(AbstractSerialisable):
 
         self._trainer: Optional[Trainer] = None
         self._pipeline = self._recreate_pipe(model_load_path)
+        self.usage_monitor = UsageMonitor(
+            self._get_hash(), self.config.general.usage_monitor)
 
     def _recreate_pipe(self, model_load_path: Optional[str] = None
                        ) -> Pipeline:
@@ -76,7 +79,10 @@ class CAT(AbstractSerialisable):
         ]
 
     def __call__(self, text: str) -> Optional[MutableDocument]:
-        return self._pipeline.get_doc(text)
+        doc = self._pipeline.get_doc(text)
+        if self.usage_monitor.should_monitor:
+            self.usage_monitor.log_inference(len(text), len(doc.final_ents))
+        return doc
 
     def _ensure_not_training(self) -> None:
         """Method to ensure config is not set to train.
@@ -301,11 +307,7 @@ class CAT(AbstractSerialisable):
                                 root_dir=model_pack_path)
         return model_pack_path
 
-    def _versioning(self, change_description: Optional[str]) -> str:
-        date_today = date.today().strftime("%d %B %Y")
-        if change_description is not None:
-            self.config.meta.description += (
-                f"\n[{date_today}] {change_description}")
+    def _get_hash(self) -> str:
         hasher = Hasher()
         logger.debug("Hashing the CDB")
         hasher.update(self.cdb.get_hash())
@@ -315,6 +317,14 @@ class CAT(AbstractSerialisable):
                              type(component).__name__)
                 hasher.update(component.get_hash())
         hex_hash = self.config.meta.hash = hasher.hexdigest()
+        return hex_hash
+
+    def _versioning(self, change_description: Optional[str]) -> str:
+        date_today = date.today().strftime("%d %B %Y")
+        if change_description is not None:
+            self.config.meta.description += (
+                f"\n[{date_today}] {change_description}")
+        hex_hash = self._get_hash()
         history = self.config.meta.history
         if not history or history[-1] != hex_hash:
             history.append(hex_hash)
