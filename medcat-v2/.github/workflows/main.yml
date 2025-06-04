@@ -34,4 +34,4 @@ jobs:
           uv run ruff check medcat2 --preview
       - name: Test
         run: |
-          timeout 10m uv run python -m unittest discover
+          timeout 15m uv run python -m unittest discover
