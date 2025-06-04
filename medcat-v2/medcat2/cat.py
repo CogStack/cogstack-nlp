@@ -54,7 +54,7 @@ class CAT(AbstractSerialisable):
         self._trainer: Optional[Trainer] = None
         self._pipeline = self._recreate_pipe(model_load_path)
         self.usage_monitor = UsageMonitor(
-            self._get_hash(), self.config.general.usage_monitor)
+            self._get_hash, self.config.general.usage_monitor)
 
     def _recreate_pipe(self, model_load_path: Optional[str] = None
                        ) -> Pipeline:

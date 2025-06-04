@@ -1,6 +1,6 @@
 import os
 from datetime import datetime
-from typing import List
+from typing import Union, Callable
 import platform
 import logging
 
@@ -22,12 +22,18 @@ logger = logging.getLogger(__name__)
 
 class UsageMonitor:
 
-    def __init__(self, model_hash: str, config: UsageMonitorConfig) -> None:
+    def __init__(self, model_hash: Union[Callable[[], str], str],
+                 config: UsageMonitorConfig) -> None:
         self.config = config
-        self.log_buffer: List[str] = []
+        self.log_buffer: list[str] = []
         # NOTE: if the model hash changes (i.e model is trained)
         #       then this does not immediately take effect
-        self.model_hash = model_hash
+        self._model_hash = model_hash
+
+    @property
+    def model_hash(self) -> str:
+        return (self._model_hash() if callable(self._model_hash)
+                else self._model_hash)
 
     @property
     def log_file(self):
