@@ -38,3 +38,6 @@ jobs:
       - name: Model regression
         run: |
           uv run bash tests/backwards_compatibility/run_current.sh
+      - name: Backwards compatibility
+        run: |
+          uv run bash tests/backwards_compatibility/check_backwards_compatibility.sh
