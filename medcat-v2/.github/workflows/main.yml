@@ -35,3 +35,6 @@ jobs:
       - name: Test
         run: |
           timeout 15m uv run python -m unittest discover
+      - name: Model regression
+        run: |
+          uv run bash tests/backwards_compatibility/run_current.sh
