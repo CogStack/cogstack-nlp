@@ -261,6 +261,7 @@ class CAT(AbstractSerialisable):
             serialiser_type: Union[str, AvailableSerialisers] = 'dill',
             make_archive: bool = True,
             only_archive: bool = False,
+            add_hash_to_pack_name: bool = True,
             change_description: Optional[str] = None,
             ) -> str:
         """Save model pack.
@@ -279,6 +280,9 @@ class CAT(AbstractSerialisable):
                 Whether to make the arhive /.zip file. Defaults to True.
             only_archive (bool):
                 Whether to clear the non-compressed folder. Defaults to False.
+            add_hash_to_pack_name (bool):
+                Whether to add the hash to the pack name. This is only relevant
+                if pack_name is specified. Defaults to True.
             change_description (Optional[str]):
                 If provided, this the description will be added to the
                 model description. Defaults to None.
@@ -289,7 +293,7 @@ class CAT(AbstractSerialisable):
         self.config.meta.mark_saved_now()
         # figure out the location/folder of the saved files
         hex_hash = self._versioning(change_description)
-        if pack_name == DEFAULT_PACK_NAME:
+        if pack_name == DEFAULT_PACK_NAME or add_hash_to_pack_name:
             pack_name = f"{pack_name}_{hex_hash}"
         model_pack_path = os.path.join(target_folder, pack_name)
         # ensure target folder and model pack folder exist
