@@ -312,6 +312,9 @@ class CAT(AbstractSerialisable):
                 logger.info("Removing the non-archived model pack folder: %s",
                             model_pack_path)
                 shutil.rmtree(model_pack_path, ignore_errors=True)
+                # change the model pack path to the zip file so that we
+                # refer to an existing file
+                model_pack_path += ".zip"
         return model_pack_path
 
     def _get_hash(self) -> str:
