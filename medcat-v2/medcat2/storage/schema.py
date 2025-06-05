@@ -1,5 +1,9 @@
 from typing import Type
 import json
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 
 _CLASS_PATH = "serialised-class"
@@ -41,7 +45,15 @@ def load_schema(file_name: str) -> tuple[str, list[str]]:
     """
     with open(file_name) as f:
         data = json.load(f)
-    return data[_CLASS_PATH], data[_INIT_PARTS_PATH]
+    class_name, init_parts = data[_CLASS_PATH], data[_INIT_PARTS_PATH]
+    if __package__.startswith("medcat.") and class_name.startswith("medcat2."):
+        # if we're loading a beta-release (medcat2.* namespaced) schema
+        # we need to convert it to the stable one
+        logger.info(
+            "Loading beta-release medcat2 schema at '%s'. "
+            "Converting to release schema.", file_name)
+        class_name = class_name.replace("medcat2.", "medcat.")
+    return class_name, init_parts
 
 
 class IllegalSchemaException(ValueError):
