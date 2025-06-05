@@ -7,7 +7,7 @@ import unittest
 
 class RegressionModelVocabTests(unittest.TestCase):
     VOCAB_DATA_PATH = os.path.join(
-        os.path.dirname(__file__), 'creation', 'vocab_data.txt')
+        os.path.dirname(__file__), '..', 'creation', 'vocab_data.txt')
 
     @classmethod
     def setUpClass(cls):
