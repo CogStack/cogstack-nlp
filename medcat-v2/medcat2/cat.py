@@ -260,6 +260,7 @@ class CAT(AbstractSerialisable):
             self, target_folder: str, pack_name: str = DEFAULT_PACK_NAME,
             serialiser_type: Union[str, AvailableSerialisers] = 'dill',
             make_archive: bool = True,
+            only_archive: bool = False,
             change_description: Optional[str] = None,
             ) -> str:
         """Save model pack.
@@ -276,6 +277,8 @@ class CAT(AbstractSerialisable):
                 The serialiser type. Defaults to 'dill'.
             make_archive (bool):
                 Whether to make the arhive /.zip file. Defaults to True.
+            only_archive (bool):
+                Whether to clear the non-compressed folder. Defaults to False.
             change_description (Optional[str]):
                 If provided, this the description will be added to the
                 model description. Defaults to None.
@@ -305,6 +308,10 @@ class CAT(AbstractSerialisable):
         if make_archive:
             shutil.make_archive(model_pack_path, 'zip',
                                 root_dir=model_pack_path)
+            if only_archive:
+                logger.info("Removing the non-archived model pack folder: %s",
+                            model_pack_path)
+                shutil.rmtree(model_pack_path, ignore_errors=True)
         return model_pack_path
 
     def _get_hash(self) -> str:
