@@ -151,18 +151,18 @@ class CAT(AbstractSerialisable):
 
     def _mp_worker_func(
             self,
-            texts_and_indices: list[tuple[str, int, bool]]
-            ) -> list[tuple[str, int, Union[dict, Entities, OnlyCUIEntities]]]:
+            texts_and_indices: list[tuple[str, str, bool]]
+            ) -> list[tuple[str, str, Union[dict, Entities, OnlyCUIEntities]]]:
         return [
             (text, text_index, self.get_entities(text, only_cui=only_cui))
             for text, text_index, only_cui in texts_and_indices]
 
     def _generate_simple_batches(
             self,
-            text_iter: Union[Iterator[str], Iterator[tuple[int, str]]],
+            text_iter: Union[Iterator[str], Iterator[tuple[str, str]]],
             batch_size: int,
             only_cui: bool,
-            ) -> Iterator[list[tuple[str, int, bool]]]:
+            ) -> Iterator[list[tuple[str, str, bool]]]:
         text_index = 0
         while True:
             # Take a small batch from the iterator
@@ -174,7 +174,7 @@ class CAT(AbstractSerialisable):
             #        - if tuple, then (str, int, bool)
             #       but for some reason mypy complains
             yield [
-                (text, text_index + i, only_cui)  # type: ignore
+                (text, str(text_index + i), only_cui)  # type: ignore
                 if isinstance(text, str) else
                 (text[1], text[0], only_cui)
                 for i, text in enumerate(batch)
@@ -184,9 +184,9 @@ class CAT(AbstractSerialisable):
     def _mp_one_batch_per_process(
             self,
             executor: ProcessPoolExecutor,
-            batch_iter: Iterator[list[tuple[str, int, bool]]],
+            batch_iter: Iterator[list[tuple[str, str, bool]]],
             external_processes: int
-            ) -> Iterator[tuple[int, Union[dict, Entities, OnlyCUIEntities]]]:
+            ) -> Iterator[tuple[str, Union[dict, Entities, OnlyCUIEntities]]]:
         futures: list[Future] = []
         # submit batches, one for each external processes
         for _ in range(external_processes):
@@ -197,7 +197,7 @@ class CAT(AbstractSerialisable):
             except StopIteration:
                 break
         # Main process works on next batch while workers are busy
-        main_batch: Optional[list[tuple[str, int, bool]]]
+        main_batch: Optional[list[tuple[str, str, bool]]]
         try:
             main_batch = next(batch_iter)
             main_results = self._mp_worker_func(main_batch)
@@ -234,13 +234,37 @@ class CAT(AbstractSerialisable):
 
     def get_entities_multi_texts(
             self,
-            texts: Union[Iterable[str], Iterable[tuple[int, str]]],
+            texts: Union[Iterable[str], Iterable[tuple[str, str]]],
             only_cui: bool = False,
             n_process: int = 1,
             batch_size: int = 100,
-            ) -> Iterator[tuple[int, Union[dict, Entities, OnlyCUIEntities]]]:
+            ) -> Iterator[tuple[str, Union[dict, Entities, OnlyCUIEntities]]]:
+        """Get entities from multiple texts (potentially in parallel).
+
+        If `n_process` > 1, `n_process - 1` new processes will be created
+        and data will be processed on those as well as the main process in
+        parallel.
+
+        Args:
+            texts (Union[Iterable[str], Iterable[tuple[str, str]]]):
+                The input text. Either an iterable of raw text or one
+                with in the format of `(text_index, text)`.
+            only_cui (bool):
+                Whether to only return CUIs rather than other information
+                like start/end and annotated value. Defaults to False.
+            n_process (int):
+                Number of processes to use. Defaults to 1.
+            batch_size (int):
+                The number of texts to batch at a time. A batch of the
+                specified size will be given to each worker process.
+                Defaults to 100.
+
+        Yields:
+            Iterator[tuple[str, Union[dict, Entities, OnlyCUIEntities]]]:
+                The results in the format of (text_index, entities).
+        """
         text_iter = cast(
-            Union[Iterator[str], Iterator[tuple[int, str]]], iter(texts))
+            Union[Iterator[str], Iterator[tuple[str, str]]], iter(texts))
         batch_iter = self._generate_simple_batches(
             text_iter, batch_size, only_cui)
         if n_process == 1:
