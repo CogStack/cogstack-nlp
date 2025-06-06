@@ -157,6 +157,51 @@ class CAT(AbstractSerialisable):
             (text, text_index, self.get_entities(text, only_cui=only_cui))
             for text, text_index, only_cui in texts_and_indices]
 
+    def _generate_batches_by_char_length(
+            self,
+            text_iter: Union[Iterator[str], Iterator[tuple[str, str]]],
+            batch_size_chars: int,
+            only_cui: bool,
+            ) -> Iterator[list[tuple[str, str, bool]]]:
+        docs: list[tuple[str, str, bool]] = []
+        char_count = 0
+        for i, _doc in enumerate(text_iter):
+            # NOTE: not sure why mypy is complaining here
+            doc = cast(
+                str, _doc[1] if isinstance(_doc, tuple) else _doc)
+            doc_index: str = _doc[0] if isinstance(_doc, tuple) else str(i)
+            clen = len(doc)
+            char_count += clen
+            if char_count > batch_size_chars:
+                yield docs
+                docs = []
+                char_count = clen
+            docs.append((doc_index, doc, only_cui))
+
+        if len(docs) > 0:
+            yield docs
+
+    def _generate_batches(
+            self,
+            text_iter: Union[Iterator[str], Iterator[tuple[str, str]]],
+            batch_size: int,
+            batch_size_chars: int,
+            only_cui: bool,
+            ) -> Iterator[list[tuple[str, str, bool]]]:
+        if batch_size_chars < 1 and batch_size < 1:
+            raise ValueError("Either `batch_size` or `batch_size_chars` "
+                             "must be greater than 0.")
+        if batch_size > 0 and batch_size_chars > 0:
+            raise ValueError(
+                "Cannot specify both `batch_size` and `batch_size_chars`. "
+                "Please use one of them.")
+        if batch_size_chars > 0:
+            return self._generate_batches_by_char_length(
+                text_iter, batch_size_chars, only_cui)
+        else:
+            return self._generate_simple_batches(
+                text_iter, batch_size, only_cui)
+
     def _generate_simple_batches(
             self,
             text_iter: Union[Iterator[str], Iterator[tuple[str, str]]],
@@ -237,7 +282,8 @@ class CAT(AbstractSerialisable):
             texts: Union[Iterable[str], Iterable[tuple[str, str]]],
             only_cui: bool = False,
             n_process: int = 1,
-            batch_size: int = 100,
+            batch_size: int = -1,
+            batch_size_chars: int = 1_000_000,
             ) -> Iterator[tuple[str, Union[dict, Entities, OnlyCUIEntities]]]:
         """Get entities from multiple texts (potentially in parallel).
 
@@ -257,7 +303,13 @@ class CAT(AbstractSerialisable):
             batch_size (int):
                 The number of texts to batch at a time. A batch of the
                 specified size will be given to each worker process.
-                Defaults to 100.
+                Defaults to -1 and in this case the character count will
+                be used instead.
+            batch_size_chars (int):
+                The maximum number of characters to process in a batch.
+                Each process will be given batch of texts with a total
+                number of characters not exceeding this value. Defaults
+                to 1,000,000 characters. Set to -1 to disable.
 
         Yields:
             Iterator[tuple[str, Union[dict, Entities, OnlyCUIEntities]]]:
@@ -265,8 +317,8 @@ class CAT(AbstractSerialisable):
         """
         text_iter = cast(
             Union[Iterator[str], Iterator[tuple[str, str]]], iter(texts))
-        batch_iter = self._generate_simple_batches(
-            text_iter, batch_size, only_cui)
+        batch_iter = self._generate_batches(
+            text_iter, batch_size, batch_size_chars, only_cui)
         if n_process == 1:
             # just do in series
             for batch in batch_iter:
