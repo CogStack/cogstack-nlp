@@ -1,7 +1,7 @@
 [project]
 name = "medcat2"
 
-version = "2.0.0-dev"
+version = "0.4.0"
 
 description = "Medical Concept Annotation Toolkit (v2)"
 
