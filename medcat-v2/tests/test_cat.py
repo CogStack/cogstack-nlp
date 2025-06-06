@@ -497,14 +497,17 @@ class CATSaveTests(CATIncludingTests):
 class BatchingTests(unittest.TestCase):
     NUM_TEXTS = 100
     all_texts = [
-        f"Text {num}"
+        f"Text {num:04d} -> " + "a" * num
         for num in range(NUM_TEXTS)
     ]
+    total_text_length = sum(len(text) for text in all_texts)
 
     @classmethod
     def setUpClass(cls):
         cnf = Config()
         cls.cat = cat.CAT(cdb=CDB(cnf), vocab=Vocab())
+
+    # per doc batching tests
 
     def test_batching_gets_full(self):
         batches = list(self.cat._generate_simple_batches(
@@ -533,3 +536,70 @@ class BatchingTests(unittest.TestCase):
             with self.subTest(f"Batch {num}"):
                 self.assertEqual(len(batch), 1)
                 # self.assertEqual(batch[0], f"Text {num}")
+
+    # per character batching tests
+
+    def test_batching_gets_full_char(self):
+        batches = list(self.cat._generate_batches_by_char_length(
+            iter(self.all_texts), batch_size_chars=self.total_text_length,
+            only_cui=False))
+        self.assertEqual(len(batches), 1)
+        # has all texts
+        self.assertEqual(sum(len(batch) for batch in batches), self.NUM_TEXTS)
+        # has all characters
+        self.assertEqual(sum(len(text[1]) for text in batches[0]),
+                         self.total_text_length)
+
+    def test_batching_gets_all_half_at_a_time(self):
+        exp_chars = int(0.7 * self.total_text_length)
+        batches = list(self.cat._generate_batches_by_char_length(
+            iter(self.all_texts), batch_size_chars=exp_chars,
+            only_cui=False))
+        # NOTE: should have 2 batches at 40% overlap
+        self.assertEqual(len(batches), 2)
+        # each batch should have less than expected characters
+        for batch_num, batch in enumerate(batches):
+            with self.subTest(f"Batch {batch_num}"):
+                cur_total_chars = sum(len(text[1]) for text in batch)
+                self.assertLessEqual(cur_total_chars, exp_chars)
+        # has all texts
+        self.assertEqual(sum(len(batch) for batch in batches), self.NUM_TEXTS)
+        # has all characters
+        self.assertEqual(sum(len(text[1])
+                             for batch in batches for text in batch),
+                         self.total_text_length)
+
+    # overal batching (i.e joint methods)
+
+    def test_cannot_set_both_neg(self):
+        with self.assertRaises(ValueError):
+            list(self.cat._generate_batches(
+                iter(self.all_texts), batch_size_chars=-1,
+                batch_size=-1, only_cui=False))
+
+    def test_cannot_set_both_pos(self):
+        with self.assertRaises(ValueError):
+            list(self.cat._generate_batches(
+                iter(self.all_texts), batch_size_chars=100,
+                batch_size=10, only_cui=False))
+
+    def test_can_do_char_based(self):
+        exp_chars = int(0.3 * self.total_text_length)
+        batches = list(self.cat._generate_batches(
+            iter(self.all_texts), batch_size_chars=exp_chars,
+            batch_size=-1, only_cui=False))
+        self.assertGreater(len(batches), 0)
+        batch_lens = [len(batch) for batch in batches]
+        # has different number of texts in some batches -> not doc based
+        self.assertGreater(max(batch_lens), min(batch_lens))
+
+    def test_can_set_batch_size_per_doc(self):
+        exp_batches = 10
+        batches = list(self.cat._generate_batches(
+            iter(self.all_texts), batch_size=exp_batches,
+            batch_size_chars=-1, only_cui=False))
+        self.assertGreater(len(batches), 0)
+        batch_lens = [len(batch) for batch in batches]
+        # has same number of texts in each batch -> doc based
+        self.assertEqual(max(batch_lens), min(batch_lens))
+        self.assertEqual(max(batch_lens), exp_batches)
