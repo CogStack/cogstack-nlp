@@ -51,9 +51,7 @@ Though installation is likely to be simply `pip install "medcat>=2.0"` at that t
 
 2. Quickstart (MedCAT v2+):
 ```python
-# NOTE: for now, we refer to this as medcat2, but in the future
-#       it will (probably) be relocated to just medcat
-from medcat2.cat import CAT
+from medcat.cat import CAT
 
 # Download the model_pack from the models section in the github repo.
 cat = CAT.load_model_pack('<path to downloaded zip file>')

@@ -39,7 +39,7 @@ If you were previously relying on some of the behaviour provided by these, don't
 ## API Changes to CDB
 
 The `CDB` class is now located in `medcat.cdb.cdb` module.
-However, it can be imported from the package directly as well, same as before (`from medcat2.cdb import CDB`).
+However, it can be imported from the package directly as well, same as before (`from medcat.cdb import CDB`).
 
 ### Names and CUIs are now mapped to variables differently
 
@@ -94,17 +94,17 @@ We can see the list of relocations here.
 
 |          v1 location                    |           v2 location                                        | Notes |
 | --------------------------------------- | ------------------------------------------------------------ | ----- |
-| `medcat.meta_cat`                       | `medcat2.components.addons.meta_cat.meta_cat`                |       |
-| `medcat.utils.meta_cat`                 | `medcat2.components.addons.meta_cat`                         |       |
-| `medcat.config_meta_cat`                | `medcat2.config.config_meta_cat`                             |       |
-| `medcat.cdb_maker`                      | `medcat2.model_creation.cdb_maker`                           |       |
-| `medcat.tokenizers.meta_cat_tokenizers` | `medcat2.components.addons.meta_cat.mctokenizers.tokenizers` | All MetACAT stuff now here |
-| `medcat.rel_cat`                        | `medcat2.components.addons.relation_extraction.rel_cat`      | All RelCAT stuff now here |
-| `medcat.utils.relation_extraction.*`    | `medcat2.components.addons.relation_extraction.*`            |       |
-| `medcat.utils.ner.deid`                 | `medcat2.components.ner.trf.deid`                            | Most DeID stuff now here |
-| `medcat.utils.ner.model`                | `medcat2.components.ner.trf.model`                           |       |
-| `medcat.utils.ner.helpers`              | `medcat2.components.ner.trf.helpers`                         |       |
-| `medcat.tokenizer.transformers_ner`     | `medcat2.components.ner.trf.tokenizer`                       |       |
-| `medcat.ner.transformers_ner`           | `medcat2.components.ner.tf.transformers_ner`                 |       |
-| `medcat.datasets.transformers_ner`      | `medcat2.utils.ner.transformers_ner`                         |       |
-| `medcat.datasets.data_collator`         | `medcat2.utils.ner.data_collator`                            |       |
+| `medcat.meta_cat`                       | `medcat.components.addons.meta_cat.meta_cat`                |       |
+| `medcat.utils.meta_cat`                 | `medcat.components.addons.meta_cat`                         |       |
+| `medcat.config_meta_cat`                | `medcat.config.config_meta_cat`                             |       |
+| `medcat.cdb_maker`                      | `medcat.model_creation.cdb_maker`                           |       |
+| `medcat.tokenizers.meta_cat_tokenizers` | `medcat.components.addons.meta_cat.mctokenizers.tokenizers` | All MetACAT stuff now here |
+| `medcat.rel_cat`                        | `medcat.components.addons.relation_extraction.rel_cat`      | All RelCAT stuff now here |
+| `medcat.utils.relation_extraction.*`    | `medcat.components.addons.relation_extraction.*`            |       |
+| `medcat.utils.ner.deid`                 | `medcat.components.ner.trf.deid`                            | Most DeID stuff now here |
+| `medcat.utils.ner.model`                | `medcat.components.ner.trf.model`                           |       |
+| `medcat.utils.ner.helpers`              | `medcat.components.ner.trf.helpers`                         |       |
+| `medcat.tokenizer.transformers_ner`     | `medcat.components.ner.trf.tokenizer`                       |       |
+| `medcat.ner.transformers_ner`           | `medcat.components.ner.tf.transformers_ner`                 |       |
+| `medcat.datasets.transformers_ner`      | `medcat.utils.ner.transformers_ner`                         |       |
+| `medcat.datasets.data_collator`         | `medcat.utils.ner.data_collator`                            |       |
