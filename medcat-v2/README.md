@@ -1,5 +1,8 @@
 # Medical  <img src="https://raw.githubusercontent.com/CogStack/MedCAT/master/media/cat-logo.png" width=45> oncept Annotation Tool (version 2)
 
+**There's a number of breaking changes in MedCAT v2 compared to v1.**
+Details are outlined [here](docs/breaking_changes.md).
+
 [![Build Status](https://github.com/CogStack/MedCAT2/actions/workflows/main.yml/badge.svg?branch=main)](https://github.com/CogStack/MedCAT2/actions/workflows/main.yml?query=branch%3main)
 [![Documentation Status](https://readthedocs.org/projects/medcat2/badge/?version=latest)](https://medcat2.readthedocs.io/en/latest/?badge=latest)
 [![Latest release](https://img.shields.io/github/v/release/CogStack/MedCAT2)](https://github.com/CogStack/MedCAT2/releases/latest)
