@@ -1,7 +1,7 @@
 from typing import runtime_checkable
 
-from medcat2.preprocessors import cleaners
-from medcat2.config.config import General, Preprocessing, CDBMaker
+from medcat.preprocessors import cleaners
+from medcat.config.config import General, Preprocessing, CDBMaker
 
 import unittest
 

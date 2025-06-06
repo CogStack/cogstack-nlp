@@ -5,10 +5,10 @@ from enum import Enum, auto
 
 from unittest import TestCase
 
-from medcat2.utils.regression import utils
-from medcat2.utils.regression.checking import RegressionSuite
+from medcat.utils.regression import utils
+from medcat.utils.regression.checking import RegressionSuite
 
-from medcat2.components.normalizing.normalizer import BasicSpellChecker
+from medcat.components.normalizing.normalizer import BasicSpellChecker
 
 
 class PartialSubstituationTests(TestCase):

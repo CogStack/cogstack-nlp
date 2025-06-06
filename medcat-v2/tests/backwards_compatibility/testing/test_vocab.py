@@ -1,6 +1,6 @@
 import os
 
-from medcat2.vocab import Vocab
+from medcat.vocab import Vocab
 
 import unittest
 

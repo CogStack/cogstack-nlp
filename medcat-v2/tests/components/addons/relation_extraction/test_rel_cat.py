@@ -6,14 +6,14 @@ import logging
 
 from transformers.models.auto.tokenization_auto import AutoTokenizer
 
-from medcat2.cdb import CDB
-from medcat2.storage.serialisers import deserialise
-from medcat2.config.config_rel_cat import ConfigRelCAT
-from medcat2.components.addons.relation_extraction.rel_cat import RelCAT
-from medcat2.components.addons.relation_extraction.bert.tokenizer import (
+from medcat.cdb import CDB
+from medcat.storage.serialisers import deserialise
+from medcat.config.config_rel_cat import ConfigRelCAT
+from medcat.components.addons.relation_extraction.rel_cat import RelCAT
+from medcat.components.addons.relation_extraction.bert.tokenizer import (
     BaseTokenizerWrapper)
-from medcat2.tokenizing.tokenizers import create_tokenizer
-from medcat2.components.addons.relation_extraction.rel_dataset import RelData
+from medcat.tokenizing.tokenizers import create_tokenizer
+from medcat.components.addons.relation_extraction.rel_dataset import RelData
 
 from .... import UNPACKED_EXAMPLE_MODEL_PACK_PATH, RESOURCES_PATH
 

@@ -1,9 +1,9 @@
 from typing import Optional, List
 from unittest import TestCase
 
-from medcat2.cdb.concepts import get_new_cui_info, get_new_name_info
-from medcat2.config import Config
-from medcat2.utils.regression import targeting
+from medcat.cdb.concepts import get_new_cui_info, get_new_name_info
+from medcat.config import Config
+from medcat.utils.regression import targeting
 
 from collections import defaultdict
 from copy import deepcopy

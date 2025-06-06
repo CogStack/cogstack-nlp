@@ -1,9 +1,9 @@
-from medcat2.components.linking import context_based_linker
-from medcat2.components import types
-from medcat2.config import Config
-from medcat2.vocab import Vocab
-from medcat2.cdb.concepts import CUIInfo, NameInfo
-from medcat2.components.types import TrainableComponent
+from medcat.components.linking import context_based_linker
+from medcat.components import types
+from medcat.config import Config
+from medcat.vocab import Vocab
+from medcat.cdb.concepts import CUIInfo, NameInfo
+from medcat.components.types import TrainableComponent
 
 import unittest
 

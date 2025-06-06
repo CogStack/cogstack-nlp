@@ -1,7 +1,7 @@
 import os
 
-from medcat2.config.config import UsageMonitor as UsageMonitorConfig
-from medcat2.utils import usage_monitoring
+from medcat.config.config import UsageMonitor as UsageMonitorConfig
+from medcat.utils import usage_monitoring
 
 import tempfile
 

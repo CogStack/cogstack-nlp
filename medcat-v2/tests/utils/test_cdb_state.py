@@ -7,13 +7,13 @@ import json
 
 import numpy as np
 
-from medcat2.config.config import ModelMeta
-from medcat2.utils.cdb_state import (
+from medcat.config.config import ModelMeta
+from medcat.utils.cdb_state import (
     captured_state_cdb, CDBState, copy_cdb_state, _get_attr)
-from medcat2.storage.serialisers import deserialise
-from medcat2.cdb import CDB
-from medcat2.vocab import Vocab
-from medcat2.cat import CAT
+from medcat.storage.serialisers import deserialise
+from medcat.cdb import CDB
+from medcat.vocab import Vocab
+from medcat.cat import CAT
 
 from .. import UNPACKED_EXAMPLE_MODEL_PACK_PATH
 

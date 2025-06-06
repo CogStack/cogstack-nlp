@@ -1,4 +1,4 @@
-from medcat2.utils import envsnapshot
+from medcat.utils import envsnapshot
 
 import unittest
 

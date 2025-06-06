@@ -1,10 +1,10 @@
 import os
 import json
 
-from medcat2.trainer import Trainer
-from medcat2.config import Config
-from medcat2.vocab import Vocab
-from medcat2.data.mctexport import MedCATTrainerExport
+from medcat.trainer import Trainer
+from medcat.config import Config
+from medcat.vocab import Vocab
+from medcat.data.mctexport import MedCATTrainerExport
 
 import unittest
 

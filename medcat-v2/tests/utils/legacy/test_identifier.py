@@ -1,4 +1,4 @@
-from medcat2.utils.legacy import identifier
+from medcat.utils.legacy import identifier
 
 from unittest import TestCase
 

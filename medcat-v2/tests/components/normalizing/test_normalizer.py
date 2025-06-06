@@ -1,6 +1,6 @@
-from medcat2.components.normalizing import normalizer
-from medcat2.components import types
-from medcat2.vocab import Vocab
+from medcat.components.normalizing import normalizer
+from medcat.components import types
+from medcat.vocab import Vocab
 
 import unittest
 

@@ -1,6 +1,6 @@
-from medcat2.components.ner import vocab_based_ner
-from medcat2.components import types
-from medcat2.config import Config
+from medcat.components.ner import vocab_based_ner
+from medcat.components import types
+from medcat.config import Config
 
 import unittest
 

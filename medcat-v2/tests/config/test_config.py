@@ -1,5 +1,5 @@
-from medcat2.config import config
-from medcat2.storage.serialisables import Serialisable
+from medcat.config import config
+from medcat.storage.serialisables import Serialisable
 
 import unittest
 

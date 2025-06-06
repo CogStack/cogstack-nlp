@@ -4,11 +4,11 @@ import unittest
 from copy import deepcopy
 import json
 
-from medcat2.utils.regression.targeting import TranslationLayer
-from medcat2.utils.regression.results import Finding, MalformedFinding
-from medcat2.utils.regression.results import FindingDeterminer
-from medcat2.utils.regression.results import SingleResultDescriptor
-from medcat2.utils.regression.targeting import FinalTarget
+from medcat.utils.regression.targeting import TranslationLayer
+from medcat.utils.regression.results import Finding, MalformedFinding
+from medcat.utils.regression.results import FindingDeterminer
+from medcat.utils.regression.results import SingleResultDescriptor
+from medcat.utils.regression.targeting import FinalTarget
 
 from .test_checking import FakeCDB
 

@@ -2,15 +2,15 @@ from typing import Optional
 import os
 from datetime import datetime
 
-from medcat2.storage.serialisables import (
+from medcat.storage.serialisables import (
     Serialisable, AbstractSerialisable, ManualSerialisable,
     AbstractManualSerialisable)
-from medcat2.storage import serialisers
-from medcat2.cat import CAT
-from medcat2.cdb import CDB
-from medcat2.vocab import Vocab
-from medcat2.config import Config
-from medcat2.preprocessors.cleaners import NameDescriptor
+from medcat.storage import serialisers
+from medcat.cat import CAT
+from medcat.cdb import CDB
+from medcat.vocab import Vocab
+from medcat.config import Config
+from medcat.preprocessors.cleaners import NameDescriptor
 
 import numpy as np
 import unittest

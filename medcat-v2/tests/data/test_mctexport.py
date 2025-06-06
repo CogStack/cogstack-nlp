@@ -1,7 +1,7 @@
 import os
 import json
 
-from medcat2.data import mctexport
+from medcat.data import mctexport
 import pydantic
 
 import unittest

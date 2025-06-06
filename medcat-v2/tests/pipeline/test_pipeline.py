@@ -1,6 +1,6 @@
-from medcat2.pipeline import pipeline
-from medcat2.vocab import Vocab
-from medcat2.config import Config
+from medcat.pipeline import pipeline
+from medcat.vocab import Vocab
+from medcat.config import Config
 
 from ..components.ner.test_vocab_based_ner import FakeCDB as BFakeCDB
 

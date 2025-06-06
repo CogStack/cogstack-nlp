@@ -1,7 +1,7 @@
-from medcat2.components import types
+from medcat.components import types
 
-from medcat2.tokenizing.tokens import BaseDocument, MutableDocument
-from medcat2.utils.registry import MedCATRegistryException
+from medcat.tokenizing.tokens import BaseDocument, MutableDocument
+from medcat.utils.registry import MedCATRegistryException
 
 import unittest
 
@@ -40,7 +40,7 @@ class TypesRegistrationTests(unittest.TestCase):
             for comp_name, _ in registry.list_components():
                 comp_cls = registry.get_component(comp_name)
                 cls_path = comp_cls.__module__ + "." + comp_cls.__name__
-                if not cls_path.startswith("medcat2."):
+                if not cls_path.startswith("medcat."):
                     registry.unregister_component(comp_name)
         # register defaults
         for registry, def_lazy in [

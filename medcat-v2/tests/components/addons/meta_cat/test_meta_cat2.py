@@ -5,11 +5,11 @@ from typing import cast
 
 from transformers import AutoTokenizer
 
-from medcat2.components.addons.meta_cat.meta_cat import MetaCAT
-from medcat2.config.config_meta_cat import ConfigMetaCAT
-from medcat2.components.addons.meta_cat.mctokenizers.bert_tokenizer import (
+from medcat.components.addons.meta_cat.meta_cat import MetaCAT
+from medcat.config.config_meta_cat import ConfigMetaCAT
+from medcat.components.addons.meta_cat.mctokenizers.bert_tokenizer import (
     TokenizerWrapperBERT)
-from medcat2.storage.serialisers import deserialise, serialise
+from medcat.storage.serialisers import deserialise, serialise
 
 import spacy
 from spacy.tokens import Span

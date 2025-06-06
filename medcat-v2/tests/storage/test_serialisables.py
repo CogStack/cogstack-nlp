@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from medcat2.storage import serialisables
+from medcat.storage import serialisables
 
 import unittest
 

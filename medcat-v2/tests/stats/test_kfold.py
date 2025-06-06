@@ -4,9 +4,9 @@ from typing import Union, Optional
 from copy import deepcopy
 from collections import Counter
 
-from medcat2.data.mctexport import MedCATTrainerExport
-from medcat2.stats import kfold, stats as reg_stats
-from medcat2.cat import CAT
+from medcat.data.mctexport import MedCATTrainerExport
+from medcat.stats import kfold, stats as reg_stats
+from medcat.cat import CAT
 import pydantic
 
 import unittest

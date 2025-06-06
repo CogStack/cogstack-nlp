@@ -5,17 +5,17 @@ import json
 from typing import Optional
 from collections import Counter
 
-from medcat2 import cat
-from medcat2.data.model_card import ModelCard
-from medcat2.vocab import Vocab
-from medcat2.config import Config
-from medcat2.config.config_meta_cat import ConfigMetaCAT
-from medcat2.model_creation.cdb_maker import CDBMaker
-from medcat2.cdb import CDB
-from medcat2.tokenizing.tokens import UnregisteredDataPathException
-from medcat2.utils.cdb_state import captured_state_cdb
-from medcat2.components.addons.meta_cat.meta_cat import MetaCATAddon
-from medcat2.utils.defaults import AVOID_LEGACY_CONVERSION_ENVIRON
+from medcat import cat
+from medcat.data.model_card import ModelCard
+from medcat.vocab import Vocab
+from medcat.config import Config
+from medcat.config.config_meta_cat import ConfigMetaCAT
+from medcat.model_creation.cdb_maker import CDBMaker
+from medcat.cdb import CDB
+from medcat.tokenizing.tokens import UnregisteredDataPathException
+from medcat.utils.cdb_state import captured_state_cdb
+from medcat.components.addons.meta_cat.meta_cat import MetaCATAddon
+from medcat.utils.defaults import AVOID_LEGACY_CONVERSION_ENVIRON
 
 import unittest
 import tempfile
@@ -333,9 +333,9 @@ class CATSupTrainingTests(CATUnsupTrainingTests):
 
 
 class CATWithDictNERSupTrainingTests(CATSupTrainingTests):
-    from medcat2.components.types import CoreComponentType
-    from medcat2.components.ner.dict_based_ner import NER as DNER
-    from medcat2.components.ner.vocab_based_ner import NER as VNER
+    from medcat.components.types import CoreComponentType
+    from medcat.components.ner.dict_based_ner import NER as DNER
+    from medcat.components.ner.vocab_based_ner import NER as VNER
 
     @classmethod
     def _dummy_pt(cls):

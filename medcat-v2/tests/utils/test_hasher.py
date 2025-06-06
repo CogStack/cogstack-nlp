@@ -2,7 +2,7 @@ import unittest
 
 from copy import deepcopy
 
-from medcat2.utils.hasher import Hasher
+from medcat.utils.hasher import Hasher
 
 
 class HasherTests(unittest.TestCase):

@@ -1,5 +1,5 @@
-from medcat2.utils import config_utils
-from medcat2.config import Config
+from medcat.utils import config_utils
+from medcat.config import Config
 
 import unittest
 

@@ -1,12 +1,12 @@
 import os
 
-from medcat2.components.addons.relation_extraction import rel_cat
-from medcat2.utils.legacy.convert_rel_cat import get_rel_cat_from_old
-from medcat2.tokenizing.tokenizers import create_tokenizer
-from medcat2.storage.serialisers import AvailableSerialisers
-from medcat2.cat import CAT
-from medcat2.cdb import CDB
-from medcat2.config import Config
+from medcat.components.addons.relation_extraction import rel_cat
+from medcat.utils.legacy.convert_rel_cat import get_rel_cat_from_old
+from medcat.tokenizing.tokenizers import create_tokenizer
+from medcat.storage.serialisers import AvailableSerialisers
+from medcat.cat import CAT
+from medcat.cdb import CDB
+from medcat.config import Config
 
 import unittest
 import tempfile

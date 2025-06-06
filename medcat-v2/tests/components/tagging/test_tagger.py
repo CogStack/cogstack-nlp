@@ -1,5 +1,5 @@
-from medcat2.components.tagging import tagger
-from medcat2.components import types
+from medcat.components.tagging import tagger
+from medcat.components import types
 
 import unittest
 

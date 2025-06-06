@@ -1,14 +1,14 @@
 from typing import runtime_checkable
 
-from medcat2.components.ner.trf import deid
-from medcat2.components.ner.trf.helpers import make_or_update_cdb
+from medcat.components.ner.trf import deid
+from medcat.components.ner.trf.helpers import make_or_update_cdb
 
-from medcat2.tokenizing.tokenizers import create_tokenizer
-from medcat2.components.ner.trf import transformers_ner
-from medcat2.components.types import CoreComponentType
-from medcat2.tokenizing.tokens import MutableDocument
-from medcat2.config.config import Config
-from medcat2.cdb.cdb import CDB
+from medcat.tokenizing.tokenizers import create_tokenizer
+from medcat.components.ner.trf import transformers_ner
+from medcat.components.types import CoreComponentType
+from medcat.tokenizing.tokens import MutableDocument
+from medcat.config.config import Config
+from medcat.cdb.cdb import CDB
 
 from typing import Any
 import os

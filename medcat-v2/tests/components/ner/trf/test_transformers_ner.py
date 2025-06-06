@@ -3,15 +3,15 @@ import json
 import os
 import shutil
 
-from medcat2.components.ner.trf import transformers_ner
+from medcat.components.ner.trf import transformers_ner
 
-from medcat2.storage.serialisables import ManualSerialisable
+from medcat.storage.serialisables import ManualSerialisable
 
-from medcat2.cdb import CDB
-from medcat2.components.ner.trf.transformers_ner import (
+from medcat.cdb import CDB
+from medcat.components.ner.trf.transformers_ner import (
     TransformersNER, TransformersNERComponent, _save_component)
-from medcat2.config.config_transformers_ner import ConfigTransformersNER
-from medcat2.model_creation.cdb_maker import CDBMaker
+from medcat.config.config_transformers_ner import ConfigTransformersNER
+from medcat.model_creation.cdb_maker import CDBMaker
 from transformers import TrainerCallback
 
 from unittest import TestCase

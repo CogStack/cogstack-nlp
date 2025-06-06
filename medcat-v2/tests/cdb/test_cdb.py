@@ -1,10 +1,10 @@
 from typing import cast
 import os
 
-from medcat2.storage.serialisers import deserialise
-from medcat2.cdb import cdb
-from medcat2.utils.cdb_state import captured_state_cdb
-from medcat2.preprocessors.cleaners import NameDescriptor
+from medcat.storage.serialisers import deserialise
+from medcat.cdb import cdb
+from medcat.utils.cdb_state import captured_state_cdb
+from medcat.preprocessors.cleaners import NameDescriptor
 
 from unittest import TestCase
 

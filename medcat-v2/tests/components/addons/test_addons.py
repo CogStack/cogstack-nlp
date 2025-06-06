@@ -1,12 +1,12 @@
 from typing import Any, Optional
 
-from medcat2.components.addons import addons
+from medcat.components.addons import addons
 
-from medcat2.cat import CAT
-from medcat2.cdb import CDB
-from medcat2.vocab import Vocab
-from medcat2.config.config import Config, ComponentConfig
-from medcat2.tokenizing.tokenizers import BaseTokenizer, MutableEntity
+from medcat.cat import CAT
+from medcat.cdb import CDB
+from medcat.vocab import Vocab
+from medcat.config.config import Config, ComponentConfig
+from medcat.tokenizing.tokenizers import BaseTokenizer, MutableEntity
 
 import unittest
 import unittest.mock

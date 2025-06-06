@@ -3,12 +3,12 @@ import sys
 import pandas as pd
 import json
 
-from medcat2 import __version__ as MCT_VER
-from medcat2.vocab import Vocab
-from medcat2.config import Config
-from medcat2.model_creation.cdb_maker import CDBMaker
-from medcat2.cdb import CDB
-from medcat2.cat import CAT
+from medcat import __version__ as MCT_VER
+from medcat.vocab import Vocab
+from medcat.config import Config
+from medcat.model_creation.cdb_maker import CDBMaker
+from medcat.cdb import CDB
+from medcat.cat import CAT
 
 
 vi = sys.version_info

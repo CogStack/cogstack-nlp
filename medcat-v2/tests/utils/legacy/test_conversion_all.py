@@ -1,7 +1,7 @@
 import os
 
-from medcat2.utils.legacy import conversion_all
-from medcat2.cat import CAT
+from medcat.utils.legacy import conversion_all
+from medcat.cat import CAT
 
 import unittest
 import unittest.mock
@@ -18,7 +18,7 @@ class ConversionFromZIPTests(unittest.TestCase):
         cls._model_folder_no_zip = cls.MODEL_FOLDER.rsplit(".zip", 1)[0]
         cls._folder_existed = os.path.exists(cls._model_folder_no_zip)
         # make sure the subnames are not fixed for normal models
-        with unittest.mock.patch("medcat2.utils.legacy.helpers._fix_subnames"
+        with unittest.mock.patch("medcat.utils.legacy.helpers._fix_subnames"
                                  ) as mock:
             cls.converter = conversion_all.Converter(cls.MODEL_FOLDER, None)
         mock.assert_not_called()

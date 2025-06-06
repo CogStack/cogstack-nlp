@@ -1,7 +1,7 @@
 from unittest import TestCase
 from typing import Protocol, Type, runtime_checkable
 
-from medcat2.utils import registry
+from medcat.utils import registry
 
 
 @runtime_checkable

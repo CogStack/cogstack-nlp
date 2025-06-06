@@ -1,7 +1,7 @@
 from typing import Generator
 from itertools import chain, repeat
 
-from medcat2.utils import iterutils
+from medcat.utils import iterutils
 
 import unittest
 from unittest.mock import MagicMock

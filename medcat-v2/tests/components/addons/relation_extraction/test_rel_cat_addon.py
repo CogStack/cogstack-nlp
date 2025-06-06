@@ -1,11 +1,11 @@
 import logging
 
-from medcat2.cat import CAT
-from medcat2.components.addons.addons import AddonComponent
-from medcat2.components.addons.relation_extraction.rel_cat import (
+from medcat.cat import CAT
+from medcat.components.addons.addons import AddonComponent
+from medcat.components.addons.relation_extraction.rel_cat import (
     RelCATAddon)
-from medcat2.config.config_rel_cat import ConfigRelCAT
-from medcat2.storage.serialisers import ManualSerialisable
+from medcat.config.config_rel_cat import ConfigRelCAT
+from medcat.storage.serialisers import ManualSerialisable
 
 import unittest
 import unittest.mock
@@ -41,7 +41,7 @@ class RelCATAddonTests(unittest.TestCase):
 
     def test_rel_cat_runs(self):
         with unittest.mock.patch(
-            'medcat2.components.addons.relation_extraction.'
+            'medcat.components.addons.relation_extraction.'
                 'rel_cat.RelCAT.__call__') as mock_method:
             self.cat(self.EXAMPLE_TEXT)
         mock_method.assert_called_once()

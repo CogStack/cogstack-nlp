@@ -1,4 +1,4 @@
-from medcat2.utils.regression.checking import MetaData
+from medcat.utils.regression.checking import MetaData
 
 import unittest
 

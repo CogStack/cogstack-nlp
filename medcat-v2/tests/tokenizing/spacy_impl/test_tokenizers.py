@@ -1,9 +1,9 @@
 from typing import runtime_checkable
 
-from medcat2.tokenizing import tokenizers
-from medcat2.tokenizing.spacy_impl.tokenizers import SpacyTokenizer
-from medcat2.tokenizing.regex_impl.tokenizer import RegexTokenizer
-from medcat2.config import Config
+from medcat.tokenizing import tokenizers
+from medcat.tokenizing.spacy_impl.tokenizers import SpacyTokenizer
+from medcat.tokenizing.regex_impl.tokenizer import RegexTokenizer
+from medcat.config import Config
 
 import unittest
 

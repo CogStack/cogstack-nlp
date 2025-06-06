@@ -1,7 +1,7 @@
 import unittest
 
-from medcat2.cdb import concepts
-from medcat2.utils.defaults import StatusTypes
+from medcat.cdb import concepts
+from medcat.utils.defaults import StatusTypes
 
 
 class CUIInfoTests(unittest.TestCase):

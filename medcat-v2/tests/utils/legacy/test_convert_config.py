@@ -1,8 +1,8 @@
 import os
 
-from medcat2.utils.legacy import convert_config
+from medcat.utils.legacy import convert_config
 
-from medcat2.config import Config
+from medcat.config import Config
 
 import unittest
 

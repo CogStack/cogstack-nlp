@@ -1,4 +1,4 @@
-from medcat2.storage.serialisers import AvailableSerialisers
+from medcat.storage.serialisers import AvailableSerialisers
 
 
 def get_test_classes():

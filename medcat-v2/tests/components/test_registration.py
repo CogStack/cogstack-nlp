@@ -1,11 +1,11 @@
 from typing import Any, Optional
 
-from medcat2.components import types
-from medcat2.config.config import Config, ComponentConfig
-from medcat2.cdb.cdb import CDB
-from medcat2.vocab import Vocab
-from medcat2.cat import CAT
-from medcat2.tokenizing.tokenizers import BaseTokenizer
+from medcat.components import types
+from medcat.config.config import Config, ComponentConfig
+from medcat.cdb.cdb import CDB
+from medcat.vocab import Vocab
+from medcat.cat import CAT
+from medcat.tokenizing.tokenizers import BaseTokenizer
 from .helper import FakeCDB, FVocab, FTokenizer
 
 import unittest

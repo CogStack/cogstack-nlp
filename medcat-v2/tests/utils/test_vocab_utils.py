@@ -1,7 +1,7 @@
-from medcat2.vocab import Vocab
-from medcat2.utils import vocab_utils
-from medcat2.cdb import CDB
-from medcat2.storage.serialisers import deserialise
+from medcat.vocab import Vocab
+from medcat.utils import vocab_utils
+from medcat.cdb import CDB
+from medcat.storage.serialisers import deserialise
 
 import unittest
 import numpy as np

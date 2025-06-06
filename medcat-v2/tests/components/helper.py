@@ -1,8 +1,8 @@
 from typing import runtime_checkable, Type
 
-from medcat2.components import types
-from medcat2.config.config import Config, ComponentConfig
-from medcat2.utils.default_args import set_components_defaults
+from medcat.components import types
+from medcat.config.config import Config, ComponentConfig
+from medcat.utils.default_args import set_components_defaults
 
 
 class FakeCDB:

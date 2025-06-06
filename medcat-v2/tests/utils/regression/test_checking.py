@@ -2,14 +2,14 @@ import os
 import json
 import unittest
 
-from medcat2.config import Config
-from medcat2.utils.regression.targeting import OptionSet, FinalTarget
-from medcat2.utils.regression.targeting import TranslationLayer
-from medcat2.utils.regression.checking import (
+from medcat.config import Config
+from medcat.utils.regression.targeting import OptionSet, FinalTarget
+from medcat.utils.regression.targeting import TranslationLayer
+from medcat.utils.regression.checking import (
     RegressionSuite, RegressionCase, MetaData)
-from medcat2.utils.regression.results import (
+from medcat.utils.regression.results import (
     Finding, ResultDescriptor, Strictness)
-from medcat2.cdb.concepts import (
+from medcat.cdb.concepts import (
     get_new_cui_info, get_new_name_info, CUIInfo, NameInfo)
 
 EXAMPLE_CUI = '123'

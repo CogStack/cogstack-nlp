@@ -1,7 +1,7 @@
 import os
 
-from medcat2.vocab import Vocab
-from medcat2.storage.serialisers import get_serialiser, deserialise
+from medcat.vocab import Vocab
+from medcat.storage.serialisers import get_serialiser, deserialise
 
 import numpy as np
 

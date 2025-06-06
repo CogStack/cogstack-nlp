@@ -1,7 +1,7 @@
 import os
 
-from medcat2.utils.legacy import convert_vocab
-from medcat2.vocab import Vocab
+from medcat.utils.legacy import convert_vocab
+from medcat.vocab import Vocab
 
 import unittest
 

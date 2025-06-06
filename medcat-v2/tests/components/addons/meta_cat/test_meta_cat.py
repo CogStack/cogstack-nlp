@@ -1,17 +1,17 @@
 from typing import runtime_checkable, Type, Any
 
-from medcat2.components.addons.meta_cat import meta_cat
-from medcat2.components.addons.addons import AddonComponent
-from medcat2.storage.serialisables import Serialisable, ManualSerialisable
-from medcat2.storage.serialisers import serialise, AvailableSerialisers
-from medcat2.config.config_meta_cat import ConfigMetaCAT
-from medcat2.config.config import Config
+from medcat.components.addons.meta_cat import meta_cat
+from medcat.components.addons.addons import AddonComponent
+from medcat.storage.serialisables import Serialisable, ManualSerialisable
+from medcat.storage.serialisers import serialise, AvailableSerialisers
+from medcat.config.config_meta_cat import ConfigMetaCAT
+from medcat.config.config import Config
 
 import unittest
 import tempfile
 
-from medcat2.cat import CAT
-from medcat2.tokenizing.spacy_impl.tokenizers import SpacyTokenizer
+from medcat.cat import CAT
+from medcat.tokenizing.spacy_impl.tokenizers import SpacyTokenizer
 
 from .... import EXAMPLE_MODEL_PACK_ZIP
 

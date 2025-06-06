@@ -1,5 +1,5 @@
 from typing import runtime_checkable
-from medcat2.tokenizing.regex_impl import tokenizer
+from medcat.tokenizing.regex_impl import tokenizer
 
 from unittest import TestCase
 

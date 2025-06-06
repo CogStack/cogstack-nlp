@@ -2,10 +2,10 @@ import unittest
 import logging
 import os
 import numpy as np
-from medcat2.model_creation.cdb_maker import CDBMaker
-from medcat2.cdb import CDB
-from medcat2.config import Config
-from medcat2.preprocessors.cleaners import prepare_name
+from medcat.model_creation.cdb_maker import CDBMaker
+from medcat.cdb import CDB
+from medcat.config import Config
+from medcat.preprocessors.cleaners import prepare_name
 
 
 RESOURCES_PATH = os.path.join(
@@ -264,7 +264,7 @@ class CDBMakerNameRemovalTests(CDBMakerEditTestsBase):
     #     self.assertEqual(len(self.cdb.snames), 4, "Should equal 4")
 
 
-from medcat2.components.linking.vector_context_model import ( # noqa
+from medcat.components.linking.vector_context_model import ( # noqa
     update_context_vectors, get_lr_linking)
 
 

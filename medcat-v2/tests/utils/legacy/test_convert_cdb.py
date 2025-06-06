@@ -1,7 +1,7 @@
 import os
 
-from medcat2.utils.legacy import convert_cdb
-from medcat2.cdb import CDB
+from medcat.utils.legacy import convert_cdb
+from medcat.cdb import CDB
 
 import unittest
 

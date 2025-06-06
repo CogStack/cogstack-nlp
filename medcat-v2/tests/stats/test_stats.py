@@ -2,8 +2,8 @@ from typing import Union
 import os
 import json
 
-from medcat2.stats import stats
-from medcat2.data.mctexport import MedCATTrainerExport
+from medcat.stats import stats
+from medcat.data.mctexport import MedCATTrainerExport
 
 from ..test_cat import TrainedModelTests
 

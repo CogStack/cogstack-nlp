@@ -1,6 +1,6 @@
 import os
 
-from medcat2.storage import schema as mct_schema
+from medcat.storage import schema as mct_schema
 
 import unittest
 import tempfile
