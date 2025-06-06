@@ -367,6 +367,19 @@ class CATWithDictNERSupTrainingTests(CATSupTrainingTests):
         self.assertEqual(len(ents), len(expected_cuis))
         self.assertEqual(set(ents.values()), set(expected_cuis))
 
+    def test_can_get_multiple_entities(self):
+        texts = [
+            "The fittest most fit of chronic kidney failure",
+            "The dog is sitting outside the house."
+        ]
+        ents = list(self.cat.get_entities_multi_texts(texts))
+        self.assertEqual(len(ents), len(texts))
+        # NOTE: text IDs are integers starting from 0
+        exp_ids = set(str(i) for i in range(len(texts)))
+        for ent_id_str, ent in ents:
+            with self.subTest(f"Entity: {ent_id_str} [{ent}]"):
+                self.assertIn(ent_id_str, exp_ids)
+
 
 class CATWithDocAddonTests(CATIncludingTests):
     EXAMPLE_TEXT = "Example text to tokenize"
