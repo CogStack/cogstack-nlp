@@ -61,6 +61,7 @@ Below you can see how to access the same things in the new version.
 | `cdb.name2count_train[name]`      | `cdb.name2info[name]['count_train']`           |       |
 | `cdb.snames`                      | `cdb._subnames`                                |       |
 | `cdb.make_stats()`                | `cdb.get_basic_info()`                         |       |
+| `CDB.load`                        | `cdb: CDB deserialise(<path>)`                 | Most end users shouldn't need to load the CDB on its own |
 
 
 ## API changes for Config
@@ -75,6 +76,17 @@ The below is the list of config parts that have been relocated.
 | `config.ner`                            | `config.components.ner`                                      |       |
 | `config.ner`                            | `config.components.ner`                                      |       |
 
+
+## API changes for Vocab
+
+There weren't many changes to `Vocab`.
+But we'll list them here nonetheless.
+
+|          v1 method                |           v2 method                            | Notes |
+| --------------------------------- | ---------------------------------------------- | ----- |
+| `Vocab.load`                      | `vocab: Vocab = deserialise(<path>)`         | Most end users shouldn't need to load the Vocab on its own |
+
+
 ## Relocated packages / modules
 
 Some packages and modules were relocated.
@@ -86,4 +98,13 @@ We can see the list of relocations here.
 | `medcat.utils.meta_cat`                 | `medcat2.components.addons.meta_cat`                         |       |
 | `medcat.config_meta_cat`                | `medcat2.config.config_meta_cat`                             |       |
 | `medcat.cdb_maker`                      | `medcat2.model_creation.cdb_maker`                           |       |
-| `medcat.tokenizers.meta_cat_tokenizers` | `medcat2.components.addons.meta_cat.mctokenizers.tokenizers` |       |
+| `medcat.tokenizers.meta_cat_tokenizers` | `medcat2.components.addons.meta_cat.mctokenizers.tokenizers` | All MetACAT stuff now here |
+| `medcat.rel_cat`                        | `medcat2.components.addons.relation_extraction.rel_cat`      | All RelCAT stuff now here |
+| `medcat.utils.relation_extraction.*`    | `medcat2.components.addons.relation_extraction.*`            |       |
+| `medcat.utils.ner.deid`                 | `medcat2.components.ner.trf.deid`                            | Most DeID stuff now here |
+| `medcat.utils.ner.model`                | `medcat2.components.ner.trf.model`                           |       |
+| `medcat.utils.ner.helpers`              | `medcat2.components.ner.trf.helpers`                         |       |
+| `medcat.tokenizer.transformers_ner`     | `medcat2.components.ner.trf.tokenizer`                       |       |
+| `medcat.ner.transformers_ner`           | `medcat2.components.ner.tf.transformers_ner`                 |       |
+| `medcat.datasets.transformers_ner`      | `medcat2.utils.ner.transformers_ner`                         |       |
+| `medcat.datasets.data_collator`         | `medcat2.utils.ner.data_collator`                            |       |

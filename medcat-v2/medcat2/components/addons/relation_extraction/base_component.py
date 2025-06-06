@@ -145,7 +145,13 @@ class RelExtrBaseComponent:
 
         relcat_config = ConfigRelCAT.load(
             load_path=pretrained_model_name_or_path)
+        return cls.from_relcat_config(
+            relcat_config, pretrained_model_name_or_path)
 
+    @classmethod
+    def from_relcat_config(cls, relcat_config: ConfigRelCAT,
+                           pretrained_model_name_or_path: str = './'
+                           ) -> 'RelExtrBaseComponent':
         model_config = RelExtrBaseConfig.load(
             pretrained_model_name_or_path=pretrained_model_name_or_path,
             relcat_config=relcat_config)

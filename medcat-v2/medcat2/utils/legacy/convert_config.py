@@ -23,6 +23,8 @@ CONFIG_MOVE = {
     'general.spacy_model': 'general.nlp.modelname',
     'general.spacy_disabled_components': 'general.nlp.disabled_components',
 }
+CONFIG_MOVE_OPTIONAL = {
+    "version.description", "version.id", "version.ontology"}
 MOVE_WITH_REMOVES = {
     'general': {'checkpoint',  # TODO: Start supporitn checkpoints again
                 'spacy_model', 'spacy_disabled_components', 'usage_monitor'},
@@ -62,6 +64,11 @@ def get_val_and_parent_model(old_data: Optional[dict],
         else:
             name = ''
         if val is not None:
+            if path in CONFIG_MOVE_OPTIONAL and cname not in val:
+                logger.warning(
+                    "Optional path '%s' not found in old config. Ignoring",
+                    path)
+                break
             val = val[cname]
     return val, target_model
 
@@ -155,9 +162,10 @@ def get_config_from_nested_dict(old_data: dict) -> Config:
     # but we now default to regex
     cnf.general.nlp.provider = 'spacy'
     cnf = _make_changes(cnf, old_data)
-    if cnf.general.nlp.modelname == 'spacy_model':
+    if cnf.general.nlp.modelname in ('spacy_model', 'en_core_sci_md'):
         logger.info("Fixing spacy model. "
-                    "Moving from 'spacy_model' to 'en_core_web_md'!")
+                    "Moving from '%s' to 'en_core_web_md'!",
+                    cnf.general.nlp.modelname)
         cnf.general.nlp.modelname = 'en_core_web_md'
     return cnf
 
