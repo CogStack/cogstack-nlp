@@ -492,3 +492,44 @@ class CATSaveTests(CATIncludingTests):
 
     def test_model_adds_description(self):
         self.assertIn(self.DESCRIPTION, self.cat.config.meta.description)
+
+
+class BatchingTests(unittest.TestCase):
+    NUM_TEXTS = 100
+    all_texts = [
+        f"Text {num}"
+        for num in range(NUM_TEXTS)
+    ]
+
+    @classmethod
+    def setUpClass(cls):
+        cnf = Config()
+        cls.cat = cat.CAT(cdb=CDB(cnf), vocab=Vocab())
+
+    def test_batching_gets_full(self):
+        batches = list(self.cat._generate_simple_batches(
+            iter(self.all_texts), batch_size=self.NUM_TEXTS,
+            only_cui=False))
+        self.assertEqual(len(batches), 1)
+        self.assertEqual(len(batches[0]), self.NUM_TEXTS)
+        # NOTE: the contents has the text and the index and the only_cui bool
+        #       so can't check equality directly
+        # self.assertEqual(batches[0], self.all_texts)
+
+    def test_batching_gets_in_sequence(self):
+        batches = list(self.cat._generate_simple_batches(
+            iter(self.all_texts), batch_size=self.NUM_TEXTS // 2,
+            only_cui=False))
+        self.assertEqual(len(batches), 2)
+        self.assertEqual(len(batches[0]), self.NUM_TEXTS // 2)
+        self.assertEqual(len(batches[1]), self.NUM_TEXTS // 2)
+        # self.assertEqual(batches[0] + batches[1], self.all_texts)
+
+    def test_batching_gets_all_1_at_a_time(self):
+        batches = list(self.cat._generate_simple_batches(
+            iter(self.all_texts), batch_size=1, only_cui=False))
+        self.assertEqual(len(batches), self.NUM_TEXTS)
+        for num, batch in enumerate(batches):
+            with self.subTest(f"Batch {num}"):
+                self.assertEqual(len(batch), 1)
+                # self.assertEqual(batch[0], f"Text {num}")
