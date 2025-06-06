@@ -322,7 +322,7 @@ class CAT(AbstractSerialisable):
         if n_process == 1:
             # just do in series
             for batch in batch_iter:
-                for _, text_index, result in self._mp_worker_func(batch):
+                for text_index, _, result in self._mp_worker_func(batch):
                     yield text_index, result
             return
 
