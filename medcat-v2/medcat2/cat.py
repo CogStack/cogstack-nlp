@@ -1,7 +1,10 @@
-from typing import Optional, Union, Any, overload, Literal
+from typing import Optional, Union, Any, overload, Literal, Iterable, Iterator
+from typing import cast
 import os
 import json
 from datetime import date
+from concurrent.futures import ProcessPoolExecutor, as_completed, Future
+import itertools
 
 import shutil
 import logging
@@ -145,6 +148,112 @@ class CAT(AbstractSerialisable):
         if not doc:
             return {}
         return self._doc_to_out(doc, only_cui=only_cui)
+
+    def _mp_worker_func(
+            self,
+            texts_and_indices: list[tuple[str, int, bool]]
+            ) -> list[tuple[str, int, Union[dict, Entities, OnlyCUIEntities]]]:
+        return [
+            (text, text_index, self.get_entities(text, only_cui=only_cui))
+            for text, text_index, only_cui in texts_and_indices]
+
+    def _generate_simple_batches(
+            self,
+            text_iter: Union[Iterator[str], Iterator[tuple[int, str]]],
+            batch_size: int,
+            only_cui: bool,
+            ) -> Iterator[list[tuple[str, int, bool]]]:
+        text_index = 0
+        while True:
+            # Take a small batch from the iterator
+            batch = list(itertools.islice(text_iter, batch_size))
+            if not batch:
+                break
+            # NOTE: typing is correct:
+            #        - if str, then (str, int, bool)
+            #        - if tuple, then (str, int, bool)
+            #       but for some reason mypy complains
+            yield [
+                (text, text_index + i, only_cui)  # type: ignore
+                if isinstance(text, str) else
+                (text[1], text[0], only_cui)
+                for i, text in enumerate(batch)
+            ]
+            text_index += len(batch)
+
+    def _mp_one_batch_per_process(
+            self,
+            executor: ProcessPoolExecutor,
+            batch_iter: Iterator[list[tuple[str, int, bool]]],
+            external_processes: int
+            ) -> Iterator[tuple[int, Union[dict, Entities, OnlyCUIEntities]]]:
+        futures: list[Future] = []
+        # submit batches, one for each external processes
+        for _ in range(external_processes):
+            try:
+                batch = next(batch_iter)
+                futures.append(
+                    executor.submit(self._mp_worker_func, batch))
+            except StopIteration:
+                break
+        # Main process works on next batch while workers are busy
+        main_batch: Optional[list[tuple[str, int, bool]]]
+        try:
+            main_batch = next(batch_iter)
+            main_results = self._mp_worker_func(main_batch)
+
+            # Yield main process results immediately
+            for result in main_results:
+                yield result[1], result[2]
+
+        except StopIteration:
+            main_batch = None
+        # since the main process did around the same amount of work
+        # we would expect all subprocess to have finished by now
+        # so we're going to wait for them to finish, yield their results,
+        # and subsequently submit the next batch to keep them busy
+        for _ in range(external_processes):
+            # Wait for any future to complete
+            done_future = next(as_completed(futures))
+            futures.remove(done_future)
+
+            # Yield all results from this batch
+            for result in done_future.result():
+                yield result[1], result[2]
+
+            # Submit next batch to keep workers busy
+            try:
+                batch = next(batch_iter)
+                futures.append(
+                    executor.submit(self._mp_worker_func, batch))
+            except StopIteration:
+                # NOTE: if there's nothing to batch, we've got nothing
+                #       to submit in terms of new work to the workers,
+                #       but we may still have some futures to wait for
+                pass
+
+    def get_entities_multi_texts(
+            self,
+            texts: Union[Iterable[str], Iterable[tuple[int, str]]],
+            only_cui: bool = False,
+            n_process: int = 1,
+            batch_size: int = 100,
+            ) -> Iterator[tuple[int, Union[dict, Entities, OnlyCUIEntities]]]:
+        text_iter = cast(
+            Union[Iterator[str], Iterator[tuple[int, str]]], iter(texts))
+        batch_iter = self._generate_simple_batches(
+            text_iter, batch_size, only_cui)
+        if n_process == 1:
+            # just do in series
+            for batch in batch_iter:
+                for _, text_index, result in self._mp_worker_func(batch):
+                    yield text_index, result
+            return
+
+        external_processes = n_process - 1
+        with ProcessPoolExecutor(max_workers=external_processes) as executor:
+            yield from self._mp_one_batch_per_process(
+                executor, batch_iter, external_processes)
 
     def _get_entity(self, ent: MutableEntity,
                     doc_tokens: list[str],
