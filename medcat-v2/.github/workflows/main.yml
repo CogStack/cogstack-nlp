@@ -28,10 +28,10 @@ jobs:
           uv run python -m pip install --upgrade pip
       - name: Check types
         run: |
-          uv run python -m mypy --follow-imports=normal medcat2
+          uv run python -m mypy --follow-imports=normal medcat
       - name: Ruff linting
         run: |
-          uv run ruff check medcat2 --preview
+          uv run ruff check medcat --preview
       - name: Test
         run: |
           timeout 20m uv run python -m unittest discover
