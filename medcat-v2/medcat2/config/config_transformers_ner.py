@@ -25,6 +25,7 @@ class General(SerialisableBaseModel):
     class Config:
         extra = 'allow'
         validate_assignment = True
+        protected_namespaces = ()
 
 
 class ConfigTransformersNER(SerialisableBaseModel):

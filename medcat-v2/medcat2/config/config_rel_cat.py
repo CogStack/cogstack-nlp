@@ -118,6 +118,9 @@ class General(SerialisableBaseModel):
             value = self.convert_keys_to_int(value)  # Ensure conversion
         super().__setattr__(key, value)
 
+    class Config:
+        protected_namespaces = ()
+
 
 class Model(SerialisableBaseModel):
     """The model part of the RelCAT config"""
@@ -159,6 +162,7 @@ class Model(SerialisableBaseModel):
     class Config:
         extra = 'allow'
         validate_assignment = True
+        protected_namespaces = ()
 
 
 class Train(SerialisableBaseModel):
