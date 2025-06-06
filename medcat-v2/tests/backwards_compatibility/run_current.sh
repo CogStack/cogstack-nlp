@@ -20,7 +20,7 @@ python tests/backwards_compatibility/testing/test_vocab.py
 
 # run the regression_checker with the captured file path
 # if any of the regression cases fail, this will return a non-zero exit status
-python -m medcat2.utils.regression.regression_checker \
+python -m medcat.utils.regression.regression_checker \
   "$model_path" \
   tests/backwards_compatibility/testing/example_regression_suite.yml \
   --strictness STRICTEST \

@@ -1,5 +1,5 @@
 # CONSTANTs/ shouldn't change
-REGRESSION_MODULE="medcat2.utils.regression.regression_checker"
+REGRESSION_MODULE="medcat.utils.regression.regression_checker"
 REGRESSION_OPTIONS="--strictness STRICTEST --require-fully-correct"
 
 # CHANGABLES
