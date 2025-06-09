@@ -41,7 +41,7 @@ extensions = [
 ]
 
 autoapi_type = 'python'
-autoapi_dirs = ['../medcat2']
+autoapi_dirs = ['../medcat']
 autodoc_typehints = 'description'
 autoapi_template_dir = '_templates/autoapi_templates'
 
