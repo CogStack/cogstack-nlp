@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Union, Callable
 import platform
 import logging
+import sys
 
 from medcat.config.config import UsageMonitor as UsageMonitorConfig
 
@@ -110,4 +111,14 @@ class UsageMonitor:
     def __del__(self):
         # fail safe for when buffer is non-empty upon application stop
         # (i.e exit call)
-        self._flush_logs()
+        try:
+            self._flush_logs()
+        except FileNotFoundError as err:
+            if not _in_test():
+                raise err
+
+
+# NOTE: only relevant to flushing at deletion time
+#       should not be used elsewhere
+def _in_test():
+    return any(mod in sys.modules for mod in ("unittest", "pytest"))
