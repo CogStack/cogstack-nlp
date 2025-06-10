@@ -429,16 +429,13 @@ class MethodSpy:
         self.call_results = []
         self._patcher = None
         self._original_method = getattr(obj, method_name)
-        print("INIT w", self._original_method)
 
     def __enter__(self):
         def wrapper(*args, **kwargs):
             self.call_args.append((args, kwargs))
             if self.is_module:
-                print("Module-based wrap")
                 result = self._original_method(*args, **kwargs)
             else:
-                print("Object-based wrap")
                 result = self._original_method(self.obj, *args, **kwargs)
             self.call_results.append(result)
             return result
@@ -447,34 +444,19 @@ class MethodSpy:
             self.obj, self.method_name, side_effect=wrapper
         )
         self._patcher.start()
-        print("Spying for", self._original_method,
-              'with', getattr(self.obj, self.method_name))
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._patcher.stop()
 
     def assert_called_with(self, *args, **kwargs):
-        # print("ARGS")
-        # print((args, kwargs))
-        # print("VS on of ...")
-        # for _args, _kwargs in self.call_args:
-        #     print("=="*15)
-        #     print((_args, _kwargs))
-        #     print('->', (args, kwargs) == (_args, _kwargs))
-        # print("overall...", (args, kwargs) in self.call_args)
         assert (args, kwargs) in self.call_args, (
             f"No such args for, {self._original_method}")
 
     def assert_called_once_with(self, *args, **kwargs):
-        # print("Is module?", self.is_module, "@", self._original_method)
-        # print("CALL ARGS", self.call_args,
-        #       '\n\t', len(self.call_args), '->', len(self.call_args) == 1)
         assert len(self.call_args) == 1
         self.assert_called_with(
             *args, **kwargs)
-        # print("Return assert", rval)
-        # assert rval, f"For {self._original_method}"
 
     def assert_returned(self, ret_val):
         assert ret_val in self.call_results
@@ -491,8 +473,6 @@ class CATWithDocAddonSpacyTests(CATWithDocAddonTests):
             cls._save_folder.name, make_archive=False)
         # NOTE: that has changed config
         cls.saved_spacy_path = cls.cat.config.general.nlp.modelname
-        print("SAVED TO", cls.saved_model_path)
-        print("Spacy @", cls.saved_spacy_path)
 
     @classmethod
     def tearDownClass(cls):
