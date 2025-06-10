@@ -120,4 +120,4 @@ class SpacyTokenizer(BaseTokenizer):
         return subfolder
 
     def load_internals_from(self, folder_path: str) -> bool:
-        return os.path.exists(folder_path):
+        return os.path.exists(folder_path)
