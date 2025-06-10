@@ -113,12 +113,21 @@ class UsageMonitor:
         # (i.e exit call)
         try:
             self._flush_logs()
-        except FileNotFoundError as err:
+        except FileNotFoundError:
             if not _in_test():
-                raise err
+                raise
+        except NameError as err:
+            if not _says_open_not_available(err):
+                raise
+
+
+# NOTE: at termination time, open is not available
+#       while this isn't great, there's nothing we can do
+def _says_open_not_available(err: NameError) -> bool:
+    return "name 'open' is not defined" in str(err)
 
 
 # NOTE: only relevant to flushing at deletion time
 #       should not be used elsewhere
-def _in_test():
+def _in_test() -> bool:
     return any(mod in sys.modules for mod in ("unittest", "pytest"))
