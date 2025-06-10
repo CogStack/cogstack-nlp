@@ -1,4 +1,4 @@
-from typing import Protocol, Type, Any, Callable
+from typing import Protocol, Type, Any, Callable, runtime_checkable
 import logging
 
 from medcat.config import Config
@@ -8,6 +8,9 @@ from medcat.utils.registry import Registry
 
 
 logger = logging.getLogger(__name__)
+
+
+TOKENIZER_PREFIX = "tokenizer_internals_"
 
 
 class BaseTokenizer(Protocol):
@@ -66,6 +69,38 @@ class BaseTokenizer(Protocol):
 
         Returns:
             Type[MutableEntity]: The entity class.
+        """
+        pass
+
+
+@runtime_checkable
+class SaveableTokenizer(Protocol):
+
+    def save_internals_to(self, folder_path: str) -> str:
+        """Save tokenizer internals to specified folder.
+
+        The returning folder's basename should start with `TOKENIZER_PREFIX`.
+
+        Args:
+            folder_path (str): The folder to use for the internals.
+
+        Returns:
+            str: The subfolder the internals were saved to.
+        """
+
+    def load_internals_from(self, folder_path: str) -> bool:
+        """Attempt to load internals from a folder path.
+
+        If the specified folder exists, internals will be loaded.
+        If the folder doesn't exist, nothing will be loaded.
+
+        The given folder's basename should start with `TOKENIZER_PREFIX`.
+
+        Args:
+            folder_path (str): The path to the folder to load internals from.
+
+        Returns:
+            bool: Whether the loading was successful.
         """
         pass
 

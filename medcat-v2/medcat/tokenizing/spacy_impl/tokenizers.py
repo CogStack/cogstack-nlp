@@ -1,6 +1,8 @@
 from typing import Optional, Callable, cast, Any, Type
 import re
 import os
+import shutil
+import logging
 
 import spacy
 from spacy.tokens import Span
@@ -9,10 +11,13 @@ from spacy.language import Language
 
 from medcat.tokenizing.tokens import (MutableDocument, MutableEntity,
                                       MutableToken)
-from medcat.tokenizing.tokenizers import BaseTokenizer
+from medcat.tokenizing.tokenizers import BaseTokenizer, TOKENIZER_PREFIX
 from medcat.tokenizing.spacy_impl.tokens import Document, Entity, Token
 from medcat.tokenizing.spacy_impl.utils import ensure_spacy_model
 from medcat.config import Config
+
+
+logger = logging.getLogger(__name__)
 
 
 def spacy_split_all(nlp: Language, use_diacritics: bool) -> Tokenizer:
@@ -43,13 +48,19 @@ class SpacyTokenizer(BaseTokenizer):
                  tokenizer_getter: Callable[[Language, bool], Tokenizer
                                             ] = spacy_split_all,
                  stopwords: Optional[set[str]] = None,):
-        ensure_spacy_model(spacy_model_name)
-        if stopwords is not None:
-            lang_str = os.path.basename(spacy_model_name).split('_', 1)[0]
-            cls = spacy.util.get_lang_class(lang_str)
-            cls.Defaults.stop_words = set(stopwords)
-        self._nlp = spacy.load(spacy_model_name,
-                               disable=spacy_disabled_components)
+        self._spacy_model_name = os.path.basename(
+            spacy_model_name).removeprefix(TOKENIZER_PREFIX)
+        if self.load_internals_from(spacy_model_name):
+            # NOTE: already set self._nlp
+            pass
+        else:
+            ensure_spacy_model(spacy_model_name)
+            if stopwords is not None:
+                lang_str = os.path.basename(spacy_model_name).split('_', 1)[0]
+                cls = spacy.util.get_lang_class(lang_str)
+                cls.Defaults.stop_words = set(stopwords)
+            self._nlp = spacy.load(spacy_model_name,
+                                   disable=spacy_disabled_components)
         self._nlp.tokenizer = tokenizer_getter(self._nlp, use_diacritics)
         self._nlp.max_length = max_document_length
 
@@ -90,3 +101,25 @@ class SpacyTokenizer(BaseTokenizer):
 
     def get_entity_class(self) -> Type[MutableEntity]:
         return Entity
+
+    # saveable tokenizer
+
+    def save_internals_to(self, folder_path: str) -> str:
+        subfolder = os.path.join(
+            folder_path, f"{TOKENIZER_PREFIX}{self._spacy_model_name}")
+        if os.path.exists(subfolder):
+            # NOTE: always overwrite
+            shutil.rmtree(folder_path)
+        logger.debug("Saving spacy model to '%s'", subfolder)
+        cur_path = self._nlp._path
+        if cur_path is None:
+            raise ValueError(f"Unable to save spacy: {self._nlp}")
+        shutil.copytree(cur_path, subfolder)
+        return subfolder
+
+    def load_internals_from(self, folder_path: str) -> bool:
+        if not os.path.exists(folder_path):
+            return False
+        logger.debug("Loading spacy model from '%s'", folder_path)
+        self._nlp = spacy.load(folder_path)
+        return True

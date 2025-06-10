@@ -21,6 +21,7 @@ from medcat.utils.fileutils import ensure_folder_if_parent
 from medcat.utils.hasher import Hasher
 from medcat.pipeline.pipeline import Pipeline
 from medcat.tokenizing.tokens import MutableDocument, MutableEntity
+from medcat.tokenizing.tokenizers import SaveableTokenizer, TOKENIZER_PREFIX
 from medcat.data.entities import Entity, Entities, OnlyCUIEntities
 from medcat.data.model_card import ModelCard
 from medcat.components.types import AbstractCoreComponent, HashableComponet
@@ -483,6 +484,12 @@ class CAT(AbstractSerialisable):
         model_pack_path = os.path.join(target_folder, pack_name)
         # ensure target folder and model pack folder exist
         ensure_folder_if_parent(model_pack_path)
+        # tokenizer (e.g spacy model) - needs to saved before since
+        #     it changes config slightly
+        if isinstance(self._pipeline.tokenizer, SaveableTokenizer):
+            internals_path = self._pipeline.tokenizer.save_internals_to(
+                model_pack_path)
+            self.config.general.nlp.modelname = internals_path
         # serialise
         serialise(serialiser_type, self, model_pack_path)
         model_card: str = self.get_model_card(as_dict=False)
@@ -576,6 +583,9 @@ class CAT(AbstractSerialisable):
                             AddonComponent.NAME_PREFIX,
                             # NOTE: will be loaded manually
                             AbstractCoreComponent.NAME_PREFIX,
+                            # tokenizer stuff internals are loaded separately
+                            # if appropraite
+                            TOKENIZER_PREFIX,
                             # components will be loaded semi-manually
                             # within the creation of pipe
                             COMPONENTS_FOLDER})
