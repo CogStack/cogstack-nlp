@@ -4,7 +4,7 @@ from itertools import chain, repeat, islice
 from tqdm import trange
 
 from medcat.tokenizing.tokens import (MutableDocument, MutableEntity,
-                                       MutableToken)
+                                      MutableToken)
 from medcat.cdb import CDB
 from medcat.config.config import General, Preprocessing, CDBMaker
 from medcat.utils.config_utils import temp_changed_config
