@@ -463,7 +463,8 @@ class MethodSpy:
         #     print((_args, _kwargs))
         #     print('->', (args, kwargs) == (_args, _kwargs))
         # print("overall...", (args, kwargs) in self.call_args)
-        assert (args, kwargs) in self.call_args
+        assert (args, kwargs) in self.call_args, (
+            f"No such args for, {self._original_method}")
 
     def assert_called_once_with(self, *args, **kwargs):
         # print("Is module?", self.is_module, "@", self._original_method)
@@ -515,7 +516,9 @@ class CATWithDocAddonSpacyTests(CATWithDocAddonTests):
                 model = cat.CAT.load_model_pack(self.saved_model_path)
         self.assertIsInstance(model, cat.CAT)
         mock_load_internal.assert_called_once_with(self.saved_spacy_path)
-        mock_load.assert_called_once_with(self.saved_spacy_path)
+        mock_load.assert_called_once_with(
+            self.saved_spacy_path,
+            disable=self.cat.config.general.nlp.disabled_components)
 
 
 class CATWithEntityAddonTests(CATIncludingTests):
