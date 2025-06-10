@@ -51,16 +51,18 @@ class SpacyTokenizer(BaseTokenizer):
         self._spacy_model_name = os.path.basename(
             spacy_model_name).removeprefix(TOKENIZER_PREFIX)
         if self.load_internals_from(spacy_model_name):
-            # NOTE: already set self._nlp
+            # i.e has something to load from path
             pass
         else:
-            ensure_spacy_model(spacy_model_name)
-            if stopwords is not None:
-                lang_str = os.path.basename(spacy_model_name).split('_', 1)[0]
-                cls = spacy.util.get_lang_class(lang_str)
-                cls.Defaults.stop_words = set(stopwords)
-            self._nlp = spacy.load(spacy_model_name,
-                                   disable=spacy_disabled_components)
+            # no file provided, ensure the model is available
+            ensure_spacy_model(self._spacy_model_name)
+            spacy_model_name = self._spacy_model_name
+        if stopwords is not None:
+            lang_str = os.path.basename(spacy_model_name).split('_', 1)[0]
+            cls = spacy.util.get_lang_class(lang_str)
+            cls.Defaults.stop_words = set(stopwords)
+        self._nlp = spacy.load(spacy_model_name,
+                               disable=spacy_disabled_components)
         self._nlp.tokenizer = tokenizer_getter(self._nlp, use_diacritics)
         self._nlp.max_length = max_document_length
 
@@ -118,8 +120,4 @@ class SpacyTokenizer(BaseTokenizer):
         return subfolder
 
     def load_internals_from(self, folder_path: str) -> bool:
-        if not os.path.exists(folder_path):
-            return False
-        logger.debug("Loading spacy model from '%s'", folder_path)
-        self._nlp = spacy.load(folder_path)
-        return True
+        return os.path.exists(folder_path):
