@@ -11,7 +11,7 @@ from medcat.components.addons.relation_extraction.base_component import (
     RelExtrBaseComponent)
 from medcat.config.config_rel_cat import ConfigRelCAT
 from medcat.tokenizing.tokenizers import BaseTokenizer, create_tokenizer
-from medcat.utils.legacy.convert_meta_cat import _fix_old_style_cnf
+from medcat.utils.legacy.helpers import fix_old_style_cnf
 
 
 logger = logging.getLogger(__name__)
@@ -41,7 +41,7 @@ def _load_legacy(cdb: CDB, base_tokenizer: BaseTokenizer,
 def load_cnf(cnf_path: str) -> ConfigRelCAT:
     with open(cnf_path) as f1:
         data = json.load(f1)
-    data = _fix_old_style_cnf(data)
+    data = fix_old_style_cnf(data)
     cnf = ConfigRelCAT.model_validate(data)
     cnf.comp_name = RelCATAddon.addon_type
     return cnf

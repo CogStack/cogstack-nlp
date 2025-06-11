@@ -6,6 +6,8 @@ from pydantic import BaseModel
 
 from medcat.config import Config
 
+from medcat.utils.legacy.helpers import fix_old_style_cnf
+
 
 logger = logging.getLogger(__name__)
 
@@ -157,6 +159,7 @@ def get_config_from_nested_dict(old_data: dict) -> Config:
     Returns:
         Config: The v 2 config.
     """
+    old_data = fix_old_style_cnf(old_data)
     cnf = Config()
     # v1 models always used spacy
     # but we now default to regex
