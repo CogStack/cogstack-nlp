@@ -11,6 +11,8 @@ from medcat.components.addons.meta_cat.mctokenizers.tokenizers import (
 from medcat.config.config_meta_cat import ConfigMetaCAT
 from medcat.tokenizing.tokenizers import BaseTokenizer
 
+from medcat.utils.legacy.helpers import fix_old_style_cnf
+
 
 logger = logging.getLogger(__name__)
 
@@ -37,42 +39,10 @@ def _load_legacy(config: ConfigMetaCAT, save_dir_path: str) -> MetaCAT:
     return meta_cat
 
 
-def _fix_old_style_cnf(data: dict,
-                       remove: set[str] = {"py/object", "__fields_set__",
-                                           "__private_attribute_values__"},
-                       take_from: str = "py/state.__dict__"):
-    all_keys = set(sub_key for key in data for sub_key in
-                   (data[key] if isinstance(data[key], dict) else [key]))
-    # add 1st level keys
-    all_keys.update(data.keys())
-    # is old if py/object and py/state somewhere in keys
-    if not set(('py/object', 'py/state')) <= all_keys:
-        return data
-    for to_rm in remove:
-        if to_rm in data:
-            del data[to_rm]
-    # get the data from internal data structure
-    cdata = data
-    cpath = take_from
-    while "." in cpath:
-        cur_key, cpath = cpath.split(".", 1)
-        if cur_key not in cdata:
-            break
-        cdata = cdata.pop(cur_key)
-    if cpath in cdata:
-        cdata = cdata.pop(cpath)
-    # do recursive fix and get from internal structure where applicable
-    for k, v in cdata.items():
-        if isinstance(v, dict):
-            v = _fix_old_style_cnf(v)
-        data[k] = v
-    return data
-
-
 def load_cnf(cnf_path: str) -> ConfigMetaCAT:
     with open(cnf_path) as f1:
         data = json.load(f1)
-    data = _fix_old_style_cnf(data)
+    data = fix_old_style_cnf(data)
     cnf = ConfigMetaCAT.model_validate(data)
     cnf.comp_name = MetaCATAddon.addon_type
     return cnf
