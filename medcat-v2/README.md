@@ -52,14 +52,14 @@ Do note that **this installs only the core MedCAT v2**.
 However, all of those are supported as well.
 You can install them as follows:
 ```
-pip install "git+https://git@github.com/CogStack/MedCAT2.git@v0.1.5#egg=medcat[spacy]"  # for spacy-based tokenizer
-pip install "git+https://git@github.com/CogStack/MedCAT2.git@v0.1.5#egg=medcat[meta_cat]"  # for MetaCAT
-pip install "git+https://git@github.com/CogStack/MedCAT2.git@v0.1.5#egg=medcat[deid]"  # for DeID models
-pip install "git+https://git@github.com/CogStack/MedCAT2.git@v0.1.5#egg=medcat[spacy,meta_cat,deid,dict_ner]"  # for all of the sbove
+pip install "medcat[spacy] @ git+https://github.com/CogStack/MedCAT2@v0.6.0"  # for spacy-based tokenizer
+pip install "medcat[meta-cat] @ git+https://github.com/CogStack/MedCAT2@v0.6.0"  # for MetaCAT
+pip install "medcat[deid] @ git+https://github.com/CogStack/MedCAT2@v0.6.0"  # for DeID models
+pip install "medcat[spacy,meta-cat,deid,rel-cat,dict-ner] @ git+https://github.com/CogStack/MedCAT2@v0.6.0"  # for all of the sbove
 ```
 
 PS:
-For in the above example, we're installing the MedCAT v2 BETA version of `v0.1.5`.
+For in the above example, we're installing the MedCAT v2 BETA version of `v0.6.0`.
 The README is unlikely to change after every new release.
 If another version is available / required, substitute the version tag as appropriate.
 
