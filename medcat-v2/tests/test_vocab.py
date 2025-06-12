@@ -129,6 +129,10 @@ class VocabSaveTests(unittest.TestCase):
             with self.subTest(word):
                 self.assertIn(word["word"], vocab)
 
+    def test_convenience_load(self):
+        vocab = Vocab.load(self.target_file)
+        self.assertIsInstance(vocab, Vocab)
+
 
 class VocabTests(unittest.TestCase):
     serialiser = get_serialiser('dill')
