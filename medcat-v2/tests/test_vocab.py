@@ -129,10 +129,6 @@ class VocabSaveTests(unittest.TestCase):
             with self.subTest(word):
                 self.assertIn(word["word"], vocab)
 
-    def test_convenience_load(self):
-        vocab = Vocab.load(self.target_file)
-        self.assertIsInstance(vocab, Vocab)
-
 
 class VocabTests(unittest.TestCase):
     serialiser = get_serialiser('dill')
@@ -184,3 +180,7 @@ class DefaultVocabTests(unittest.TestCase):
         for w, info in self.vocab.vocab.items():
             with self.subTest(w):
                 self.assertEqual(info['vector'].shape, self.EXP_SHAPE)
+
+    def test_convenience_load(self):
+        vocab = Vocab.load(self.VOCAB_PATH)
+        self.assertIsInstance(vocab, Vocab)
