@@ -173,6 +173,9 @@ class Entity:
         doc_dict = self._doc.get_addon_data(f"{self.ENTITY_INFO_PREFIX}{path}")
         doc_dict[(self.start_index, self.end_index)] = val
 
+    def has_addon_data(self, path: str) -> bool:
+        return bool(self.get_addon_data(path))
+
     def get_addon_data(self, path: str) -> Any:
         # NOTE: doc.get_addon_data will raise if not registered
         doc_dict = self._doc.get_addon_data(f"{self.ENTITY_INFO_PREFIX}{path}")
@@ -269,6 +272,9 @@ class Document:
         if not hasattr(self.__class__, path):
             raise UnregisteredDataPathException(self.__class__, path)
         setattr(self, path, val)
+
+    def has_addon_data(self, path: str) -> bool:
+        return bool(self.get_addon_data(path))
 
     def get_addon_data(self, path: str) -> Any:
         if not hasattr(self.__class__, path):

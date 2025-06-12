@@ -134,6 +134,9 @@ class Entity:
             raise UnregisteredDataPathException(self.__class__, path)
         return setattr(self._delegate._, path, val)
 
+    def has_addon_data(self, path: str) -> bool:
+        return bool(self._delegate.get_extension(path))
+
     def get_addon_data(self, path: str) -> Any:
         if not self._delegate.has_extension(path):
             raise UnregisteredDataPathException(self.__class__, path)
@@ -234,6 +237,9 @@ class Document:
         if not self._delegate.has_extension(path):
             raise UnregisteredDataPathException(self.__class__, path)
         setattr(self._delegate._, path, val)
+
+    def has_addon_data(self, path: str) -> bool:
+        return bool(self._delegate.get_extension(path))
 
     def get_addon_data(self, path: str) -> Any:
         if not self._delegate.has_extension(path):

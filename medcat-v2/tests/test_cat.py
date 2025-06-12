@@ -435,6 +435,7 @@ class CATWithDocAddonTests(CATIncludingTests):
     def test_empty_ent_has_no_addon_data_paths(self):
         ent = self.doc[:]
         self.assertFalse(ent.get_available_addon_data_paths())
+        self.assertFalse(ent.has_addon_data(self.ADDON_PATH))
 
     def test_ent_can_have_addon_data_path(self):
         ent = self.doc[:]
@@ -444,6 +445,7 @@ class CATWithDocAddonTests(CATIncludingTests):
         self.assertTrue(avail)
         self.assertEqual(len(avail), 1)
         self.assertEqual(avail[0], self.ADDON_PATH)
+        self.assertTrue(ent.has_addon_data(self.ADDON_PATH))
 
 
 class MethodSpy:
