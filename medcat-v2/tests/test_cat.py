@@ -15,7 +15,7 @@ from medcat.cdb import CDB
 from medcat.tokenizing.tokens import UnregisteredDataPathException
 from medcat.tokenizing.tokenizers import TOKENIZER_PREFIX
 from medcat.utils.cdb_state import captured_state_cdb
-from medcat.components.addons.meta_cat.meta_cat import MetaCATAddon
+from medcat.components.addons.meta_cat import MetaCATAddon
 from medcat.utils.defaults import AVOID_LEGACY_CONVERSION_ENVIRON
 
 import unittest

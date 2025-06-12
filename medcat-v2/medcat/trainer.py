@@ -319,8 +319,7 @@ class Trainer:
     def _train_meta_cat(self, addon: AddonComponent,
                         data: MedCATTrainerExport) -> None:
         # NOTE: dynamic import to avoid circular imports
-        from medcat.components.addons.meta_cat.meta_cat import (
-            MetaCATAddon)
+        from medcat.components.addons.meta_cat import MetaCATAddon
         _, _, ann0 = next(iter_anns(data))
         if not isinstance(addon, MetaCATAddon):
             raise TypeError(

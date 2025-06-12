@@ -5,7 +5,7 @@ import logging
 
 import torch
 
-from medcat.components.addons.meta_cat.meta_cat import MetaCAT, MetaCATAddon
+from medcat.components.addons.meta_cat import MetaCAT, MetaCATAddon
 from medcat.components.addons.meta_cat.mctokenizers.tokenizers import (
     TokenizerWrapperBase, load_tokenizer)
 from medcat.config.config_meta_cat import ConfigMetaCAT

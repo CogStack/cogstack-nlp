@@ -5,7 +5,7 @@ from typing import cast
 
 from transformers import AutoTokenizer
 
-from medcat.components.addons.meta_cat.meta_cat import MetaCAT
+from medcat.components.addons.meta_cat import MetaCAT
 from medcat.config.config_meta_cat import ConfigMetaCAT
 from medcat.components.addons.meta_cat.mctokenizers.bert_tokenizer import (
     TokenizerWrapperBERT)
