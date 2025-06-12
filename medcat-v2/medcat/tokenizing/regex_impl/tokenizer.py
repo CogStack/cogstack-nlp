@@ -120,7 +120,7 @@ class Token:
 
 class Entity:
     ENTITY_INFO_PREFIX = "Entity:"
-    _addon_extension_paths: list[str] = []
+    _addon_extension_paths: set[str] = set()
 
     def __init__(self, document: 'Document',
                  text: str, start_index: int, end_index: int,
@@ -195,7 +195,7 @@ class Entity:
         Document.register_addon_path(
             f"{cls.ENTITY_INFO_PREFIX}{path}", def_val=def_val_doc,
             force=force)
-        cls._addon_extension_paths.append(path)
+        cls._addon_extension_paths.add(path)
 
     def __iter__(self) -> Iterator[MutableToken]:
         for tkn in self._doc._tokens[self.start_index: self.end_index]:
@@ -217,7 +217,7 @@ class Entity:
 
 
 class Document:
-    _addon_extension_paths: list[str] = []
+    _addon_extension_paths: set[str] = set()
 
     def __init__(self, text: str, tokens: Optional[list[MutableToken]] = None
                  ) -> None:
@@ -289,7 +289,7 @@ class Document:
     def register_addon_path(cls, path: str, def_val: Any = None,
                             force: bool = True) -> None:
         setattr(cls, path, def_val)
-        cls._addon_extension_paths.append(path)
+        cls._addon_extension_paths.add(path)
 
     def __str__(self):
         return "RE[D]:" + self.text

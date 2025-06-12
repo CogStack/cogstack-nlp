@@ -113,7 +113,7 @@ class Token:
 
 
 class Entity:
-    _addon_extension_paths: list[str] = []
+    _addon_extension_paths: set[str] = set()
 
     def __init__(self, delegate: SpacySpan) -> None:
         self._delegate = delegate
@@ -150,7 +150,8 @@ class Entity:
     def register_addon_path(cls, path: str, def_val: Any = None,
                             force: bool = True) -> None:
         SpacySpan.set_extension(path, default=def_val, force=force)
-        cls._addon_extension_paths.append(path)
+        cls._addon_extension_paths.add(path)
+        # 'id', 'cui', 'id', 'cui', 'id', 'cui', 'id', 'cui', 'id', 'cui'
 
     @property
     def text(self) -> str:
@@ -191,7 +192,7 @@ class Entity:
 
 
 class Document:
-    _addon_extension_paths: list[str] = []
+    _addon_extension_paths: set[str] = set()
 
     def __init__(self, delegate: SpacyDoc) -> None:
         self._delegate = delegate
@@ -254,7 +255,7 @@ class Document:
     def register_addon_path(cls, path: str, def_val: Any = None,
                             force: bool = True) -> None:
         SpacyDoc.set_extension(path, default=def_val, force=force)
-        cls._addon_extension_paths.append(path)
+        cls._addon_extension_paths.add(path)
 
     def __iter__(self) -> Iterator[MutableToken]:
         for tkn in iter(self._delegate):
