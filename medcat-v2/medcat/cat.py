@@ -379,6 +379,25 @@ class CAT(AbstractSerialisable):
             'context_right': right_context,
         }
         # addons:
+        out_dict.update(self.get_addon_output(ent))  # type: ignore
+        return out_dict
+
+    def get_addon_output(self, ent: MutableEntity) -> dict[str, dict]:
+        """Get the addon output for the entity.
+
+        This includes a key-value pair for each addon that provides some.
+        Sometimes same-type addons may combine their output under the same key.
+
+        Args:
+            ent (MutableEntity): The entity in quesiton.
+
+        Raises:
+            ValueError: If unable to merge multiple addon output.
+
+        Returns:
+            dict[str, dict]: All the addon output.
+        """
+        out_dict: dict[str, dict] = {}
         for addon in self._pipeline._addons:
             if not addon.include_in_output:
                 continue
