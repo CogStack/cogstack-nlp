@@ -44,6 +44,12 @@ class MedCATTrainerExportDocument(TypedDict):
     value: str
 
 
+class MetaAnnotationValue(TypedDict):
+    name: str
+    value: str
+    confidence: float
+
+
 TokenizerPreprocessor = Optional[
     Callable[[Optional[TokenizerWrapperBase]], None]]
 
@@ -148,7 +154,7 @@ class MetaCATAddon(AddonComponent):
         return True
 
     def get_output_key_val(self, ent: MutableEntity
-                           ) -> tuple[str, dict[str, Any]]:
+                           ) -> tuple[str, dict[str, MetaAnnotationValue]]:
         # NOTE: In case of multiple MetaCATs, this will be called
         #       once for each MetaCAT and will get the same value.
         #       But it shouldn't be too much of an issue.
@@ -186,6 +192,11 @@ class MetaCATAddon(AddonComponent):
             return self._mc.get_hash()
         else:
             return 'No-model'
+
+
+def get_meta_annotations(entity: MutableEntity
+                         ) -> dict[str, MetaAnnotationValue]:
+    return entity.get_addon_data(_META_ANNS_PATH)
 
 
 class MetaCAT(AbstractSerialisable):
