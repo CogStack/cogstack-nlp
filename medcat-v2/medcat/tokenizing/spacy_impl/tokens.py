@@ -113,6 +113,7 @@ class Token:
 
 
 class Entity:
+    _addon_extension_paths: list[str] = []
 
     def __init__(self, delegate: SpacySpan) -> None:
         self._delegate = delegate
@@ -138,10 +139,15 @@ class Entity:
             raise UnregisteredDataPathException(self.__class__, path)
         return getattr(self._delegate._, path)
 
+    def get_available_addon_data_paths(self) -> list[str]:
+        return [path for path in self._addon_extension_paths
+                if self._delegate.get_extension(path)]
+
     @classmethod
     def register_addon_path(cls, path: str, def_val: Any = None,
                             force: bool = True) -> None:
         SpacySpan.set_extension(path, default=def_val, force=force)
+        cls._addon_extension_paths.append(path)
 
     @property
     def text(self) -> str:
@@ -182,6 +188,7 @@ class Entity:
 
 
 class Document:
+    _addon_extension_paths: list[str] = []
 
     def __init__(self, delegate: SpacyDoc) -> None:
         self._delegate = delegate
@@ -233,10 +240,15 @@ class Document:
             raise UnregisteredDataPathException(self.__class__, path)
         return getattr(self._delegate._, path)
 
+    def get_available_addon_data_paths(self) -> list[str]:
+        return [path for path in self._addon_extension_paths
+                if self._delegate.get_extension(path)]
+
     @classmethod
     def register_addon_path(cls, path: str, def_val: Any = None,
                             force: bool = True) -> None:
         SpacyDoc.set_extension(path, default=def_val, force=force)
+        cls._addon_extension_paths.append(path)
 
     def __iter__(self) -> Iterator[MutableToken]:
         for tkn in iter(self._delegate):

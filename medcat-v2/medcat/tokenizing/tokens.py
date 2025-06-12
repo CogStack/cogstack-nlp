@@ -204,6 +204,16 @@ class MutableEntity(Protocol):
         """
         pass
 
+    def get_available_addon_data_paths(self) -> list[str]:
+        """Gets the available addon data paths for this entity.
+
+        This will only include paths that have values set.
+
+        Returns:
+            list[str]: List of available addon data paths.
+        """
+        pass
+
     @property
     def link_candidates(self) -> list[str]:
         """The candidates for the detected name (if any) for this entity.
@@ -424,6 +434,16 @@ class MutableDocument(Protocol):
 
         Returns:
             Any: The stored value.
+        """
+        pass
+
+    def get_available_addon_data_paths(self) -> list[str]:
+        """Gets the available addon data paths for this document.
+
+        This will only include paths that have values set.
+
+        Returns:
+            list[str]: List of available addon data paths.
         """
         pass
 
