@@ -205,11 +205,7 @@ class RelCAT:
         self._init_data_paths()
 
     def _init_data_paths(self):
-        entity_cls = self.base_tokenizer.get_entity_class()
-        entity_cls.register_addon_path('id', def_val=0, force=True)
-        entity_cls.register_addon_path('cui', def_val=None, force=True)
         doc_cls = self.base_tokenizer.get_doc_class()
-        doc_cls.register_addon_path('ents', def_val=[], force=True)
         doc_cls.register_addon_path('relations', def_val=[], force=True)
 
     def save(self, save_path: str = "./") -> None:

@@ -191,6 +191,17 @@ class MutableEntity(Protocol):
         """
         pass
 
+    def has_addon_data(self, path: str) -> bool:
+        """Checks whether the addon data for a specific path has been set.
+
+        Args:
+            path (str): The path to check.
+
+        Returns:
+            bool: Whether the addon data had been set.
+        """
+        pass
+
     def get_addon_data(self, path: str) -> Any:
         """Get data added to the entity.
 
@@ -201,6 +212,16 @@ class MutableEntity(Protocol):
 
         Returns:
             Any: The stored value.
+        """
+        pass
+
+    def get_available_addon_paths(self) -> list[str]:
+        """Gets the available addon data paths for this entity.
+
+        This will only include paths that have values set.
+
+        Returns:
+            list[str]: List of available addon data paths.
         """
         pass
 
@@ -414,6 +435,17 @@ class MutableDocument(Protocol):
         """
         pass
 
+    def has_addon_data(self, path: str) -> bool:
+        """Checks whether the addon data for a specific path has been set.
+
+        Args:
+            path (str): The path to check.
+
+        Returns:
+            bool: Whether the addon data had been set.
+        """
+        pass
+
     def get_addon_data(self, path: str) -> Any:
         """Get data added to the entity.
 
@@ -424,6 +456,16 @@ class MutableDocument(Protocol):
 
         Returns:
             Any: The stored value.
+        """
+        pass
+
+    def get_available_addon_paths(self) -> list[str]:
+        """Gets the available addon data paths for this document.
+
+        This will only include paths that have values set.
+
+        Returns:
+            list[str]: List of available addon data paths.
         """
         pass
 

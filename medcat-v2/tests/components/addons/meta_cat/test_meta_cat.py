@@ -113,3 +113,17 @@ class MetaCATWithCATTests(MetaCATBaseTests):
                 self.assertIn(meta_cat.MetaCATAddon.output_key, ent)
                 val = ent[meta_cat.MetaCATAddon.output_key]
                 self.assertIn(self.meta_cat.name, val)
+
+    def test_manual_meta_anns_are_same(self):
+        text = "This is a fit text for rich and chronic disease like fittest."
+        doc = self.cat(text)
+        # NOTE: ideally, I'd use cat._doc_to_out
+        #       but for same text should be fine either way
+        ents = self.cat.get_entities(text)['entities']
+        self.assertEqual(len(doc.linked_ents), len(ents))
+        self.assertGreater(len(ents), 0)
+        for num, ent in enumerate(doc.linked_ents):
+            with self.subTest(f"Entity {num}"):
+                self.assertEqual(
+                    meta_cat.get_meta_annotations(ent),
+                    ents[num]["meta_anns"])
