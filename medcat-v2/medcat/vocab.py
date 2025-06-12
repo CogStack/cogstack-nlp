@@ -5,6 +5,7 @@ from typing_extensions import TypedDict
 import numpy as np
 
 from medcat.storage.serialisables import AbstractSerialisable
+from medcat.storage.serialisers import deserialise
 
 
 WordDescriptor = TypedDict('WordDescriptor',
@@ -291,3 +292,10 @@ class Vocab(AbstractSerialisable):
                     in zip(self.vocab.values(), other.vocab.values())) and
                 self.index2word == other.index2word and
                 self.vec_index2word == other.vec_index2word)
+
+    @classmethod
+    def load(cls, path: str) -> 'Vocab':
+        vocab = deserialise(path)
+        if not isinstance(vocab, Vocab):
+            raise ValueError(f"The path '{path}' is not a Vocab!")
+        return vocab
