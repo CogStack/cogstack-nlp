@@ -55,7 +55,7 @@ You can install them as follows:
 pip install "medcat[spacy] @ git+https://github.com/CogStack/MedCAT2@v0.6.1"  # for spacy-based tokenizer
 pip install "medcat[meta-cat] @ git+https://github.com/CogStack/MedCAT2@v0.6.1"  # for MetaCAT
 pip install "medcat[deid] @ git+https://github.com/CogStack/MedCAT2@v0.6.1"  # for DeID models
-pip install "medcat[spacy,meta-cat,deid,rel-cat,dict-ner] @ git+https://github.com/CogStack/MedCAT2@v0.6.0"  # for all of the sbove
+pip install "medcat[spacy,meta-cat,deid,rel-cat,dict-ner] @ git+https://github.com/CogStack/MedCAT2@v0.6.1"  # for all of the sbove
 ```
 
 PS:
