@@ -144,7 +144,7 @@ class Entity:
 
     def get_available_addon_data_paths(self) -> list[str]:
         return [path for path in self._addon_extension_paths
-                if self._delegate.get_extension(path)]
+                if self.has_addon_data(path)]
 
     @classmethod
     def register_addon_path(cls, path: str, def_val: Any = None,
