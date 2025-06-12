@@ -135,7 +135,7 @@ class Entity:
         return setattr(self._delegate._, path, val)
 
     def has_addon_data(self, path: str) -> bool:
-        return bool(self._delegate.get_extension(path))
+        return bool(self.get_addon_data(path))
 
     def get_addon_data(self, path: str) -> Any:
         if not self._delegate.has_extension(path):
@@ -240,7 +240,7 @@ class Document:
         setattr(self._delegate._, path, val)
 
     def has_addon_data(self, path: str) -> bool:
-        return bool(self._delegate.get_extension(path))
+        return bool(self.get_addon_data(path))
 
     def get_addon_data(self, path: str) -> Any:
         if not self._delegate.has_extension(path):
