@@ -650,9 +650,7 @@ class CAT(AbstractSerialisable):
                     else model_pack_path + ".zip")
         model_pack_path = cls.attempt_unpack(zip_path)
         cdb_path = os.path.join(model_pack_path, "cdb")
-        cdb = deserialise(cdb_path)
-        if not isinstance(cdb, CDB):
-            raise ValueError(f"Unable to load CDB. Got {cdb}")
+        cdb = CDB.load(cdb_path)
         return cdb
 
     @overload
