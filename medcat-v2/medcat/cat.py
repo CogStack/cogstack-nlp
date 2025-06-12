@@ -595,6 +595,21 @@ class CAT(AbstractSerialisable):
             raise ValueError(f"Unable to load CAT. Got: {cat}")
         return cat
 
+    @classmethod
+    def load_cdb(cls, model_pack_path: str) -> CDB:
+        """
+        Loads the concept database from the provided model pack path
+
+        Args:
+            model_pack_path (str): path to model pack, zip or dir.
+
+        Returns:
+            CDB: The loaded concept database
+        """
+        cdb_path = os.path.join(model_pack_path, "cdb")
+        cdb: CDB = deserialise(cdb_path)
+        return cdb
+
     @overload
     def get_model_card(self, as_dict: Literal[True]) -> ModelCard:
         pass
