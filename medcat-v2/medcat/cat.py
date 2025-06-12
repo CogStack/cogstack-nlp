@@ -628,7 +628,9 @@ class CAT(AbstractSerialisable):
             CDB: The loaded concept database
         """
         cdb_path = os.path.join(model_pack_path, "cdb")
-        cdb: CDB = deserialise(cdb_path)
+        cdb = deserialise(cdb_path)
+        if not isinstance(cdb, CDB):
+            raise ValueError(f"Unable to load CDB. Got {cdb}")
         return cdb
 
     @overload
