@@ -21,6 +21,10 @@ class CDBTests(TestCase):
     def setUpClass(cls):
         cls.cdb = cast(cdb.CDB, deserialise(cls.CDB_PATH))
 
+    def test_convenience_methods(self):
+        ccdb = cdb.CDB.load(self.CDB_PATH)
+        self.assertIsInstance(ccdb, cdb.CDB)
+
     def test_cdb_has_concepts(self):
         self.assertTrue(self.cdb.cui2info)
 
