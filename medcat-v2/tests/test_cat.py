@@ -86,7 +86,7 @@ class InferenceFromLoadedTests(TrainedModelTests):
         # NOTE: the issue wouldn't show up with smaller amount of text
         doc = self.model(ConvertedFunctionalityTests.TEXT * 3)
         cur_start = 0
-        for ent in doc.final_ents:
+        for ent in doc.linked_ents:
             with self.subTest(f"Ent: {ent}"):
                 self.assertGreaterEqual(ent.base.start_char_index, cur_start)
                 cur_start = ent.base.start_char_index

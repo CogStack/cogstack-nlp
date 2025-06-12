@@ -184,7 +184,7 @@ class DeIDModelWorks(unittest.TestCase):
     def test_model_works_dunder_call(self):
         anon_doc = self.deid_model(input_text)
         self.assertIsInstance(anon_doc, runtime_checkable(MutableDocument))
-        self.assertTrue(anon_doc.all_ents)
+        self.assertTrue(anon_doc.ner_ents)
 
     def test_model_works_deid_text_redact(self):
         anon_text = self.deid_model.deid_text(input_text, redact=True)

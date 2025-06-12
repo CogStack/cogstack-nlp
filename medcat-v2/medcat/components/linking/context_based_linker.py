@@ -107,7 +107,7 @@ class Linker(AbstractCoreComponent):
 
     def _train_on_doc(self, doc: MutableDocument) -> Iterator[MutableEntity]:
         # Run training
-        for entity in doc.all_ents:
+        for entity in doc.ner_ents:
             yield from self._process_entity_train(
                 doc, entity, PerDocumentTokenCache())
 
@@ -188,14 +188,14 @@ class Linker(AbstractCoreComponent):
 
     def _inference(self, doc: MutableDocument) -> Iterator[MutableEntity]:
         per_doc_valid_token_cache = PerDocumentTokenCache()
-        for entity in doc.all_ents:
+        for entity in doc.ner_ents:
             logger.debug("Linker started with entity: %s", entity.base.text)
             yield from self._process_entity_inference(
                 doc, entity, per_doc_valid_token_cache)
 
     def __call__(self, doc: MutableDocument) -> MutableDocument:
         # Reset main entities, will be recreated later
-        doc.final_ents.clear()
+        doc.linked_ents.clear()
         cnf_l = self.config.components.linking
 
         if cnf_l.train:
@@ -206,8 +206,8 @@ class Linker(AbstractCoreComponent):
         # cleared afterwards otherwise
         le = list(linked_entities)
 
-        doc.all_ents.clear()
-        doc.all_ents.extend(le)
+        doc.ner_ents.clear()
+        doc.ner_ents.extend(le)
         create_main_ann(doc)
 
         # TODO - reintroduce pretty labels? and apply here?

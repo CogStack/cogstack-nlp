@@ -11,10 +11,10 @@ def create_main_ann(doc: MutableDocument) -> None:
     Args:
         doc (Doc): Spacy document.
     """
-    doc.all_ents.sort(key=lambda x: len(x.base.text), reverse=True)
+    doc.ner_ents.sort(key=lambda x: len(x.base.text), reverse=True)
     tkns_in = set()
     main_anns: list[MutableEntity] = []
-    for ent in doc.all_ents:
+    for ent in doc.ner_ents:
         to_add = True
         for tkn in ent:
             if tkn in tkns_in:
@@ -23,5 +23,5 @@ def create_main_ann(doc: MutableDocument) -> None:
             for tkn in ent:
                 tkns_in.add(tkn)
             main_anns.append(ent)
-    doc.final_ents = sorted(list(doc.final_ents) + main_anns,  # type: ignore
+    doc.linked_ents = sorted(list(doc.linked_ents) + main_anns,  # type: ignore
                             key=lambda ent: ent.base.start_char_index)

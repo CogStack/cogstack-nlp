@@ -699,7 +699,7 @@ class TransformersNERComponent:
         aggr_strat = self.config.general.ner_aggregation_strategy
         res = self.ner_pipe(doc.base.text,
                             aggregation_strategy=aggr_strat)
-        doc.all_ents = []  # type: ignore
+        doc.ner_ents = []  # type: ignore
         for r in res:
             inds = []
             for ind, word in enumerate(doc):
@@ -717,10 +717,10 @@ class TransformersNERComponent:
                 label=r['entity_group'])
             entity.cui = r['entity_group']
             entity.context_similarity = r['score']
-            entity.id = len(doc.all_ents)
+            entity.id = len(doc.ner_ents)
             entity.confidence = r['score']
 
-            doc.all_ents.append(entity)
+            doc.ner_ents.append(entity)
         create_main_ann(doc)
 
     def _process(self,

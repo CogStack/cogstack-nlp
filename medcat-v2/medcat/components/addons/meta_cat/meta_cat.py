@@ -603,7 +603,7 @@ class MetaCAT(AbstractSerialisable):
 
     def get_ents(self, doc: MutableDocument) -> Iterable[MutableEntity]:
         # TODO - use span groups?
-        return doc.all_ents  # TODO: is this correct?
+        return doc.ner_ents  # TODO: is this correct?
 
     def prepare_document(self, doc: MutableDocument, input_ids: list,
                          offset_mapping: list, lowercase: bool

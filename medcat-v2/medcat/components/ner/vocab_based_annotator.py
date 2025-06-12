@@ -24,10 +24,10 @@ def annotate_name(tokenizer: BaseTokenizer, name: str,
     # All standard name entity recognition models will not set this.
     entity.detected_name = name
     entity.link_candidates = list(cdb.name2info[name]['per_cui_status'])
-    entity.id = len(doc.all_ents)
+    entity.id = len(doc.ner_ents)
     entity.confidence = -1  # This does not calculate confidence
     # Append the entity to the document
-    doc.all_ents.append(entity)
+    doc.ner_ents.append(entity)
 
     # Not necessary, but why not
     logger.debug("NER detected an entity.\n\tDetected name: %s" +

@@ -162,7 +162,7 @@ def get_false_positives(doc: MedCATTrainerExportDocument,
     truth = set([(ent['start'], ent['cui']) for ent in doc['annotations']])
 
     fps = []
-    for ent in spacy_doc.all_ents:
+    for ent in spacy_doc.ner_ents:
         if (ent.base.start_index, ent.cui) not in truth:
             fps.append(ent)
 
