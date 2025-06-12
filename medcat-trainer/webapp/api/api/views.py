@@ -10,11 +10,10 @@ from django.http import HttpResponseBadRequest, HttpResponseServerError, HttpRes
 from django.shortcuts import render
 from django.utils import timezone
 from django_filters import rest_framework as drf
-from medcat.utils.helpers import tkns_from_doc
 from rest_framework import viewsets
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from medcat.utils.ner.deid import DeIdModel
+from medcat.components.ner.trf.deid import DeIdModel
 
 from .admin import download_projects_with_text, download_projects_without_text, \
     import_concepts_from_cdb
@@ -282,7 +281,7 @@ def prepare_documents(request):
                     logger.info('loaded medcat model for project: %s', project.id)
 
                     # Set CAT filters
-                    cat.config.linking['filters']['cuis'] = cuis
+                    cat.config.components.linking.filters.cuis = cuis
 
                     if not project.deid_model_annotation:
                         spacy_doc = cat(document.text)
@@ -424,9 +423,9 @@ def add_concept(request):
     if source_val in spacy_doc.text:
         start = spacy_doc.text.index(source_val)
         end = start + len(source_val)
-        spacy_entity = tkns_from_doc(spacy_doc=spacy_doc, start=start, end=end)
+        spacy_entity = [tkn for tkn in spacy_doc if tkn.idx >= start and tkn.idx <= end]
 
-    cat.add_and_train_concept(cui=cui, name=name, name_status='P', spacy_doc=spacy_doc, spacy_entity=spacy_entity)
+    cat.trainer.add_and_train_concept(cui=cui, name=name, name_status='P', mut_doc=spacy_doc, mut_entity=spacy_entity)
 
     id = create_annotation(source_val=source_val,
                            selection_occurrence_index=sel_occur_idx,
@@ -614,12 +613,12 @@ def annotate_text(request):
     project = ProjectAnnotateEntities.objects.get(id=p_id)
 
     cat = get_medcat(project=project)
-    cat.config.linking['filters']['cuis'] = set(cuis)
+    cat.config.components.linking.filters.cuis = set(cuis)
     spacy_doc = cat(message)
 
     ents = []
     anno_tkns = []
-    for ent in spacy_doc._.ents:
+    for ent in spacy_doc.final_ents:
         cnt = Entity.objects.filter(label=ent._.cui).count()
         inc_ent = all(tkn not in anno_tkns for tkn in ent)
         if inc_ent and cnt != 0:

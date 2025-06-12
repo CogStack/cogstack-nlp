@@ -13,6 +13,8 @@ from rest_framework.exceptions import PermissionDenied
 from api.models import AnnotatedEntity, MetaAnnotation, EntityRelation, Document, ConceptDB
 from api.solr_utils import drop_collection, import_all_concepts
 
+from medcat.storage.serialisers import deserialise
+
 logger = logging.getLogger(__name__)
 
 _dt_fmt = '%Y-%m-%d %H:%M:%S.%f'
@@ -356,20 +358,16 @@ def dataset_document_counts(dataset):
 
 @background(schedule=5)
 def _reset_cdb_filters(id):
-    from medcat.cdb import CDB
     concept_db = ConceptDB.objects.get(id=id)
-    cdb = CDB.load(concept_db.cdb_file.path)
-    cdb.config.linking['filters'] = {'cuis': set()}
+    cdb = deserialise(concept_db.cdb_file.path)
+    cdb.config.components.linking.filters = {'cuis': set()}
     cdb.save(concept_db.cdb_file.path)
 
 
 @background(schedule=5)
 def import_concepts_from_cdb(cdb_model_id: int):
-    from medcat.cdb import CDB
-
     cdb_model = ConceptDB.objects.get(id=cdb_model_id)
-    cdb = CDB.load(cdb_model.cdb_file.path)
-
+    cdb = deserialise(cdb_model.cdb_file.path)
     import_all_concepts(cdb, cdb_model)
 
 

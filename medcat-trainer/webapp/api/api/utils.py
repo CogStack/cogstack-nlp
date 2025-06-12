@@ -9,9 +9,7 @@ from django.db import transaction
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from medcat.cat import CAT
-from medcat.utils.filters import check_filters
-from medcat.utils.helpers import tkns_from_doc
-from medcat.utils.ner.deid import DeIdModel
+from medcat.components.ner.trf.deid import DeIdModel
 
 from .model_cache import get_medcat
 from .models import Entity, AnnotatedEntity, ProjectAnnotateEntities, \
@@ -37,7 +35,7 @@ def remove_annotations(document, project, partial=False):
 
 
 def add_annotations(spacy_doc, user, project, document, existing_annotations, cat):
-    spacy_doc._.ents.sort(key=lambda x: len(x.text), reverse=True)
+    spacy_doc.final_ents.sort(key=lambda x: len(x.text), reverse=True)
 
     tkns_in = []
     ents = []
@@ -46,9 +44,9 @@ def add_annotations(spacy_doc, user, project, document, existing_annotations, ca
     # that can be produced are expected to have available models
     try:
         metatask2obj = {task_name: MetaTask.objects.get(name=task_name)
-                        for task_name in spacy_doc._.ents[0]._.meta_anns.keys()}
+                        for task_name in spacy_doc.final_ents[0].get_addon_data('meta_cat_meta_anns').keys()}
         metataskvals2obj = {task_name: {v.name: v for v in MetaTask.objects.get(name=task_name).values.all()}
-                            for task_name in spacy_doc._.ents[0]._.meta_anns.keys()}
+                            for task_name in spacy_doc.final_ents[0].get_addon_data('meta_cat_meta_anns').keys()}
     except (AttributeError, IndexError):
         # IndexError: ignore if there are no annotations in this doc
         # AttributeError: ignore meta_anns that are not present - i.e. non model pack preds
@@ -61,8 +59,14 @@ def add_annotations(spacy_doc, user, project, document, existing_annotations, ca
         return any((ea[0] < ent.start_char < ea[1]) or
                    (ea[0] < ent.end_char < ea[1]) for ea in existing_annos_intervals)
 
-    for ent in spacy_doc._.ents:
-        if not check_ents(ent) and check_filters(ent._.cui, cat.config.linking['filters']):
+    def check_filters(cui, filters):
+        if cui in filters.cuis or not filters.cuis:
+            return cui not in filters.cuis_exclude
+        else:
+            return False
+
+    for ent in spacy_doc.final_ents:
+        if not check_ents(ent) and check_filters(ent.cui, cat.config.components.linking.filters):
             to_add = True
             for tkn in ent:
                 if tkn in tkns_in:
@@ -75,7 +79,7 @@ def add_annotations(spacy_doc, user, project, document, existing_annotations, ca
     logger.debug('Found %s annotations to store', len(ents))
     for ent in ents:
         logger.debug('Processing annotation ent %s of %s', ents.index(ent), len(ents))
-        label = ent._.cui
+        label = ent.cui
 
         if not Entity.objects.filter(label=label).exists():
             # Create the entity
@@ -87,8 +91,8 @@ def add_annotations(spacy_doc, user, project, document, existing_annotations, ca
 
         ann_ent = AnnotatedEntity.objects.filter(project=project,
                                                   document=document,
-                                                  start_ind=ent.start_char,
-                                                  end_ind=ent.end_char).first()
+                                                  start_ind=ent.start_char_index,
+                                                  end_ind=ent.end_char_index).first()
         if ann_ent is None:
             # If this entity doesn't exist already
             ann_ent = AnnotatedEntity()
@@ -97,29 +101,31 @@ def add_annotations(spacy_doc, user, project, document, existing_annotations, ca
             ann_ent.document = document
             ann_ent.entity = entity
             ann_ent.value = ent.text
-            ann_ent.start_ind = ent.start_char
-            ann_ent.end_ind = ent.end_char
-            ann_ent.acc = ent._.context_similarity
+            ann_ent.start_ind = ent.start_char_index
+            ann_ent.end_ind = ent.end_char_index
+            ann_ent.acc = ent.context_similarity
 
-            MIN_ACC = cat.config.linking.get('similarity_threshold_trainer', 0.2)
-            if ent._.context_similarity < MIN_ACC:
+            MIN_ACC = cat.config.components.linking.similarity_threshold
+            if ent.context_similarity < MIN_ACC:
                 ann_ent.deleted = True
                 ann_ent.validated = True
 
             ann_ent.save()
 
             # check the ent._.meta_anns if it exists
-            if hasattr(ent._, 'meta_anns') and len(metatask2obj) > 0 and len(metataskvals2obj) > 0:
-                logger.debug('Found %s meta annos on ent', len(ent._.meta_anns.items()))
-                for meta_ann_task, pred in ent._.meta_anns.items():
-                    meta_anno_obj = MetaAnnotation()
-                    meta_anno_obj.predicted_meta_task_value = metataskvals2obj[meta_ann_task][pred['value']]
-                    meta_anno_obj.meta_task = metatask2obj[meta_ann_task]
-                    meta_anno_obj.annotated_entity = ann_ent
-                    meta_anno_obj.meta_task_value = metataskvals2obj[meta_ann_task][pred['value']]
-                    meta_anno_obj.acc = pred['confidence']
-                    meta_anno_obj.save()
-                    logger.debug('Successfully saved %s', meta_anno_obj)
+            # if hasattr(ent, 'get_addon_data') and \
+            #            len(metatask2obj) > 0 and
+            #            len(metataskvals2obj) > 0:
+            #     logger.debug('Found %s meta annos on ent', len(ent._.meta_anns.items()))
+            #     for meta_ann_task, pred in ent._.meta_anns.items():
+            #         meta_anno_obj = MetaAnnotation()
+            #         meta_anno_obj.predicted_meta_task_value = metataskvals2obj[meta_ann_task][pred['value']]
+            #         meta_anno_obj.meta_task = metatask2obj[meta_ann_task]
+            #         meta_anno_obj.annotated_entity = ann_ent
+            #         meta_anno_obj.meta_task_value = metataskvals2obj[meta_ann_task][pred['value']]
+            #         meta_anno_obj.acc = pred['confidence']
+            #         meta_anno_obj.save()
+            #         logger.debug('Successfully saved %s', meta_anno_obj)
 
 
 
@@ -206,35 +212,37 @@ def train_medcat(cat, project, document):
         for ann in anns:
             cui = ann.entity.label
             # Indices for this annotation
-            spacy_entity = tkns_from_doc(spacy_doc=spacy_doc, start=ann.start_ind, end=ann.end_ind)
+            spacy_entity = [tkn for tkn in spacy_doc if tkn.char_index == ann.start_ind]
             # This will add the concept if it doesn't exist and if it
-            #does just link the new name to the concept, if the namee is
-            #already linked then it will just train.
+            # does just link the new name to the concept, if the namee is
+            # already linked then it will just train.
             manually_created = False
             if ann.manually_created or ann.alternative:
                 manually_created = True
 
-            cat.add_and_train_concept(cui=cui,
-                          name=ann.value,
-                          spacy_doc=spacy_doc,
-                          spacy_entity=spacy_entity,
-                          negative=ann.deleted,
-                          devalue_others=manually_created)
+            cat.trainer.add_and_train_concept(
+                cui=cui,
+                name=ann.value,
+                mut_doc=spacy_doc,
+                mut_entity=spacy_entity,
+                negative=ann.deleted,
+                devalue_others=manually_created
+            )
 
     # Completely remove concept names that the user killed
     killed_anns = AnnotatedEntity.objects.filter(project=project, document=document, killed=True)
     for ann in killed_anns:
         cui = ann.entity.label
         name = ann.value
-        cat.unlink_concept_name(cui=cui, name=name)
+        cat.trainer.unlink_concept_name(cui=cui, name=name)
 
     # Add irrelevant cuis to cui_exclude
     irrelevant_anns = AnnotatedEntity.objects.filter(project=project, document=document, irrelevant=True)
     for ann in irrelevant_anns:
         cui = ann.entity.label
-        if 'cuis_exclude' not in cat.config.linking['filters']:
-            cat.config.linking['filters']['cuis_exclude'] = set()
-        cat.config.linking['filters'].get('cuis_exclude').update([cui])
+        if 'cuis_exclude' not in cat.config.components.linking.filters:
+            cat.config.components.linking.filters['cuis_exclude'] = set()
+        cat.config.components.linking.filters.get('cuis_exclude').update([cui])
 
 
 @background(schedule=1, queue='doc_prep')
@@ -247,7 +255,7 @@ def prep_docs(project_id: List[int], doc_ids: List[int], user_id: int):
     cat = get_medcat(project=project)
 
     # Set CAT filters
-    cat.config.linking['filters']['cuis'] = project.cuis
+    cat.config.components.linking.filters.cuis = project.cuis
 
     for doc in docs:
         logger.info(f'Running MedCAT model for project {project.id}:{project.name} over doc: {doc.id}')

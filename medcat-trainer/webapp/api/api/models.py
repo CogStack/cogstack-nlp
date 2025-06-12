@@ -12,8 +12,8 @@ from django.dispatch import receiver
 from django.forms import forms, ModelForm
 from medcat.cat import CAT
 from medcat.cdb import CDB
-from medcat.vocab import Vocab
-from medcat.meta_cat import MetaCAT
+from medcat.storage.serialisers import deserialise
+from medcat.components.addons.meta_cat.meta_cat import MetaCAT
 from polymorphic.models import PolymorphicModel
 
 from core.settings import MEDIA_ROOT
@@ -42,14 +42,14 @@ class ModelPack(models.Model):
     meta_cats = models.ManyToManyField('MetaCATModel', blank=True, default=None)
     create_time = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
-    last_modified_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, default=None, null=True)   
+    last_modified_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, default=None, null=True)
 
     @transaction.atomic
     def save(self, *args, **kwargs):
         is_new = self._state.adding
         if is_new:
             super().save(*args, **kwargs)
-        
+
         # Process the model pack
         logger.info('Loading model pack: %s', self.model_pack)
         model_pack_name = str(self.model_pack).replace(".zip", "")
@@ -72,9 +72,10 @@ class ModelPack(models.Model):
             raise FileNotFoundError(f'Error loading the CDB from this model pack: {self.model_pack.path}') from exc
 
         # Load Vocab
+
         vocab_path = os.path.join(unpacked_model_pack_path, "vocab.dat")
         if os.path.exists(vocab_path):
-            Vocab.load(vocab_path)
+            deserialise(vocab_path)
             vocab = Vocabulary()
             vocab.vocab_file.name = vocab_path.replace(f'{MEDIA_ROOT}/', '')
             vocab.save(skip_load=True)
@@ -98,7 +99,7 @@ class ModelPack(models.Model):
             self.meta_cats.set(metaCATmodels)  # Use set() instead of add() for atomic operation
         except Exception as exc:
             raise MedCATLoadException(f'Failure loading MetaCAT models - {unpacked_model_pack_path}') from exc
-            
+
         # Only save if this is an update (not a new instance)
         if not is_new:
             super().save(*args, **kwargs)
@@ -133,7 +134,7 @@ class ConceptDB(models.Model):
         # load the CDB, and raise if this fails - must be saved first so storage handler can rename path if name clashes
         if not skip_load:
             try:
-                CDB.load(self.cdb_file.path)
+                deserialise(self.cdb_file.path)
             except Exception as exc:
                 raise MedCATLoadException(f'Failed to load Concept DB from {self.cdb_file}, '
                                           f'check if this CDB file successfully loads elsewhere') from exc
@@ -156,7 +157,7 @@ class Vocabulary(models.Model):
         # load the Vocab, and raise if this fails
         if not skip_load:
             try:
-                Vocab.load(self.vocab_file.path)
+                deserialise(self.vocab_file.path)
             except Exception as exc:
                 raise MedCATLoadException(f'Failed to load Vocab from {self.vocab_file}, '
                                           f'check if this Vocab file successfully loads elsewhere') from exc

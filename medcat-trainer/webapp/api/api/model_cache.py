@@ -6,6 +6,8 @@ import pkg_resources
 from medcat.cat import CAT
 from medcat.cdb import CDB
 from medcat.vocab import Vocab
+from medcat.storage.serialisers import deserialise
+from medcat.utils.legacy.convert_cdb import get_cdb_from_old
 
 from api.models import ConceptDB
 
@@ -52,7 +54,17 @@ def get_medcat_from_cdb_vocab(project,
         else:
             cdb_path = project.concept_db.cdb_file.path
             try:
-                cdb = CDB.load(cdb_path)
+                cdb = deserialise(cdb_path)
+            except NotADirectoryError as e:
+                logger.warning("Legacy CDB found, converting to new format")
+                # this should live in medcat code directly
+                cdb = get_cdb_from_old(cdb_path)
+                serialise(cdb, cdb_path)
+                cdb_map[cdb_id] = cdb
+                cdb_path = project.concept_db.cdb_file.path
+                cdb = deserialise(cdb_path)
+                cdb_map[cdb_id] = cdb
+
             except KeyError as ke:
                 mc_v = pkg_resources.get_distribution('medcat').version
                 if int(mc_v.split('.')[0]) > 0:
@@ -73,7 +85,7 @@ def get_medcat_from_cdb_vocab(project,
             vocab = vocab_map[vocab_id]
         else:
             vocab_path = project.vocab.vocab_file.path
-            vocab = Vocab.load(vocab_path)
+            vocab = deserialise(vocab_path)
             vocab_map[vocab_id] = vocab
         cat = CAT(cdb=cdb, config=cdb.config, vocab=vocab)
         cat_map[cat_id] = cat
@@ -132,7 +144,7 @@ def clear_cached_medcat(project, cat_map: Dict[str, CAT]=CAT_MAP):
 def get_cached_cdb(cdb_id: str, cdb_map: Dict[str, CDB]=CDB_MAP) -> CDB:
     if cdb_id not in cdb_map:
         cdb_obj = ConceptDB.objects.get(id=cdb_id)
-        cdb = CDB.load(cdb_obj.cdb_file.path)
+        cdb = deserialise(cdb_obj.cdb_file.path)
         cdb_map[cdb_id] = cdb
     return cdb_map[cdb_id]
 

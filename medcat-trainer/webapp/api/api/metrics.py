@@ -14,12 +14,12 @@ from background_task.models import Task
 from django.contrib.auth.models import User
 from django.db.models import QuerySet
 from medcat.cat import CAT
-from medcat.cdb import CDB
-from medcat.config_meta_cat import ConfigMetaCAT
-from medcat.meta_cat import MetaCAT
-from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBase
-from medcat.utils.meta_cat.data_utils import prepare_from_json, encode_category_values
-from medcat.utils.meta_cat.ml_utils import create_batch_piped_data
+from medcat.storage.serialisers import deserialise
+from medcat.config.config_meta_cat import ConfigMetaCAT
+from medcat.components.addons.meta_cat.meta_cat import MetaCAT
+from medcat.components.addons.meta_cat.mctokenizers.tokenizers import TokenizerWrapperBase
+from medcat.components.addons.meta_cat.data_utils import prepare_from_json, encode_category_values
+from medcat.components.addons.meta_cat.ml_utils import create_batch_piped_data
 from medcat.vocab import Vocab
 from torch import nn
 
@@ -50,8 +50,8 @@ def calculate_metrics(project_ids: List[int], report_name: str):
         loaded_model_pack = True
     else:
         # assume the cdb / vocab is set in these projects
-        cdb = CDB.load(projects[0].concept_db.cdb_file.path)
-        vocab = Vocab.load(projects[0].vocab.vocab_file.path)
+        cdb = deserialise(projects[0].concept_db.cdb_file.path)
+        vocab = deserialise(projects[0].vocab.vocab_file.path)
         cat = CAT(cdb, vocab, config=cdb.config)
     project_data = retrieve_project_data(projects)
     metrics = ProjectMetrics(project_data, cat)
