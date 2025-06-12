@@ -1,6 +1,7 @@
 from typing import (Optional, Iterator, Iterable, TypeVar, cast, Type, Any,
                     Literal)
 from typing import Protocol, runtime_checkable
+from typing_extensions import Self
 import logging
 from datetime import datetime
 from contextlib import contextmanager
@@ -12,6 +13,7 @@ from medcat.utils.defaults import workers
 from medcat.utils.envsnapshot import Environment, get_environment_info
 from medcat.utils.iterutils import callback_iterator
 from medcat.storage.serialisables import SerialisingStrategy
+from medcat.storage.serialisers import deserialise
 
 
 logger = logging.getLogger(__name__)
@@ -75,6 +77,13 @@ class SerialisableBaseModel(BaseModel):
                     raise IncorrectConfigValues(
                         type(self), k, type(cur_v), v
                     ) from e
+
+    @classmethod
+    def load(cls, path: str) -> Self:
+        obj = deserialise(path)
+        if not isinstance(obj, cls):
+            raise ValueError(f"The path '{path}' is not a {cls.__name__}!")
+        return obj
 
 
 class IncorrectConfigValues(ValueError):
