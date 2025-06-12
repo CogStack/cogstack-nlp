@@ -96,7 +96,7 @@ class StatsBuilder:
         mut_doc: MutableDocument = self.doc_getter(
             doc['text'])  # type: ignore
 
-        p_anns = mut_doc.final_ents  # or all ents?
+        p_anns = mut_doc.linked_ents  # or all ents?
 
         (anns_norm, anns_norm_neg,
          anns_examples, _) = self._preprocess_annotations(

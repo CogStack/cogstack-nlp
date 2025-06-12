@@ -157,7 +157,7 @@ class RelCATTests(unittest.TestCase):
             entity = tknizer.create_entity(
                 doc, min(tkn_idx), max(tkn_idx) + 1, label=ann["value"])
             entity.cui = ann["cui"]
-            doc.all_ents.append(entity)
+            doc.ner_ents.append(entity)
 
         self.rel_cat.component.model.hf_model.resize_token_embeddings(
             len(self.tokenizer.hf_tokenizers))

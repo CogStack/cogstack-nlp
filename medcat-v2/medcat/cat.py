@@ -85,7 +85,7 @@ class CAT(AbstractSerialisable):
     def __call__(self, text: str) -> Optional[MutableDocument]:
         doc = self._pipeline.get_doc(text)
         if self.usage_monitor.should_monitor:
-            self.usage_monitor.log_inference(len(text), len(doc.final_ents))
+            self.usage_monitor.log_inference(len(text), len(doc.linked_ents))
         return doc
 
     def _ensure_not_training(self) -> None:
@@ -418,7 +418,7 @@ class CAT(AbstractSerialisable):
         out: Union[Entities, OnlyCUIEntities] = {'entities': {},
                                                  'tokens': []}  # type: ignore
         cnf_annotation_output = self.config.annotation_output
-        _ents = doc.final_ents
+        _ents = doc.linked_ents
 
         if cnf_annotation_output.lowercase_context:
             doc_tokens = [tkn.base.text_with_ws.lower() for tkn in list(doc)]

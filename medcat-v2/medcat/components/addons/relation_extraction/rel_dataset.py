@@ -479,7 +479,7 @@ class RelData(Dataset):
             self, doc: MutableDocument, doc_text: str, doc_id: str,
             tokenized_text_data: dict[str, Any],
             doc_length_tokens: int, chars_to_exclude: str) -> list[list]:
-        _ents = doc.final_ents if len(doc.final_ents) > 0 else doc.all_ents
+        _ents = doc.linked_ents if len(doc.linked_ents) > 0 else doc.ner_ents
 
         relation_instances: list[list] = []
 

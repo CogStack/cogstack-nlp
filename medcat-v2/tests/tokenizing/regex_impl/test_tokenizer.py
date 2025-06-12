@@ -47,7 +47,7 @@ class EntitySimpleAddonDataTests(TestCase):
         num_tokens = len(self.doc)
         for ent_num in range(num_tokens):
             ent = self.doc[ent_num: ent_num + 1]
-            self.doc.all_ents.append(ent)
+            self.doc.ner_ents.append(ent)
 
     def _set_single_entity_data(self, ent_num: int,
                                 entity: tokenizer.MutableEntity):
@@ -58,7 +58,7 @@ class EntitySimpleAddonDataTests(TestCase):
         return ent_num
 
     def _set_per_entity_data(self):
-        for ent_num, entity in enumerate(self.doc.all_ents):
+        for ent_num, entity in enumerate(self.doc.ner_ents):
             self._set_single_entity_data(ent_num, entity)
 
     def setUp(self):
@@ -69,8 +69,8 @@ class EntitySimpleAddonDataTests(TestCase):
         self._set_per_entity_data()
 
     def test_can_get_addon_data(self):
-        self.assertGreater(len(self.doc.all_ents), 0)
-        for ent_num, entity in enumerate(self.doc.all_ents):
+        self.assertGreater(len(self.doc.ner_ents), 0)
+        for ent_num, entity in enumerate(self.doc.ner_ents):
             with self.subTest(f"Entity {ent_num}: {entity}"):
                 data_val = entity.get_addon_data(self.ADDON_PATH)
                 self.assertEqual(data_val, self._get_expected_data(

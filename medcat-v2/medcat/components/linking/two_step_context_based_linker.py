@@ -133,7 +133,7 @@ class TwoStepLinker(AbstractCoreComponent):
 
     def _train_for_tuis(self, doc: MutableDocument) -> None:
         # Run training
-        for entity in doc.all_ents:
+        for entity in doc.ner_ents:
             self._process_entity_train_tuis(
                 doc, entity, PerDocumentTokenCache())
 
@@ -208,7 +208,7 @@ class TwoStepLinker(AbstractCoreComponent):
     def _weigh_on_inference(self, doc: MutableDocument) -> 'PerEntityWeights':
         per_entity_weights = PerEntityWeights(doc)
         per_doc_valid_token_cache = PerDocumentTokenCache()
-        for entity in doc.all_ents:
+        for entity in doc.ner_ents:
             logger.debug("Narrowing down candidates for: '%s' from %s",
                          entity.base.text, entity.link_candidates)
             self._reweigh_candidates(
@@ -317,7 +317,7 @@ class PerEntityWeights(MutableMapping[MutableEntity, dict[str, float]]):
 
     def _from_key(self, key: tuple[int, int]) -> MutableEntity:
         start, end = key
-        for ent in self._doc.all_ents:
+        for ent in self._doc.ner_ents:
             if ent.base.start_index == start and ent.base.end_index == end:
                 return ent
         raise ValueError("Unable to find entity corresponding to "

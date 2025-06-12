@@ -357,7 +357,7 @@ class MutableDocument(Protocol):
         pass
 
     @property
-    def final_ents(self) -> list[MutableEntity]:
+    def linked_ents(self) -> list[MutableEntity]:
         """The linked entities associated with the document.
 
         This should be set by the linker.
@@ -365,7 +365,7 @@ class MutableDocument(Protocol):
         pass
 
     @property
-    def all_ents(self) -> list[MutableEntity]:
+    def ner_ents(self) -> list[MutableEntity]:
         """All entities recognised by NER.
 
         This should be set by the NER component.
