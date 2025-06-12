@@ -61,7 +61,7 @@ Below you can see how to access the same things in the new version.
 | `cdb.name2count_train[name]`      | `cdb.name2info[name]['count_train']`           |       |
 | `cdb.snames`                      | `cdb._subnames`                                |       |
 | `cdb.make_stats()`                | `cdb.get_basic_info()`                         |       |
-| `CDB.load`                        | `cdb: CDB deserialise(<path>)`                 | Most end users shouldn't need to load the CDB on its own |
+| `CDB.load`                        | `from medcat.storage.serialisers import deserialise; cdb: CDB deserialise(<path>)`                 | Most end users shouldn't need to load the CDB on its own |
 
 
 ## API changes for Config
@@ -84,7 +84,7 @@ But we'll list them here nonetheless.
 
 |          v1 method                |           v2 method                            | Notes |
 | --------------------------------- | ---------------------------------------------- | ----- |
-| `Vocab.load`                      | `vocab: Vocab = deserialise(<path>)`         | Most end users shouldn't need to load the Vocab on its own |
+| `Vocab.load`                      | `from medcat.storage.serialisers import deserialise; vocab: Vocab = deserialise(<path>)`         | Most end users shouldn't need to load the Vocab on its own |
 
 
 ## Relocated packages / modules
