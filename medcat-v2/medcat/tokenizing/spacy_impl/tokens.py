@@ -142,7 +142,7 @@ class Entity:
             raise UnregisteredDataPathException(self.__class__, path)
         return getattr(self._delegate._, path)
 
-    def get_available_addon_data_paths(self) -> list[str]:
+    def get_available_addon_paths(self) -> list[str]:
         return [path for path in self._addon_extension_paths
                 if self.has_addon_data(path)]
 
@@ -247,7 +247,7 @@ class Document:
             raise UnregisteredDataPathException(self.__class__, path)
         return getattr(self._delegate._, path)
 
-    def get_available_addon_data_paths(self) -> list[str]:
+    def get_available_addon_paths(self) -> list[str]:
         return [path for path in self._addon_extension_paths
                 if self.has_addon_data(path)]
 

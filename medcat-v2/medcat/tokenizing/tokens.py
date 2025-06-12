@@ -459,7 +459,7 @@ class MutableDocument(Protocol):
         """
         pass
 
-    def get_available_addon_data_paths(self) -> list[str]:
+    def get_available_addon_paths(self) -> list[str]:
         """Gets the available addon data paths for this document.
 
         This will only include paths that have values set.

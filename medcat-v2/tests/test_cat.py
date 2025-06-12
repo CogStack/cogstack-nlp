@@ -422,7 +422,7 @@ class CATWithDocAddonTests(CATIncludingTests):
         self.assertEqual(self.EXAMPLE_VALUE, got)
 
     def test_empty_doc_has_no_addon_data_paths(self):
-        avail = self.doc.get_available_addon_data_paths()
+        avail = self.doc.get_available_addon_paths()
         datas = {
             path: (data := self.doc.get_addon_data(path), bool(data),
                    self.doc.has_addon_data(path))
@@ -433,7 +433,7 @@ class CATWithDocAddonTests(CATIncludingTests):
     def test_doc_can_have_addon_data_path(self):
         # set some data
         self.doc.set_addon_data(self.ADDON_PATH, self.EXAMPLE_VALUE)
-        avail = self.doc.get_available_addon_data_paths()
+        avail = self.doc.get_available_addon_paths()
         self.assertTrue(avail)
         datas = {
             path: (data := self.doc.get_addon_data(path), bool(data),

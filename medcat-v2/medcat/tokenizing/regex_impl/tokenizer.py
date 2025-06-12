@@ -181,7 +181,7 @@ class Entity:
         doc_dict = self._doc.get_addon_data(f"{self.ENTITY_INFO_PREFIX}{path}")
         return doc_dict[(self.start_index, self.end_index)]
 
-    def get_available_addon_data_paths(self) -> list[str]:
+    def get_available_addon_paths(self) -> list[str]:
         return [path for path in self._addon_extension_paths
                 if self.get_addon_data(path)]
 
@@ -281,7 +281,7 @@ class Document:
             raise UnregisteredDataPathException(self.__class__, path)
         return getattr(self, path)
 
-    def get_available_addon_data_paths(self) -> list[str]:
+    def get_available_addon_paths(self) -> list[str]:
         return [path for path in self._addon_extension_paths
                 if self.get_addon_data(path)]
 
