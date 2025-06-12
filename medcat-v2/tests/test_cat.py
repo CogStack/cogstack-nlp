@@ -398,6 +398,8 @@ class CATWithDocAddonTests(CATIncludingTests):
         doc = cls.cat(cls.EXAMPLE_TEXT)
         cls.doc_cls = doc.__class__
         cls.doc_cls.register_addon_path(cls.ADDON_PATH)
+        # add for MutableEntity as well
+        doc[:].register_addon_path(cls.ADDON_PATH)
 
     def setUp(self):
         self.doc = self.cat(self.EXAMPLE_TEXT)
@@ -418,6 +420,30 @@ class CATWithDocAddonTests(CATIncludingTests):
         self.doc.set_addon_data(self.ADDON_PATH, self.EXAMPLE_VALUE)
         got = self.doc.get_addon_data(self.ADDON_PATH)
         self.assertEqual(self.EXAMPLE_VALUE, got)
+
+    def test_empty_doc_has_no_addon_data_paths(self):
+        self.assertFalse(self.doc.get_available_addon_data_paths())
+
+    def test_doc_can_have_addon_data_path(self):
+        # set some data
+        self.doc.set_addon_data(self.ADDON_PATH, self.EXAMPLE_VALUE)
+        avail = self.doc.get_available_addon_data_paths()
+        self.assertTrue(avail)
+        self.assertEqual(len(avail), 1)
+        self.assertEqual(avail[0], self.ADDON_PATH)
+
+    def test_empty_ent_has_no_addon_data_paths(self):
+        ent = self.doc[:]
+        self.assertFalse(ent.get_available_addon_data_paths())
+
+    def test_ent_can_have_addon_data_path(self):
+        ent = self.doc[:]
+        # set some data
+        ent.set_addon_data(self.ADDON_PATH, self.EXAMPLE_VALUE)
+        avail = ent.get_available_addon_data_paths()
+        self.assertTrue(avail)
+        self.assertEqual(len(avail), 1)
+        self.assertEqual(avail[0], self.ADDON_PATH)
 
 
 class MethodSpy:
