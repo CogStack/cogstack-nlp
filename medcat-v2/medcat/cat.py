@@ -538,6 +538,33 @@ class CAT(AbstractSerialisable):
         return hex_hash
 
     @classmethod
+    def attempt_unpack(cls, zip_path: str) -> None:
+        """Attempt unpack the zip to a folder and get the model pack path.
+
+        If the folder already exists, no unpacking is done.
+
+        Args:
+            zip_path (str): The ZIP path
+
+        Returns:
+            str: The model pack path
+        """
+        base_dir = os.path.dirname(zip_path)
+        filename = os.path.basename(zip_path)
+
+        foldername = filename.replace(".zip", '')
+
+        model_pack_path = os.path.join(base_dir, foldername)
+        if os.path.exists(model_pack_path):
+            logger.info(
+                "Found an existing unzipped model pack at: %s, "
+                "the provided zip will not be touched.", model_pack_path)
+        else:
+            logger.info("Unziping the model pack and loading models.")
+            shutil.unpack_archive(zip_path, extract_dir=model_pack_path)
+        return model_pack_path
+
+    @classmethod
     def load_model_pack(cls, model_pack_path: str) -> 'CAT':
         """Load the model pack from file.
 
@@ -551,13 +578,7 @@ class CAT(AbstractSerialisable):
             CAT: The loaded model pack.
         """
         if model_pack_path.endswith(".zip"):
-            folder_path = model_pack_path.rsplit(".zip", 1)[0]
-            if not os.path.exists(folder_path):
-                logger.info("Unpacking model pack from %s to %s",
-                            model_pack_path, folder_path)
-                shutil.unpack_archive(model_pack_path,
-                                      folder_path)
-            model_pack_path = folder_path
+            model_pack_path = cls.attempt_unpack(model_pack_path)
         logger.info("Attempting to load model from file: %s",
                     model_pack_path)
         is_legacy = is_legacy_model_pack(model_pack_path)
