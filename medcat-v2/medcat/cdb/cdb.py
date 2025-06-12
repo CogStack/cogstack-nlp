@@ -4,6 +4,7 @@ from medcat.storage.serialisables import AbstractSerialisable
 from medcat.cdb.concepts import CUIInfo, NameInfo, TypeInfo
 from medcat.cdb.concepts import get_new_cui_info, get_new_name_info
 from medcat.cdb.concepts import reset_cui_training
+from medcat.storage.serialisers import deserialise
 from medcat.utils.defaults import default_weighted_average, StatusTypes as ST
 from medcat.utils.hasher import Hasher
 from medcat.preprocessors.cleaners import NameDescriptor
@@ -478,3 +479,10 @@ class CDB(AbstractSerialisable):
             "Unsupervised training history": unsup_history,
             "Supervised training history": sup_history,
         }
+
+    @classmethod
+    def load(cls, path: str) -> 'CDB':
+        cdb = deserialise(path)
+        if not isinstance(cdb, CDB):
+            raise ValueError(f"The path '{path}' is not a CDB!")
+        return cdb
