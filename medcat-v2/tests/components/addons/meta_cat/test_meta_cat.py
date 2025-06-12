@@ -120,9 +120,9 @@ class MetaCATWithCATTests(MetaCATBaseTests):
         # NOTE: ideally, I'd use cat._doc_to_out
         #       but for same text should be fine either way
         ents = self.cat.get_entities(text)['entities']
-        self.assertEqual(len(doc.final_ents), len(ents))
+        self.assertEqual(len(doc.linked_ents), len(ents))
         self.assertGreater(len(ents), 0)
-        for num, ent in enumerate(doc.final_ents):
+        for num, ent in enumerate(doc.linked_ents):
             with self.subTest(f"Entity {num}"):
                 self.assertEqual(
                     meta_cat.get_meta_annotations(ent),
