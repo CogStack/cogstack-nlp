@@ -627,6 +627,9 @@ class CAT(AbstractSerialisable):
         Returns:
             CDB: The loaded concept database
         """
+        zip_path = (model_pack_path if model_pack_path.endswith(".zip")
+                    else model_pack_path + ".zip")
+        cls.attempt_unpack(zip_path)
         cdb_path = os.path.join(model_pack_path, "cdb")
         cdb = deserialise(cdb_path)
         if not isinstance(cdb, CDB):
