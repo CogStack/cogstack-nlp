@@ -185,8 +185,8 @@ class Document:
 
     def __init__(self, delegate: SpacyDoc) -> None:
         self._delegate = delegate
-        self.all_ents: list[MutableEntity] = []
-        self.final_ents: list[MutableEntity] = []
+        self.ner_ents: list[MutableEntity] = []
+        self.linked_ents: list[MutableEntity] = []
 
     @property
     def base(self) -> BaseDocument:
