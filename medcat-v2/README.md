@@ -45,21 +45,21 @@ Currently MedCAT v2 is in Beta.
 As such, we're not yet pushing to PyPI.
 And because of that the current installation command for (only) core MedCAT v2 is:
 ```
-pip install "medcat @ git+https://github.com/CogStack/MedCAT2@v0.6.1"
+pip install "medcat @ git+https://github.com/CogStack/MedCAT2@v0.7.0"
 ```
 Do note that **this installs only the core MedCAT v2**.
 **It does not necessary dependencies for `spacy`-based tokenizing or MetaCATs or DeID**.
 However, all of those are supported as well.
 You can install them as follows:
 ```
-pip install "medcat[spacy] @ git+https://github.com/CogStack/MedCAT2@v0.6.1"  # for spacy-based tokenizer
-pip install "medcat[meta-cat] @ git+https://github.com/CogStack/MedCAT2@v0.6.1"  # for MetaCAT
-pip install "medcat[deid] @ git+https://github.com/CogStack/MedCAT2@v0.6.1"  # for DeID models
-pip install "medcat[spacy,meta-cat,deid,rel-cat,dict-ner] @ git+https://github.com/CogStack/MedCAT2@v0.6.1"  # for all of the sbove
+pip install "medcat[spacy] @ git+https://github.com/CogStack/MedCAT2@v0.7.0"  # for spacy-based tokenizer
+pip install "medcat[meta-cat] @ git+https://github.com/CogStack/MedCAT2@v0.7.0"  # for MetaCAT
+pip install "medcat[deid] @ git+https://github.com/CogStack/MedCAT2@v0.7.0"  # for DeID models
+pip install "medcat[spacy,meta-cat,deid,rel-cat,dict-ner] @ git+https://github.com/CogStack/MedCAT2@v0.7.0"  # for all of the sbove
 ```
 
 PS:
-For in the above example, we're installing the MedCAT v2 BETA version of `v0.6.1`.
+For in the above example, we're installing the MedCAT v2 BETA version of `v0.7.0`.
 The README is unlikely to change after every new release.
 If another version is available / required, substitute the version tag as appropriate.
 
