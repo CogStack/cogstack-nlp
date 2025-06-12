@@ -54,6 +54,10 @@ class ModelLoadTests(unittest.TestCase):
         inst = cat.CAT.load_model_pack(EXAMPLE_MODEL_PACK_ZIP)
         self.assertIsInstance(inst, cat.CAT)
 
+    def test_can_load_CDB_from_model_pack(self):
+        cdb = cat.CAT.load_cdb(EXAMPLE_MODEL_PACK_ZIP)
+        self.assertIsInstance(cdb, CDB)
+
 
 class TrainedModelTests(unittest.TestCase):
     TRAINED_MODEL_PATH = EXAMPLE_MODEL_PACK_ZIP
