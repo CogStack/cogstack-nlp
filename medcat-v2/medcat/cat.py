@@ -538,7 +538,7 @@ class CAT(AbstractSerialisable):
         return hex_hash
 
     @classmethod
-    def attempt_unpack(cls, zip_path: str) -> None:
+    def attempt_unpack(cls, zip_path: str) -> str:
         """Attempt unpack the zip to a folder and get the model pack path.
 
         If the folder already exists, no unpacking is done.
