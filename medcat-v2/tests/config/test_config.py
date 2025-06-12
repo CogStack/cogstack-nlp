@@ -1,5 +1,8 @@
 from medcat.config import config
 from medcat.storage.serialisables import Serialisable
+from medcat.storage.serialisers import serialise, deserialise
+
+import tempfile
 
 import unittest
 
@@ -101,3 +104,29 @@ class ChainedDirtiableComponentTests(ComponentConfigTests):
     def test_outer_remains_undirty_raw(self):
         self._make_change()
         self.assertFalse(self.cnf._is_dirty)
+
+
+class SerialisableTests(unittest.TestCase):
+    provider = 'something'
+
+    @classmethod
+    def setUpClass(cls):
+        cls.temp_dir = tempfile.TemporaryDirectory()
+        cls.cnf_path = cls.temp_dir.name
+        cls.cnf = config.Config()
+        cls.cnf.general.nlp.provider = cls.provider
+        serialise('dill', cls.cnf, cls.cnf_path)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.temp_dir.cleanup()
+
+    def test_can_deserialise(self):
+        cnf = deserialise(self.cnf_path)
+        self.assertIsInstance(cnf, config.Config)
+        self.assertEqual(cnf, self.cnf)
+
+    def test_can_use_convenience_method(self):
+        cnf = config.Config.load(self.cnf_path)
+        self.assertIsInstance(cnf, config.Config)
+        self.assertEqual(cnf, self.cnf)
