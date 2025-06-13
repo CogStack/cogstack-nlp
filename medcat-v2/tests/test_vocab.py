@@ -181,6 +181,13 @@ class DefaultVocabTests(unittest.TestCase):
             with self.subTest(w):
                 self.assertEqual(info['vector'].shape, self.EXP_SHAPE)
 
+    def test_convenience_save(self):
+        with tempfile.TemporaryDirectory() as dir:
+            self.vocab.save(dir)
+            self.assertTrue(os.path.exists(dir))
+            obj = deserialise(dir)
+            self.assertIsInstance(obj, Vocab)
+
     def test_convenience_load(self):
         vocab = Vocab.load(self.VOCAB_PATH)
         self.assertIsInstance(vocab, Vocab)
