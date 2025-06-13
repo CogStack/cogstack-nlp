@@ -7,6 +7,7 @@ from medcat.utils.cdb_state import captured_state_cdb
 from medcat.preprocessors.cleaners import NameDescriptor
 
 from unittest import TestCase
+import tempfile
 
 from .. import UNPACKED_EXAMPLE_MODEL_PACK_PATH
 
@@ -21,7 +22,14 @@ class CDBTests(TestCase):
     def setUpClass(cls):
         cls.cdb = cast(cdb.CDB, deserialise(cls.CDB_PATH))
 
-    def test_convenience_methods(self):
+    def test_convenience_method_save(self):
+        with tempfile.TemporaryDirectory() as dir:
+            self.cdb.save(dir)
+            self.assertTrue(os.path.exists(dir))
+            obj = deserialise(dir)
+            self.assertIsInstance(obj, cdb.CDB)
+
+    def test_convenience_method_load(self):
         ccdb = cdb.CDB.load(self.CDB_PATH)
         self.assertIsInstance(ccdb, cdb.CDB)
 
