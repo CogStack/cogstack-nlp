@@ -1,11 +1,12 @@
-from typing import Optional, Any, cast
+from typing import Optional, Any, cast, Union
 from typing_extensions import TypedDict
 
 # import dill
 import numpy as np
 
 from medcat.storage.serialisables import AbstractSerialisable
-from medcat.storage.serialisers import deserialise
+from medcat.storage.serialisers import (
+    deserialise, AvailableSerialisers, serialise)
 
 
 WordDescriptor = TypedDict('WordDescriptor',
@@ -292,6 +293,23 @@ class Vocab(AbstractSerialisable):
                     in zip(self.vocab.values(), other.vocab.values())) and
                 self.index2word == other.index2word and
                 self.vec_index2word == other.vec_index2word)
+
+    def save(self, save_path: str,
+             serialiser: Union[
+                 str, AvailableSerialisers] = AvailableSerialisers.dill,
+             overwrite: bool = False,
+             ) -> None:
+        """Save Vocab at path.
+
+        Args:
+            save_path (str):
+                The path to save at.
+            serialiser (Union[ str, AvailableSerialisers], optional):
+                The serialiser. Defaults to AvailableSerialisers.dill.
+            overwrite (bool, optional):
+                Whether to allow overwriting existing files. Defaults to False.
+        """
+        serialise(serialiser, self, save_path, overwrite=overwrite)
 
     @classmethod
     def load(cls, path: str) -> 'Vocab':
