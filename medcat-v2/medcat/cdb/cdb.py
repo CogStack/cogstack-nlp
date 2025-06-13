@@ -1,10 +1,11 @@
-from typing import Iterable, Any, Collection
+from typing import Iterable, Any, Collection, Union
 
 from medcat.storage.serialisables import AbstractSerialisable
 from medcat.cdb.concepts import CUIInfo, NameInfo, TypeInfo
 from medcat.cdb.concepts import get_new_cui_info, get_new_name_info
 from medcat.cdb.concepts import reset_cui_training
-from medcat.storage.serialisers import deserialise
+from medcat.storage.serialisers import (
+    deserialise, AvailableSerialisers, serialise)
 from medcat.utils.defaults import default_weighted_average, StatusTypes as ST
 from medcat.utils.hasher import Hasher
 from medcat.preprocessors.cleaners import NameDescriptor
@@ -479,6 +480,23 @@ class CDB(AbstractSerialisable):
             "Unsupervised training history": unsup_history,
             "Supervised training history": sup_history,
         }
+
+    def save(self, save_path: str,
+             serialiser: Union[
+                 str, AvailableSerialisers] = AvailableSerialisers.dill,
+             overwrite: bool = False,
+             ) -> None:
+        """Save CDB at path.
+
+        Args:
+            save_path (str):
+                The path to save at.
+            serialiser (Union[ str, AvailableSerialisers], optional):
+                The serialiser. Defaults to AvailableSerialisers.dill.
+            overwrite (bool, optional):
+                Whether to allow overwriting existing files. Defaults to False.
+        """
+        serialise(serialiser, self, save_path, overwrite=overwrite)
 
     @classmethod
     def load(cls, path: str) -> 'CDB':
