@@ -57,7 +57,7 @@ def get_medcat_from_cdb_vocab(project,
                 cdb = deserialise(cdb_path)
             except NotADirectoryError as e:
                 logger.warning("Legacy CDB found, converting to new format")
-                # this should live in medcat code directly
+                # TODO: deserialise and write back to the model path?
                 cdb = get_cdb_from_old(cdb_path)
                 serialise(cdb, cdb_path)
                 cdb_map[cdb_id] = cdb

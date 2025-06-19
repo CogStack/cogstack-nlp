@@ -112,7 +112,8 @@ def add_annotations(spacy_doc, user, project, document, existing_annotations, ca
 
             ann_ent.save()
 
-            # check the ent._.meta_anns if it exists
+            # TODO: Fix before v2 release.
+            # check the ent.get_addon_data('meta_cat_meta_anns') if it exists
             # if hasattr(ent, 'get_addon_data') and \
             #            len(metatask2obj) > 0 and
             #            len(metataskvals2obj) > 0:
