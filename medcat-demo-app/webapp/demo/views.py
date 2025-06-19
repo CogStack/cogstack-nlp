@@ -38,7 +38,7 @@ def doc2html(doc):
     offset = 0
     text = doc.base.text
 
-    for span in list(doc.final_ents):
+    for span in list(doc.linked_ents):
         start = span.base.start_char_index
         end = span.base.end_char_index
         fragments = text[offset:start].split("\n")
