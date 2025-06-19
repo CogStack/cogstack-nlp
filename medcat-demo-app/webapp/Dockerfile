@@ -35,7 +35,7 @@ FROM python:3.11-slim as final
 RUN apt-get update && apt-get install -y --no-install-recommends \
     cron \
     sqlite3 \
-    libsqlite3-dev
+    libsqlite3-dev && apt-get autoremove
 
 # Create the required folders (if not created already)
 RUN mkdir -p /webapp/models && mkdir -p /medcat_data
