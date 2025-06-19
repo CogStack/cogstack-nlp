@@ -126,7 +126,7 @@ def show_annotations(request):
         context['doc_html'] = doc_html
         context['doc_json'] = doc_json
         context['text'] = request.POST['text']
-        context['medcat_version'] = medcat_version
+    context['medcat_version'] = medcat_version
     return render(request, 'train_annotations.html', context=context)
 
 
