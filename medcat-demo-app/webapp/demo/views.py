@@ -7,10 +7,10 @@ from django.shortcuts import render
 from django.http import StreamingHttpResponse, HttpResponse
 import numpy as np
 from wsgiref.util import FileWrapper
-from medcat2 import __version__ as medcat_version
-from medcat2.cat import CAT
-from medcat2.cdb import CDB
-from medcat2.vocab import Vocab
+from medcat import __version__ as medcat_version
+from medcat.cat import CAT
+from medcat.cdb import CDB
+from medcat.vocab import Vocab
 from urllib.request import urlretrieve, urlopen
 from urllib.error import HTTPError
 #from medcat.meta_cat import MetaCAT
