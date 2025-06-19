@@ -1,3 +1,5 @@
+# fail upon individual failure
+set -euo pipefail
 # CONSTANTs/ shouldn't change
 REGRESSION_MODULE="medcat.utils.regression.regression_checker"
 REGRESSION_OPTIONS="--strictness STRICTEST --require-fully-correct"

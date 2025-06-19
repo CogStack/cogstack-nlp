@@ -13,6 +13,8 @@ from medcat.storage.serialisables import Serialisable, ManualSerialisable
 from medcat.storage.serialisables import get_all_serialisable_members
 from medcat.storage.schema import load_schema, save_schema
 from medcat.storage.schema import DEFAULT_SCHEMA_FILE, IllegalSchemaException
+from medcat.utils.legacy.v2_beta import (
+    fix_module_and_cls_name, RemappingUnpickler)
 
 
 logger = logging.getLogger(__name__)
@@ -146,6 +148,7 @@ class Serialiser(ABC):
                              **init_kwargs) -> Serialisable:
         logger.info("Deserialising manually based on %s", man_cls_path)
         module_name, cls_name = man_cls_path.rsplit(".", 1)
+        module_name, cls_name = fix_module_and_cls_name(module_name, cls_name)
         rel_module = importlib.import_module(module_name)
         man_cls = getattr(rel_module, cls_name)
         if not issubclass(man_cls, ManualSerialisable):
@@ -253,7 +256,7 @@ class DillSerialiser(Serialiser):
 
     def deserialise(self, target_file: str) -> dict[str, Any]:
         with open(target_file, 'rb') as f:
-            return _dill.load(f)
+            return RemappingUnpickler(f).load()
 
 
 _DEF_SER = AvailableSerialisers.dill
