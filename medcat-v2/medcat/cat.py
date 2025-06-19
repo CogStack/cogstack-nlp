@@ -80,6 +80,7 @@ class CAT(AbstractSerialisable):
             '_trainer',  # recreate if nededed
             '_pipeline',  # need to recreate regardless
             'config',  # will be loaded along with CDB
+            'usage_monitor',  # will be created at startup
         ]
 
     def __call__(self, text: str) -> Optional[MutableDocument]:
