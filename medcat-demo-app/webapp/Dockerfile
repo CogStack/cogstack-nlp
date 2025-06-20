@@ -29,7 +29,7 @@ RUN pip install -U pip && if [ "$USE_CPU_TORCH" = "true" ]; then \
 RUN python -m spacy download en_core_web_md
 
 # Stage 2: Final (production) image
-FROM python:3.11-slim as final
+FROM python:3.12-slim as final
 
 # Install runtime dependencies (you don’t need git in production)
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -45,7 +45,7 @@ COPY --from=build /webapp /webapp
 # COPY --from=build /root/.cache /root/.cache  # Copy pip cache if needed
 
 # Copy Python site-packages (installed by pip) from build stage
-COPY --from=build /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=build /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 
 # Set environment variables
 ENV VOCAB_URL=https://medcat.rosalind.kcl.ac.uk/media/vocab.dat
