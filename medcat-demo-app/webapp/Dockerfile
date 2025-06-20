@@ -1,4 +1,4 @@
-FROM python:3.7
+FROM python:3.12
 
 # Create the required folders
 RUN mkdir -p /webapp/models
