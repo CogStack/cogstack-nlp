@@ -22,7 +22,8 @@ VALIDATION_LOGIN_URL = f'https://uts.nlm.nih.gov/uts/login?service={AUTH_CALLBAC
 
 API_KEY_AUTH_URL = 'https://utslogin.nlm.nih.gov/cas/v1/api-key'
 UMLS_SERVICE = 'http://umlsks.nlm.nih.gov'  # required as 'service' parameter
-API_VALIDATE_URL = 'https://uts-ws.nlm.nih.gov/rest/validateUser'
+TEST_CUI = 'C0000005'  # harmless, public CUI for validation
+CONTENT_API_URL = f'https://uts-ws.nlm.nih.gov/rest/content/current/CUI/{TEST_CUI}'
 
 model_pack_path = os.getenv('MODEL_PACK_PATH', 'models/medmen_wstatus_2021_oct.zip')
 
@@ -124,13 +125,13 @@ def validate_umls_api_key(request):
                 if r.status_code != 200:
                     raise Exception('Could not get service ticket.')
 
-                service_ticket = r.text
+                service_ticket = r.text.strip()
 
-                # Step 3: Use ticket to validate against UMLS API
-                r = requests.get(API_VALIDATE_URL, params={'ticket': service_ticket, 'service': UMLS_SERVICE}, timeout=10)
-                user_info = r.json()
+                # Step 3: Use ticket to call a known endpoint
+                params = {'ticket': service_ticket}
+                r = requests.get(CONTENT_API_URL, params=params, timeout=10)
 
-                if 'valid' in user_info and user_info['valid']:
+                if r.status_code == 200:
                     context = {
                         'is_valid': True,
                         'message': 'License verified via API key!',
