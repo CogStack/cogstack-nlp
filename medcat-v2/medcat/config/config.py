@@ -606,7 +606,7 @@ class Config(SerialisableBaseModel):
     cdb_maker: CDBMaker = CDBMaker()
     # ner: Ner = Ner()
     annotation_output: AnnotationOutput = AnnotationOutput()
-    meta: ModelMeta = ModelMeta()
+    meta: ModelMeta = Field(default_factory=ModelMeta)
 
 
 def get_important_config_parameters(config: Config) -> dict[str, Any]:
