@@ -498,7 +498,7 @@ class ModelMeta(SerialisableBaseModel):
     unsup_trained: list[TrainingDescriptor] = []  # TODO - implement
     sup_trained: list[TrainingDescriptor] = []  # TODO - implement
     medcat_version: str = ''
-    saved_environ: Environment = get_environment_info()
+    saved_environ: Environment = Field(default_factory=get_environment_info)
 
     def mark_saved_now(self):
         self.last_saved = datetime.now()
@@ -606,7 +606,7 @@ class Config(SerialisableBaseModel):
     cdb_maker: CDBMaker = CDBMaker()
     # ner: Ner = Ner()
     annotation_output: AnnotationOutput = AnnotationOutput()
-    meta: ModelMeta = ModelMeta()
+    meta: ModelMeta = Field(default_factory=ModelMeta)
 
 
 def get_important_config_parameters(config: Config) -> dict[str, Any]:
