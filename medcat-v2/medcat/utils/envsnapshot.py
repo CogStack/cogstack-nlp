@@ -108,6 +108,28 @@ def get_installed_dependencies(include_extras: bool) -> dict[str, str]:
     return installed_packages
 
 
+def is_dependency_installed(dependency: str) -> bool:
+    """Checks whether a dependency is installed.
+
+    This takes into account changes such as '-' vs '_'.
+    For example, `typing-extensions` is a direct dependency,
+    but its module path will be `typing_extension` and that's
+    how we can find it as an installed dependency.
+
+    Args:
+        dependency (str): The dependency in question.
+
+    Returns:
+        bool: Whether the depedency has been installed.
+    """
+    installed_deps = get_installed_dependencies(True)
+    dep_name = dependency.lower()
+    dep_name_underscores = dependency.replace("-", "_")
+    dep_name_dashes = dependency.replace("_", "-")
+    options = [dep_name, dep_name_underscores, dep_name_dashes]
+    return any(option in installed_deps for option in options)
+
+
 class Environment(BaseModel, AbstractSerialisable):
     dependencies: dict[str, str]
     transitive_deps: dict[str, str]
