@@ -1,4 +1,3 @@
-import pkg_resources
 import platform
 import logging
 import importlib.metadata
@@ -39,25 +38,37 @@ def get_direct_dependencies(include_extras: bool) -> list[str]:
 
 def _update_installed_dependencies_recursive(
         gathered: dict[str, str],
-        package: pkg_resources.Distribution) -> dict[str, str]:
-    if package.project_name.lower() in gathered:
+        package: importlib.metadata.Distribution) -> dict[str, str]:
+    pkg_name = package.metadata["Name"].lower()
+    # print("Looking at", repr(pkg_name))
+    if pkg_name in gathered:
         logger.debug("Trying to update already found transitive dependency "
-                     "'%'", package.egg_name)
+                     "'%'", pkg_name)
         return gathered
-    for req in package.requires():
-        if req.project_name.lower() in gathered:
-            logger.debug("Trying to look up already found transitive "
-                         "dependency '%'", req.project_name)
-            continue  # don't look for it again
+    requirements = package.requires
+    if not requirements:
+        return gathered
+    for req_name_and_ver in requirements:
+        req_name_cs = DEP_NAME_PATTERN.match(req_name_and_ver).group(0)  # type: ignore
+        req_name = req_name_cs.lower()
+        # to avoid recursion issues
+        gathered[req_name] = None  # type: ignore
         try:
-            dep = pkg_resources.get_distribution(req.project_name)
-        except pkg_resources.DistributionNotFound as e:
-            logger.warning("Unable to locate requirement '%s':",
-                           req.project_name, exc_info=e)
-            continue
+            dep = importlib.metadata.distribution(req_name)
+        except importlib.metadata.PackageNotFoundError as e1:
+            # try case sensitive as well
+            try:
+                dep = importlib.metadata.distribution(req_name_cs)
+            except importlib.metadata.PackageNotFoundError:
+                # NOTE: only log warning if it WASN't and extra
+                if 'extra' not in req_name_and_ver:
+                    logger.warning(
+                        "Unable to locate requirement '%s':",
+                        req_name, exc_info=e1)
+                gathered.pop(req_name)
+                continue
         _update_installed_dependencies_recursive(gathered, dep)
-        # do this after so its dependencies get explored
-        gathered[dep.project_name.lower()] = dep.version
+        gathered[req_name] = dep.version
     return gathered
 
 
@@ -73,7 +84,7 @@ def get_transitive_deps(direct_deps: list[str]) -> dict[str, str]:
     # map from name to version so as to avoid multiples of the same package
     all_transitive_deps: dict[str, str] = {}
     for dep in direct_deps:
-        package = pkg_resources.get_distribution(dep)
+        package = importlib.metadata.distribution(dep)
         _update_installed_dependencies_recursive(all_transitive_deps, package)
     return all_transitive_deps
 
@@ -89,10 +100,11 @@ def get_installed_dependencies(include_extras: bool) -> dict[str, str]:
     """
     direct_deps = get_direct_dependencies(include_extras)
     installed_packages: dict[str, str] = {}
-    for package in pkg_resources.working_set:
-        if package.project_name.lower() not in direct_deps:
+    for package in importlib.metadata.distributions():
+        req_name = package.metadata["Name"].lower()
+        if req_name not in direct_deps:
             continue
-        installed_packages[package.project_name.lower()] = package.version
+        installed_packages[req_name] = package.version
     return installed_packages
 
 
