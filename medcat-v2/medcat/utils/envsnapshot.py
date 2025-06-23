@@ -2,6 +2,7 @@ import platform
 import logging
 import importlib.metadata
 import re
+from sys import version_info as cur_ver_info
 
 from pydantic import BaseModel
 
@@ -12,6 +13,8 @@ logger = logging.getLogger(__name__)
 
 
 DEP_NAME_PATTERN = re.compile(r'^[a-zA-Z0-9\-_]+')
+PY_VER_PATTERN = re.compile(
+    r""".*?python_version\s*(==|!=|<=|>=|<|>)\s*(['"])([^'"]+)\2""")
 
 
 def get_direct_dependencies(include_extras: bool) -> list[str]:
@@ -34,6 +37,21 @@ def get_direct_dependencies(include_extras: bool) -> list[str]:
     reqs = [DEP_NAME_PATTERN.match(req).group(0).lower()  # type: ignore
             for req in reqs]
     return reqs
+
+
+def _is_relevant(req_name_and_ver: str) -> bool:
+    if 'extra' in req_name_and_ver:
+        return False
+    ver_match = PY_VER_PATTERN.match(req_name_and_ver)
+    if ver_match:
+        comp = ver_match.group(1)
+        ver_nums = ver_match.group(3).split(".")
+        exp_ver = (int(ver_nums[0]), int(ver_nums[1]))
+        cur_ver = cur_ver_info.major, cur_ver_info.minor
+        # eg. 3.10 < 3.11
+        to_eval = f"{cur_ver} {comp} {exp_ver}"
+        return bool(eval(to_eval))
+    return True
 
 
 def _update_installed_dependencies_recursive(
@@ -60,11 +78,10 @@ def _update_installed_dependencies_recursive(
             try:
                 dep = importlib.metadata.distribution(req_name_cs)
             except importlib.metadata.PackageNotFoundError:
-                # NOTE: only log warning if it WASN't and extra
-                if 'extra' not in req_name_and_ver:
+                if _is_relevant(req_name_and_ver):
                     logger.warning(
-                        "Unable to locate requirement '%s':",
-                        req_name, exc_info=e1)
+                        "Unable to locate requirement '%s' ('%s'):",
+                        req_name, req_name_and_ver, exc_info=e1)
                 gathered.pop(req_name)
                 continue
         _update_installed_dependencies_recursive(gathered, dep)
