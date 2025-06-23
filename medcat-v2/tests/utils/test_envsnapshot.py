@@ -30,7 +30,7 @@ class DependencyGetterTests(unittest.TestCase):
     def test_all_dir_deps_have_been_installed(self):
         for dep in self.dir_deps:
             with self.subTest(dep):
-                self.assertIn(dep, self.installed_deps)
+                self.assertTrue(envsnapshot.is_dependency_installed(dep))
 
     def test_all_deps_add_to_correct(self):
         # NOTE: didn't account for test/dev deps
