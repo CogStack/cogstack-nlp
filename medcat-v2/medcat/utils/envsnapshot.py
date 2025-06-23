@@ -125,8 +125,7 @@ def is_dependency_installed(dependency: str) -> bool:
     installed_deps = get_installed_dependencies(True)
     dep_name = dependency.lower()
     dep_name_underscores = dependency.replace("-", "_")
-    dep_name_dashes = dependency.replace("_", "-")
-    options = [dep_name, dep_name_underscores, dep_name_dashes]
+    options = [dep_name, dep_name_underscores]
     return any(option in installed_deps for option in options)
 
 
