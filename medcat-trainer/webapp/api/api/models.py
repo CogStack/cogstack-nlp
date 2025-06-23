@@ -12,7 +12,7 @@ from django.dispatch import receiver
 from django.forms import forms, ModelForm
 from medcat.cat import CAT
 from medcat.cdb import CDB
-from medcat.storage.serialisers import deserialise
+from medcat.vocab import Vocab
 from medcat.components.addons.meta_cat.meta_cat import MetaCAT
 from polymorphic.models import PolymorphicModel
 
@@ -75,7 +75,7 @@ class ModelPack(models.Model):
 
         vocab_path = os.path.join(unpacked_model_pack_path, "vocab.dat")
         if os.path.exists(vocab_path):
-            deserialise(vocab_path)
+            Vocab.load(vocab_path)
             vocab = Vocabulary()
             vocab.vocab_file.name = vocab_path.replace(f'{MEDIA_ROOT}/', '')
             vocab.save(skip_load=True)
@@ -134,7 +134,7 @@ class ConceptDB(models.Model):
         # load the CDB, and raise if this fails - must be saved first so storage handler can rename path if name clashes
         if not skip_load:
             try:
-                deserialise(self.cdb_file.path)
+                CDB.load(self.cdb_file.path)
             except Exception as exc:
                 raise MedCATLoadException(f'Failed to load Concept DB from {self.cdb_file}, '
                                           f'check if this CDB file successfully loads elsewhere') from exc
@@ -157,7 +157,7 @@ class Vocabulary(models.Model):
         # load the Vocab, and raise if this fails
         if not skip_load:
             try:
-                deserialise(self.vocab_file.path)
+                Vocab.load(self.vocab_file.path)
             except Exception as exc:
                 raise MedCATLoadException(f'Failed to load Vocab from {self.vocab_file}, '
                                           f'check if this Vocab file successfully loads elsewhere') from exc
