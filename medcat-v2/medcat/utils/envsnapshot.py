@@ -2,7 +2,6 @@ import platform
 import logging
 import importlib.metadata
 import re
-from sys import version_info as cur_ver_info
 
 from pydantic import BaseModel
 
@@ -13,8 +12,6 @@ logger = logging.getLogger(__name__)
 
 
 DEP_NAME_PATTERN = re.compile(r'^[a-zA-Z0-9\-_]+')
-PY_VER_PATTERN = re.compile(
-    r""".*?python_version\s*(==|!=|<=|>=|<|>)\s*(['"])([^'"]+)\2""")
 
 
 def get_direct_dependencies(include_extras: bool) -> list[str]:
@@ -39,56 +36,6 @@ def get_direct_dependencies(include_extras: bool) -> list[str]:
     return reqs
 
 
-def _is_relevant(req_name_and_ver: str) -> bool:
-    if 'extra' in req_name_and_ver:
-        return False
-    ver_match = PY_VER_PATTERN.match(req_name_and_ver)
-    if ver_match:
-        comp = ver_match.group(1)
-        ver_nums = ver_match.group(3).split(".")
-        exp_ver = (int(ver_nums[0]), int(ver_nums[1]))
-        cur_ver = cur_ver_info.major, cur_ver_info.minor
-        # eg. 3.10 < 3.11
-        to_eval = f"{cur_ver} {comp} {exp_ver}"
-        return bool(eval(to_eval))
-    return True
-
-
-def _update_installed_dependencies_recursive(
-        gathered: dict[str, str],
-        package: importlib.metadata.Distribution) -> dict[str, str]:
-    pkg_name = package.metadata["Name"].lower()
-    # print("Looking at", repr(pkg_name))
-    if pkg_name in gathered:
-        logger.debug("Trying to update already found transitive dependency "
-                     "'%'", pkg_name)
-        return gathered
-    requirements = package.requires
-    if not requirements:
-        return gathered
-    for req_name_and_ver in requirements:
-        req_name_cs = DEP_NAME_PATTERN.match(req_name_and_ver).group(0)  # type: ignore
-        req_name = req_name_cs.lower()
-        # to avoid recursion issues
-        gathered[req_name] = None  # type: ignore
-        try:
-            dep = importlib.metadata.distribution(req_name)
-        except importlib.metadata.PackageNotFoundError as e1:
-            # try case sensitive as well
-            try:
-                dep = importlib.metadata.distribution(req_name_cs)
-            except importlib.metadata.PackageNotFoundError:
-                if _is_relevant(req_name_and_ver):
-                    logger.warning(
-                        "Unable to locate requirement '%s' ('%s'):",
-                        req_name, req_name_and_ver, exc_info=e1)
-                gathered.pop(req_name)
-                continue
-        _update_installed_dependencies_recursive(gathered, dep)
-        gathered[req_name] = dep.version
-    return gathered
-
-
 def get_transitive_deps(direct_deps: list[str]) -> dict[str, str]:
     """Get the transitive dependencies of the direct dependencies.
 
@@ -98,12 +45,45 @@ def get_transitive_deps(direct_deps: list[str]) -> dict[str, str]:
     Returns:
         dict[str, str]: The dependency names and their corresponding versions.
     """
-    # map from name to version so as to avoid multiples of the same package
-    all_transitive_deps: dict[str, str] = {}
-    for dep in direct_deps:
-        package = importlib.metadata.distribution(dep)
-        _update_installed_dependencies_recursive(all_transitive_deps, package)
-    return all_transitive_deps
+    all_deps: dict[str, str] = {}
+    to_process = set(direct_deps)
+    processed = set()
+    # list installed packages for ease of use
+    installed_packages = {
+        dist.metadata['name'].lower()
+        for dist in importlib.metadata.distributions()}
+
+    while to_process:
+        package = to_process.pop()
+        if package in processed:
+            continue
+
+        processed.add(package)
+
+        try:
+            dist = importlib.metadata.distribution(package)
+        except importlib.metadata.PackageNotFoundError:
+            # NOTE: if not installed, we won't bother
+            #       after all, if we can save the model, clearly
+            #       everything is working
+            continue
+        requires = dist.requires or []
+
+        for req in requires:
+            match = DEP_NAME_PATTERN.match(req)
+            if match is None:
+                raise ValueError(f"Malformed dependency: {req}")
+            dep_name = match.group(0).lower()
+            if (dep_name and dep_name not in processed and
+                    dep_name in installed_packages):
+                all_deps[dep_name] = importlib.metadata.distribution(
+                    dep_name).version
+                to_process.add(dep_name)
+
+    for direct in direct_deps:
+        # remove direct dependencies if they were added
+        all_deps.pop(direct, None)
+    return all_deps
 
 
 def get_installed_dependencies(include_extras: bool) -> dict[str, str]:
