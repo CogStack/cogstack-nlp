@@ -98,7 +98,7 @@ def get_installed_dependencies(include_extras: bool) -> dict[str, str]:
     direct_deps = get_direct_dependencies(include_extras)
     installed_packages: dict[str, str] = {}
     for package in importlib.metadata.distributions():
-        req_name = package.metadata["Name"].lower()
+        req_name = package.metadata["name"].lower()
         if req_name not in direct_deps:
             continue
         installed_packages[req_name] = package.version
