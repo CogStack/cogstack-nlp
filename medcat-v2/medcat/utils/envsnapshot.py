@@ -99,10 +99,11 @@ def get_installed_dependencies(include_extras: bool) -> dict[str, str]:
     installed_packages: dict[str, str] = {}
     for package in importlib.metadata.distributions():
         req_name = package.metadata["name"].lower()
-        req_name_underscores = req_name.replace("-", "_")
+        # NOTE: we're checking against the '-' typed package name not
+        #       the import name (which will have _ instead)
         req_name_dashes = req_name.replace("_", "-")
         if all(cn not in direct_deps for cn in
-               [req_name, req_name_underscores, req_name_dashes]):
+               [req_name, req_name_dashes]):
             continue
         installed_packages[req_name] = package.version
     return installed_packages
