@@ -1,0 +1,64 @@
+name: build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  basic-and-meta:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          pip install -U pip
+          pip install -r requirements.txt
+      - name: Install IPython kernel
+        run: |
+          python -m ipykernel install --name smoketests --user
+      - name: Smoke test tutorial
+        # NOTE: these need to be run separately so that order is guaranteed
+        run: |
+          pytest --collect-only --nbmake ./notebooks/introductory/basic/1*.ipynb
+          pytest --collect-only --nbmake ./notebooks/introductory/basic/2*.ipynb
+          pytest --collect-only --nbmake ./notebooks/introductory/basic/3*.ipynb
+          pytest --collect-only --nbmake ./notebooks/introductory/meta/*.ipynb
+          pytest --nbmake -n=auto --nbmake-kernel=smoketests --nbmake-timeout=1800 ./notebooks/introductory/basic/1*.ipynb
+          pytest --nbmake -n=auto --nbmake-kernel=smoketests --nbmake-timeout=1800 ./notebooks/introductory/basic/2*.ipynb
+          pytest --nbmake -n=auto --nbmake-kernel=smoketests --nbmake-timeout=1800 ./notebooks/introductory/basic/3*.ipynb
+          pytest --nbmake -n=auto --nbmake-kernel=smoketests --nbmake-timeout=1800 ./notebooks/introductory/meta/*.ipynb
+          pytest --nbmake -n=auto --nbmake-kernel=smoketests --nbmake-timeout=1800 ./notebooks/introductory/custom/*.ipynb
+
+  migrate-and-advanved:
+
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        part: [
+          ./notebooks/introductory/migration/*.ipynb,
+          ./notebooks/advanced/*.ipynb,
+        ]
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          pip install -U pip
+          pip install -r requirements.txt
+      - name: Install IPython kernel
+        run: |
+          python -m ipykernel install --name smoketests --user
+      - name: Smoke test tutorial
+        run: |
+          pytest --collect-only --nbmake ${{ matrix.part }}
+          pytest --nbmake -n=auto --nbmake-kernel=smoketests --nbmake-timeout=1800 ${{ matrix.part }}

@@ -1,0 +1,115 @@
+{
+    "projects": [
+      {
+        "name": "MR-4-mct_v2-tut",
+        "id": 281,
+        "cuis": "44132006,128477000",
+        "project_group_id": null,
+        "project_group_name": null,
+        "project_status": "A",
+        "project_locked": false,
+        "meta_anno_defs": [],
+        "relation_anno_defs": [],
+        "documents": [
+          {
+            "id": 332929,
+            "name": "D0",
+            "text": "\r\nAn abscess, as a morphologic abnormality, refers to a localized collection of\r\npus within a tissue, organ, or confined space, typically resulting from an\r\ninfectious process. It is characterized by necrotic tissue, inflammatory cells,\r\nand bacterial or fungal pathogens, surrounded by a fibrous capsule that forms\r\nas part of the body's response to contain the infection. The presence of an\r\nabscess can alter tissue architecture and may be identified histologically or\r\nthrough imaging studies.",
+            "last_modified": "2025-03-31 13:34:50.883354",
+            "annotations": [
+              {
+                "id": 442260,
+                "user": "martr",
+                "cui": "44132006",
+                "value": "abscess",
+                "start": 5,
+                "end": 12,
+                "validated": true,
+                "correct": false,
+                "deleted": false,
+                "alternative": true,
+                "killed": false,
+                "irrelevant": false,
+                "create_time": "2025-03-31 13:53:40.271038",
+                "last_modified": "2025-03-31 13:53:51.939466",
+                "comment": null,
+                "manually_created": false,
+                "acc": 0.7260365133595069,
+                "meta_anns": {}
+              },
+              {
+                "id": 442261,
+                "user": "martr",
+                "cui": "44132006",
+                "value": "abscess",
+                "start": 394,
+                "end": 401,
+                "validated": true,
+                "correct": false,
+                "deleted": false,
+                "alternative": true,
+                "killed": false,
+                "irrelevant": false,
+                "create_time": "2025-03-31 13:53:40.276117",
+                "last_modified": "2025-03-31 13:53:57.074178",
+                "comment": null,
+                "manually_created": false,
+                "acc": 0.6161212494862589,
+                "meta_anns": {}
+              }
+            ],
+            "relations": []
+          },
+          {
+            "id": 332930,
+            "name": "D1",
+            "text": "\r\nAn abscess, as a disorder, is a clinical condition characterized by the\r\nformation of a painful, swollen, and inflamed mass containing purulent\r\nmaterial. It is often accompanied by redness, warmth, and tenderness at the\r\naffected site, and systemic symptoms such as fever may occur in severe cases.\r\nAbscesses can develop in various body regions, including the skin, internal\r\norgans, or deep tissues, and often require drainage, antimicrobial therapy, or\r\nsurgical intervention for resolution.",
+            "last_modified": "2025-03-31 13:34:50.884113",
+            "annotations": [
+              {
+                "id": 442262,
+                "user": "martr",
+                "cui": "128477000",
+                "value": "Abscesses",
+                "start": 303,
+                "end": 312,
+                "validated": true,
+                "correct": false,
+                "deleted": false,
+                "alternative": true,
+                "killed": false,
+                "irrelevant": false,
+                "create_time": "2025-03-31 13:54:05.434699",
+                "last_modified": "2025-03-31 13:55:39.120945",
+                "comment": null,
+                "manually_created": false,
+                "acc": 0.4225597790364532,
+                "meta_anns": {}
+              },
+              {
+                "id": 442263,
+                "user": "martr",
+                "cui": "128477000",
+                "value": "abscess",
+                "start": 5,
+                "end": 12,
+                "validated": true,
+                "correct": false,
+                "deleted": false,
+                "alternative": true,
+                "killed": false,
+                "irrelevant": false,
+                "create_time": "2025-03-31 13:54:05.439660",
+                "last_modified": "2025-03-31 13:55:32.181506",
+                "comment": null,
+                "manually_created": false,
+                "acc": 0.5856883089754938,
+                "meta_anns": {}
+              }
+            ],
+            "relations": []
+          }
+        ]
+      }
+    ]
+  }
