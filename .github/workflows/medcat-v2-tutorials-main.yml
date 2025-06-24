@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ main ]
 
+defaults:
+  run:
+    working-directory: ./medcat-v2-tutorials
+
 jobs:
   basic-and-meta:
     runs-on: ubuntu-latest
