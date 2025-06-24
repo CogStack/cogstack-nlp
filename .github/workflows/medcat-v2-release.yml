@@ -1,4 +1,4 @@
-name: Release
+name: medcat-v2-release
 
 on:
   push:
@@ -7,6 +7,10 @@ on:
 
 permissions:
   contents: write
+
+defaults:
+  run:
+    working-directory: ./medcat-v2
 
 jobs:
   build:

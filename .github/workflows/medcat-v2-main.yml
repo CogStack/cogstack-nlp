@@ -1,11 +1,13 @@
-name: build
+name: medcat-v2-build
 
 on:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
-
+defaults:
+  run:
+    working-directory: ./medcat-v2
 jobs:
   build:
 
