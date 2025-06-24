@@ -1,4 +1,4 @@
-name: medcat-v2-build
+name: medcat-v2 - Test
 
 on:
   push:

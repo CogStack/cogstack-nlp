@@ -1,4 +1,4 @@
-name: medcat-v2-release
+name: medcat-v2 - Build Python Package
 
 on:
   push:

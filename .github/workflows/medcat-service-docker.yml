@@ -1,4 +1,4 @@
-name: Docker
+name: medcat-service - Build Images
 
 on:
   push:
