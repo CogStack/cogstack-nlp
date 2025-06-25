@@ -61,9 +61,7 @@ class DeIDmodelCreationTests(unittest.TestCase):
         self.assertIsNotNone(deid_model)
 
 
-tokenizer = create_tokenizer(
-    'spacy', 'en_core_web_md', cnf.general.nlp.disabled_components,
-    cnf.general.diacritics, cnf.preprocessing.max_document_length)
+tokenizer = create_tokenizer('spacy', Config())
 
 
 def _create_model() -> deid.DeIdModel:

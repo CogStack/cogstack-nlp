@@ -11,6 +11,7 @@ from medcat.utils.hasher import Hasher
 import torch
 from torch import nn, Tensor
 from medcat.tokenizing.tokenizers import BaseTokenizer
+from medcat.config.config import ComponentConfig
 from medcat.config.config_meta_cat import ConfigMetaCAT
 from medcat.components.addons.meta_cat.ml_utils import (
     predict, train_model, set_all_seeds, eval_model)
@@ -25,6 +26,7 @@ from medcat.storage.serialisables import (
 from medcat.tokenizing.tokens import MutableDocument, MutableEntity
 from medcat.cdb import CDB
 from medcat.vocab import Vocab
+from medcat.utils.defaults import COMPONENTS_FOLDER
 from peft import get_peft_model, LoraConfig, TaskType
 
 # It should be safe to do this always, as all other multiprocessing
@@ -85,6 +87,23 @@ class MetaCATAddon(AddonComponent):
         return cls(config, base_tokenizer, meta_cat)
 
     @classmethod
+    def create_new_component(
+            cls, cnf: ComponentConfig, tokenizer: BaseTokenizer,
+            cdb: CDB, vocab: Vocab, model_load_path: Optional[str]
+            ) -> 'MetaCATAddon':
+        if not isinstance(cnf, ConfigMetaCAT):
+            raise ValueError(f"Incompatible config: {cnf}")
+        if model_load_path is not None:
+            components_folder = os.path.join(
+                model_load_path, COMPONENTS_FOLDER)
+            folder_name = cls.get_folder_name_for_addon_and_name(
+                cls.addon_type, str(cnf.general.category_name))
+            load_path = os.path.join(components_folder, folder_name)
+            return cls.load_existing(cnf, tokenizer, load_path)
+        # TODO: tokenizer preprocessing for (e.g) BPE tokenizer (see PR #67)
+        return cls.create_new(cnf, tokenizer, None)
+
+    @classmethod
     def load_existing(cls, cnf: ConfigMetaCAT,
                       base_tokenizer: BaseTokenizer,
                       load_path: str) -> 'MetaCATAddon':
@@ -99,18 +118,6 @@ class MetaCATAddon(AddonComponent):
 
     def __call__(self, doc: MutableDocument) -> MutableDocument:
         return self.mc(doc)
-
-    @classmethod
-    def get_init_args(cls, tokenizer: BaseTokenizer, cdb: CDB, vocab: Vocab,
-                      model_load_path: Optional[str]) -> list[Any]:
-        # NOTE: cnf is silent init parameter
-        return []
-
-    @classmethod
-    def get_init_kwargs(cls, tokenizer: BaseTokenizer, cdb: CDB, vocab: Vocab,
-                        model_load_path: Optional[str]) -> dict[str, Any]:
-        # cls.init_tokenizer(cnf, model_load_path)
-        return {'base_tokenizer': tokenizer}
 
     def load(self, folder_path: str) -> 'MetaCAT':
         mc_path, tokenizer_folder = self._get_meta_cat_and_tokenizer_paths(
@@ -169,8 +176,10 @@ class MetaCATAddon(AddonComponent):
     @classmethod
     def deserialise_from(cls, folder_path: str, **init_kwargs
                          ) -> 'MetaCATAddon':
-        # NOTE: model load path sent by kwargs
-        return cls.load_existing(load_path=folder_path, **init_kwargs)
+        return cls.load_existing(
+            load_path=folder_path,
+            cnf=init_kwargs['cnf'],
+            base_tokenizer=init_kwargs['tokenizer'])
 
     def get_strategy(self) -> SerialisingStrategy:
         return SerialisingStrategy.MANUAL

@@ -7,7 +7,7 @@ from contextlib import contextmanager
 
 from medcat.cdb.cdb import CDB
 from medcat.vocab import Vocab
-from medcat.config.config import Config, SerialisableBaseModel
+from medcat.config.config import Config, SerialisableBaseModel, ComponentConfig
 from medcat.utils.defaults import StatusTypes as ST
 from medcat.utils.matutils import sigmoid
 from medcat.utils.config_utils import temp_changed_config
@@ -255,14 +255,11 @@ class TwoStepLinker(AbstractCoreComponent):
                            per_doc_valid_token_cache=pdc)
 
     @classmethod
-    def get_init_args(cls, tokenizer: BaseTokenizer, cdb: CDB, vocab: Vocab,
-                      model_load_path: Optional[str]) -> list[Any]:
-        return [cdb, vocab, cdb.config]
-
-    @classmethod
-    def get_init_kwargs(cls, tokenizer: BaseTokenizer, cdb: CDB, vocab: Vocab,
-                        model_load_path: Optional[str]) -> dict[str, Any]:
-        return {}
+    def create_new_component(
+            cls, cnf: ComponentConfig, tokenizer: BaseTokenizer,
+            cdb: CDB, vocab: Vocab, model_load_path: Optional[str]
+            ) -> 'TwoStepLinker':
+        return cls(cdb, vocab, cdb.config)
 
     @property
     def two_step_config(self) -> 'TwoStepLinkerConfig':

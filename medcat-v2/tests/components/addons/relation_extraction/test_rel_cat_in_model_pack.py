@@ -51,13 +51,7 @@ class LoadedRelCATTests(unittest.TestCase):
         cnf = Config()
         cnf.general.nlp.provider = 'spacy'
         cdb = CDB(cnf)
-        tokenizer = create_tokenizer(
-            "spacy",
-            "en_core_web_md",  # model name
-            cdb.config.general.nlp.disabled_components,
-            False,  # diacritics
-            cdb.config.preprocessing.max_document_length
-            )
+        tokenizer = create_tokenizer("spacy", cdb.config)
         rc = get_rel_cat_from_old(cdb, cls._unpacked_v1_rel_cat_path, tokenizer)
         # add to model
         cat = CAT.load_model_pack(UNPACKED_EXAMPLE_MODEL_PACK_PATH)

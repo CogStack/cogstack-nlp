@@ -22,6 +22,7 @@ class FakeTokenizer:
 class NormaliserInitTests(ComponentInitTests, unittest.TestCase):
     comp_type = types.CoreComponentType.token_normalizing
     default_cls = normalizer.TokenNormalizer
+    default_creator = normalizer.TokenNormalizer.create_new_component
     module = normalizer
 
     @classmethod

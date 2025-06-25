@@ -169,11 +169,32 @@ class AbstractSerialisable:
 class ManualSerialisable(Serialisable, Protocol):
 
     def serialise_to(self, folder_path: str) -> None:
+        """Serialise to a folder.
+
+        Args:
+            folder_path (str): The folder to serialise to.
+        """
         pass
 
     @classmethod
     def deserialise_from(cls, folder_path: str, **init_kwargs
                          ) -> 'ManualSerialisable':
+        """Deserialise from a specifc path.
+
+        The init keyword arguments are generally:
+        - cnf: The config relevant to the components
+        - tokenizer (BaseTokenizer): The base tokenizer for the model
+        - cdb (CDB): The CDB for the model
+        - vocab (Vocab): The Vocab for the model
+        - model_load_path (Optional[str]): The model load path,
+            but not the component load path
+
+        Args:
+            folder_path (str): The path to deserialsie form.
+
+        Returns:
+            ManualSerialisable: The deserialised object.
+        """
         pass
 
 

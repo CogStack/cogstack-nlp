@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Optional
 
 import logging
 from medcat.tokenizing.tokens import MutableDocument
@@ -7,6 +7,7 @@ from medcat.components.ner.vocab_based_annotator import maybe_annotate_name
 from medcat.tokenizing.tokenizers import BaseTokenizer
 from medcat.vocab import Vocab
 from medcat.cdb import CDB
+from medcat.config.config import ComponentConfig
 
 
 logger = logging.getLogger(__name__)
@@ -108,11 +109,7 @@ class NER(AbstractCoreComponent):
         return doc
 
     @classmethod
-    def get_init_args(cls, tokenizer: BaseTokenizer, cdb: CDB, vocab: Vocab,
-                      model_load_path: Optional[str]) -> list[Any]:
-        return [tokenizer, cdb]
-
-    @classmethod
-    def get_init_kwargs(cls, tokenizer: BaseTokenizer, cdb: CDB, vocab: Vocab,
-                        model_load_path: Optional[str]) -> dict[str, Any]:
-        return {}
+    def create_new_component(
+            cls, cnf: ComponentConfig, tokenizer: BaseTokenizer,
+            cdb: CDB, vocab: Vocab, model_load_path: Optional[str]) -> 'NER':
+        return cls(tokenizer, cdb)

@@ -2,7 +2,7 @@ import json
 import logging
 import os
 import random
-from typing import Optional, Any
+from typing import Optional
 
 from sklearn.utils import compute_class_weight
 import torch
@@ -18,7 +18,7 @@ import numpy
 
 from medcat.cdb import CDB
 from medcat.vocab import Vocab
-from medcat.config import Config
+from medcat.config.config import Config, ComponentConfig
 from medcat.config.config_rel_cat import ConfigRelCAT
 from medcat.storage.serialisers import deserialise
 from medcat.storage.serialisables import SerialisingStrategy
@@ -32,6 +32,7 @@ from medcat.components.addons.relation_extraction.ml_utils import (
 from medcat.components.addons.relation_extraction.rel_dataset import RelData
 from medcat.tokenizing.tokenizers import BaseTokenizer, create_tokenizer
 from medcat.tokenizing.tokens import MutableDocument
+from medcat.utils.defaults import COMPONENTS_FOLDER
 
 
 logger = logging.getLogger(__name__)
@@ -55,6 +56,20 @@ class RelCATAddon(AddonComponent):
                    RelCAT(base_tokenizer, cdb, config=config, init_model=True))
 
     @classmethod
+    def create_new_component(
+            cls, cnf: ComponentConfig, tokenizer: BaseTokenizer,
+            cdb: CDB, vocab: Vocab, model_load_path: Optional[str]
+            ) -> 'RelCATAddon':
+        if not isinstance(cnf, ConfigRelCAT):
+            raise ValueError(f"Incompatible config: {cnf}")
+        config = cnf
+        if model_load_path is not None:
+            load_path = os.path.join(model_load_path, COMPONENTS_FOLDER,
+                                     cls.NAME_PREFIX + cls.addon_type)
+            return cls.load_existing(config, tokenizer, cdb, load_path)
+        return cls.create_new(config, tokenizer, cdb)
+
+    @classmethod
     def load_existing(cls, cnf: ConfigRelCAT,
                       base_tokenizer: BaseTokenizer,
                       cdb: CDB,
@@ -70,21 +85,6 @@ class RelCATAddon(AddonComponent):
         os.mkdir(folder_path)
         self._rel_cat.save(folder_path)
 
-    @classmethod
-    def get_init_args(cls, tokenizer: BaseTokenizer, cdb: CDB, vocab: Vocab,
-                      model_load_path: Optional[str]) -> list[Any]:
-        # NOTE: cnf is silent init parameter
-        return []
-
-    @classmethod
-    def get_init_kwargs(cls, tokenizer: BaseTokenizer, cdb: CDB, vocab: Vocab,
-                        model_load_path: Optional[str]) -> dict[str, Any]:
-        # cls.init_tokenizer(cnf, model_load_path)
-        return {
-            'base_tokenizer': tokenizer,
-            "cdb": cdb
-        }
-
     @property
     def name(self) -> str:
         return str(self.addon_type)
@@ -95,7 +95,12 @@ class RelCATAddon(AddonComponent):
     def deserialise_from(cls, folder_path: str, **init_kwargs
                          ) -> 'RelCATAddon':
         # NOTE: model load path sent by kwargs
-        return cls.load_existing(load_path=folder_path, **init_kwargs)
+        return cls.load_existing(
+            load_path=folder_path,
+            base_tokenizer=init_kwargs['tokenizer'],
+            cnf=init_kwargs['cnf'],
+            cdb=init_kwargs['cdb'],
+        )
 
     def get_strategy(self) -> SerialisingStrategy:
         return SerialisingStrategy.MANUAL
@@ -232,7 +237,7 @@ class RelCAT:
 
         rel_cat = RelCAT(
             # NOTE: this is a throaway tokenizer just for registrations
-            create_tokenizer(cdb.config.general.nlp.provider),
+            create_tokenizer(cdb.config.general.nlp.provider, cdb.config),
             cdb=cdb, config=component.relcat_config, task=component.task)
         rel_cat.device = device
         rel_cat.component = component
@@ -883,7 +888,8 @@ class RelCAT:
             Doc: spacy doc with the relations.
         """
         # NOTE: This runs not an empty language, but the specified one
-        base_tokenizer = create_tokenizer(self.cdb.config.general.nlp.provider)
+        base_tokenizer = create_tokenizer(
+            self.cdb.config.general.nlp.provider, self.cdb.config)
         doc = base_tokenizer(text)
 
         for ann in annotations:

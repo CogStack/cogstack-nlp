@@ -1,8 +1,7 @@
-from typing import runtime_checkable, Type
+from typing import runtime_checkable, Type, Callable
 
 from medcat.components import types
 from medcat.config.config import Config, ComponentConfig
-from medcat.utils.default_args import set_components_defaults
 
 
 class FakeCDB:
@@ -31,10 +30,7 @@ class ComponentInitTests:
     # these need to be specified when overriding
     comp_type: types.CoreComponentType
     default_cls: Type[types.BaseComponent]
-
-    @classmethod
-    def set_def_args(cls, cdb: FakeCDB, vocab: FVocab, tokenizer: FTokenizer):
-        set_components_defaults(cdb, vocab, tokenizer, None)
+    default_creator: Callable[..., types.BaseComponent]
 
     @classmethod
     def setUpClass(cls):
@@ -42,7 +38,6 @@ class ComponentInitTests:
         cls.fcdb = FakeCDB(cls.cnf)
         cls.fvocab = FVocab()
         cls.vtokenizer = FTokenizer()
-        cls.set_def_args(cls.fcdb, cls.fvocab, cls.vtokenizer)
         cls.comp_cnf: ComponentConfig = getattr(
             cls.cnf.components, cls.comp_type.name)
 
@@ -51,13 +46,12 @@ class ComponentInitTests:
         self.assertEqual(len(avail_components), self.expected_def_components)
         name, cls_name = avail_components[0]
         self.assertEqual(name, self.default)
-        self.assertIs(cls_name, self.default_cls.__name__)
+        self.assertIs(cls_name, self.default_creator.__name__)
 
     def test_can_create_def_component(self):
         component = types.create_core_component(
             self.comp_type,
-            self.default, *self.comp_cnf.init_args,
-            **self.comp_cnf.init_kwargs)
+            self.default, self.cnf, self.vtokenizer, self.fcdb, self.fvocab, None)
         self.assertIsInstance(component,
                               runtime_checkable(types.BaseComponent))
         self.assertIsInstance(component, self.default_cls)

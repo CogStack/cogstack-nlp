@@ -38,6 +38,7 @@ class LinkingInitTests(ComponentInitTests, unittest.TestCase):
     expected_def_components = 3
     comp_type = types.CoreComponentType.linking
     default_cls = context_based_linker.Linker
+    default_creator = context_based_linker.Linker.create_new_component
     module = context_based_linker
 
     @classmethod

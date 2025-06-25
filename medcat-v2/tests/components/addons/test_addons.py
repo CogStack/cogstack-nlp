@@ -45,6 +45,12 @@ class FakeAddonNoInit:
                            ) -> tuple[str, dict[str, Any]]:
         return '', {}
 
+    @classmethod
+    def create_new_component(
+            cls, cnf: ComponentConfig, tokenizer: BaseTokenizer,
+            cdb: CDB, vocab: Vocab, model_load_path: Optional[str]) -> 'FakeAddonNoInit':
+        return cls(cnf)
+
 
 class FakeAddonWithInit:
     name = 'fake_addon_w_init'
@@ -60,14 +66,10 @@ class FakeAddonWithInit:
         return doc
 
     @classmethod
-    def get_init_args(cls, tokenizer: BaseTokenizer, cdb: CDB, vocab: Vocab,
-                      model_load_path: Optional[str]) -> list[Any]:
-        return [tokenizer, cdb]
-
-    @classmethod
-    def get_init_kwargs(cls, tokenizer: BaseTokenizer, cdb: CDB, vocab: Vocab,
-                        model_load_path: Optional[str]) -> dict[str, Any]:
-        return {}
+    def create_new_component(
+            cls, cnf: ComponentConfig, tokenizer: BaseTokenizer,
+            cdb: CDB, vocab: Vocab, model_load_path: Optional[str]) -> 'FakeAddonWithInit':
+        return cls(cnf, tokenizer, cdb)
 
     @property
     def should_save(self) -> bool:
@@ -93,21 +95,26 @@ class AddonsRegistrationTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        addons.register_addon(cls.addon_cls.name, cls.addon_cls)
+        cls.addon_creator = cls.addon_cls.create_new_component
+        addons.register_addon(cls.addon_cls.name, cls.addon_creator)
 
     @classmethod
     def tearDownClass(cls):
         addons._ADDON_REGISTRY.unregister_all_components()
         addons._ADDON_REGISTRY._lazy_defaults.update(addons._DEFAULT_ADDONS)
 
+    def creator_args(self):
+        return (
+            ComponentConfig(comp_name=self.addon_cls.name),
+            None, None, None, None)
+
     def test_has_registration(self):
-        addon_cls = addons.get_addon_creator(self.addon_cls.name)
-        self.assertIs(addon_cls, self.addon_cls)
+        addon_creator = addons.get_addon_creator(self.addon_cls.name)
+        self.assertIs(addon_creator, self.addon_creator)
 
     def test_can_create_empty_addon(self):
         addon = addons.create_addon(
-            self.addon_cls.name, ComponentConfig(
-                comp_name=self.addon_cls.name))
+            self.addon_cls.name, *self.creator_args())
         self.assertIsInstance(addon, self.addon_cls)
 
 
@@ -117,7 +124,8 @@ class AddonUsageTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        addons.register_addon(cls.addon_cls.name, cls.addon_cls)
+        cls.addon_creator = cls.addon_cls.create_new_component
+        addons.register_addon(cls.addon_cls.name, cls.addon_creator)
         cls.cnf = Config()
         cls.cdb = CDB(cls.cnf)
         cls.vocab = Vocab()

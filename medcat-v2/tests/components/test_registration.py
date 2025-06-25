@@ -1,5 +1,3 @@
-from typing import Any, Optional
-
 from medcat.components import types
 from medcat.config.config import Config, ComponentConfig
 from medcat.cdb.cdb import CDB
@@ -29,14 +27,8 @@ class NoInitNER(types.AbstractCoreComponent):
         return types.CoreComponentType.ner
 
     @classmethod
-    def get_init_args(cls, tokenizer: BaseTokenizer, cdb: CDB, vocab: Vocab,
-                      model_load_path: Optional[str]) -> list[Any]:
-        return []
-
-    @classmethod
-    def get_init_kwargs(cls, tokenizer: BaseTokenizer, cdb: CDB, vocab: Vocab,
-                        model_load_path: Optional[str]) -> dict[str, Any]:
-        return {}
+    def create_new_component(cls, cnf, tokenizer, cdb, vocab, model_load_path):
+        return cls()
 
 
 class WithInitNER(types.AbstractCoreComponent):
@@ -55,30 +47,25 @@ class WithInitNER(types.AbstractCoreComponent):
         return types.CoreComponentType.ner
 
     @classmethod
-    def get_init_args(cls, tokenizer: BaseTokenizer, cdb: CDB, vocab: Vocab,
-                      model_load_path: Optional[str]) -> list[Any]:
-        return [tokenizer, cdb]
-
-    @classmethod
-    def get_init_kwargs(cls, tokenizer: BaseTokenizer, cdb: CDB, vocab: Vocab,
-                        model_load_path: Optional[str]) -> dict[str, Any]:
-        return {}
+    def create_new_component(cls, cnf, tokenizer, cdb, vocab, model_load_path):
+        return cls(cnf, tokenizer)
 
 
 class RegisteredCompBaseTests(unittest.TestCase):
     TYPE = types.CoreComponentType.ner
-    TO_REGISTR = NoInitNER
+    TO_REGISTR_CLS = NoInitNER
 
     @classmethod
     def setUpClass(cls):
-        types.register_core_component(cls.TYPE, cls.TO_REGISTR.name,
+        cls.TO_REGISTR = cls.TO_REGISTR_CLS.create_new_component
+        types.register_core_component(cls.TYPE, cls.TO_REGISTR_CLS.name,
                                       cls.TO_REGISTR)
 
     @classmethod
     def tearDownClass(cls):
         # unregister component
         types._CORE_REGISTRIES[cls.TYPE].unregister_component(
-            cls.TO_REGISTR.name)
+            cls.TO_REGISTR_CLS.name)
 
 
 class CoreCompNoInitRegistrationTests(RegisteredCompBaseTests):
@@ -90,19 +77,17 @@ class CoreCompNoInitRegistrationTests(RegisteredCompBaseTests):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.init_args = cls.TO_REGISTR.get_init_args(
-            cls.FTOK, cls.FCDB, cls.FVOCAB, None)
-        cls.init_kwargs = cls.TO_REGISTR.get_init_kwargs(
-            cls.FTOK, cls.FCDB, cls.FVOCAB, None)
+
+    def register_args(self):
+        return None, None, None, None, None
 
     def test_can_create_component(self):
-        comp = types.create_core_component(self.TYPE, self.TO_REGISTR.name,
-                                           *self.init_args, **self.init_kwargs)
-        self.assertIsInstance(comp, self.TO_REGISTR)
+        comp = types.create_core_component(self.TYPE, self.TO_REGISTR_CLS.name, *self.register_args())
+        self.assertIsInstance(comp, self.TO_REGISTR_CLS)
 
 
 class CoreCompWithInitRegistrationTests(CoreCompNoInitRegistrationTests):
-    TO_REGISTR = WithInitNER
+    TO_REGISTR_CLS = WithInitNER
 
 
 class CoreCompNoInitCATTests(RegisteredCompBaseTests):
@@ -117,7 +102,7 @@ class CoreCompNoInitCATTests(RegisteredCompBaseTests):
         # set name in component config
         comp_cnf: ComponentConfig = getattr(cls.cdb.config.components,
                                             cls.TYPE.name)
-        comp_cnf.comp_name = cls.TO_REGISTR.name
+        comp_cnf.comp_name = cls.TO_REGISTR_CLS.name
         # NOTE: init arguments should be handled automatically
         cls.cat = CAT(cdb=cls.cdb, vocab=cls.vocab)
 
@@ -125,7 +110,7 @@ class CoreCompNoInitCATTests(RegisteredCompBaseTests):
         self.assertIsInstance(self.cat, CAT)
 
     def test_comp_runs(self):
-        with unittest.mock.patch.object(self.TO_REGISTR, "__call__",
+        with unittest.mock.patch.object(self.TO_REGISTR_CLS, "__call__",
                                         unittest.mock.MagicMock()
                                         ) as mock_call:
             self.cat.get_entities("Some text")
@@ -142,8 +127,8 @@ class CoreCompNoInitCATTests(RegisteredCompBaseTests):
             cat = CAT.load_model_pack(full_path)
         self.assertIsInstance(cat, CAT)
         comp = cat._pipeline.get_component(self.TYPE)
-        self.assertIsInstance(comp, self.TO_REGISTR)
+        self.assertIsInstance(comp, self.TO_REGISTR_CLS)
 
 
 class CoreCompWithInitCATTests(CoreCompNoInitCATTests):
-    TO_REGISTR = WithInitNER
+    TO_REGISTR_CLS = WithInitNER

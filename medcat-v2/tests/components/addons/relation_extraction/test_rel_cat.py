@@ -68,13 +68,7 @@ class RelCATTests(unittest.TestCase):
 
         cls.config_rel_cat: ConfigRelCAT = config
         cls.base_tokenizer = create_tokenizer(
-            cdb.config.general.nlp.provider,
-            # NOTE: the following only required for spacy models
-            #       but the saved model should be a spacy model
-            cdb.config.general.nlp.modelname,
-            cdb.config.general.nlp.disabled_components,
-            cdb.config.general.diacritics,
-            cdb.config.preprocessing.max_document_length)
+            cdb.config.general.nlp.provider, cdb.config)
         cls.rel_cat: RelCAT = RelCAT(cls.base_tokenizer, cdb, config=config,
                                      init_model=True)
 

@@ -236,8 +236,9 @@ class TestTransformersNER(TestCase):
         # Load the saved model
         loaded_ner = TransformersNER.deserialise_from(
             model_path,
+            cnf=self.cdb.config.components.ner,
             cdb=self.cdb,
-            base_tokenizer=self.base_tokenizer)._component
+            tokenizer=self.base_tokenizer)._component
 
         # Get initial number of labels
         initial_num_labels = len(loaded_ner.tokenizer.label_map)

@@ -71,11 +71,5 @@ if __name__ == "__main__":
     from medcat.config import Config
     cdb = CDB(Config())
     cdb.config.general.nlp.provider = 'spacy'
-    rc = get_rel_cat_from_old(cdb, sys.argv[1],
-                              create_tokenizer(
-                                  "spacy",
-                                  "en_core_web_md",  # model name
-                                  cdb.config.general.nlp.disabled_components,
-                                  False,  # diacritics
-                                  cdb.config.preprocessing.max_document_length
-                                  ))
+    rc = get_rel_cat_from_old(
+        cdb, sys.argv[1], create_tokenizer("spacy", cdb.config))

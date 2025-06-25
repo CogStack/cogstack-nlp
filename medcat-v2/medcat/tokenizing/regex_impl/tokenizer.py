@@ -360,12 +360,8 @@ class RegexTokenizer(BaseTokenizer):
         return doc
 
     @classmethod
-    def get_init_args(cls, config: Config) -> list[Any]:
-        return []
-
-    @classmethod
-    def get_init_kwargs(cls, config: Config) -> dict[str, Any]:
-        return {}
+    def create_new_tokenizer(cls, config: Config) -> 'RegexTokenizer':
+        return cls()
 
     def get_doc_class(self) -> Type[MutableDocument]:
         return Document

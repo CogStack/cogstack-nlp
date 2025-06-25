@@ -1,6 +1,6 @@
 import random
 import logging
-from typing import Iterator, Optional, Union, Any
+from typing import Iterator, Optional, Union
 
 from medcat.components.types import CoreComponentType, AbstractCoreComponent
 from medcat.tokenizing.tokens import MutableEntity, MutableDocument
@@ -8,7 +8,7 @@ from medcat.components.linking.vector_context_model import (
     ContextModel, PerDocumentTokenCache)
 from medcat.cdb import CDB
 from medcat.vocab import Vocab
-from medcat.config import Config
+from medcat.config.config import Config, ComponentConfig
 from medcat.utils.defaults import StatusTypes as ST
 from medcat.utils.postprocessing import create_main_ann
 from medcat.tokenizing.tokenizers import BaseTokenizer
@@ -245,11 +245,8 @@ class Linker(AbstractCoreComponent):
             cui, entity, doc, per_doc_valid_token_cache, negative, names)
 
     @classmethod
-    def get_init_args(cls, tokenizer: BaseTokenizer, cdb: CDB, vocab: Vocab,
-                      model_load_path: Optional[str]) -> list[Any]:
-        return [cdb, vocab, cdb.config]
-
-    @classmethod
-    def get_init_kwargs(cls, tokenizer: BaseTokenizer, cdb: CDB, vocab: Vocab,
-                        model_load_path: Optional[str]) -> dict[str, Any]:
-        return {}
+    def create_new_component(
+            cls, cnf: ComponentConfig, tokenizer: BaseTokenizer,
+            cdb: CDB, vocab: Vocab, model_load_path: Optional[str]
+            ) -> 'Linker':
+        return cls(cdb, vocab, cdb.config)

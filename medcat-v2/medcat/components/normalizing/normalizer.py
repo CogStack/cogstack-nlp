@@ -1,9 +1,9 @@
-from typing import Optional, Iterable, Iterator, Any, Union, overload, Literal
+from typing import Optional, Iterable, Iterator, Union, overload, Literal
 import re
 
 from medcat.tokenizing.tokens import MutableDocument
 from medcat.tokenizing.tokenizers import BaseTokenizer
-from medcat.config.config import Config
+from medcat.config.config import Config, ComponentConfig
 from medcat.vocab import Vocab
 from medcat.cdb import CDB
 from medcat.components.types import CoreComponentType, AbstractCoreComponent
@@ -222,11 +222,8 @@ class TokenNormalizer(AbstractCoreComponent):
         return doc
 
     @classmethod
-    def get_init_args(cls, tokenizer: BaseTokenizer, cdb: CDB, vocab: Vocab,
-                      model_load_path: Optional[str]) -> list[Any]:
-        return [tokenizer, cdb.config, cdb.token_counts, vocab]
-
-    @classmethod
-    def get_init_kwargs(cls, tokenizer: BaseTokenizer, cdb: CDB, vocab: Vocab,
-                        model_load_path: Optional[str]) -> dict[str, Any]:
-        return {}
+    def create_new_component(
+            cls, cnf: ComponentConfig, tokenizer: BaseTokenizer,
+            cdb: CDB, vocab: Vocab, model_load_path: Optional[str]
+            ) -> 'TokenNormalizer':
+        return cls(tokenizer, cdb.config, cdb.token_counts, vocab)

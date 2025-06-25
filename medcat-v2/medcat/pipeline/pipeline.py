@@ -1,4 +1,4 @@
-from typing import Optional, Any, Iterable, Union
+from typing import Optional, Iterable, Union
 import logging
 import os
 
@@ -19,9 +19,6 @@ from medcat.config import Config
 from medcat.config.config import ComponentConfig
 from medcat.config.config_meta_cat import ConfigMetaCAT
 from medcat.config.config_rel_cat import ConfigRelCAT
-from medcat.utils.default_args import (set_tokenizer_defaults,
-                                       set_components_defaults,
-                                       set_addon_defaults)
 
 
 logger = logging.getLogger(__name__)
@@ -55,12 +52,8 @@ class DelegatingTokenizer(BaseTokenizer):
         return doc
 
     @classmethod
-    def get_init_args(cls, config: Config) -> list[Any]:
-        return []
-
-    @classmethod
-    def get_init_kwargs(cls, config: Config) -> dict[str, Any]:
-        return {}
+    def create_new_tokenizer(cls, config: Config) -> 'DelegatingTokenizer':
+        raise ValueError("Initialise the delegating tokenizer with its initialiser")
 
     def get_doc_class(self) -> type[MutableDocument]:
         return self.tokenizer.get_doc_class()
@@ -80,18 +73,14 @@ class Pipeline:
                  model_load_path: Optional[str],
                  # NOTE: upon reload, old pipe can be useful
                  old_pipe: Optional['Pipeline'] = None):
-        # NOTE: this only sets the default arguments if the
-        #       default tokenizer is used
-        set_tokenizer_defaults(cdb.config)
         self.cdb = cdb
+        # NOTE: Vocab is None in case of DeID models and thats fine then,
+        #       but it should be non-None otherwise
+        self.vocab: Vocab = vocab  # type: ignore
         self.config = self.cdb.config
         self._tokenizer = self._init_tokenizer()
         self._components: list[CoreComponent] = []
         self._addons: list[AddonComponent] = []
-        set_components_defaults(cdb, vocab, self._tokenizer, model_load_path)
-        set_addon_defaults(cdb, vocab, self._tokenizer, model_load_path)
-        # NOTE: this only sets the default arguments if the
-        #       a specific default component is used
         self._init_components(model_load_path, old_pipe)
 
     @property
@@ -108,22 +97,22 @@ class Pipeline:
     def _init_tokenizer(self) -> BaseTokenizer:
         nlp_cnf = self.config.general.nlp
         try:
-            return create_tokenizer(nlp_cnf.provider, *nlp_cnf.init_args,
-                                    **nlp_cnf.init_kwargs)
+            return create_tokenizer(nlp_cnf.provider, self.config)
         except TypeError as type_error:
             if nlp_cnf.provider == 'spacy':
                 raise type_error
             raise IncorrectArgumentsForTokenizer(
                 nlp_cnf.provider) from type_error
 
-    def _init_component(self, comp_type: CoreComponentType) -> CoreComponent:
+    def _init_component(self, comp_type: CoreComponentType,
+                        model_load_path: Optional[str]) -> CoreComponent:
         comp_config: ComponentConfig = getattr(self.config.components,
                                                comp_type.name)
         comp_name = comp_config.comp_name
         try:
-            comp = create_core_component(comp_type, comp_name,
-                                         *comp_config.init_args,
-                                         **comp_config.init_kwargs)
+            comp = create_core_component(
+                comp_type, comp_name, comp_config, self.tokenizer, self.cdb,
+                self.vocab, model_load_path)
         except TypeError as type_error:
             if comp_name == 'default':
                 raise type_error
@@ -164,11 +153,13 @@ class Pipeline:
                                    ) -> CoreComponent:
         logger.info("Using loaded component for '%s' for", cct_name)
         cnf: ComponentConfig = getattr(self.config.components, cct_name)
-        if cnf.init_args:
-            raise IncorrectCoreComponent(
-                "Manually serialisable core components need to define all "
-                "their arguments as keyword arguments")
-        comp = deserialise(comp_folder_path, **cnf.init_kwargs)
+        comp = deserialise(
+            comp_folder_path,
+            # NOTE: the following are keyword arguments used
+            #       for manual deserialisation
+            cnf=cnf, tokenizer=self.tokenizer, cdb=self.cdb,
+            vocab=self.vocab, model_load_path=os.path.dirname(
+                os.path.dirname(comp_folder_path)))
         if not isinstance(comp, CoreComponent):
             raise IncorrectFolderUponLoad(
                 f"Did not find a CoreComponent at {comp_folder_path} "
@@ -191,7 +182,8 @@ class Pipeline:
                 comp = self._load_saved_core_component(
                     cct_name, loaded_core_component_paths.pop(cct_name))
             else:
-                comp = self._init_component(CoreComponentType[cct_name])
+                comp = self._init_component(
+                    CoreComponentType[cct_name], model_load_path)
             self._components.append(comp)
         for addon_cnf in self.config.components.addons:
             addon = self._init_addon(
@@ -224,12 +216,14 @@ class Pipeline:
 
     def _load_addon(self, cnf: ComponentConfig, load_from: str
                     ) -> AddonComponent:
-        if cnf.init_args:
-            raise IncorrectAddonLoaded(
-                "Manually serialisable addons need to define all their init "
-                "arguments as keyword arguments")
         # config is implicitly required argument
-        addon = deserialise(load_from, **cnf.init_kwargs, cnf=cnf)
+        model_load_path = os.path.dirname(os.path.dirname(load_from))
+        addon = deserialise(
+            load_from,
+            # NOTE: the following are keyword arguments used
+            #       for manual deserialisation
+            cnf=cnf, tokenizer=self.tokenizer, cdb=self.cdb,
+            vocab=self.vocab, model_load_path=model_load_path)
         if not isinstance(addon, AddonComponent):
             raise IncorrectAddonLoaded(
                 f"Expected {AddonComponent.__name__}, but goet "
@@ -258,8 +252,9 @@ class Pipeline:
             cnf, loaded_addon_component_paths)
         if loaded_path:
             return self._load_addon(cnf, loaded_path)
-        return create_addon(cnf.comp_name, cnf,
-                            *cnf.init_args, **cnf.init_kwargs)
+        return create_addon(
+            cnf.comp_name, cnf=cnf, tokenizer=self.tokenizer, cdb=self.cdb,
+            vocab=self.vocab, model_load_path=None)
 
     def get_doc(self, text: str) -> MutableDocument:
         """Get the document for this text.
@@ -357,11 +352,7 @@ class IncorrectArgumentsForTokenizer(TypeError):
 
     def __init__(self, provider: str):
         super().__init__(
-            f"Incorrect arguments for tokenizer ({provider}). Did you forget "
-            "to set `config.general.nlp.init_args` or "
-            "`config.general.nlp.init_kwargs`? When using a custom tokenizer, "
-            "you need to specify the arguments required for construction "
-            "manually.")
+            f"Incorrect arguments for tokenizer ({provider}).")
 
 
 class IncorrectArgumentsForComponent(TypeError):
@@ -369,11 +360,7 @@ class IncorrectArgumentsForComponent(TypeError):
     def __init__(self, comp_type: CoreComponentType, comp_name: str):
         super().__init__(
             f"Incorrect arguments for core component {comp_type.name} "
-            f"({comp_name}). Did you forget to set "
-            f"`config.components.{comp_type.name}.init_args` and/or "
-            f"`config.components.{comp_type.name}.init_kwargs`? "
-            "When using a custom component, you need to specify the arguments"
-            "required or construction manually.")
+            f"({comp_name}).")
 
 
 class IncorrectCoreComponent(ValueError):

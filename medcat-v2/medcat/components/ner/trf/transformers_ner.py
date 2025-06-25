@@ -4,7 +4,7 @@ import logging
 import datasets
 import torch
 from datetime import datetime
-from typing import Iterable, Iterator, Optional, Union, Callable, Any
+from typing import Iterable, Iterator, Optional, Union, Callable
 from typing import cast
 import inspect
 from functools import partial
@@ -15,6 +15,7 @@ from medcat.utils.ner import transformers_ner
 from medcat.utils.postprocessing import create_main_ann
 from medcat.utils.hasher import Hasher
 from medcat.config.config_transformers_ner import ConfigTransformersNER
+from medcat.config.config import ComponentConfig
 from medcat.components.ner.trf.tokenizer import (
     TransformersTokenizer)
 from medcat.utils.ner.metrics import metrics
@@ -27,6 +28,7 @@ from medcat.storage.serialisables import SerialisingStrategy
 from medcat.preprocessors.cleaners import NameDescriptor
 from medcat.components.types import CoreComponentType, AbstractCoreComponent
 from medcat.vocab import Vocab
+from medcat.utils.defaults import COMPONENTS_FOLDER
 
 from transformers import (
     Trainer, AutoModelForTokenClassification, AutoTokenizer)
@@ -64,6 +66,25 @@ class TransformersNER(AbstractCoreComponent):
                    component=comp)
 
     @classmethod
+    def create_new_component(
+            cls, cnf: ComponentConfig, tokenizer: BaseTokenizer,
+            cdb: CDB, vocab: Vocab, model_load_path: Optional[str]
+            ) -> 'TransformersNER':
+        config = cdb.config.components.ner.custom_cnf
+        if not isinstance(config, ConfigTransformersNER):
+            raise ValueError(
+                "Did not find correct Transformers NER config. "
+                f"Found: {config}")
+        # TODO: anywhere to get these?
+        training_arguments = None
+        if model_load_path is not None:
+            load_path = os.path.join(
+                model_load_path, COMPONENTS_FOLDER, cls.NAME_PREFIX + "ner")
+            return cls.load_existing(cdb, tokenizer, load_path,
+                                     training_arguments, config)
+        return cls.create_new(cdb, tokenizer, config, training_arguments)
+
+    @classmethod
     def load_existing(cls, cdb: CDB, base_tokenizer: BaseTokenizer,
                       load_path: str, training_arguments=None,
                       config: Optional[ConfigTransformersNER] = None,
@@ -75,17 +96,6 @@ class TransformersNER(AbstractCoreComponent):
 
     def get_type(self):
         return CoreComponentType.ner
-
-    @classmethod
-    def get_init_args(cls, tokenizer: BaseTokenizer, cdb: CDB, vocab: Vocab,
-                      model_load_path: Optional[str]) -> list[Any]:
-        # NOTE: TrfNER-specific config is at config.components.ner.custom_cnf
-        return []
-
-    @classmethod
-    def get_init_kwargs(cls, tokenizer: BaseTokenizer, cdb: CDB, vocab: Vocab,
-                        model_load_path: Optional[str]) -> dict[str, Any]:
-        return {'cdb': cdb, 'base_tokenizer': tokenizer}
 
     @property
     def should_save(self) -> bool:
@@ -110,7 +120,12 @@ class TransformersNER(AbstractCoreComponent):
     @classmethod
     def deserialise_from(cls, folder_path: str, **init_kwargs
                          ) -> 'TransformersNER':
-        return cls.load_existing(load_path=folder_path, **init_kwargs)
+        return cls.load_existing(
+            load_path=folder_path,
+            cdb=init_kwargs['cdb'],
+            base_tokenizer=init_kwargs['tokenizer'],
+            # from Config.components.ner (of type Ner)
+            config=init_kwargs['cnf'].custom_cnf)
 
     def get_strategy(self) -> SerialisingStrategy:
         return SerialisingStrategy.MANUAL

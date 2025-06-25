@@ -342,6 +342,13 @@ def deserialise(folder_path: str,
     """Deserialise contents of a folder.
 
     Extra init keyword arguments can be provided if needed.
+    These are generally:
+    - cnf: The config relevant to the components
+    - tokenizer (BaseTokenizer): The base tokenizer for the model
+    - cdb (CDB): The CDB for the model
+    - vocab (Vocab): The Vocab for the model
+    - model_load_path (Optional[str]): The model load path,
+        but not the component load path
 
     This method finds the serialiser to be used based on the files on disk.
 

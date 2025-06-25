@@ -21,6 +21,11 @@ class FakeCoreComponent(types.AbstractCoreComponent):
                  ) -> MutableDocument:
         return mutable
 
+    @classmethod
+    def create_new_component(cls, cnf, tokenizer,
+            cdb, vocab, model_load_path) -> 'FakeCoreComponent':
+        return cls(model_load_path)
+
 
 class TypesRegistrationTests(unittest.TestCase):
     # NOTE: if/when default commponents get added, this needs to change
@@ -28,12 +33,15 @@ class TypesRegistrationTests(unittest.TestCase):
     COMP_TYPE = types.CoreComponentType.linking
     WRONG_TYPE = types.CoreComponentType.ner
     COMP_NAME = "test-linker"
-    BCC = FakeCoreComponent
+    BCC = FakeCoreComponent.create_new_component
+
+    def creation_args(self):
+        return None, None, None, None, self.COMP_TYPE
 
     def setUp(self):
         types.register_core_component(self.COMP_TYPE, self.COMP_NAME, self.BCC)
         self.registered = types.create_core_component(
-            self.COMP_TYPE, self.COMP_NAME, self.COMP_TYPE)
+            self.COMP_TYPE, self.COMP_NAME, *self.creation_args())
 
     def tearDown(self):
         for registry in types._CORE_REGISTRIES.values():
@@ -71,11 +79,11 @@ class TypesRegistrationTests(unittest.TestCase):
 
     def test_does_not_get_incorrect_type(self):
         with self.assertRaises(MedCATRegistryException):
-            types.create_core_component(self.WRONG_TYPE, self.COMP_NAME)
+            types.create_core_component(self.WRONG_TYPE, self.COMP_NAME, *self.creation_args())
 
     def test_does_not_get_incorrect_name(self):
         with self.assertRaises(MedCATRegistryException):
-            types.create_core_component(self.COMP_TYPE, "#" + self.COMP_NAME)
+            types.create_core_component(self.COMP_TYPE, "#" + self.COMP_NAME, *self.creation_args())
 
     def test_lists_registered_component(self):
         comps = types.get_registered_components(self.COMP_TYPE)

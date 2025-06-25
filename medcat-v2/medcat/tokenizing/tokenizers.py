@@ -1,4 +1,5 @@
-from typing import Protocol, Type, Any, Callable, runtime_checkable
+from typing import Protocol, Type, Callable, runtime_checkable
+from typing_extensions import Self
 import logging
 
 from medcat.config import Config
@@ -47,11 +48,7 @@ class BaseTokenizer(Protocol):
         pass
 
     @classmethod
-    def get_init_args(cls, config: Config) -> list[Any]:
-        pass
-
-    @classmethod
-    def get_init_kwargs(cls, config: Config) -> dict[str, Any]:
+    def create_new_tokenizer(cls, config: Config) -> Self:
         pass
 
     def get_doc_class(self) -> Type[MutableDocument]:
@@ -106,15 +103,18 @@ class SaveableTokenizer(Protocol):
 
 
 _DEFAULT_TOKENIZING: dict[str, tuple[str, str]] = {
-    "regex": ("medcat.tokenizing.regex_impl.tokenizer", "RegexTokenizer"),
-    "spacy": ("medcat.tokenizing.spacy_impl.tokenizers", "SpacyTokenizer")
+    "regex": ("medcat.tokenizing.regex_impl.tokenizer",
+              "RegexTokenizer.create_new_tokenizer"),
+    "spacy": ("medcat.tokenizing.spacy_impl.tokenizers",
+              "SpacyTokenizer.create_new_tokenizer")
 }
 
 _TOKENIZERS_REGISTRY = Registry(BaseTokenizer,  # type: ignore
                                 lazy_defaults=_DEFAULT_TOKENIZING)
 
 
-def get_tokenizer_creator(tokenizer_name: str) -> Callable[..., BaseTokenizer]:
+def get_tokenizer_creator(tokenizer_name: str
+                          ) -> Callable[[Config], BaseTokenizer]:
     """Get the creator method for the tokenizer.
 
     While this is generally just the class instance (i.e refers
@@ -124,23 +124,22 @@ def get_tokenizer_creator(tokenizer_name: str) -> Callable[..., BaseTokenizer]:
         tokenizer_name (str): The name of the tokenizer.
 
     Returns:
-        Callable[..., BaseTokenizer]: The creator for the tokenizer.
+        Callable[[Config], BaseTokenizer]: The creator for the tokenizer.
     """
     return _TOKENIZERS_REGISTRY.get_component(tokenizer_name)
 
 
-def create_tokenizer(tokenizer_name: str, *args, **kwargs) -> BaseTokenizer:
+def create_tokenizer(tokenizer_name: str, config: Config) -> BaseTokenizer:
     """Create the tokenizer given the init arguments.
-
-    The `*args`, and `**kwargs` will be directly passed to the creator.
 
     Args:
         tokenizer_name (str): The tokenizer name.
+        config (Config): The config to be passed to the constructor.
 
     Returns:
         BaseTokenizer: The created tokenizer.
     """
-    return _TOKENIZERS_REGISTRY.get_component(tokenizer_name)(*args, **kwargs)
+    return _TOKENIZERS_REGISTRY.get_component(tokenizer_name)(config)
 
 
 def list_available_tokenizers() -> list[tuple[str, str]]:

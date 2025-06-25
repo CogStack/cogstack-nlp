@@ -1,4 +1,4 @@
-from typing import Optional, Callable, cast, Any, Type
+from typing import Optional, Callable, cast, Type
 import re
 import os
 import shutil
@@ -85,18 +85,13 @@ class SpacyTokenizer(BaseTokenizer):
         return Document(self._nlp(text))
 
     @classmethod
-    def get_init_args(cls, config: Config) -> list[Any]:
+    def create_new_tokenizer(cls, config: Config) -> 'SpacyTokenizer':
         nlp_cnf = config.general.nlp
-        return [
-            nlp_cnf.modelname,
+        return cls(nlp_cnf.modelname,
             nlp_cnf.disabled_components,
             config.general.diacritics,
             config.preprocessing.max_document_length,
-        ]
-
-    @classmethod
-    def get_init_kwargs(cls, config: Config) -> dict[str, Any]:
-        return {"stopwords": config.preprocessing.stopwords}
+            stopwords=config.preprocessing.stopwords)
 
     def get_doc_class(self) -> Type[MutableDocument]:
         return Document

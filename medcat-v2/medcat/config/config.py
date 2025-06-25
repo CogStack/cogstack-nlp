@@ -140,22 +140,6 @@ class ComponentConfig(DirtiableBaseModel):
             <core component type>, <component name>, <implementing class>)
     By default, only the 'default' component is registered.
     """
-    init_args: list = Field(default_factory=list, exclude=True)
-    """These are the positional arguments required to construct the component.
-
-    For default components, these will be automatically filled. However, if a
-    custom component is used, these would need to be set manually.
-    """
-    init_kwargs: dict = Field(default_factory=dict, exclude=True)
-    """These are the keyword arguments required to construct the component.
-
-    For default components, these will be automatically filled. However, if a
-    custom component is used, these would need to be set manually.
-    """
-
-    @classmethod
-    def ignore_attrs(cls):
-        return ["init_args", "init_kwargs"]
 
 
 class NLPConfig(SerialisableBaseModel):
@@ -178,18 +162,6 @@ class NLPConfig(SerialisableBaseModel):
     """What model will be used for tokenization.
 
     NB! For these changes to take effect, the pipe would need to be recreated.
-    """
-    init_args: list = Field(default_factory=list, exclude=True)
-    """These are the positional arguments required to construct the component.
-
-    For default components, these will be automatically filled. However, if a
-    custom component is used, these would need to be set manually.
-    """
-    init_kwargs: dict = Field(default_factory=dict, exclude=True)
-    """These are the keyword arguments required to construct the component.
-
-    For default components, these will be automatically filled. However, if a
-    custom component is used, these would need to be set manually.
     """
 
     # NOTE: this will allow for more config entries
