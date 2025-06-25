@@ -64,10 +64,9 @@ class MetaCATAddon(AddonComponent):
     def __init__(self, config: ConfigMetaCAT, base_tokenizer: BaseTokenizer,
                  meta_cat: Optional['MetaCAT']) -> None:
         self.config = config
-        self.base_tokenizer = base_tokenizer
         self._mc = meta_cat
         self._name = config.general.category_name
-        self._init_data_paths()
+        self._init_data_paths(base_tokenizer)
 
     @property
     def mc(self) -> 'MetaCAT':
@@ -148,12 +147,12 @@ class MetaCATAddon(AddonComponent):
                 "Unable to save MetaCAT without a tokenizer")
         self.mc.tokenizer.save(tokenizer_folder)
 
-    def _init_data_paths(self):
+    def _init_data_paths(self, base_tokenizer: BaseTokenizer):
         # a dictionary like {category_name: value, ...}
-        self.base_tokenizer.get_entity_class().register_addon_path(
+        base_tokenizer.get_entity_class().register_addon_path(
             _META_ANNS_PATH, def_val=None, force=True)
         # Used for sharing pre-processed data/tokens
-        self.base_tokenizer.get_doc_class().register_addon_path(
+        base_tokenizer.get_doc_class().register_addon_path(
             _SHARE_TOKENS_PATH, def_val=None, force=True)
 
     @property
@@ -242,7 +241,7 @@ class MetaCAT(AbstractSerialisable):
 
     @classmethod
     def ignore_attrs(cls) -> list[str]:
-        return ['base_tokenizer', 'model']
+        return ['model']
 
     @classmethod
     def include_properties(cls) -> list[str]:
