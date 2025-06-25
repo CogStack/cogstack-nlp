@@ -654,6 +654,39 @@ class CAT(AbstractSerialisable):
         cdb = CDB.load(cdb_path)
         return cdb
 
+    @classmethod
+    def load_addons(
+            cls, model_pack_path: str, meta_cat_config_dict: Optional[dict] = None
+            ) -> list[tuple[str, AddonComponent]]:
+        """Load addons based on a model pack path.
+
+        Args:
+            model_pack_path (str): path to model pack, zip or dir.
+            meta_cat_config_dict (Optional[dict]):
+                A config dict that will overwrite existing configs in meta_cat.
+                e.g. meta_cat_config_dict = {'general': {'device': 'cpu'}}.
+                Defaults to None.
+
+        Returns:
+            List[tuple(str, AddonComponent)]: list of pairs of adddon names the addons.
+        """
+        components_folder = os.path.join(model_pack_path, COMPONENTS_FOLDER)
+        if not os.path.exists(components_folder):
+            return []
+        addon_paths = [
+            folder_path
+            for folder_name in os.listdir(components_folder)
+            if os.path.isdir(folder_path := os.path.join(
+                components_folder, folder_name))
+            and folder_name.startswith(AddonComponent.NAME_PREFIX)
+        ]
+        loaded_addons = [
+            addon for addon_path in addon_paths
+            if isinstance(addon := deserialise(addon_path), AddonComponent)
+        ]
+        return [(addon.full_name, addon) for addon in loaded_addons]
+
+
     @overload
     def get_model_card(self, as_dict: Literal[True]) -> ModelCard:
         pass
