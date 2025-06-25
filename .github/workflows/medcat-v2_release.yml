@@ -3,7 +3,7 @@ name: medcat-v2 - Build Python Package
 on:
   push:
     tags:
-      - "v*"
+      - "medcat/v*"
 
 permissions:
   contents: write
@@ -28,12 +28,10 @@ jobs:
 
           # Get the tag without the 'v' and strip the patch version
           VERSION_TAG="${GITHUB_REF#refs/tags/v}"
-          VERSION_MAJOR_MINOR="${VERSION_TAG%.*}"  # This removes the patch version (everything after the second dot)
+          # NOTE: branch name is in line with version tag, except for the patch version
+          BRANCH_NAME="${VERSION_TAG%.*}"  # This removes the patch version (everything after the second dot)
 
-          # Construct the branch name (e.g., release/0.1)
-          BRANCH_NAME="release/$VERSION_MAJOR_MINOR"
-
-          # Check out the corresponding release branch (e.g., release/0.1)
+          # Check out the corresponding release branch (e.g., medcat/0.1)
           git checkout $BRANCH_NAME
 
           # Ensure the branch is up-to-date with the remote
