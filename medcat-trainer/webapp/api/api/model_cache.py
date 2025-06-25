@@ -2,7 +2,7 @@ import logging
 import os
 from typing import Dict
 
-import pkg_resources
+from medcat import __version__ as mct_version
 from medcat.cat import CAT
 from medcat.cdb import CDB
 from medcat.vocab import Vocab
@@ -64,7 +64,7 @@ def get_medcat_from_cdb_vocab(project,
                 cdb_map[cdb_id] = cdb
 
             except KeyError as ke:
-                mc_v = pkg_resources.get_distribution('medcat').version
+                mc_v = mct_version
                 if int(mc_v.split('.')[0]) > 0:
                     logger.error('Attempted to load MedCAT v0.x model with MCTrainer v1.x')
                     raise Exception('Attempted to load MedCAT v0.x model with MCTrainer v1.x',
