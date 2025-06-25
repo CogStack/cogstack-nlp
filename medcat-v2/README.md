@@ -1,4 +1,4 @@
-# Medical  <img src="https://raw.githubusercontent.com/CogStack/MedCAT/master/media/cat-logo.png" width=45> oncept Annotation Tool (version 2)
+# Medical  <img src="https://raw.githubusercontent.com/CogStack/MedCAT/main/media/cat-logo.png" width=45> oncept Annotation Tool (version 2)
 
 **There's a number of breaking changes in MedCAT v2 compared to v1.**
 Details are outlined [here](docs/breaking_changes.md).
@@ -18,7 +18,7 @@ Original paper for v1 on [arXiv](https://arxiv.org/abs/2010.01165).
 ## Available Models
 
 As MedCAT v2 is still in Beta, we do not currently have any models publically available.
-You can still use models for v1, however (see the [README](https://github.com/CogStack/MedCAT/blob/master/README.md) there).
+You can still use models for v1, however (see the [README](https://github.com/CogStack/cogstack-nlp/blob/main/medcat-v2/README.md) there).
 If you wish you can also convert the v1 models into the v2 format (see tutorial (TODO + link)).
 
 ## News
@@ -37,7 +37,7 @@ If you wish you can also convert the v1 models into the v2 format (see tutorial 
   branch and will still be supported until 1. July 2021
   (with respect to potential bug fixes), after it will still be available but not updated anymore.
 - **Paper**: [What’s in a Summary? Laying the Groundwork for Advances in Hospital-Course Summarization](https://www.aclweb.org/anthology/2021.naacl-main.382.pdf)
-- ([more...](https://github.com/CogStack/MedCAT/blob/master/media/news.md)) -->
+- ([more...](https://github.com/CogStack/cogstack-nlp/blob/main/medcat-v2/media/news.md)) -->
 
 ## Installation
 
