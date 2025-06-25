@@ -50,7 +50,7 @@ fi
 # Extract version components
 VERSION_MAJOR_MINOR="${VERSION%.*}"
 VERSION_PATCH="${VERSION##*.}"
-RELEASE_BRANCH="release/$VERSION_MAJOR_MINOR"
+RELEASE_BRANCH="medcat/$VERSION_MAJOR_MINOR"
 
 # some prerequisites
 [[ "$VERSION_PATCH" == "0" ]] && error_exit "Patch version must not be 0."

@@ -27,7 +27,7 @@ fi
 # Extract version components
 VERSION_MAJOR_MINOR="${VERSION%.*}"
 VERSION_PATCH="${VERSION##*.}"
-RELEASE_BRANCH="release/$VERSION_MAJOR_MINOR"
+RELEASE_BRANCH="medcat/$VERSION_MAJOR_MINOR"
 
 # Helpers
 run_or_echo() {
