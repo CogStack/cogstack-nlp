@@ -23,6 +23,7 @@ if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     echo "Error: version '$VERSION' must be in format X.Y.Z"
     exit 1
 fi
+VERSION_TAG="medcat/v$VERSION"
 
 # Extract version components
 VERSION_MAJOR_MINOR="${VERSION%.*}"
@@ -53,8 +54,8 @@ if git show-ref --quiet "refs/heads/$RELEASE_BRANCH" && [[ $FORCE == false ]]; t
     error_exit "Branch '$RELEASE_BRANCH' already exists. Use --force to override."
 fi
 
-if git show-ref --quiet "refs/tags/v$VERSION" && [[ $FORCE == false ]]; then
-    error_exit "Tag 'v$VERSION' already exists. Use --force to override."
+if git show-ref --quiet "refs/tags/$VERSION_TAG" && [[ $FORCE == false ]]; then
+    error_exit "Tag '$VERSION_TAG' already exists. Use --force to override."
 fi
 
 if [[ -n "$(git status --porcelain)" ]]; then
@@ -78,8 +79,8 @@ run_or_echo git add pyproject.toml
 run_or_echo git commit -m \"Bump version to $VERSION for release\"
 
 # Create and push tag
-run_or_echo git tag -a \"v$VERSION\" -m \"Release v$VERSION\"
+run_or_echo git tag -a \"$VERSION_TAG\" -m \"Release v$VERSION\"
 run_or_echo git push origin \"$RELEASE_BRANCH\"
-run_or_echo git push origin \"v$VERSION\"
+run_or_echo git push origin \"$VERSION_TAG\"
 
 run_or_echo git checkout main

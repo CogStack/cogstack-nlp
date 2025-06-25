@@ -46,6 +46,7 @@ if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     echo "Error: version '$VERSION' must be in format X.Y.Z"
     exit 1
 fi
+VERSION_TAG="medcat/v$VERSION"
 
 # Extract version components
 VERSION_MAJOR_MINOR="${VERSION%.*}"
@@ -61,8 +62,8 @@ if ! git show-ref --verify --quiet "refs/remotes/origin/$RELEASE_BRANCH"; then
     error_exit "Release branch '$RELEASE_BRANCH' does not exist remotely."
 fi
 
-if git rev-parse "v$VERSION" >/dev/null 2>&1 && ! $FORCE; then
-    error_exit "Tag 'v$VERSION' already exists. Use --force to override."
+if git rev-parse "$VERSION_TAG" >/dev/null 2>&1 && ! $FORCE; then
+    error_exit "Tag '$VERSION_TAG' already exists. Use --force to override."
 fi
 
 if [[ -n "$(git status --porcelain)" && ! $FORCE ]]; then
@@ -82,9 +83,9 @@ if $MANUAL; then
     echo "  sed -i 's/version = \".*\"/version = \"$VERSION\"/' pyproject.toml"
     echo "  git add pyproject.toml"
     echo "  git commit -m 'Bump version to $VERSION'"
-    echo "  git tag -a v$VERSION -m 'Release v$VERSION'"
+    echo "  git tag -a $VERSION_TAG -m 'Release v$VERSION'"
     echo "  git push origin $RELEASE_BRANCH"
-    echo "  git push origin v$VERSION"
+    echo "  git push origin $VERSION_TAG"
     exit 0
 fi
 
@@ -162,9 +163,9 @@ run_or_echo git commit -m \"Bump version to $VERSION\" --allow-empty
 # now do the tagging
 # NOTE: can force since without the `--force` flag we would have checked
 #       for existing tag
-run_or_echo git tag -a \"v$VERSION\" -m \"Release v$VERSION\" --force
+run_or_echo git tag -a \"$VERSION_TAG\" -m \"Release v$VERSION\" --force
 run_or_echo git push origin \"$RELEASE_BRANCH\"
-run_or_echo git push origin \"v$VERSION\" --force
+run_or_echo git push origin \"$VERSION_TAG\" --force
 
 run_or_echo git checkout main
 
