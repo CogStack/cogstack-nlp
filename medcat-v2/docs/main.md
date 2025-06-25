@@ -1,10 +1,10 @@
-# Medical  <img src="https://github.com/CogStack/MedCAT/blob/master/media/cat-logo.png?raw=true" width=45>oncept Annotation Tool (v2)
+# Medical  <img src="https://github.com/CogStack/cogstack-nlp/blob/main/medcat-v2/media/cat-logo.png?raw=true" width=45>oncept Annotation Tool (v2)
 
 **There's a number of breaking changes in MedCAT v2 compared to v1.**
 Details are outlined [here](breaking_changes.md).
 
-[![Build Status](https://github.com/CogStack/MedCAT2/actions/workflows/main.yml/badge.svg?branch=main)](https://github.com/CogStack/MedCAT/actions/workflows/main.yml?query=branch%3Amaster)
-[![Documentation Status](https://readthedocs.org/projects/medcat/badge/?version=latest)](https://medcat2.readthedocs.io/en/latest/?badge=latest)
+[![Build Status](https://github.com/CogStack/cogstack-nlp/actions/workflows/medcat-v2_main.yml)](https://github.com/CogStack/cogstack-nlp/actions/workflows/medcat-v2_main.yml)
+[![Documentation Status](https://readthedocs.org/projects/medcat2/badge/?version=latest)](https://medcat2.readthedocs.io/en/latest/?badge=latest)
 [![Latest release](https://img.shields.io/github/v/release/CogStack/MedCAT2)](https://github.com/CogStack/MedCAT2/releases/latest)
 [![pypi Version](https://img.shields.io/pypi/v/medcat.svg?style=flat-square&logo=pypi&logoColor=white)](https://pypi.org/project/medcat/)
 
@@ -37,9 +37,9 @@ A demo application is available [here](https://medcatv2.rosalind.kcl.ac.uk).
 Some guides on how to use MedCAT v2 are available at [MedCAT Tutorials](https://github.com/CogStack/MedCATv2tutorials).
 
 ## Related Projects
-- [MedCAT](https://github.com/CogStack/MedCAT/) - the original version of MedCAT that this v2 is based one.
+- [MedCAT](https://github.com/CogStack/cogstack-nlp/blob/main/medcat-v2/) - the original version of MedCAT that this v2 is based one.
 - [MedCATtrainer](https://github.com/CogStack/MedCATtrainer/) - an interface for building, improving and customising a given Named Entity Recognition and Linking (NER+L) model (MedCAT) for biomedical domain text.
-- [MedCATservice](https://github.com/CogStack/MedCATservice) - implements the MedCAT NLP application as a service behind a REST API.
+- [MedCATservice](https://github.com/CogStack/cogstack-nlp/blob/main/medcat-service/) - implements the MedCAT NLP application as a service behind a REST API.
 
 ## Install using PIP (Requires Python 3.9+)
 Installation instructions are to follow upon a release of this version on PyPI.
