@@ -264,6 +264,40 @@ class CatWithMetaCATTests(CATCreationTests):
         self.assertEqual(str(len(text)), input_text_length)
 
 
+class CatWithMetaCATSaveLoadTests(CatWithMetaCATTests):
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.temp_dir = tempfile.TemporaryDirectory()
+        cls.mpp = cls.cat.save_model_pack(cls.temp_dir.name)
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        cls.temp_dir.cleanup()
+
+    def test_can_save_pack(self):
+        self.assertTrue(os.path.exists(self.mpp))
+
+    def test_can_load_saved(self):
+        loaded = cat.CAT.load_model_pack(self.mpp)
+        self.assertIsInstance(loaded, cat.CAT)
+        # test that it has an addon
+        addons = list(loaded._pipeline.iter_addons())
+        self.assertEqual(len(addons), 1)
+        addon = addons[0]
+        self.assertIsInstance(addon, MetaCATAddon)
+        # test that loaded model pack has the same addon config as the addon
+        self.assertIs(addon.config, loaded.config.components.addons[0])
+
+    def test_can_load_meta_cat(self):
+        addons = cat.CAT.load_addons(self.mpp)
+        self.assertEqual(len(addons), 1)
+        _, addon = addons[0]
+        self.assertIsInstance(addon, MetaCATAddon)
+
+
 class CatWithChangesMetaCATTests(CatWithMetaCATTests):
     EXPECTED_HASH = "0b22401059a08380"
     EXPECT_SAME_INSTANCES = False
