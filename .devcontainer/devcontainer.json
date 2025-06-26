@@ -5,7 +5,10 @@
 	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
 	"image": "mcr.microsoft.com/devcontainers/python:1-3.12-bullseye",
 	"features": {
-		"ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
+		"ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},
+		"ghcr.io/va-h/devcontainers-features/uv:1": {
+			"shellautocompletion": true
+		}
 	},
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
@@ -25,7 +28,8 @@
 	"workspaceFolder": "${localWorkspaceFolder}",
 	"workspaceMount": "source=${localWorkspaceFolder},target=${localWorkspaceFolder},type=bind",
 	"mounts": [
-		"source=${localEnv:HOME}/.cache/pip,target=/home/vscode/.cache/pip,type=bind"
+		"source=${localEnv:HOME}/.cache/pip,target=/home/vscode/.cache/pip,type=bind",
+		"source=${localEnv:HOME}/.cache/uv,target=/home/vscode/.cache/uv,type=bind"
 	],
 	"customizations": {
 		"vscode": {
