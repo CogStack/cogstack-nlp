@@ -46,7 +46,7 @@ if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     echo "Error: version '$VERSION' must be in format X.Y.Z"
     exit 1
 fi
-VERSION_TAG="medcat/v$VERSION"
+VERSION_TAG="medcat-v$VERSION"
 
 # Extract version components
 VERSION_MAJOR_MINOR="${VERSION%.*}"
