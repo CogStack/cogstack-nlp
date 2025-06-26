@@ -9,7 +9,10 @@ from medcat.preprocessors.cleaners import NameDescriptor
 from unittest import TestCase
 import tempfile
 
-from .. import UNPACKED_EXAMPLE_MODEL_PACK_PATH
+from .. import UNPACKED_EXAMPLE_MODEL_PACK_PATH, RESOURCES_PATH
+
+
+ZIPPED_CDB_PATH = os.path.join(RESOURCES_PATH, "mct2_cdb.zip")
 
 
 class CDBTests(TestCase):
@@ -26,8 +29,27 @@ class CDBTests(TestCase):
         with tempfile.TemporaryDirectory() as dir:
             self.cdb.save(dir)
             self.assertTrue(os.path.exists(dir))
+            # should have a non-empty directory
+            self.assertTrue(os.listdir(dir))
             obj = deserialise(dir)
             self.assertIsInstance(obj, cdb.CDB)
+
+    def test_can_load_from_zip(self):
+        loaded = cdb.CDB.load(ZIPPED_CDB_PATH)
+        self.assertIsInstance(loaded, cdb.CDB)
+        # make sure it's actually a file not a folder
+        self.assertTrue(os.path.isfile(ZIPPED_CDB_PATH))
+
+    def test_can_save_to_zip(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            file_name = os.path.join(temp_dir, "cdb.zip")
+            # NOTE: auto detection should write as zip
+            self.cdb.save(file_name)
+            self.assertTrue(os.path.exists(file_name))
+            self.assertTrue(os.path.isfile(file_name))
+            # and can load from saved zip
+            loaded = cdb.CDB.load(file_name)
+            self.assertIsInstance(loaded, cdb.CDB)
 
     def test_convenience_method_load(self):
         ccdb = cdb.CDB.load(self.CDB_PATH)
