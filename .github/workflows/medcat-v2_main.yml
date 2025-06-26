@@ -24,7 +24,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           enable-cache: true
-          cache-dependency-glob: "uv.lock"
+          cache-dependency-glob: "medcat-v2/uv.lock"
       # - name: Set up Python ${{ matrix.python-version }}
       #   run: uv python install ${{ matrix.python-version }}
       - name: Install the project
