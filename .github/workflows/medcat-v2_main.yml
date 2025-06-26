@@ -10,13 +10,11 @@ defaults:
     working-directory: ./medcat-v2
 jobs:
   build:
-
     runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: [ '3.9', '3.10', '3.11', '3.12' ]
       max-parallel: 4
-
     steps:
       - uses: actions/checkout@v4
       - name: Install uv for Python ${{ matrix.python-version }}
@@ -25,8 +23,6 @@ jobs:
           python-version: ${{ matrix.python-version }}
           enable-cache: true
           cache-dependency-glob: "medcat-v2/uv.lock"
-      # - name: Set up Python ${{ matrix.python-version }}
-      #   run: uv python install ${{ matrix.python-version }}
       - name: Install the project
         run: |
           uv sync --all-extras --dev
