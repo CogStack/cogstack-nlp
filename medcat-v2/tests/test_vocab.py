@@ -8,7 +8,10 @@ import numpy as np
 import unittest
 import tempfile
 
-from . import UNPACKED_EXAMPLE_MODEL_PACK_PATH
+from . import UNPACKED_EXAMPLE_MODEL_PACK_PATH, RESOURCES_PATH
+
+
+ZIPPED_VOCAB_PATH = os.path.join(RESOURCES_PATH, "mct2_vocab.zip")
 
 
 class VocabCreationTests(unittest.TestCase):
@@ -191,3 +194,18 @@ class DefaultVocabTests(unittest.TestCase):
     def test_convenience_load(self):
         vocab = Vocab.load(self.VOCAB_PATH)
         self.assertIsInstance(vocab, Vocab)
+
+    def test_can_load_from_zip(self):
+        vocab = Vocab.load(ZIPPED_VOCAB_PATH)
+        self.assertIsInstance(vocab, Vocab)
+
+    def test_can_save_to_zip(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            file_name = os.path.join(temp_dir, 'vocab.zip')
+            # NOTE: auto detection will write as zip
+            self.vocab.save(file_name)
+            self.assertTrue(os.path.exists(file_name))
+            self.assertTrue(os.path.isfile(file_name))
+            # and can load from saved zip
+            loaded = Vocab.load(file_name)
+            self.assertIsInstance(loaded, Vocab)
