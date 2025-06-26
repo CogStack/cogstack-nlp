@@ -4,7 +4,7 @@ The scripts within here are designed to help preparing for and dealing with rele
 
 The main idea is to use the `prepare_release.sh` script from within the root of the project and it will delegate either to `prepare_minor_release.sh` or `prepare_patch_release.sh` as necessary.
 The workflow within the scripts is as follows:
-- Create or check out release branch (`release/v<major>.<minor>`)
+- Create or check out release branch (`medcat/v<major>.<minor>`)
 - Update version in `pyproject.toml`
 - Create a tag based on the version
 - Push both the branch as well as the tag to `origin`
