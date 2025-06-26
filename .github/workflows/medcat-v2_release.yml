@@ -31,7 +31,7 @@ jobs:
           # NOTE: branch name is in line with version tag, except for the patch version
           BRANCH_NAME="${VERSION_TAG%.*}"  # This removes the patch version (everything after the second dot)
 
-          # Check out the corresponding release branch (e.g., medcat-v0.1)
+          # Check out the corresponding release branch (e.g., medcat/v0.1)
           git checkout $BRANCH_NAME
 
           # Ensure the branch is up-to-date with the remote
