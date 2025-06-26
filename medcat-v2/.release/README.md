@@ -7,6 +7,7 @@ The workflow within the scripts is as follows:
 - Create or check out release branch (`medcat/v<major>.<minor>`)
 - Update version in `pyproject.toml`
 - Create a tag based on the version
+  - This will be in the format `medcat/v<major>.<minor>.<patch>`
 - Push both the branch as well as the tag to `origin`
 
 The general usage for a minor release based on the `main` branch from within the **root of the project** is simply:
