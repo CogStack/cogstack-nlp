@@ -13,7 +13,7 @@ from django.forms import forms, ModelForm
 from medcat.cat import CAT
 from medcat.cdb import CDB
 from medcat.vocab import Vocab
-from medcat.components.addons.meta_cat.meta_cat import MetaCAT
+from medcat.components.addons.meta_cat.meta_cat import MetaCAT, MetaCATAddon
 from polymorphic.models import PolymorphicModel
 
 from core.settings import MEDIA_ROOT
@@ -89,7 +89,9 @@ class ModelPack(models.Model):
         try:
             metaCATmodels = []
             # should raise an error if there already is a MetaCAT model with this definition
-            for meta_cat_dir, meta_cat in CAT.load_meta_cats(unpacked_model_pack_path):
+            addons = CAT.load_addons(unpacked_model_pack_path)
+            meta_cats = [addon for addon in addons if isinstance(addon, MetaCATAddon)]
+            for meta_cat_dir, meta_cat in meta_cats:
                 mc_model = MetaCATModel()
                 mc_model.meta_cat_dir = meta_cat_dir.replace(f'{MEDIA_ROOT}/', '')
                 mc_model.name = f'{meta_cat.config.general.category_name} - {meta_cat.config.model.model_name}'
