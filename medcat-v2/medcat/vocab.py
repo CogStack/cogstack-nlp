@@ -1,4 +1,4 @@
-from typing import Optional, Any, cast, Union
+from typing import Optional, Any, cast, Union, Literal
 from typing_extensions import TypedDict
 
 # import dill
@@ -7,6 +7,8 @@ import numpy as np
 from medcat.storage.serialisables import AbstractSerialisable
 from medcat.storage.serialisers import (
     deserialise, AvailableSerialisers, serialise)
+from medcat.storage.zip_utils import (
+    should_serialise_as_zip, serialise_as_zip, deserialise_from_zip)
 
 
 WordDescriptor = TypedDict('WordDescriptor',
@@ -298,6 +300,7 @@ class Vocab(AbstractSerialisable):
              serialiser: Union[
                  str, AvailableSerialisers] = AvailableSerialisers.dill,
              overwrite: bool = False,
+             as_zip: Union[bool, Literal['auto']] = 'auto',
              ) -> None:
         """Save Vocab at path.
 
@@ -308,12 +311,20 @@ class Vocab(AbstractSerialisable):
                 The serialiser. Defaults to AvailableSerialisers.dill.
             overwrite (bool, optional):
                 Whether to allow overwriting existing files. Defaults to False.
+            as_zip (Union[bool, Literal['auto']]):
+                Whether to serialise the CDB as a zip.
         """
+        if should_serialise_as_zip(save_path, as_zip):
+            serialise_as_zip(self, save_path, serialiser, overwrite=overwrite)
+            return
         serialise(serialiser, self, save_path, overwrite=overwrite)
 
     @classmethod
     def load(cls, path: str) -> 'Vocab':
-        vocab = deserialise(path)
+        if should_serialise_as_zip(path, 'auto'):
+            vocab = deserialise_from_zip(path)
+        else:
+            vocab = deserialise(path)
         if not isinstance(vocab, Vocab):
             raise ValueError(f"The path '{path}' is not a Vocab!")
         return vocab
