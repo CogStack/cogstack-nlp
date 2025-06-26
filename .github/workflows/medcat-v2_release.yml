@@ -30,6 +30,7 @@ jobs:
           VERSION_TAG="${GITHUB_REF#refs/tags/}"
           # NOTE: branch name is in line with version tag, except for the patch version
           BRANCH_NAME="${VERSION_TAG%.*}"  # This removes the patch version (everything after the second dot)
+          BRANCH_NAME="${BRANCH_NAME//-//}"  # this replaces the - in the version tag with the / in the release branch
 
           # Check out the corresponding release branch (e.g., medcat-v0.1)
           git checkout $BRANCH_NAME
