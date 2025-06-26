@@ -90,8 +90,11 @@ class ModelPack(models.Model):
             metaCATmodels = []
             # should raise an error if there already is a MetaCAT model with this definition
             addons = CAT.load_addons(unpacked_model_pack_path)
-            meta_cats = [addon for addon in addons if isinstance(addon, MetaCATAddon)]
-            for meta_cat_dir, meta_cat in meta_cats:
+            meta_cat_addons = [
+                (addon_path, addon) for addon_path, addon in addons
+                if isinstance(addon, MetaCATAddon)]
+            for meta_cat_dir, meta_cat_addon in meta_cat_addons:
+                meta_cat = meta_cat_addon.mc
                 mc_model = MetaCATModel()
                 mc_model.meta_cat_dir = meta_cat_dir.replace(f'{MEDIA_ROOT}/', '')
                 mc_model.name = f'{meta_cat.config.general.category_name} - {meta_cat.config.model.model_name}'
