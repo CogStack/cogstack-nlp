@@ -75,7 +75,7 @@ html_css_files = [
     'css/overrides.css'
 ]
 
-html_logo = '../media/cat-logo.svg'
+html_logo = '../../media/cat-logo.svg'
 
 html_theme_options = {
     'display_version': True,
