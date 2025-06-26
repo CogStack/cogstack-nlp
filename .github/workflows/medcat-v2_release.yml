@@ -31,7 +31,7 @@ jobs:
           # NOTE: branch name is in line with version tag, except for the patch version
           BRANCH_NAME="${VERSION_TAG%.*}"  # This removes the patch version (everything after the second dot)
 
-          # Check out the corresponding release branch (e.g., medcat/v0.1)
+          # Check out the corresponding release branch (e.g., medcat-v0.1)
           git checkout $BRANCH_NAME
 
           # Ensure the branch is up-to-date with the remote
@@ -54,8 +54,9 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           draft: true
+          # softprops/action-gh-release v2 doesnt support the working-directory field, so put the path in files
           files: |
-            dist/*
+            medcat-v2/dist/*
 
       # Uncomment and modify this for PyPI publishing in the future
       # - name: Publish to PyPI
