@@ -1,4 +1,4 @@
-from typing import Iterable, Any, Collection, Union
+from typing import Iterable, Any, Collection, Union, Literal
 
 from medcat.storage.serialisables import AbstractSerialisable
 from medcat.cdb.concepts import CUIInfo, NameInfo, TypeInfo
@@ -6,6 +6,8 @@ from medcat.cdb.concepts import get_new_cui_info, get_new_name_info
 from medcat.cdb.concepts import reset_cui_training
 from medcat.storage.serialisers import (
     deserialise, AvailableSerialisers, serialise)
+from medcat.storage.zip_utils import (
+    should_serialise_as_zip, serialise_as_zip, deserialise_from_zip)
 from medcat.utils.defaults import default_weighted_average, StatusTypes as ST
 from medcat.utils.hasher import Hasher
 from medcat.preprocessors.cleaners import NameDescriptor
@@ -485,6 +487,7 @@ class CDB(AbstractSerialisable):
              serialiser: Union[
                  str, AvailableSerialisers] = AvailableSerialisers.dill,
              overwrite: bool = False,
+             as_zip: Union[bool, Literal['auto']] = 'auto',
              ) -> None:
         """Save CDB at path.
 
@@ -495,12 +498,20 @@ class CDB(AbstractSerialisable):
                 The serialiser. Defaults to AvailableSerialisers.dill.
             overwrite (bool, optional):
                 Whether to allow overwriting existing files. Defaults to False.
+            as_zip (Union[bool, Literal['auto']]):
+                Whether to serialise the CDB as a zip.
         """
+        if should_serialise_as_zip(save_path, as_zip):
+            serialise_as_zip(self, save_path, serialiser, overwrite=overwrite)
+            return
         serialise(serialiser, self, save_path, overwrite=overwrite)
 
     @classmethod
     def load(cls, path: str) -> 'CDB':
-        cdb = deserialise(path)
+        if should_serialise_as_zip(path, 'auto'):
+            cdb = deserialise_from_zip(path)
+        else:
+            cdb = deserialise(path)
         if not isinstance(cdb, CDB):
             raise ValueError(f"The path '{path}' is not a CDB!")
         return cdb
