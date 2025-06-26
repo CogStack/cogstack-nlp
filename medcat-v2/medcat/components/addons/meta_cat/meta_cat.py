@@ -57,6 +57,7 @@ TokenizerPreprocessor = Optional[
 
 
 class MetaCATAddon(AddonComponent):
+    DEFAULT_TOKENIZER = 'spacy'
     addon_type = 'meta_cat'
     output_key = 'meta_anns'
     config: ConfigMetaCAT
@@ -64,10 +65,9 @@ class MetaCATAddon(AddonComponent):
     def __init__(self, config: ConfigMetaCAT, base_tokenizer: BaseTokenizer,
                  meta_cat: Optional['MetaCAT']) -> None:
         self.config = config
-        self.base_tokenizer = base_tokenizer
         self._mc = meta_cat
         self._name = config.general.category_name
-        self._init_data_paths()
+        self._init_data_paths(base_tokenizer)
 
     @property
     def mc(self) -> 'MetaCAT':
@@ -148,12 +148,12 @@ class MetaCATAddon(AddonComponent):
                 "Unable to save MetaCAT without a tokenizer")
         self.mc.tokenizer.save(tokenizer_folder)
 
-    def _init_data_paths(self):
+    def _init_data_paths(self, base_tokenizer: BaseTokenizer):
         # a dictionary like {category_name: value, ...}
-        self.base_tokenizer.get_entity_class().register_addon_path(
+        base_tokenizer.get_entity_class().register_addon_path(
             _META_ANNS_PATH, def_val=None, force=True)
         # Used for sharing pre-processed data/tokens
-        self.base_tokenizer.get_doc_class().register_addon_path(
+        base_tokenizer.get_doc_class().register_addon_path(
             _SHARE_TOKENS_PATH, def_val=None, force=True)
 
     @property
@@ -176,10 +176,40 @@ class MetaCATAddon(AddonComponent):
     @classmethod
     def deserialise_from(cls, folder_path: str, **init_kwargs
                          ) -> 'MetaCATAddon':
+        if 'cnf' in init_kwargs:
+            cnf = init_kwargs['cnf']
+        else:
+            config_path = os.path.join(folder_path, "meta_cat", "config")
+            logger.info(
+                "Was not provide a config when loading a meta cat from '%s'. "
+                "Inferring config from file at '%s'", folder_path,
+                config_path)
+            cnf = ConfigMetaCAT.load(config_path)
+        if 'tokenizer' in init_kwargs:
+            tokenizer = init_kwargs['tokenizer']
+        else:
+            from medcat.tokenizing.tokenizers import create_tokenizer
+            from medcat.config import Config
+            logger.warning(
+                "A base tokenizer was not provided during the loading of a "
+                "MetaCAT. The tokenizer is used to register the required data "
+                "paths for MetaCAT to function. Using the default of '%s'. If "
+                "this it not the tokenizer you will end up using, MetaCAT may "
+                "be unable to recover unless a) the paths are registered "
+                "explicitly, or b) there are other MetaCATs created with the "
+                "correct tokenizer. Do note that this will also create "
+                "another instance of the tokenizer, though it should be "
+                "garbage collected soon.", cls.DEFAULT_TOKENIZER
+            )
+            # NOTE: the use of a (mostly) default config here probably won't
+            #       affect anything since the tokenizer itself won't be used
+            gcnf = Config()
+            gcnf.general.nlp.provider = 'spacy'
+            tokenizer = create_tokenizer(cls.DEFAULT_TOKENIZER, gcnf)
         return cls.load_existing(
             load_path=folder_path,
-            cnf=init_kwargs['cnf'],
-            base_tokenizer=init_kwargs['tokenizer'])
+            cnf=cnf,
+            base_tokenizer=tokenizer)
 
     def get_strategy(self) -> SerialisingStrategy:
         return SerialisingStrategy.MANUAL
@@ -242,7 +272,7 @@ class MetaCAT(AbstractSerialisable):
 
     @classmethod
     def ignore_attrs(cls) -> list[str]:
-        return ['base_tokenizer', 'model']
+        return ['model']
 
     @classmethod
     def include_properties(cls) -> list[str]:
