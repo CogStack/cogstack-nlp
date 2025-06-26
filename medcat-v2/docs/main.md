@@ -1,4 +1,4 @@
-# Medical  <img src="https://github.com/CogStack/cogstack-nlp/blob/main/medcat-v2/media/cat-logo.png?raw=true" width=45>oncept Annotation Tool (v2)
+# Medical  <img src="https://github.com/CogStack/cogstack-nlp/blob/main/medca/media/cat-logo.png?raw=true" width=45>oncept Annotation Tool (v2)
 
 **There's a number of breaking changes in MedCAT v2 compared to v1.**
 Details are outlined [here](breaking_changes.md).
