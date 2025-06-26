@@ -45,17 +45,17 @@ Currently MedCAT v2 is in Beta.
 As such, we're not yet pushing to PyPI.
 And because of that the current installation command for (only) core MedCAT v2 is:
 ```
-pip install "medcat @ git+https://github.com/CogStack/MedCAT2@v0.8.0"
+pip install "medcat @ git+https://github.com/CogStack/cogstack-nlp.git@refs/tags/medcat/v0.10.0#subdirectory=medcat-v2"
 ```
 Do note that **this installs only the core MedCAT v2**.
 **It does not necessary dependencies for `spacy`-based tokenizing or MetaCATs or DeID**.
 However, all of those are supported as well.
 You can install them as follows:
 ```
-pip install "medcat[spacy] @ git+https://github.com/CogStack/MedCAT2@v0.8.0"  # for spacy-based tokenizer
-pip install "medcat[meta-cat] @ git+https://github.com/CogStack/MedCAT2@v0.8.0"  # for MetaCAT
-pip install "medcat[deid] @ git+https://github.com/CogStack/MedCAT2@v0.8.0"  # for DeID models
-pip install "medcat[spacy,meta-cat,deid,rel-cat,dict-ner] @ git+https://github.com/CogStack/MedCAT2@v0.8.0"  # for all of the sbove
+pip install "medcat[spacy] @ git+https://github.com/CogStack/cogstack-nlp.git@refs/tags/medcat/v0.10.0#subdirectory=medcat-v2"  # for spacy-based tokenizer
+pip install "medcat[meta-cat] @ git+https://github.com/CogStack/cogstack-nlp.git@refs/tags/medcat/v0.10.0#subdirectory=medcat-v2"  # for MetaCAT
+pip install "medcat[deid] @ git+https://github.com/CogStack/cogstack-nlp.git@refs/tags/medcat/v0.10.0#subdirectory=medcat-v2"  # for DeID models
+pip install "medcat[spacy,meta-cat,deid,rel-cat,dict-ner] @ git+https://github.com/CogStack/cogstack-nlp.git@refs/tags/medcat/v0.10.0#subdirectory=medcat-v2"  # for all of the sbove
 ```
 
 PS:
