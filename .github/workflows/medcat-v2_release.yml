@@ -27,7 +27,7 @@ jobs:
           git fetch --all
 
           # Get the tag without the 'v' and strip the patch version
-          VERSION_TAG="${GITHUB_REF#refs/tags/v}"
+          VERSION_TAG="${GITHUB_REF#refs/tags/}"
           # NOTE: branch name is in line with version tag, except for the patch version
           BRANCH_NAME="${VERSION_TAG%.*}"  # This removes the patch version (everything after the second dot)
 
