@@ -46,3 +46,8 @@ class DownloaderForm(forms.ModelForm):
             "funder": forms.TextInput(attrs={"size": 40}),
             "use_case": forms.Textarea(attrs={"rows": 5, "cols": 40}),
         }
+
+
+class UMLSApiKeyForm(forms.Form):
+    apikey = forms.CharField(label='UMLS API Key',
+                             widget=forms.TextInput(attrs={'size': 50}))
