@@ -35,7 +35,7 @@ class ConfigTests(unittest.TestCase):
             }
         }
     }
-    NEW_KEY_PATH_INCORRECT = 'general.this_key_is_new_woo'
+    NEW_KEY_PATH_INCORRECT = 'cdb_maker.this_key_is_new_woo'
     TO_MERGE_NEW_KEY_INCORRECT = {
         NEW_KEY_PATH_INCORRECT.split(".")[0]: {
             NEW_KEY_PATH_INCORRECT.split(".")[1]: TO_MERGE_NEW_VAL,
@@ -68,7 +68,7 @@ class ConfigTests(unittest.TestCase):
             cur = getattr(cur, path)
         self.assertEqual(cur, self.TO_MERGE_NEW_VAL)
 
-    def test_cannot_mege_new_value_not_allowed(self):
+    def test_cannot_merge_new_value_not_allowed(self):
         with self.assertRaises(config.IncorrectConfigValues):
             self.cnf.merge_config(self.TO_MERGE_NEW_KEY_INCORRECT)
 

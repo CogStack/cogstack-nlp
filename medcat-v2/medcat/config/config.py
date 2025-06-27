@@ -247,6 +247,9 @@ class General(SerialisableBaseModel):
     NOTE: While using a simple hash is faster at save time, it is less
     reliable due to not taking into account all the details of the changes."""
 
+    class Config:
+        extra = 'allow'
+
 
 class LinkingFilters(SerialisableBaseModel):
     """These describe the linking filters used alongside the model.
@@ -430,6 +433,9 @@ class Ner(ComponentConfig):
     e.g. heart disease -> disease heart"""
     custom_cnf: Optional[Any] = None
     """The custom config for the component."""
+
+    class Config:
+        extra = 'allow'
 
 
 class AnnotationOutput(SerialisableBaseModel):
