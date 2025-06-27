@@ -2,12 +2,14 @@ import sys
 sys.path.insert(0, '/home/ubuntu/projects/MedCAT/')
 import os
 import json
+import html
 from django.shortcuts import render
 from django.http import StreamingHttpResponse, HttpResponse
+import numpy as np
 from wsgiref.util import FileWrapper
+from medcat import __version__ as medcat_version
 from medcat.cat import CAT
 from medcat.cdb import CDB
-from medcat.utils.helpers import doc2html
 from medcat.vocab import Vocab
 from urllib.request import urlretrieve, urlopen
 from urllib.error import HTTPError
@@ -26,10 +28,58 @@ try:
 except Exception as e:
     print(str(e))
 
+
+TPL_ENT = """<mark class="entity" v-on:click="show_info({id})" style="background: {bg}; padding: 0.12em 0.6em; margin: 0 0.25em; line-height: 1; border-radius: 0.35em; box-decoration-break: clone; -webkit-box-decoration-break: clone"> {text} <span style="font-size: 0.8em; font-weight: bold; line-height: 1; border-radius: 0.35em; text-transform: uppercase; vertical-align: middle; margin-left: 0.1rem">{label}</span></mark>"""
+TPL_ENTS = """<div class="entities" style="line-height: 1.5; direction: {dir}">{content}</div>"""
+
+
+def doc2html(doc):
+    markup = ""
+    offset = 0
+    text = doc.base.text
+
+    for span in list(doc.linked_ents):
+        start = span.base.start_char_index
+        end = span.base.end_char_index
+        fragments = text[offset:start].split("\n")
+
+        for i, fragment in enumerate(fragments):
+            markup += html.escape(fragment)
+            if len(fragments) > 1 and i != len(fragments) - 1:
+                markup += "</br>"
+        ent = {'label': '', 'id': span.id,
+               'bg': "rgb(74, 154, 239, {})".format(
+                   span.context_similarity * span.context_similarity + 0.12),
+               'text': html.escape(span.base.text)
+               }
+        # Add the entity
+        markup += TPL_ENT.format(**ent)
+        offset = end
+    markup += html.escape(text[offset:])
+
+    out = TPL_ENTS.format(content=markup, dir='ltr')
+
+    return out
+
+
+# NOTE: numpy uses np.float32 and those are not json serialisable
+#       so we need to fix that
+def fix_floats(in_dict: dict) -> dict:
+    for k, v in in_dict.items():
+        if isinstance(v, np.float32):
+            in_dict[k] = float(v)
+        elif isinstance(v, dict):
+            fix_floats(v)
+    return in_dict
+
+
 def get_html_and_json(text):
     doc = cat(text)
 
-    a = json.loads(cat.get_json(text))
+    a = {
+        "annotations": fix_floats(cat.get_entities(text)['entities']),
+        "text": text,
+    }
     for id, ent in a['annotations'].items():
         new_ent = {}
         for key in ent.keys():
@@ -76,6 +126,7 @@ def show_annotations(request):
         context['doc_html'] = doc_html
         context['doc_json'] = doc_json
         context['text'] = request.POST['text']
+    context['medcat_version'] = medcat_version
     return render(request, 'train_annotations.html', context=context)
 
 
@@ -98,6 +149,7 @@ def validate_umls_user(request):
             'message': 'Something went wrong. Please try again.'
         }
     finally:
+        context['medcat_version'] = medcat_version
         return render(request, 'umls_user_validation.html', context=context)
 
 
@@ -124,6 +176,7 @@ def download_model(request):
                 'downloader_form': downloader_form,
                 'message': 'All non-optional fields must be filled out:'
             }
+            context['medcat_version'] = medcat_version
             return render(request, 'umls_user_validation.html', context=context)
     else:
         return HttpResponse('Erorr: Unknown HTTP method.')
