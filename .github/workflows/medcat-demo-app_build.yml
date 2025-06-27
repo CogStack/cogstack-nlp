@@ -1,0 +1,35 @@
+name: medcat-demo - Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+defaults:
+  run:
+    working-directory: ./medcat-demo-app
+
+jobs:
+  integration-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Docker Compose
+      run: sudo apt-get update && sudo apt-get install -y docker-compose
+
+    - name: Build and start containers
+      run: docker-compose -f docker-compose-test.yml up -d --build
+
+    - name: Run integration test
+      run: ./tests/test_integration.sh
+
+    - name: Check container logs for errors
+      run: |
+        docker-compose logs medcatweb
+        docker-compose logs medcatweb | grep -i 'error' && exit 1 || true
+
+    - name: Tear down
+      run: docker-compose -f docker-compose.test.yml down

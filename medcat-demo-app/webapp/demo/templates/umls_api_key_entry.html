@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block style %}
+<link rel="stylesheet" href="{% static 'css/home.css' %}">
+<link rel="stylesheet" href="{% static 'css/annotations.css' %}">
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.8.2/css/all.css" integrity="sha384-oS3vJWv+0UjzBfQzYUhtDYW+Pj2yciDJxpsK1OYPAYjqT085Qq/1cq5FLXAZQ7Ay" crossorigin="anonymous">
+<link rel="icon" href="{% static 'image/favicon.ico' %}">
+{% endblock %}
+
+{% block body %}
+<div class="container-fluid">
+    <h5>Please enter your UMLS API key to verify your license:</h5>
+
+    {% if message %}
+        <div class="alert alert-info">
+            {{ message }}
+        </div>
+    {% endif %}
+
+    {% if form.errors %}
+        <div class="alert alert-danger">
+            <ul>
+                {% for field in form %}
+                    {% for error in field.errors %}
+                        <li><strong>{{ field.label }}:</strong> {{ error }}</li>
+                    {% endfor %}
+                {% endfor %}
+                {% for error in form.non_field_errors %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-group">
+            {{ form.apikey.label_tag }}
+            {{ form.apikey }}
+        </div>
+        <button type="submit" class="btn btn-primary">Verify API Key</button>
+    </form>
+
+    <p class="mt-3 text-muted">
+        You can find your API key by logging into your UMLS account and visiting your <a href="https://uts.nlm.nih.gov/uts/profile" target="_blank">UMLS Profile</a>.
+    </p>
+</div>
+{% endblock %}
