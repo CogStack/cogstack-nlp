@@ -1,0 +1,16 @@
+version: '3.4'
+
+services:
+  medcatweb:
+    build:
+      context: ./webapp
+    command: >
+      bash -c "/etc/init.d/cron start &&
+               python /webapp/manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - ../medcat-v2/tests/resources:/webapp/models
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./envs/env_medmen_test
+    tty: true
