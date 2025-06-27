@@ -434,6 +434,9 @@ class Ner(ComponentConfig):
     custom_cnf: Optional[Any] = None
     """The custom config for the component."""
 
+    class Config:
+        extra = 'allow'
+
 
 class AnnotationOutput(SerialisableBaseModel):
     """The annotation output part of the config"""
