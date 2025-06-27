@@ -35,7 +35,7 @@ def remove_annotations(document, project, partial=False):
 
 
 def add_annotations(spacy_doc, user, project, document, existing_annotations, cat):
-    spacy_doc.final_ents.sort(key=lambda x: len(x.text), reverse=True)
+    spacy_doc.linked_ents.sort(key=lambda x: len(x.text), reverse=True)
 
     tkns_in = []
     ents = []
@@ -44,9 +44,9 @@ def add_annotations(spacy_doc, user, project, document, existing_annotations, ca
     # that can be produced are expected to have available models
     try:
         metatask2obj = {task_name: MetaTask.objects.get(name=task_name)
-                        for task_name in spacy_doc.final_ents[0].get_addon_data('meta_cat_meta_anns').keys()}
+                        for task_name in spacy_doc.linked_ents[0].get_addon_data('meta_cat_meta_anns').keys()}
         metataskvals2obj = {task_name: {v.name: v for v in MetaTask.objects.get(name=task_name).values.all()}
-                            for task_name in spacy_doc.final_ents[0].get_addon_data('meta_cat_meta_anns').keys()}
+                            for task_name in spacy_doc.linked_ents[0].get_addon_data('meta_cat_meta_anns').keys()}
     except (AttributeError, IndexError):
         # IndexError: ignore if there are no annotations in this doc
         # AttributeError: ignore meta_anns that are not present - i.e. non model pack preds
@@ -65,7 +65,7 @@ def add_annotations(spacy_doc, user, project, document, existing_annotations, ca
         else:
             return False
 
-    for ent in spacy_doc.final_ents:
+    for ent in spacy_doc.linked_ents:
         if not check_ents(ent) and check_filters(ent.cui, cat.config.components.linking.filters):
             to_add = True
             for tkn in ent:

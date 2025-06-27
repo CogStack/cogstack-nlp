@@ -618,7 +618,7 @@ def annotate_text(request):
 
     ents = []
     anno_tkns = []
-    for ent in spacy_doc.final_ents:
+    for ent in spacy_doc.linked_ents:
         cnt = Entity.objects.filter(label=ent._.cui).count()
         inc_ent = all(tkn not in anno_tkns for tkn in ent)
         if inc_ent and cnt != 0:
