@@ -1,9 +1,12 @@
 import logging
 import os
-from typing import Dict
+from typing import Dict, Optional, Any
+
+from pydantic import ValidationError
 
 from medcat import __version__ as mct_version
 from medcat.cat import CAT
+from medcat.config.config import Config, SerialisableBaseModel
 from medcat.cdb import CDB
 from medcat.vocab import Vocab
 from medcat.utils.legacy.convert_cdb import get_cdb_from_old
@@ -74,7 +77,7 @@ def get_medcat_from_cdb_vocab(project,
 
             custom_config = os.getenv("MEDCAT_CONFIG_FILE")
             if custom_config is not None and os.path.exists(custom_config):
-                cdb.config.parse_config_file(path=custom_config)
+                _parse_config_file(cdb.config, custom_config)
             else:
                 logger.info("No MEDCAT_CONFIG_FILE env var set to valid path, using default config available on CDB")
             cdb_map[cdb_id] = cdb
@@ -89,6 +92,62 @@ def get_medcat_from_cdb_vocab(project,
         cat_map[cat_id] = cat
         _clear_models(cat_map=cat_map, cdb_map=cdb_map, vocab_map=vocab_map)
     return cat
+
+
+def _parse_config_file(config: Config,
+                       custom_config_path: str):
+    # NOTE: the v2 mappings are a little different
+    mappings = {
+        "linking": "components.linking",
+        "ner": "components.ner",
+    }
+    mappings_key = {
+        "spacy_model": "nlp.modelname"
+    }
+    with open(custom_config_path) as f:
+        for line in f:
+            if not line.strip().startswith("cat"):
+                continue
+            line = line[4:]
+            left, right = line.split("=")
+            variable, key = left.split(".")
+            variable = variable.strip()
+            # map to v2
+            variable = mappings.get(variable, variable)
+            key = key.strip()
+            # key can also differ
+            key = mappings_key.get(key, key)
+            value = eval(right)
+            alt_value = set() if right.strip() in ({}, "{}") else None
+
+            # get (potentially nested in case of v2 mapping) attribute
+            cnf = config
+            while "." in variable:
+                current, variable = variable.split(".", 1)
+                cnf = getattr(cnf, current)
+            attr = getattr(cnf, variable)
+            while "." in key:
+                cur_key, key = key.split(".", 1)
+                attr = getattr(attr, cur_key)
+            if isinstance(attr, SerialisableBaseModel):
+                _set_value_or_alt(attr, key, value, alt_value)
+            elif isinstance(attr, dict):
+                attr[key] = value
+            else:
+                raise ValueError(f'Unknown attribute {attr} for "{line}"')
+
+
+def _set_value_or_alt(conf: SerialisableBaseModel, key: str, value: Any,
+                      alt_value: Any, err: Optional[ValidationError] = None) -> None:
+    try:
+        setattr(conf, key, value) # hoping for correct type
+    except ValidationError as ve:
+        if alt_value is not None:
+            _set_value_or_alt(conf, key, alt_value, None, err=ve)
+        elif err is not None:
+            raise err
+        else:
+            raise ve
 
 
 def get_medcat_from_model_pack(project, cat_map: Dict[str, CAT]=CAT_MAP) -> CAT:
@@ -111,8 +170,8 @@ def get_medcat(project,
         else:
             cat = get_medcat_from_model_pack(project, cat_map)
         return cat
-    except AttributeError:
-        raise Exception('Failure loading Project ConceptDB, Vocab or Model Pack. Are these set correctly?')
+    except AttributeError as err:
+        raise Exception('Failure loading Project ConceptDB, Vocab or Model Pack. Are these set correctly?') from err
 
 
 def get_cached_medcat(project, cat_map: Dict[str, CAT]=CAT_MAP):
