@@ -13,10 +13,11 @@ import torch
 from background_task.models import Task
 from django.contrib.auth.models import User
 from django.db.models import QuerySet
+from medcat.stats.stats import get_stats
 from medcat.cat import CAT
 from medcat.cdb import CDB
 from medcat.config.config_meta_cat import ConfigMetaCAT
-from medcat.components.addons.meta_cat.meta_cat import MetaCAT
+from medcat.components.addons.meta_cat.meta_cat import MetaCATAddon
 from medcat.components.addons.meta_cat.mctokenizers.tokenizers import TokenizerWrapperBase
 from medcat.components.addons.meta_cat.data_utils import prepare_from_json, encode_category_values
 from medcat.components.addons.meta_cat.ml_utils import create_batch_piped_data
@@ -116,7 +117,7 @@ class ProjectMetrics(object):
         """
         annotation_df = pd.DataFrame(self.annotations)
         if self.cat:
-            annotation_df.insert(5, 'concept_name', annotation_df['cui'].map(self.cat.cdb.cui2preferred_name))
+            annotation_df.insert(5, 'concept_name', annotation_df['cui'].map(self.cat.cdb.get_name))
         annotation_df['last_modified'] = pd.to_datetime(annotation_df['last_modified']).dt.tz_localize(None)
         return annotation_df
 
@@ -138,9 +139,10 @@ class ProjectMetrics(object):
         concept_count_df['count_variations_ratio'] = round(concept_count_df['concept_count'] /
                                                            concept_count_df['variations'], 3)
         if self.cat:
-            fps, fns, tps, cui_prec, cui_rec, cui_f1, cui_counts, examples = self.cat._print_stats(data=self.mct_export,
-                                                                                                   use_project_filters=True,
-                                                                                                   extra_cui_filter=extra_cui_filter)
+            fps, fns, tps, cui_prec, cui_rec, cui_f1, cui_counts, examples = get_stats(self.cat,
+                                                                                       data=self.mct_export,
+                                                                                       use_project_filters=True,
+                                                                                       extra_cui_filter=extra_cui_filter)
             # remap tps, fns, fps to specific user annotations
             examples = self.enrich_medcat_metrics(examples)
             concept_count_df['fps'] = concept_count_df['cui'].map(fps)
@@ -243,10 +245,10 @@ class ProjectMetrics(object):
 
     def _eval_model(self, model: nn.Module, data: List, config: ConfigMetaCAT, tokenizer: TokenizerWrapperBase) -> Dict:
         device = torch.device(config.general['device'])  # Create a torch device
-        batch_size_eval = config.general['batch_size_eval']
-        pad_id = config.model['padding_idx']
-        ignore_cpos = config.model['ignore_cpos']
-        class_weights = config.train['class_weights']
+        batch_size_eval = config.general.batch_size_eval
+        pad_id = config.model.padding_idx
+        ignore_cpos = config.model.ignore_cpos
+        class_weights = config.train.class_weights
 
         if class_weights is not None:
             class_weights = torch.FloatTensor(class_weights).to(device)
@@ -323,9 +325,17 @@ class ProjectMetrics(object):
                           ~anns_df['killed'] & ~anns_df['irrelevant']]
         meta_df = meta_df.reset_index(drop=True)
 
-        for meta_model in self.cat._meta_cats:
-            logger.info(f'Checking metacat model: {meta_model}')
-            meta_model_task = meta_model.name
+        all_meta_cats = self.cat.get_addons_of_type(MetaCATAddon)
+
+        for meta_model_card in self.cat.get_model_card(as_dict=True)['MetaCAT models']:
+            meta_model_task = meta_model_card['Category Name']
+            logger.info(f'Checking metacat model: {meta_model_task}')
+            _meta_models = [mc for mc in all_meta_cats
+                           if mc.config.general.category_name == meta_model_task]
+            if not _meta_models:
+                logger.warning(f'MetaCAT model {meta_model_task} not found in the CAT instance.')
+                continue
+            meta_model = _meta_models[0]
             meta_results = self._eval(meta_model, self.mct_export)
             meta_values = {v: k for k, v in meta_results['meta_values'].items()}
             pred_meta_values = []
