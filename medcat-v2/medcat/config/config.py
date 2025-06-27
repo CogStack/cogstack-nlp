@@ -166,6 +166,7 @@ class NLPConfig(SerialisableBaseModel):
 
     # NOTE: this will allow for more config entries
     #       since we don't know what other implementations may require
+
     class Config:
         extra = 'allow'
         validate_assignment = True
@@ -357,6 +358,9 @@ class Linking(ComponentConfig):
     E.g the 2-step linker uses this for alpha calculations
     and learning rate for type contexts.
     """
+
+    class Config:
+        extra = 'allow'
 
 
 class Preprocessing(SerialisableBaseModel):
