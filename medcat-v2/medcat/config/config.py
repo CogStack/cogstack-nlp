@@ -247,6 +247,9 @@ class General(SerialisableBaseModel):
     NOTE: While using a simple hash is faster at save time, it is less
     reliable due to not taking into account all the details of the changes."""
 
+    class Config:
+        extra = 'allow'
+
 
 class LinkingFilters(SerialisableBaseModel):
     """These describe the linking filters used alongside the model.
