@@ -21,4 +21,6 @@ resp = session.post(URL, data={
     "text": text,
     "csrfmiddlewaretoken": csrf})
 
+print(f"RESPOONSE:\n{resp.text}")
+
 assert disease in resp.text
