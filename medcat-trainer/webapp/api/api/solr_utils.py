@@ -6,6 +6,7 @@ from typing import List, Dict
 import requests
 from django.http import HttpResponseServerError
 from medcat.cdb import CDB
+from medcat.cdb.concepts import CUIInfo
 from rest_framework.response import Response
 
 from api.models import ConceptDB
@@ -128,14 +129,14 @@ def import_all_concepts(cdb: CDB, cdb_model: ConceptDB):
     if resp.status_code != 200:
         _solr_error_response(resp, 'Failure creating collection')
 
-    cui2name_iter = iter(cdb.cui2names.items())
+    cui2info_iter = iter(cdb.cui2info.items())
 
     payload = []
     try:
         while True:
             for i in range(5000):
-                cui, name = next(cui2name_iter)
-                concept_dct = _concept_dct(cui, cdb)
+                cui, info = next(cui2info_iter)
+                concept_dct = _concept_dct(cui, cdb, info)
                 payload.append(concept_dct)
             _upload_payload(f'{base_url}/{collection_name}/update', payload, collection_name)
             payload = []
@@ -175,7 +176,7 @@ def ensure_concept_searchable(cui, cdb: CDB, cdb_model: ConceptDB):
     resp = requests.get(url)
     if resp.status_code == 200:
         collections = json.loads(resp.text)['collections']
-        data = [_concept_dct(cui, cdb)]
+        data = [_concept_dct(cui, cdb, cdb.cui2info[cui])]
         if collection in collections:
             _upload_payload(f'{base_url}/{collection}/update', data, collection, commit=True)
 
@@ -190,14 +191,14 @@ def _upload_payload(update_url, data, collection, commit=False):
         _solr_error_response(resp, f'error updating {collection}')
 
 
-def _concept_dct(cui: str, cdb: CDB):
-    synonyms = list(cdb.addl_info.get('cui2original_names', {}).get(cui, set()))
+def _concept_dct(cui: str, cdb: CDB, info: CUIInfo):
+    synonyms = list(info['original_names'] or [])
     concept_dct = {
         'cui': str(cui),
         'pretty_name': cdb.get_name(cui),
         'name': re.sub(r'\([\w+\s]+\)', '', cdb.get_name(cui)).strip(),
-        'type_ids': list(cdb.cui2type_ids[cui]),
-        'desc': cdb.addl_info.get('cui2description', {}).get(cui, ''),
+        'type_ids': list(info['type_ids']),
+        'desc': info['description'],
         'synonyms': synonyms if len(synonyms) > 0 else [cdb.get_name(cui)]
     }
     return concept_dct
