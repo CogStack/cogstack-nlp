@@ -2,8 +2,13 @@ name: medcat-v2 - Test
 
 on:
   push:
+    paths:
+      - 'medcat-v2/**'
+      - '.github/workflows/medcat-v2**'
     branches: [ main ]
   pull_request:
+    paths:
+      - 'medcat-v2/**'
     branches: [ main ]
 defaults:
   run:
