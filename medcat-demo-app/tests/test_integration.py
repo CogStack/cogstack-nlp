@@ -23,4 +23,11 @@ resp = session.post(URL, data={
 
 print(f"RESPOONSE:\n{resp.text}")
 
+soup = BeautifulSoup(resp.text, "html.parser")
+
+annotations = soup.select("div.entities mark.entity")
+assert annotations, "No annotations found in the response"
+assert any(disease in mark.text.lower() for mark in annotations), (
+    f"Disease '{disease}' not found in annotations")
+
 assert disease in resp.text
