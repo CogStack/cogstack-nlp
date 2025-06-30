@@ -2,11 +2,7 @@ name: medcat-v2-tutorials - Test
 
 on:
   push:
-    paths:
-      - 'medcat-v2/**'
-      - 'medcat-v2-tutorials/**'
-      - '.github/workflows/medcat-v2**'
-      - '.github/workflows/medcat-v2-tutorials**'
+    branches: [ main ]
   pull_request:
     paths:
       - 'medcat-v2/**'

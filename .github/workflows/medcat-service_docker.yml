@@ -2,9 +2,7 @@ name: medcat-service - Build Images
 
 on:
   push:
-    paths:
-      - 'medcat-service/**'
-      - '.github/workflows/medcat-service**'
+    branches: [ main ]
     tags:
       - 'medcat-service/v*.*.*'  # e.g., medcat-serice/v0.1.1
   pull_request:

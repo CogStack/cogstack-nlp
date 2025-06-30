@@ -2,9 +2,7 @@ name: medcat-demo-app - Test
 
 on:
   push:
-    paths:
-      - 'medcat-demo-app/**'
-      - '.github/workflows/medcat-demo-app**'
+    branches: [ main ]
   pull_request:
     paths:
       - 'medcat-demo-app/**'
