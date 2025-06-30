@@ -15,13 +15,13 @@ for i in {1..60}; do
 done
 
 # Submit test input and assert that it was processed
-RESPONSE=$(curl -s -X POST -d "text=aspirin is good for headache" http://localhost:8000)
+RESPONSE=$(curl -s -X POST -d "text=Patient had been diagnosed with acute kidney failure the week before" http://localhost:8000)
 
 # Optionally print for debugging
 echo "$RESPONSE"
 
 # Check output contains a known string (your app returns doc_html/json in the template)
 echo "$RESPONSE" | grep -q 'No documents yet' && echo "Form not processed" && exit 1
-echo "$RESPONSE" | grep -q 'aspirin' || (echo "Expected annotation not found" && exit 1)
+echo "$RESPONSE" | grep -q 'kidney failure' || (echo "Expected annotation not found" && exit 1)
 
 echo "Test passed ✅"
