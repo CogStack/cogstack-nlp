@@ -7,6 +7,12 @@ on:
       - 'medcat-v2-tutorials/**'
       - '.github/workflows/medcat-v2**'
       - '.github/workflows/medcat-v2-tutorials**'
+  pull_request:
+    paths:
+      - 'medcat-v2/**'
+      - 'medcat-v2-tutorials/**'
+      - '.github/workflows/medcat-v2**'
+      - '.github/workflows/medcat-v2-tutorials**'
 defaults:
   run:
     working-directory: ./medcat-v2-tutorials

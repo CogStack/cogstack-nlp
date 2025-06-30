@@ -5,6 +5,10 @@ on:
     paths:
       - 'medcat-v2/**'
       - '.github/workflows/medcat-v2**'
+  pull_request:
+    paths:
+      - 'medcat-v2/**'
+      - '.github/workflows/medcat-v2**'
 defaults:
   run:
     working-directory: ./medcat-v2
