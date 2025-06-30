@@ -1,4 +1,4 @@
-name: medcat-demo - Test
+name: medcat-demo-app - Test
 
 on:
   push:
