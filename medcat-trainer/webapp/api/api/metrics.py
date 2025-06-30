@@ -244,7 +244,7 @@ class ProjectMetrics(object):
         return
 
     def _eval_model(self, model: nn.Module, data: List, config: ConfigMetaCAT, tokenizer: TokenizerWrapperBase) -> Dict:
-        device = torch.device(config.general['device'])  # Create a torch device
+        device = torch.device(config.general.device)  # Create a torch device
         batch_size_eval = config.general.batch_size_eval
         pad_id = config.model.padding_idx
         ignore_cpos = config.model.ignore_cpos
