@@ -27,7 +27,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: models/medmen
-          key: medmen-${{ hashFiles('scripts/download_medmen.sh') }}
+          key: medmen-${{ hashFiles('medcat-service/scripts/download_medmen.sh') }}
 
       - name: Install Python 3
         uses: actions/setup-python@v5
