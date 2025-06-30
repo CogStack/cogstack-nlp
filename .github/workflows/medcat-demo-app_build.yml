@@ -32,4 +32,4 @@ jobs:
         docker-compose logs medcatweb | grep -i 'error' && exit 1 || true
 
     - name: Tear down
-      run: docker-compose -f docker-compose.test.yml down
+      run: docker-compose -f docker-compose-test.yml down
