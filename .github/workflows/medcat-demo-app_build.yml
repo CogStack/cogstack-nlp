@@ -2,10 +2,9 @@ name: medcat-demo - Test
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-
+    paths:
+      - 'medcat-demo-app/**'
+      - '.github/workflows/medcat-demo-app**'
 defaults:
   run:
     working-directory: ./medcat-demo-app
