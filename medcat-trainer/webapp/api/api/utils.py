@@ -57,8 +57,8 @@ def add_annotations(spacy_doc, user, project, document, existing_annotations, ca
         pass
 
     def check_ents(ent):
-        return any((ea[0] < ent.start_char < ea[1]) or
-                   (ea[0] < ent.end_char < ea[1]) for ea in existing_annos_intervals)
+        return any((ea[0] < ent.start_char_index < ea[1]) or
+                   (ea[0] < ent.end_char_index < ea[1]) for ea in existing_annos_intervals)
 
     def check_filters(cui, filters):
         if cui in filters.cuis or not filters.cuis:
