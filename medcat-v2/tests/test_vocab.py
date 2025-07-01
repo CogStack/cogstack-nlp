@@ -9,6 +9,7 @@ import unittest
 import tempfile
 
 from . import UNPACKED_EXAMPLE_MODEL_PACK_PATH, RESOURCES_PATH
+from . import UNPACKED_V1_MODEL_PACK_PATH
 
 
 ZIPPED_VOCAB_PATH = os.path.join(RESOURCES_PATH, "mct2_vocab.zip")
@@ -169,6 +170,7 @@ class VocabTests(unittest.TestCase):
 
 class DefaultVocabTests(unittest.TestCase):
     VOCAB_PATH = os.path.join(UNPACKED_EXAMPLE_MODEL_PACK_PATH, 'vocab')
+    LEGACY_VOCAB_PATH = os.path.join(UNPACKED_V1_MODEL_PACK_PATH, "vocab.dat")
     EXP_SHAPE = (7,)
 
     @classmethod
@@ -198,6 +200,10 @@ class DefaultVocabTests(unittest.TestCase):
     def test_can_load_from_zip(self):
         vocab = Vocab.load(ZIPPED_VOCAB_PATH)
         self.assertIsInstance(vocab, Vocab)
+
+    def test_can_convert_legacy_upon_load(self):
+        loaded = Vocab.load(self.LEGACY_VOCAB_PATH)
+        self.assertIsInstance(loaded, Vocab)
 
     def test_can_save_to_zip(self):
         with tempfile.TemporaryDirectory() as temp_dir:
