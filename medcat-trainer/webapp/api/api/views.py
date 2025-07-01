@@ -619,17 +619,17 @@ def annotate_text(request):
     ents = []
     anno_tkns = []
     for ent in spacy_doc.linked_ents:
-        cnt = Entity.objects.filter(label=ent._.cui).count()
+        cnt = Entity.objects.filter(label=ent.cui).count()
         inc_ent = all(tkn not in anno_tkns for tkn in ent)
         if inc_ent and cnt != 0:
             anno_tkns.extend([tkn for tkn in ent])
-            entity = Entity.objects.get(label=ent._.cui)
+            entity = Entity.objects.get(label=ent.cui)
             ents.append({
                 'entity': entity.id,
-                'value': ent.text,
-                'start_ind': ent.start_char,
-                'end_ind': ent.end_char,
-                'acc': ent._.context_similarity
+                'value': ent.base.text,
+                'start_ind': ent.base.start_char_index,
+                'end_ind': ent.base.end_char_index,
+                'acc': ent.context_similarity
             })
 
     ents.sort(key=lambda e: e['start_ind'])
