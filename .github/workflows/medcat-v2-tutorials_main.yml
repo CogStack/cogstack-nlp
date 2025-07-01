@@ -47,6 +47,7 @@ jobs:
       matrix:
         part: [
           ./notebooks/introductory/migration/*.ipynb,
+          ./notebooks/introductory/relcat/*.ipynb,
           ./notebooks/advanced/*.ipynb,
         ]
 
