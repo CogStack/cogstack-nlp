@@ -514,7 +514,7 @@ class CDB(AbstractSerialisable):
     def load(cls, path: str) -> 'CDB':
         if should_serialise_as_zip(path, 'auto'):
             cdb = deserialise_from_zip(path)
-        if os.path.isfile(path) and path.endswith('.dat'):
+        elif os.path.isfile(path) and path.endswith('.dat'):
             if not avoid_legacy_conversion():
                 from medcat.utils.legacy.convert_cdb import get_cdb_from_old
                 doing_legacy_conversion_message(logger, 'CDB', path)
