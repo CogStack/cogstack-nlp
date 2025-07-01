@@ -10,6 +10,7 @@ from medcat.storage.serialisers import (
     deserialise, AvailableSerialisers, serialise)
 from medcat.storage.zip_utils import (
     should_serialise_as_zip, serialise_as_zip, deserialise_from_zip)
+from medcat.utils.defaults import AVOID_LEGACY_CONVERSION_ENVIRON
 
 
 WordDescriptor = TypedDict('WordDescriptor',
@@ -324,9 +325,19 @@ class Vocab(AbstractSerialisable):
     def load(cls, path: str) -> 'Vocab':
         if should_serialise_as_zip(path, 'auto'):
             vocab = deserialise_from_zip(path)
-        if os.path.isfile(path) and path.endswith('.dat'):
-            from medcat.utils.legacy.convert_vocab import get_vocab_from_old
-            vocab = get_vocab_from_old(path)
+        elif os.path.isfile(path) and path.endswith('.dat'):
+            should_avoid_auto_conversion = os.environ.get(
+                AVOID_LEGACY_CONVERSION_ENVIRON, "False").lower() == "true"
+            if not should_avoid_auto_conversion:
+                from medcat.utils.legacy.convert_vocab import (
+                    get_vocab_from_old)
+                vocab = get_vocab_from_old(path)
+            else:
+                raise ValueError(
+                    f"The path '{path}' is a legacy Vocab, "
+                    "but the environment variable "
+                    f"{AVOID_LEGACY_CONVERSION_ENVIRON} is set to True. "
+                    "Please set it to False to allow conversion.")
         else:
             vocab = deserialise(path)
         if not isinstance(vocab, Vocab):
