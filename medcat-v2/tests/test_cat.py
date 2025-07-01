@@ -17,6 +17,7 @@ from medcat.tokenizing.tokenizers import TOKENIZER_PREFIX
 from medcat.utils.cdb_state import captured_state_cdb
 from medcat.components.addons.meta_cat import MetaCATAddon
 from medcat.utils.defaults import AVOID_LEGACY_CONVERSION_ENVIRON
+from medcat.utils.defaults import LegacyConversionDisabledError
 
 import unittest
 import tempfile
@@ -648,7 +649,7 @@ class CATLegacyLoadTests(unittest.TestCase):
     def test_cannot_load_legacy_with_environ_set(self):
         with unittest.mock.patch.dict(os.environ, {
                 AVOID_LEGACY_CONVERSION_ENVIRON: "true"}, clear=True):
-            with self.assertRaises(ValueError):
+            with self.assertRaises(LegacyConversionDisabledError):
                 cat.CAT.load_model_pack(V1_MODEL_PACK_PATH)
 
 
