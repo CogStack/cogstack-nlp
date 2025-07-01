@@ -10,7 +10,7 @@ from medcat.storage.serialisers import (
     deserialise, AvailableSerialisers, serialise)
 from medcat.storage.zip_utils import (
     should_serialise_as_zip, serialise_as_zip, deserialise_from_zip)
-from medcat.utils.defaults import AVOID_AUTOMATIC_LEGACY_CONVERSION
+from medcat.utils.defaults import avoid_legacy_conversion
 from medcat.utils.defaults import AVOID_LEGACY_CONVERSION_ENVIRON
 
 
@@ -327,7 +327,7 @@ class Vocab(AbstractSerialisable):
         if should_serialise_as_zip(path, 'auto'):
             vocab = deserialise_from_zip(path)
         elif os.path.isfile(path) and path.endswith('.dat'):
-            if not AVOID_AUTOMATIC_LEGACY_CONVERSION:
+            if not avoid_legacy_conversion():
                 from medcat.utils.legacy.convert_vocab import (
                     get_vocab_from_old)
                 vocab = get_vocab_from_old(path)

@@ -9,8 +9,10 @@ DEFAULT_PACK_NAME = "medcat2_model_pack"
 COMPONENTS_FOLDER = "saved_components"
 AVOID_LEGACY_CONVERSION_ENVIRON = "MEDCAT_AVOID_LECACY_CONVERSION"
 
-AVOID_AUTOMATIC_LEGACY_CONVERSION = os.environ.get(
-            AVOID_LEGACY_CONVERSION_ENVIRON, "False").lower() == "true"
+
+def avoid_legacy_conversion() -> bool:
+    return os.environ.get(
+        AVOID_LEGACY_CONVERSION_ENVIRON, "False").lower() == "true"
 
 
 @lru_cache(maxsize=100)
