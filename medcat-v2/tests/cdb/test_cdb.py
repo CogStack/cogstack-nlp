@@ -10,6 +10,7 @@ from unittest import TestCase
 import tempfile
 
 from .. import UNPACKED_EXAMPLE_MODEL_PACK_PATH, RESOURCES_PATH
+from .. import UNPACKED_V1_MODEL_PACK_PATH
 
 
 ZIPPED_CDB_PATH = os.path.join(RESOURCES_PATH, "mct2_cdb.zip")
@@ -17,6 +18,7 @@ ZIPPED_CDB_PATH = os.path.join(RESOURCES_PATH, "mct2_cdb.zip")
 
 class CDBTests(TestCase):
     CDB_PATH = os.path.join(UNPACKED_EXAMPLE_MODEL_PACK_PATH, "cdb")
+    LEGACY_CDB_PATH = os.path.join(UNPACKED_V1_MODEL_PACK_PATH, "cdb.dat")
     CUI_TO_REMOVE = "C03"
     NAMES_TO_REMOVE = ['high~temperature']
     TO_FILTER = ['C01', 'C02']
@@ -39,6 +41,10 @@ class CDBTests(TestCase):
         self.assertIsInstance(loaded, cdb.CDB)
         # make sure it's actually a file not a folder
         self.assertTrue(os.path.isfile(ZIPPED_CDB_PATH))
+
+    def test_can_convert_legacy_upon_load(self):
+        loaded = cdb.CDB.load(self.LEGACY_CDB_PATH)
+        self.assertIsInstance(loaded, cdb.CDB)
 
     def test_can_save_to_zip(self):
         with tempfile.TemporaryDirectory() as temp_dir:
