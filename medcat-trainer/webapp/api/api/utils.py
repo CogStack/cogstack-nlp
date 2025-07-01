@@ -10,6 +10,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from medcat.cat import CAT
 from medcat.components.ner.trf.deid import DeIdModel
+from medcat.tokenizing.tokens import UnregisteredDataPathException
 
 from .model_cache import get_medcat
 from .models import Entity, AnnotatedEntity, ProjectAnnotateEntities, \
@@ -47,7 +48,7 @@ def add_annotations(spacy_doc, user, project, document, existing_annotations, ca
                         for task_name in spacy_doc.linked_ents[0].get_addon_data('meta_cat_meta_anns').keys()}
         metataskvals2obj = {task_name: {v.name: v for v in MetaTask.objects.get(name=task_name).values.all()}
                             for task_name in spacy_doc.linked_ents[0].get_addon_data('meta_cat_meta_anns').keys()}
-    except (AttributeError, IndexError):
+    except (AttributeError, IndexError, UnregisteredDataPathException):
         # IndexError: ignore if there are no annotations in this doc
         # AttributeError: ignore meta_anns that are not present - i.e. non model pack preds
         # or model pack preds with no meta_anns
