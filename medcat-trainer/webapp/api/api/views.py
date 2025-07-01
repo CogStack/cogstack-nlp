@@ -460,16 +460,8 @@ def import_cdb_concepts(request):
 
 def _submit_document(project: ProjectAnnotateEntities, document: Document):
     if project.train_model_on_submit:
-        try:
-            cat = get_medcat(project=project)
-            train_medcat(cat, project, document)
-        except Exception as e:
-            if project.vocab.id:
-                if len(VOCAB_MAP[project.vocab.id].unigram_table) == 0:
-                    return Exception('Vocab is missing the unigram table. On the vocab instance '
-                                     'use vocab.make_unigram_table() to build')
-            else:
-                raise e
+        cat = get_medcat(project=project)
+        train_medcat(cat, project, document)
 
     # Add cuis to filter if they did not exist
     cuis = []
