@@ -17,9 +17,6 @@ jobs:
       matrix:
         python-version: [ '3.9', '3.10', '3.11', '3.12' ]
       max-parallel: 4
-    concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}
-      cancel-in-progress: ${{ !contains(github.ref, 'main')}}
     steps:
       - uses: actions/checkout@v4
       - name: Install uv for Python ${{ matrix.python-version }}
