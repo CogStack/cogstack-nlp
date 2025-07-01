@@ -28,6 +28,7 @@ from medcat.components.types import AbstractCoreComponent, HashableComponet
 from medcat.components.addons.addons import AddonComponent
 from medcat.utils.legacy.identifier import is_legacy_model_pack
 from medcat.utils.defaults import avoid_legacy_conversion
+from medcat.utils.defaults import doing_legacy_conversion_message
 from medcat.utils.defaults import LegacyConversionDisabledError
 from medcat.utils.usage_monitoring import UsageMonitor
 
@@ -606,11 +607,7 @@ class CAT(AbstractSerialisable):
         avoid_legacy = avoid_legacy_conversion()
         if is_legacy and not avoid_legacy:
             from medcat.utils.legacy.conversion_all import Converter
-            logger.warning(
-                "Doing legacy conversion on model pack '%s'. "
-                "This will make the model load take significantly longer. "
-                "If you wish to avoid this, set the environment variable '%s' "
-                "to 'true'", model_pack_path, AVOID_LEGACY_CONVERSION_ENVIRON)
+            doing_legacy_conversion_message(logger, 'CAT', model_pack_path)
             return Converter(model_pack_path, None).convert()
         elif is_legacy and avoid_legacy:
             raise LegacyConversionDisabledError("CAT")
