@@ -10,6 +10,7 @@ from medcat.storage.serialisers import (
 from medcat.storage.zip_utils import (
     should_serialise_as_zip, serialise_as_zip, deserialise_from_zip)
 from medcat.utils.defaults import default_weighted_average, StatusTypes as ST
+from medcat.utils.defaults import AVOID_LEGACY_CONVERSION_ENVIRON
 from medcat.utils.hasher import Hasher
 from medcat.preprocessors.cleaners import NameDescriptor
 from medcat.config import Config
@@ -512,8 +513,17 @@ class CDB(AbstractSerialisable):
         if should_serialise_as_zip(path, 'auto'):
             cdb = deserialise_from_zip(path)
         if os.path.isfile(path) and path.endswith('.dat'):
-            from medcat.utils.legacy.convert_cdb import get_cdb_from_old
-            cdb = get_cdb_from_old(path)
+            should_avoid_auto_conversion = os.environ.get(
+                AVOID_LEGACY_CONVERSION_ENVIRON, "False").lower() == "true"
+            if not should_avoid_auto_conversion:
+                from medcat.utils.legacy.convert_cdb import get_cdb_from_old
+                cdb = get_cdb_from_old(path)
+            else:
+                raise ValueError(
+                    f"Legacy CDB conversion is disabled, but the path '{path}' "
+                    "is a legacy CDB file. Set the environment variable "
+                    f"{AVOID_LEGACY_CONVERSION_ENVIRON} to 'False' to enable "
+                    "legacy conversion.")
         else:
             cdb = deserialise(path)
         if not isinstance(cdb, CDB):
