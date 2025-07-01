@@ -1,5 +1,6 @@
 from typing import Optional, Any, cast, Union, Literal
 from typing_extensions import TypedDict
+import os
 
 # import dill
 import numpy as np
@@ -323,6 +324,9 @@ class Vocab(AbstractSerialisable):
     def load(cls, path: str) -> 'Vocab':
         if should_serialise_as_zip(path, 'auto'):
             vocab = deserialise_from_zip(path)
+        if os.path.isfile(path) and path.endswith('.dat'):
+            from medcat.utils.legacy.convert_vocab import get_vocab_from_old
+            vocab = get_vocab_from_old(path)
         else:
             vocab = deserialise(path)
         if not isinstance(vocab, Vocab):
