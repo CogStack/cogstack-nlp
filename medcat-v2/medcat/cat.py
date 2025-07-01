@@ -28,7 +28,7 @@ from medcat.components.types import AbstractCoreComponent, HashableComponet
 from medcat.components.addons.addons import AddonComponent
 from medcat.utils.legacy.identifier import is_legacy_model_pack
 from medcat.utils.defaults import avoid_legacy_conversion
-from medcat.utils.defaults import AVOID_LEGACY_CONVERSION_ENVIRON
+from medcat.utils.defaults import LegacyConversionDisabledError
 from medcat.utils.usage_monitoring import UsageMonitor
 
 
@@ -605,7 +605,6 @@ class CAT(AbstractSerialisable):
         is_legacy = is_legacy_model_pack(model_pack_path)
         avoid_legacy = avoid_legacy_conversion()
         if is_legacy and not avoid_legacy:
-            print("COVNERTING ")
             from medcat.utils.legacy.conversion_all import Converter
             logger.warning(
                 "Doing legacy conversion on model pack '%s'. "
@@ -614,12 +613,7 @@ class CAT(AbstractSerialisable):
                 "to 'true'", model_pack_path, AVOID_LEGACY_CONVERSION_ENVIRON)
             return Converter(model_pack_path, None).convert()
         elif is_legacy and avoid_legacy:
-            print("RAISING / avoding")
-            raise ValueError(
-                f"The model pack '{model_pack_path}' is a legacy model pack. "
-                "Please set the environment variable "
-                f"'{AVOID_LEGACY_CONVERSION_ENVIRON}' "
-                "to 'true' to allow automatic conversion.")
+            raise LegacyConversionDisabledError("CAT")
         # NOTE: ignoring addons since they will be loaded later / separately
         cat = deserialise(model_pack_path, model_load_path=model_pack_path,
                           ignore_folders_prefix={

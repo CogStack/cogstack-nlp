@@ -11,7 +11,7 @@ from medcat.storage.serialisers import (
 from medcat.storage.zip_utils import (
     should_serialise_as_zip, serialise_as_zip, deserialise_from_zip)
 from medcat.utils.defaults import avoid_legacy_conversion
-from medcat.utils.defaults import AVOID_LEGACY_CONVERSION_ENVIRON
+from medcat.utils.defaults import LegacyConversionDisabledError
 
 
 WordDescriptor = TypedDict('WordDescriptor',
@@ -332,11 +332,7 @@ class Vocab(AbstractSerialisable):
                     get_vocab_from_old)
                 vocab = get_vocab_from_old(path)
             else:
-                raise ValueError(
-                    f"The path '{path}' is a legacy Vocab, "
-                    "but the environment variable "
-                    f"{AVOID_LEGACY_CONVERSION_ENVIRON} is set to True. "
-                    "Please set it to False to allow conversion.")
+                raise LegacyConversionDisabledError("Vocab")
         else:
             vocab = deserialise(path)
         if not isinstance(vocab, Vocab):

@@ -15,6 +15,16 @@ def avoid_legacy_conversion() -> bool:
         AVOID_LEGACY_CONVERSION_ENVIRON, "False").lower() == "true"
 
 
+class LegacyConversionDisabledError(Exception):
+    """Raised when legacy conversion is disabled."""
+
+    def __init__(self, component_name: str):
+        super().__init__(
+            f"Legacy conversion is disabled (while loading {component_name}). "
+            f"Set the environment variable {AVOID_LEGACY_CONVERSION_ENVIRON} "
+            "to `False` to allow conversion.")
+
+
 @lru_cache(maxsize=100)
 def default_weighted_average(step: int, factor: float = 0.0004) -> float:
     return max(0.1, 1 - (step ** 2 * factor))
