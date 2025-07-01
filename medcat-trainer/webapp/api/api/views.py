@@ -303,6 +303,7 @@ def prepare_documents(request):
                 project.save()
 
     except Exception as e:
+        logger.warning('Error preparing documents for project %s', p_id, exc_info=e)
         stack = traceback.format_exc()
         return Response({'message': e.args[0] if len(e.args) > 0 else 'Internal Server Error',
                          'description': e.args[1] if len(e.args) > 1 else '',
