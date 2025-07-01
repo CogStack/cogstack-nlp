@@ -65,6 +65,10 @@ def get_medcat_from_cdb_vocab(project,
                 cdb_map[cdb_id] = cdb
                 cdb_path = project.concept_db.cdb_file.path
                 cdb_map[cdb_id] = cdb
+            # NOTE: when loading a CDB separately, we don't necessarily want to
+            #       load / create addons like MetaCAT as well
+            logger.info('Clearing addons for CDB upon load: %s', cdb_id)
+            cdb.config.components.addons.clear()
 
             except KeyError as ke:
                 mc_v = mct_version
