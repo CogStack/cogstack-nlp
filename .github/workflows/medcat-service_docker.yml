@@ -77,11 +77,14 @@ jobs:
             type=ref,event=tag
             type=ref,event=pr
             type=sha
+            # Create version tag based on tag prefix
+            type=match,pattern=medcat-service/v(\d+\.\d+\.\d+),group=1
 
       - name: Build and push Docker Jupyter singleuser image with GPU support
         id: docker_build_gpu
         uses: docker/build-push-action@v6
         with:
+          context: "{{defaultContext}}:medcat-service" # Set the working directory as the action doesnt use the working-directory default
           file : "Dockerfile_gpu"
           allow: network.host
           tags: ${{ steps.meta-gpu.outputs.tags }}
