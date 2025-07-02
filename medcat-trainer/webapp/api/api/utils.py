@@ -131,7 +131,7 @@ def add_annotations(spacy_doc, user, project, document, existing_annotations, ca
             #         logger.debug('Successfully saved %s', meta_anno_obj)
 
 
-def clear_cdb_cnf_addons(cdb: CDB, cdb_id: str):
+def clear_cdb_cnf_addons(cdb: CDB, cdb_id: str | int):
     # NOTE: when loading a CDB separately, we don't necessarily want to
     #       load / create addons like MetaCAT as well
     logger.info('Clearing addons for CDB upon load: %s', cdb_id)

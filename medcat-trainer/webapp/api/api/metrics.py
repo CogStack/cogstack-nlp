@@ -26,6 +26,7 @@ from torch import nn
 
 from api.admin import retrieve_project_data
 from api.models import AnnotatedEntity, ProjectAnnotateEntities, ProjectMetrics as AppProjectMetrics
+from api.utils import clear_cdb_cnf_addons
 from core.settings import MEDIA_ROOT
 
 _dt_fmt = '%Y-%m-%d %H:%M:%S.%f'
@@ -52,6 +53,7 @@ def calculate_metrics(project_ids: List[int], report_name: str):
     else:
         # assume the cdb / vocab is set in these projects
         cdb = CDB.load(projects[0].concept_db.cdb_file.path)
+        clear_cdb_cnf_addons(cdb, projects[0].concept_db.name)
         vocab = Vocab.load(projects[0].vocab.vocab_file.path)
         cat = CAT(cdb, vocab, config=cdb.config)
     project_data = retrieve_project_data(projects)
