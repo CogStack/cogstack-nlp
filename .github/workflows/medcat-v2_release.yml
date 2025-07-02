@@ -1,9 +1,11 @@
 name: medcat-v2 - Build Python Package
 
 on:
-  push:
-    tags:
-      - "medcat/v*"
+  pull_request: #TODO: REMOVE / restore commented out lines below
+    branches: [ main ]
+  # push:
+  #   tags:
+  #     - "medcat/v*"
 
 permissions:
   contents: write
@@ -28,7 +30,7 @@ jobs:
           git fetch --all
 
           # Get the tag without the 'v' and strip the patch version
-          VERSION_TAG="${GITHUB_REF#refs/tags/}"
+          VERSION_TAG="${VERSION_TAG:-medcat/v0.0.0-dev}" #TODO: REMOVE
           # NOTE: branch name is in line with version tag, except for the patch version
           BRANCH_NAME="${VERSION_TAG%.*}"  # This removes the patch version (everything after the second dot)
 
