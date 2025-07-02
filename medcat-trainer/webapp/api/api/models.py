@@ -64,7 +64,12 @@ class ModelPack(models.Model):
             CAT.load_cdb(unpacked_model_pack_path)
             concept_db = ConceptDB()
             unpacked_file_name = self.model_pack.file.name.replace('.zip', '')
-            concept_db.cdb_file.name = os.path.join(unpacked_file_name, 'cdb.dat')
+            # cdb path for v2
+            cdb_path = os.path.join(unpacked_file_name, 'cdb')
+            if not os.path.exists(cdb_path):
+                # cdb path for v1
+                cdb_path = os.path.join(unpacked_file_name, 'cdb.dat')
+            concept_db.cdb_file.name = cdb_path
             concept_db.name = f'{self.name}_CDB'
             concept_db.save(skip_load=True)
             self.concept_db = concept_db
