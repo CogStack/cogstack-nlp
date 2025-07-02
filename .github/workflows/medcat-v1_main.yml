@@ -1,11 +1,15 @@
-name: build
+name: medcat-v1 - build
 
 on:
   push:
     branches: [ main ]
   pull_request:
-    branches: [ main ]
-
+    paths:
+      - 'medcat-v1/**'
+      - '.github/workflows/medcat-v1**'
+defaults:
+  run:
+    working-directory: ./medcat-v1
 jobs:
   build:
 
@@ -70,12 +74,13 @@ jobs:
           python tests/check_deprecations.py "$VERSION" --next-version --remove-prefix
 
   publish-to-test-pypi:
-
+    # Disable pypy publish waiting for TEST_PYPI_API_TOKEN
     if: |
-      github.repository == 'CogStack/MedCAT' &&
+      github.repository == 'CogStack/cogstack-nlp' &&
       github.ref == 'refs/heads/main' &&
       github.event_name == 'push' &&
-      startsWith(github.ref, 'refs/tags') != true
+      startsWith(github.ref, 'refs/tags') != true &&
+      false 
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     concurrency: publish-to-test-pypi
