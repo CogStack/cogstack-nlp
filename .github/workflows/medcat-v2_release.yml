@@ -87,6 +87,11 @@ jobs:
           uv pip compile .[train,eval] > req-gpu.txt
           uv python -m pip download --dest bundle-gpu -r req-gpu.txt
 
+      - name: Run sanity check / integration tests on cpu-only bundle
+        run: |
+          uv python -m pip install --no-index --find-links=bundle-cpu -r req-cpu.txt
+          uv run bash tests/backwards_compatibility/run_current.sh
+
       - name: Add README to bundles
         run: |
           echo "This bundle contains pre-downloaded wheels for Python ${{ matrix.python-version }}.\nInstall with: pip install --no-index --find-links=. -r requirements.txt" > bundle-cpu/README.md
