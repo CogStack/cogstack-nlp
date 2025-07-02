@@ -1,16 +1,25 @@
-name: production
+# TODO: Fix Medcat V1 Release Actions
+# Disabled waiting for designed release process
+# Disabled waiting for PYPI_API_TOKEN
+name: medcat-v1 - production
 
 on:
   push:
-    branches: [ production, "v[0-9]+.[0-9]+.post" ]
-  release:
-    types: [ published , edited ]
-
+    branches: [ "medcat-v1/production", "medcat-v1/v[0-9]+.[0-9]+.post" ]
+  
+  # release:
+  #   types: [ published , edited ]
+defaults:
+  run:
+    working-directory: ./medcat-v1
 jobs:
   build-n-publish-to-pypi:
+
     runs-on: ubuntu-24.04
     concurrency: build-n-publish-to-pypi
-    if: github.repository == 'CogStack/MedCAT'
+    if: | 
+     github.repository == 'CogStack/cogstack-nlp' &&
+     false   
 
     steps:
       - name: Checkout production
