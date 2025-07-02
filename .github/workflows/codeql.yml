@@ -9,7 +9,7 @@
 # the `language` matrix defined below to confirm you have the correct set of
 # supported CodeQL languages.
 #
-name: "CodeQL"
+name: "CodeQL Advanced"
 
 on:
   push:
@@ -17,7 +17,7 @@ on:
   pull_request:
     branches: [ "main" ]
   schedule:
-    - cron: '36 14 * * 0'
+    - cron: '19 7 * * 0'
 
 jobs:
   analyze:
@@ -28,7 +28,6 @@ jobs:
     #   - https://gh.io/using-larger-runners (GitHub.com only)
     # Consider using larger runners or machines with greater resources for possible analysis time improvements.
     runs-on: ${{ (matrix.language == 'swift' && 'macos-latest') || 'ubuntu-latest' }}
-    timeout-minutes: ${{ (matrix.language == 'swift' && 120) || 360 }}
     permissions:
       # required for all workflows
       security-events: write
@@ -44,11 +43,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
+        - language: actions
+          build-mode: none
         - language: javascript-typescript
           build-mode: none
         - language: python
           build-mode: none
-        # CodeQL supports the following values keywords for 'language': 'c-cpp', 'csharp', 'go', 'java-kotlin', 'javascript-typescript', 'python', 'ruby', 'swift'
+        # CodeQL supports the following values keywords for 'language': 'actions', 'c-cpp', 'csharp', 'go', 'java-kotlin', 'javascript-typescript', 'python', 'ruby', 'rust', 'swift'
         # Use `c-cpp` to analyze code written in C, C++ or both
         # Use 'java-kotlin' to analyze code written in Java, Kotlin or both
         # Use 'javascript-typescript' to analyze code written in JavaScript, TypeScript or both
@@ -59,6 +60,12 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+
+    # Add any setup steps before running the `github/codeql-action/init` action.
+    # This includes steps like installing compilers or runtimes (`actions/setup-node`
+    # or others). This is typically only required for manual builds.
+    # - name: Setup runtime (example)
+    #   uses: actions/setup-example@v1
 
     # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL
