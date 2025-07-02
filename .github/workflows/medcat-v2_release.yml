@@ -14,14 +14,15 @@ defaults:
 
 jobs:
   build:
-    name: Build and release
+    name: Build medcat-v2 wheel
     runs-on: ubuntu-latest
-
+    outputs:
+      version_tag: ${{ steps.extract.outputs.version_tag }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Checkout release branch
+      - name: Extract version tag and checkout release branch
         run: |
           # Fetch all branches to ensure we can access the one we need
           git fetch --all
@@ -31,13 +32,16 @@ jobs:
           # NOTE: branch name is in line with version tag, except for the patch version
           BRANCH_NAME="${VERSION_TAG%.*}"  # This removes the patch version (everything after the second dot)
 
+          # set version tag as output for later use
+          echo "version_tag=$VERSION_TAG" >> $GITHUB_OUTPUT
+
           # Check out the corresponding release branch (e.g., medcat/v0.1)
           git checkout $BRANCH_NAME
 
           # Ensure the branch is up-to-date with the remote
           git pull origin $BRANCH_NAME
 
-      - name: Set up Python
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -48,11 +52,101 @@ jobs:
       - name: Build package
         run: python -m build
 
+      - name: Upload wheel artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: medcat-v2-wheel
+          path: medcat-v2/dist/*.whl
+
+  bundle:
+    name: Build install bundles
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Generate requirements and download (CPU)
+        run: |
+          uv pip compile pyproject.toml --extra spacy --extra deid --extra meta-cat --extra rel-cat --extra-index-url https://download.pytorch.org/whl/cpu > req-cpu.txt
+          uv python -m pip download --dest bundle-cpu -r req-cpu.txt --extra-index-url https://download.pytorch.org/whl/cpu
+
+      - name: Generate requirements and download (GPU)
+        run: |
+          uv pip compile .[train,eval] > req-gpu.txt
+          uv python -m pip download --dest bundle-gpu -r req-gpu.txt
+
+      - name: Add README to bundles
+        run: |
+          echo "This bundle contains pre-downloaded wheels for Python ${{ matrix.python-version }}.\nInstall with: pip install --no-index --find-links=. -r requirements.txt" > bundle-cpu/README.md
+          cp req-cpu.txt bundle-cpu/requirements.txt
+          echo "This bundle contains pre-downloaded wheels for Python ${{ matrix.python-version }} with GPU support.\nInstall with: pip install --no-index --find-links=. -r requirements.txt" > bundle-gpu/README.md
+          cp req-gpu.txt bundle-gpu/requirements.txt
+
+      - name: Download built medcat wheel for inclusion in bundles
+        uses: actions/download-artifact@v4
+        with:
+          name: medcat-v2-wheel
+          path: built-wheel
+
+      - name: Copy built wheel to CPU and GPUbundle
+        run: |
+          cp built-wheel/medcat*.whl bundle-cpu/.
+          cp built-wheel/medcat*.whl bundle-gpu/.
+
+      - name: Archive CPU and GPU bundles
+        run: |
+          tar -czf medcat-v2-${{ matrix.python-version }}-cpu.tar.gz -C bundle-cpu .
+          tar -czf medcat-v2-${{ matrix.python-version }}-gpu.tar.gz -C bundle-gpu .
+
+      - name: Upload bundles as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundles-${{ matrix.python-version }}
+          path: |
+            medcat-v2-${{ matrix.python-version }}-cpu.tar.gz
+            medcat-v2-${{ matrix.python-version }}-gpu.tar.gz
+
+  release:
+    name: Create GitHub Release
+    needs: [build, bundle]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Move all bundles to dist/
+        run: |
+          mkdir -p dist
+          find artifacts -name '*.tar.gz' -exec mv {} dist/ \;
+
+      - name: Download built wheel
+        uses: actions/download-artifact@v4
+        with:
+          name: medcat-v2-wheel
+          path: dist
+
+      - name: Show files in dist/ for sanity check
+        run: ls -l dist/
+
       - name: Create GitHub Release
         id: create_release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
+          tag_name: ${{ needs.build.outputs.version_tag }}
           draft: true
           # softprops/action-gh-release v2 doesnt support the working-directory field, so put the path in files
           files: |
