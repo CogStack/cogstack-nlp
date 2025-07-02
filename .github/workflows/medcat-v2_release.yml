@@ -41,10 +41,11 @@ jobs:
           # Ensure the branch is up-to-date with the remote
           git pull origin $BRANCH_NAME
 
-      - name: Set up Python 3.11
+        # NOTE: building with the lowest python version supported by the package
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.9"
 
       - name: Install build dependencies
         run: pip install --upgrade build
