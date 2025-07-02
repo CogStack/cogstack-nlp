@@ -115,6 +115,10 @@ jobs:
           .venv/bin/activate/python -m pip install --no-index --find-links=bundle-cpu -r req-cpu.txt
           uv run bash tests/backwards_compatibility/run_current.sh
 
+      - name: Clear virtual environment
+        run: |
+          rm -rf .venv
+
       - name: Add README to bundles
         run: |
           echo "This bundle contains pre-downloaded wheels for Python ${{ matrix.python-version }}.\nInstall with: pip install --no-index --find-links=. -r requirements.txt" > bundle-cpu/README.md
