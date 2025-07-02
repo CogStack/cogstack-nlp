@@ -107,7 +107,9 @@ jobs:
 
       - name: Generate requirements and download (GPU)
         run: |
-          uv pip compile .[train,eval] > req-gpu.txt
+          uv pip compile pyproject.toml \
+              --extra spacy --extra deid --extra meta-cat --extra rel-cat \
+              > req-gpu.txt
           .venv/bin/python -m pip download --dest bundle-gpu -r req-gpu.txt
 
       - name: Run sanity check / integration tests on cpu-only bundle
