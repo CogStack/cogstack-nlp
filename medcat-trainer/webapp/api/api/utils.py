@@ -9,6 +9,7 @@ from django.db import transaction
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from medcat.cat import CAT
+from medcat.cdb import CDB
 from medcat.components.ner.trf.deid import DeIdModel
 from medcat.tokenizing.tokens import UnregisteredDataPathException
 
@@ -129,6 +130,12 @@ def add_annotations(spacy_doc, user, project, document, existing_annotations, ca
             #         meta_anno_obj.save()
             #         logger.debug('Successfully saved %s', meta_anno_obj)
 
+
+def clear_cdb_cnf_addons(cdb: CDB, cdb_id: str):
+    # NOTE: when loading a CDB separately, we don't necessarily want to
+    #       load / create addons like MetaCAT as well
+    logger.info('Clearing addons for CDB upon load: %s', cdb_id)
+    cdb.config.components.addons.clear()
 
 
 def get_create_cdb_infos(cdb, concept, cui, cui_info_prop, code_prop, desc_prop, model_clazz):

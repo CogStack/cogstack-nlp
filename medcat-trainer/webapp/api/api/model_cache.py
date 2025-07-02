@@ -12,6 +12,7 @@ from medcat.vocab import Vocab
 from medcat.utils.legacy.convert_cdb import get_cdb_from_old
 
 from api.models import ConceptDB
+from .utils import clear_cdb_cnf_addons
 
 """
 Module level caches for CDBs, Vocabs and CAT instances.
@@ -74,10 +75,7 @@ def get_medcat_from_cdb_vocab(project,
                                     'Please re-configure this project to use a MedCAT v1.x CDB or consult the '
                                     'MedCATTrainer Dev team if you believe this should work') from ke
                 raise
-            # NOTE: when loading a CDB separately, we don't necessarily want to
-            #       load / create addons like MetaCAT as well
-            logger.info('Clearing addons for CDB upon load: %s', cdb_id)
-            cdb.config.components.addons.clear()
+            clear_cdb_cnf_addons(cdb, cdb_id)
 
             custom_config = os.getenv("MEDCAT_CONFIG_FILE")
             if custom_config is not None and os.path.exists(custom_config):

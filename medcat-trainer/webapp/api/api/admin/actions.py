@@ -360,6 +360,7 @@ def dataset_document_counts(dataset):
 def _reset_cdb_filters(id):
     concept_db = ConceptDB.objects.get(id=id)
     cdb = CDB.load(concept_db.cdb_file.path)
+    # TODO: clear addons
     cdb.config.components.linking.filters = {'cuis': set()}
     cdb.save(concept_db.cdb_file.path)
 
@@ -368,6 +369,7 @@ def _reset_cdb_filters(id):
 def import_concepts_from_cdb(cdb_model_id: int):
     cdb_model = ConceptDB.objects.get(id=cdb_model_id)
     cdb = CDB.load(cdb_model.cdb_file.path)
+    # TODO: clear addons
     import_all_concepts(cdb, cdb_model)
 
 
