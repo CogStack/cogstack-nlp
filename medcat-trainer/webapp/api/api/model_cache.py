@@ -12,7 +12,7 @@ from medcat.vocab import Vocab
 from medcat.utils.legacy.convert_cdb import get_cdb_from_old
 
 from api.models import ConceptDB
-from .utils import clear_cdb_cnf_addons
+from api.utils import clear_cdb_cnf_addons
 
 """
 Module level caches for CDBs, Vocabs and CAT instances.
