@@ -1,10 +1,17 @@
-name: build
+name: medcat-v1-tutorials - Test
 
 on:
   push:
     branches: [ main ]
   pull_request:
-    branches: [ main ]
+    paths:
+      - 'medcat-v1/**'
+      - 'medcat-v1-tutorials/**'
+      - '.github/workflows/medcat-v1**'
+      - '.github/workflows/medcat-v1-tutorials**'
+defaults:
+  run:
+    working-directory: ./medcat-v1-tutorials
 
 jobs:
   main:
