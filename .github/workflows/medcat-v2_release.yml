@@ -101,7 +101,9 @@ jobs:
               --extra-index-url https://download.pytorch.org/whl/cpu \
               > req-cpu.txt
           fi
-          uv python -m pip download --dest bundle-cpu -r req-cpu.txt --extra-index-url https://download.pytorch.org/whl/cpu
+          uv venv .venv
+          source .venv/bin/activate
+          python -m pip download --dest bundle-cpu -r req-cpu.txt --extra-index-url https://download.pytorch.org/whl/cpu
 
       - name: Generate requirements and download (GPU)
         run: |
