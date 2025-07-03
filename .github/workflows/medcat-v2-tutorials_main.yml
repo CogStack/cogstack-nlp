@@ -19,6 +19,7 @@ jobs:
     outputs:
       medcat-branch: ${{ steps.resolve.outputs.branch }}
     steps:
+      - uses: actions/checkout@v4
       - name: Resolve medcat branch
         id: resolve
         run: |
