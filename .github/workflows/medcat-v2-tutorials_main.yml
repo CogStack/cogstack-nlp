@@ -38,13 +38,11 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -U pip
-          # install medcat based on changes in the PR
-          pip install --no-deps "git+https://github.com/CogStack/cogstack-nlp@${{ needs.preflight.outputs.medcat-branch }}#subdirectory=medcat-v2"
           pip install -r requirements.txt
 
       - name: Update install targets in notebooks
         run: |
-          python .ci/patch_notebooks.py ${{ needs.preflight.outputs.medcat-branch }}
+          python .ci/patch_notebooks_and_requirements.py ${{ needs.preflight.outputs.medcat-branch }}
 
       - name: Install IPython kernel
         run: |
@@ -82,13 +80,11 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -U pip
-          # install medcat based on changes in the PR
-          pip install --no-deps "git+https://github.com/CogStack/cogstack-nlp@${{ needs.preflight.outputs.medcat-branch }}#subdirectory=medcat-v2"
           pip install -r requirements.txt
 
       - name: Update install targets in notebooks
         run: |
-          python .ci/patch_notebooks.py ${{ needs.preflight.outputs.medcat-branch }}
+          python .ci/patch_notebooks_and_requirements.py ${{ needs.preflight.outputs.medcat-branch }}
 
       - name: Install IPython kernel
         run: |
