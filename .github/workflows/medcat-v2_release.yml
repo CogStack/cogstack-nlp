@@ -169,6 +169,7 @@ jobs:
 
       - name: Move all bundles to dist/
         run: |
+          ls -l artifacts
           mkdir -p dist
           find artifacts -name '*.tar.gz' -exec mv {} dist/ \;
           ls -l dist/
