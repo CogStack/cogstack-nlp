@@ -180,7 +180,8 @@ jobs:
 
       - name: Move wheels to dist/
         run: |
-          mv dist-wheel/*.whl dist/
+          mv dist-wheel/*.whl dist/.
+          mv dist-wheel/*.tar.gz dist/.
 
       - name: Show files in dist/ for sanity check
         run: ls -l dist/
