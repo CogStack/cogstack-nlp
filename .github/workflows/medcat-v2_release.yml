@@ -146,16 +146,16 @@ jobs:
 
       - name: Archive CPU and GPU bundles
         run: |
-          tar -czf medcat-v2-${{ matrix.python-version }}-cpu.tar.gz -C bundle-cpu .
-#          tar -czf medcat-v2-${{ matrix.python-version }}-gpu.tar.gz -C bundle-gpu .
+          tar -czf medcat-v${{ needs.build.outputs.version_tag }}-${{ matrix.python-version }}-cpu.tar.gz -C bundle-cpu .
+#          tar -czf medcat-v${{ needs.build.outputs.version_tag }}-${{ matrix.python-version }}-gpu.tar.gz -C bundle-gpu .
 
       - name: Upload bundles as artifacts
         uses: actions/upload-artifact@v4
         with:
           name: bundles-${{ matrix.python-version }}
           path: |
-            medcat-v2/medcat-v2-${{ matrix.python-version }}-cpu.tar.gz
-#            medcat-v2/medcat-v2-${{ matrix.python-version }}-gpu.tar.gz
+            medcat-v2/medcat-v${{ needs.build.outputs.version_tag }}-${{ matrix.python-version }}-cpu.tar.gz
+#            medcat-v2/medcat-v${{ needs.build.outputs.version_tag }}-${{ matrix.python-version }}-gpu.tar.gz
 
   release:
     name: Create GitHub Release
