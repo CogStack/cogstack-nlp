@@ -34,7 +34,7 @@ jobs:
           # Get the tag without the 'v' and strip the patch version
           VERSION_TAG="${VERSION_TAG:-medcat/v0.0.0-dev}" #TODO: REMOVE
           # NOTE: branch name is in line with version tag, except for the patch version
-          BRANCH_NAME=CU-8699my5eg-add-release-bundles  #TODO: REMOVE / RESTORE
+          BRANCH_NAME="${VERSION_TAG%.*}"  # This removes the patch version (everything after the second dot)
 
           # set version tag as output for later use
           echo "version_tag=$VERSION_TAG" >> $GITHUB_OUTPUT
