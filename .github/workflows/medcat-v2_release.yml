@@ -132,7 +132,9 @@ jobs:
       - name: Add README to bundles
         run: |
           cp .release/install_bundle_readme.md bundle-cpu/README.md
+          cp req-cpu.txt bundle-cpu/requirements.txt
 #          cp .release/install_bundle_readme.md bundle-gpu/README.md
+#          cp req-gpu.txt bundle-gpu/requirements.txt
 
       - name: Download built medcat wheel for inclusion in bundles
         uses: actions/download-artifact@v4

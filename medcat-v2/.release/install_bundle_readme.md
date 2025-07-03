@@ -13,6 +13,7 @@ The install bundle:
     - These are installation files for packages
     - There's one for `medcat` itself
     - And there's one for each direct and transitive dependency
+  - A `requirements.txt` file specifying the requirements installed
   - This README file
 
 # Who are install bundles for?
