@@ -20,6 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version_tag: ${{ steps.extract.outputs.version_tag }}
+      version_only: ${{ steps.extract.outputs.version_only }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -37,6 +38,10 @@ jobs:
 
           # set version tag as output for later use
           echo "version_tag=$VERSION_TAG" >> $GITHUB_OUTPUT
+
+          # only the version (no medcat/v prefix)
+          VERSION_ONLY="${VERSION_TAG#medcat/v}"
+          echo "version_only=$VERSION_ONLY" >> $GITHUB_OUTPUT
 
           # Check out the corresponding release branch (e.g., medcat/v0.1)
           git checkout $BRANCH_NAME
@@ -147,16 +152,16 @@ jobs:
 
       - name: Archive CPU and GPU bundles
         run: |
-          tar -czf medcat-v${{ needs.build.outputs.version_tag }}-${{ matrix.python-version }}-cpu.tar.gz -C bundle-cpu .
-#          tar -czf medcat-v${{ needs.build.outputs.version_tag }}-${{ matrix.python-version }}-gpu.tar.gz -C bundle-gpu .
+          tar -czf medcat-v${{ needs.build.outputs.version_only }}-${{ matrix.python-version }}-cpu.tar.gz -C bundle-cpu .
+#          tar -czf medcat-v${{ needs.build.outputs.version_only }}-${{ matrix.python-version }}-gpu.tar.gz -C bundle-gpu .
 
       - name: Upload bundles as artifacts
         uses: actions/upload-artifact@v4
         with:
           name: bundles-${{ matrix.python-version }}
           path: |
-            medcat-v2/medcat-v${{ needs.build.outputs.version_tag }}-${{ matrix.python-version }}-cpu.tar.gz
-#            medcat-v2/medcat-v${{ needs.build.outputs.version_tag }}-${{ matrix.python-version }}-gpu.tar.gz
+            medcat-v2/medcat-v${{ needs.build.outputs.version_only }}-${{ matrix.python-version }}-cpu.tar.gz
+#            medcat-v2/medcat-v${{ needs.build.outputs.version_only }}-${{ matrix.python-version }}-gpu.tar.gz
 
   release:
     name: Create GitHub Release
