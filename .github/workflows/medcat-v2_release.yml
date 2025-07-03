@@ -90,13 +90,13 @@ jobs:
             #       step would fail wihtout the unsafe index match
             #       for some documentation on dependency confusion attacks, can reference:
             #       https://docs.astral.sh/uv/reference/settings/#pip_index-strategy
-            uv pip compile pyproject.toml \
+            uv pip compile pyproject.toml --only-binary=:all: \
               --extra spacy --extra deid --extra meta-cat --extra rel-cat \
               --extra-index-url https://download.pytorch.org/whl/cpu \
               --index-strategy unsafe-best-match \
               > req-cpu.txt
           else
-            uv pip compile pyproject.toml \
+            uv pip compile pyproject.toml --only-binary=:all: \
               --extra spacy --extra deid --extra meta-cat --extra rel-cat \
               --extra-index-url https://download.pytorch.org/whl/cpu \
               > req-cpu.txt
@@ -107,7 +107,7 @@ jobs:
 
       - name: Generate requirements and download (GPU)
         run: |
-          uv pip compile pyproject.toml \
+          uv pip compile pyproject.toml --only-binary=:all: \
               --extra spacy --extra deid --extra meta-cat --extra rel-cat \
               > req-gpu.txt
           .venv/bin/python -m pip download --only-binary=:all: --dest bundle-gpu -r req-gpu.txt
