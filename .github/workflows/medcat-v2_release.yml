@@ -136,6 +136,9 @@ jobs:
           name: medcat-v2-wheel
           path: built-wheel
 
+      - name: List downloaded artifacts
+        run: ls -lh built-wheel
+
       - name: Copy built wheel to CPU and GPUbundle
         run: |
           cp built-wheel/medcat*.whl bundle-cpu/.
