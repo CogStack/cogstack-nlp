@@ -171,6 +171,7 @@ jobs:
         run: |
           mkdir -p dist
           find artifacts -name '*.tar.gz' -exec mv {} dist/ \;
+          ls -l dist/
 
       - name: Download built wheel
         uses: actions/download-artifact@v4
