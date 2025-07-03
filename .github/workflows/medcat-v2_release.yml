@@ -107,12 +107,12 @@ jobs:
           .venv/bin/python -m ensurepip
           .venv/bin/python -m pip download --only-binary=:all: --dest bundle-cpu -r req-cpu.txt --extra-index-url https://download.pytorch.org/whl/cpu
 
-      - name: Generate requirements and download (GPU)
-        run: |
-          uv pip compile pyproject.toml --only-binary=:all: \
-              --extra spacy --extra deid --extra meta-cat --extra rel-cat \
-              > req-gpu.txt
-          .venv/bin/python -m pip download --only-binary=:all: --dest bundle-gpu -r req-gpu.txt
+#      - name: Generate requirements and download (GPU)
+#        run: |
+#          uv pip compile pyproject.toml --only-binary=:all: \
+#              --extra spacy --extra deid --extra meta-cat --extra rel-cat \
+#              > req-gpu.txt
+#          .venv/bin/python -m pip download --only-binary=:all: --dest bundle-gpu -r req-gpu.txt
 
       - name: Run sanity check / integration tests on cpu-only bundle
         run: |
@@ -127,8 +127,8 @@ jobs:
         run: |
           echo "This bundle contains pre-downloaded wheels for Python ${{ matrix.python-version }}.\nInstall with: pip install --no-index --find-links=. -r requirements.txt" > bundle-cpu/README.md
           cp req-cpu.txt bundle-cpu/requirements.txt
-          echo "This bundle contains pre-downloaded wheels for Python ${{ matrix.python-version }} with GPU support.\nInstall with: pip install --no-index --find-links=. -r requirements.txt" > bundle-gpu/README.md
-          cp req-gpu.txt bundle-gpu/requirements.txt
+#          echo "This bundle contains pre-downloaded wheels for Python ${{ matrix.python-version }} with GPU support.\nInstall with: pip install --no-index --find-links=. -r requirements.txt" > bundle-gpu/README.md
+#          cp req-gpu.txt bundle-gpu/requirements.txt
 
       - name: Download built medcat wheel for inclusion in bundles
         uses: actions/download-artifact@v4
@@ -139,15 +139,15 @@ jobs:
       - name: List downloaded artifacts
         run: ls -lh built-wheel
 
-      - name: Copy built wheel to CPU and GPUbundle
+      - name: Copy built wheel to CPU bundle
         run: |
           cp built-wheel/medcat*.whl bundle-cpu/.
-          cp built-wheel/medcat*.whl bundle-gpu/.
+#          cp built-wheel/medcat*.whl bundle-gpu/.
 
       - name: Archive CPU and GPU bundles
         run: |
           tar -czf medcat-v2-${{ matrix.python-version }}-cpu.tar.gz -C bundle-cpu .
-          tar -czf medcat-v2-${{ matrix.python-version }}-gpu.tar.gz -C bundle-gpu .
+#          tar -czf medcat-v2-${{ matrix.python-version }}-gpu.tar.gz -C bundle-gpu .
 
       - name: Upload bundles as artifacts
         uses: actions/upload-artifact@v4
@@ -155,7 +155,7 @@ jobs:
           name: bundles-${{ matrix.python-version }}
           path: |
             medcat-v2/medcat-v2-${{ matrix.python-version }}-cpu.tar.gz
-            medcat-v2/medcat-v2-${{ matrix.python-version }}-gpu.tar.gz
+#            medcat-v2/medcat-v2-${{ matrix.python-version }}-gpu.tar.gz
 
   release:
     name: Create GitHub Release
