@@ -25,6 +25,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Extract version tag and checkout release branch
+        id: extract
         run: |
           # Fetch all branches to ensure we can access the one we need
           git fetch --all
