@@ -103,14 +103,14 @@ jobs:
           fi
           uv venv .venv
           .venv/bin/python -m ensurepip
-          .venv/bin/python -m pip download --dest bundle-cpu -r req-cpu.txt --extra-index-url https://download.pytorch.org/whl/cpu
+          .venv/bin/python -m pip download --only-binary=:all: --dest bundle-cpu -r req-cpu.txt --extra-index-url https://download.pytorch.org/whl/cpu
 
       - name: Generate requirements and download (GPU)
         run: |
           uv pip compile pyproject.toml \
               --extra spacy --extra deid --extra meta-cat --extra rel-cat \
               > req-gpu.txt
-          .venv/bin/python -m pip download --dest bundle-gpu -r req-gpu.txt
+          .venv/bin/python -m pip download --only-binary=:all: --dest bundle-gpu -r req-gpu.txt
 
       - name: Run sanity check / integration tests on cpu-only bundle
         run: |
