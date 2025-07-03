@@ -14,7 +14,18 @@ defaults:
     working-directory: ./medcat-v2-tutorials
 
 jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    outputs:
+      medcat-branch: ${{ steps.resolve.outputs.branch }}
+    steps:
+      - name: Resolve medcat branch
+        id: resolve
+        run: |
+          echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF##*/}}" >> $GITHUB_OUTPUT
+
   basic-and-meta:
+    needs: preflight
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -26,6 +37,8 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -U pip
+          # install medcat based on changes in the PR
+          pip install --no-deps "git+https://github.com/CogStack/cogstack-nlp@${{ needs.preflight.outputs.medcat-branch }}#subdirectory=medcat-v2"
           pip install -r requirements.txt
       - name: Install IPython kernel
         run: |
@@ -44,7 +57,7 @@ jobs:
           pytest --nbmake -n=auto --nbmake-kernel=smoketests --nbmake-timeout=1800 ./notebooks/introductory/custom/*.ipynb
 
   migrate-and-advanved:
-
+    needs: preflight
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -63,6 +76,8 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -U pip
+          # install medcat based on changes in the PR
+          pip install --no-deps "git+https://github.com/CogStack/cogstack-nlp@${{ needs.preflight.outputs.medcat-branch }}#subdirectory=medcat-v2"
           pip install -r requirements.txt
       - name: Install IPython kernel
         run: |
