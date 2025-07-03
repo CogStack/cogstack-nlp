@@ -154,8 +154,8 @@ jobs:
         with:
           name: bundles-${{ matrix.python-version }}
           path: |
-            medcat-v2-${{ matrix.python-version }}-cpu.tar.gz
-            medcat-v2-${{ matrix.python-version }}-gpu.tar.gz
+            medcat-v2/medcat-v2-${{ matrix.python-version }}-cpu.tar.gz
+            medcat-v2/medcat-v2-${{ matrix.python-version }}-gpu.tar.gz
 
   release:
     name: Create GitHub Release
