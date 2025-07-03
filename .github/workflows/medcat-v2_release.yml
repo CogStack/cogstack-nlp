@@ -137,7 +137,7 @@ jobs:
           path: medcat-v2/built-wheel
 
       - name: List downloaded artifacts
-        run: ls -lh medcat-v2/built-wheel
+        run: ls -lh built-wheel
 
       - name: Copy built wheel to CPU and GPUbundle
         run: |
@@ -179,7 +179,7 @@ jobs:
           path: medcat-v2/dist
 
       - name: Show files in dist/ for sanity check
-        run: ls -l medcat-v2/dist/
+        run: ls -l dist/
 
       - name: Create GitHub Release
         id: create_release
