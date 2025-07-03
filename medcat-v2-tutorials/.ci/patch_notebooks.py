@@ -12,7 +12,8 @@ shell_pattern = re.compile(
     r'(!\s*pip\s+install\s+)(\\["\']?)medcat(\[.*?\])(\s*@\s*git\+[^"\'\s]+)?\2'
 )
 
-for nb_path in pathlib.Path(".").rglob("notebooks/**/*.ipynb"):
+
+def do_patch(nb_path: pathlib.Path):
     nb_text = nb_path.read_text(encoding="utf-8")
 
     def repl(m):
@@ -27,3 +28,7 @@ for nb_path in pathlib.Path(".").rglob("notebooks/**/*.ipynb"):
     if nb_text != new_text:
         nb_path.write_text(new_text, encoding="utf-8")
         print(f"[PATCHED] {nb_path}")
+
+
+for nb_path in pathlib.Path(".").rglob("notebooks/**/*.ipynb"):
+    do_patch(nb_path)
