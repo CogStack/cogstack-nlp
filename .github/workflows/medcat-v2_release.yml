@@ -176,7 +176,11 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: medcat-v2-wheel
-          path: medcat-v2/dist
+          path: medcat-v2/dist-wheel
+
+      - name: Move wheels to dist/
+        run: |
+          mv dist-wheel/*.whl dist/
 
       - name: Show files in dist/ for sanity check
         run: ls -l dist/
