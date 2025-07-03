@@ -35,14 +35,15 @@ jobs:
         with:
           python-version: "3.11"
           cache: 'pip'
-      - name: Install dependencies
-        run: |
-          pip install -U pip
-          pip install -r requirements.txt
 
       - name: Update install targets in notebooks
         run: |
           python .ci/patch_notebooks_and_requirements.py ${{ needs.preflight.outputs.medcat-branch }}
+
+      - name: Install dependencies
+        run: |
+          pip install -U pip
+          pip install -r requirements.txt
 
       - name: Install IPython kernel
         run: |
@@ -77,14 +78,15 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Install dependencies
-        run: |
-          pip install -U pip
-          pip install -r requirements.txt
 
       - name: Update install targets in notebooks
         run: |
           python .ci/patch_notebooks_and_requirements.py ${{ needs.preflight.outputs.medcat-branch }}
+
+      - name: Install dependencies
+        run: |
+          pip install -U pip
+          pip install -r requirements.txt
 
       - name: Install IPython kernel
         run: |
