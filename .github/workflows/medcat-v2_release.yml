@@ -131,10 +131,8 @@ jobs:
 
       - name: Add README to bundles
         run: |
-          echo "This bundle contains pre-downloaded wheels for Python ${{ matrix.python-version }}.\nInstall with: pip install --no-index --find-links=. -r requirements.txt" > bundle-cpu/README.md
-          cp req-cpu.txt bundle-cpu/requirements.txt
-#          echo "This bundle contains pre-downloaded wheels for Python ${{ matrix.python-version }} with GPU support.\nInstall with: pip install --no-index --find-links=. -r requirements.txt" > bundle-gpu/README.md
-#          cp req-gpu.txt bundle-gpu/requirements.txt
+          cp .release/release_bundle_readme.md bundle-cpu/README.md
+#          cp .release/release_bundle_readme.md bundle-gpu/README.md
 
       - name: Download built medcat wheel for inclusion in bundles
         uses: actions/download-artifact@v4
