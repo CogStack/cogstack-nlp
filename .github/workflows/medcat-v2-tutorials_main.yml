@@ -38,7 +38,7 @@ jobs:
 
       - name: Update install targets in notebooks
         run: |
-          python .ci/patch_notebooks_and_requirements.py ${{ needs.preflight.outputs.medcat-branch }}
+          python ../.ci/patch_notebooks_and_requirements.py ${{ needs.preflight.outputs.medcat-branch }}
 
       - name: Install dependencies
         run: |
@@ -81,7 +81,7 @@ jobs:
 
       - name: Update install targets in notebooks
         run: |
-          python .ci/patch_notebooks_and_requirements.py ${{ needs.preflight.outputs.medcat-branch }}
+          python ../.ci/patch_notebooks_and_requirements.py ${{ needs.preflight.outputs.medcat-branch }}
 
       - name: Install dependencies
         run: |
