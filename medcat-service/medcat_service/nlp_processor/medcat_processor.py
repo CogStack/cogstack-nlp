@@ -10,8 +10,8 @@ import simplejson as json
 from medcat.cat import CAT
 from medcat.cdb import CDB
 from medcat.config import Config
-from medcat.meta_cat import MetaCAT
-from medcat.utils.ner.deid import DeIdModel
+from medcat.components.addons.meta_cat import MetaCATAddon
+from medcat.components.ner.trf.deid import DeIdModel
 from medcat.vocab import Vocab
 
 
@@ -330,18 +330,21 @@ class MedCatProcessor(NlpProcessor):
         if os.getenv("APP_MODEL_META_PATH_LIST", None) is not None:
             self.log.debug("Loading META annotations ...")
             for model_path in os.getenv("APP_MODEL_META_PATH_LIST").split(":"):
-                m = MetaCAT.load(model_path)
+                m = MetaCATAddon.deserialise_from(model_path)
                 meta_models.append(m)
 
-        if cat:
-            meta_models.extend(cat._meta_cats)
+        # if cat:
+        #     meta_models.extend(cat._meta_cats)
 
         if self.app_model.lower() in [None, "unknown"]:
             self.app_model = cdb.config.version.id
 
         config.general["log_level"] = os.getenv("LOG_LEVEL", logging.INFO)
 
-        cat = CAT(cdb=cdb, config=config, vocab=vocab, meta_cats=meta_models)
+        cat = CAT(cdb=cdb, config=config, vocab=vocab)
+        # add MetaCATs
+        for mc in meta_models:
+            cat.add_addon(mc)
 
         self._populate_model_card_info(cat.config)
 
