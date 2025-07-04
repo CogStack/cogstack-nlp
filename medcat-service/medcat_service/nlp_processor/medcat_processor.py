@@ -10,7 +10,7 @@ import simplejson as json
 from medcat.cat import CAT
 from medcat.cdb import CDB
 from medcat.config import Config
-from medcat.cofig_meta_cat import ConfigMetaCAT
+from medcat.config.cofig_meta_cat import ConfigMetaCAT
 from medcat.components.addons.meta_cat import MetaCATAddon
 from medcat.components.ner.trf.deid import DeIdModel
 from medcat.vocab import Vocab
