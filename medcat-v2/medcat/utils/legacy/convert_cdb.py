@@ -62,6 +62,7 @@ EXPECTED_USEFUL_KEYS = [
 ]
 NAME2KEYS = {'name2cuis', 'name2cuis2status', 'name2count_train',
              'name_isupper'}
+OPTIONAL_NAME2_KEYS = {"name_isupper", }
 CUI2KEYS = {'cui2names', 'cui2snames', 'cui2context_vectors',
             'cui2count_train', 'cui2info', 'cui2tags', 'cui2type_ids',
             'cui2preferred_name', 'cui2average_confidence', }
@@ -167,6 +168,8 @@ def _add_cui_info(cdb: CDB, data: dict) -> CDB:
 def _add_name_info(cdb: CDB, data: dict) -> CDB:
     all_names = set()
     for key in NAME2KEYS:
+        if key in OPTIONAL_NAME2_KEYS and key not in data:
+            continue
         cnames = data[key].keys()
         logger.debug("Adding %d names based on '%s", len(cnames), key)
         all_names.update(cnames)
@@ -181,7 +184,7 @@ def _add_name_info(cdb: CDB, data: dict) -> CDB:
     #       so v2 only uses the latter since it provides extra information
     name2cuis2status = data['name2cuis2status']
     name2cnt_train = data['name2count_train']
-    name2is_upper = data['name_isupper']
+    name2is_upper = data.get('name_isupper', {})
     for name in all_names:
         cuis2status: dict[str, str] = {}
         _cuis2status = name2cuis2status.get(name, {})
