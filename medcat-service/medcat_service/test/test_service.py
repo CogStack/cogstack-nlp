@@ -83,6 +83,7 @@ class TestMedcatService(unittest.TestCase):
 
             cls.app.testing = True
             cls.client = cls.app.test_client()
+            print("Test DONE")
 
     @staticmethod
     def _setup_logging(cls):
