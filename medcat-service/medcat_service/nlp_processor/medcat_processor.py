@@ -10,6 +10,7 @@ import simplejson as json
 from medcat.cat import CAT
 from medcat.cdb import CDB
 from medcat.config import Config
+from medcat.cofig_meta_cat import ConfigMetaCAT
 from medcat.components.addons.meta_cat import MetaCATAddon
 from medcat.components.ner.trf.deid import DeIdModel
 from medcat.vocab import Vocab
@@ -239,11 +240,12 @@ class MedCatProcessor(NlpProcessor):
         Args:
             config (Config): MedCAT configuration object.
         """
-        self.model_card_info["ontologies"] = config.version.ontology \
-            if (isinstance(config.version.ontology, list)) else str(config.version.ontology)
-        self.model_card_info["meta_cat_model_names"] = [i["Category Name"] for i in config.version.meta_cats] \
-            if (isinstance(config.version.meta_cats, list)) else str(config.version.meta_cats)
-        self.model_card_info["model_last_modified_on"] = str(config.version.last_modified)
+        self.model_card_info["ontologies"] = config.meta.ontology \
+            if (isinstance(config.meta.ontology, list)) else str(config.meta.ontology)
+        self.model_card_info["meta_cat_model_names"] = [
+            cnf.category_name for cnf in config.components.addons
+            if (isinstance(cnf, ConfigMetaCAT))]
+        self.model_card_info["model_last_modified_on"] = str(config.meta.last_saved)
 
     # helper MedCAT methods
     #
