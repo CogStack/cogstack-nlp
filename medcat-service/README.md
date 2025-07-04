@@ -1,6 +1,6 @@
 # Introduction
 
-This project implements the [MedCAT](https://github.com/CogStack/MedCAT/) NLP application as a service behind a REST API. The general idea is to be able send the text to MedCAT NLP service and receive back the annotations. The REST API is built using [Flask](https://flask.palletsprojects.com/).
+This project implements the [MedCAT](https://github.com/CogStack/cogstack-nlp/blob/main/medcat-v2/) NLP application as a service behind a REST API. The general idea is to be able send the text to MedCAT NLP service and receive back the annotations. The REST API is built using [Flask](https://flask.palletsprojects.com/).
 
 Git Branches:
   - devel: development branch, latest updates and features, might be unstable.
