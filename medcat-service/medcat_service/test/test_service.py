@@ -79,10 +79,10 @@ class TestMedcatService(unittest.TestCase):
         print("Mocking CDB.load...")
         with mock.patch.object(cdb.CDB, "load", side_effect=load):
             cls.app = medcat_app.create_app()
-        print("App created!")
+            print("App created!")
 
-        cls.app.testing = True
-        cls.client = cls.app.test_client()
+            cls.app.testing = True
+            cls.client = cls.app.test_client()
 
     @staticmethod
     def _setup_logging(cls):
