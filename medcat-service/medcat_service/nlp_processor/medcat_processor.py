@@ -243,7 +243,7 @@ class MedCatProcessor(NlpProcessor):
         self.model_card_info["ontologies"] = config.meta.ontology \
             if (isinstance(config.meta.ontology, list)) else str(config.meta.ontology)
         self.model_card_info["meta_cat_model_names"] = [
-            cnf.category_name for cnf in config.components.addons
+            cnf.general.category_name for cnf in config.components.addons
             if (isinstance(cnf, ConfigMetaCAT))]
         self.model_card_info["model_last_modified_on"] = str(config.meta.last_saved)
 
