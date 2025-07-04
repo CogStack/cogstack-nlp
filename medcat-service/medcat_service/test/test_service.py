@@ -61,7 +61,19 @@ class TestMedcatService(unittest.TestCase):
     def _setup_flask_app(cls):
         # TODO: this method may need later need to be tailored to create a custom MedCAT Flask app
         # with a custom MedCAT Service + Processor
-        cls.app = medcat_app.create_app()
+        from unittest import mock
+        from medcat import cdb
+        orig_method = cdb.CDB.load
+
+        def load(path, *args, **kwargs):
+            cdb = orig_method(path, *args, **kwargs)
+            if cdb.config.general.nlp.modelname == 'en_core_sci_lg':
+                print("Changing spacy model from 'en_core_sci_lg' to 'en_core_web_md'")
+                cdb.config.general.nlp.modelname = 'en_core_web_md'
+            return cdb
+
+        with mock.patch.object(cdb.CDB, "load", side_effect=load):
+            cls.app = medcat_app.create_app()
 
         cls.app.testing = True
         cls.client = cls.app.test_client()
