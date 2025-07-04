@@ -6,6 +6,7 @@ on:
   pull_request:
     paths:
       - 'medcat-demo-app/**'
+      - 'medcat-v2/**'
       - '.github/workflows/medcat-demo-app**'
 defaults:
   run:
