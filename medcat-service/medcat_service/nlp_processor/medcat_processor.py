@@ -341,7 +341,7 @@ class MedCatProcessor(NlpProcessor):
         if self.app_model.lower() in [None, "unknown"]:
             self.app_model = cdb.config.version.id
 
-        config.general["log_level"] = os.getenv("LOG_LEVEL", logging.INFO)
+        config.general.log_level = os.getenv("LOG_LEVEL", logging.INFO)
 
         cat = CAT(cdb=cdb, config=config, vocab=vocab)
         # add MetaCATs
