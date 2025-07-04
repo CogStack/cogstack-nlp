@@ -30,6 +30,7 @@ class TestMedcatService(unittest.TestCase):
         The Flask app instance is created only once when starting all the unit tests.
         :return:
         """
+        print("SETUP EVERYTHING...START")
         cls._setup_logging(cls)
         cls._setup_medcat_processor(cls)
         cls._setup_flask_app(cls)
@@ -61,19 +62,24 @@ class TestMedcatService(unittest.TestCase):
     def _setup_flask_app(cls):
         # TODO: this method may need later need to be tailored to create a custom MedCAT Flask app
         # with a custom MedCAT Service + Processor
+        print("SETUP Flask app now")
         from unittest import mock
         from medcat import cdb
         orig_method = cdb.CDB.load
 
         def load(path, *args, **kwargs):
+            print("Call for mock load method")
             cdb = orig_method(path, *args, **kwargs)
             if cdb.config.general.nlp.modelname == 'en_core_sci_lg':
                 print("Changing spacy model from 'en_core_sci_lg' to 'en_core_web_md'")
                 cdb.config.general.nlp.modelname = 'en_core_web_md'
+            print("Now got config with model:", cdb.config.general.nlp.modelname)
             return cdb
 
+        print("Mocking CDB.load...")
         with mock.patch.object(cdb.CDB, "load", side_effect=load):
             cls.app = medcat_app.create_app()
+        print("App created!")
 
         cls.app.testing = True
         cls.client = cls.app.test_client()
