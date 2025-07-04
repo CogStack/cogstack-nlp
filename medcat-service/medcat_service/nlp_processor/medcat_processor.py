@@ -10,8 +10,9 @@ import simplejson as json
 from medcat.cat import CAT
 from medcat.cdb import CDB
 from medcat.config import Config
-from medcat.meta_cat import MetaCAT
-from medcat.utils.ner.deid import DeIdModel
+from medcat.config.config_meta_cat import ConfigMetaCAT
+from medcat.components.addons.meta_cat import MetaCATAddon
+from medcat.components.ner.trf.deid import DeIdModel
 from medcat.vocab import Vocab
 
 
@@ -239,11 +240,12 @@ class MedCatProcessor(NlpProcessor):
         Args:
             config (Config): MedCAT configuration object.
         """
-        self.model_card_info["ontologies"] = config.version.ontology \
-            if (isinstance(config.version.ontology, list)) else str(config.version.ontology)
-        self.model_card_info["meta_cat_model_names"] = [i["Category Name"] for i in config.version.meta_cats] \
-            if (isinstance(config.version.meta_cats, list)) else str(config.version.meta_cats)
-        self.model_card_info["model_last_modified_on"] = str(config.version.last_modified)
+        self.model_card_info["ontologies"] = config.meta.ontology \
+            if (isinstance(config.meta.ontology, list)) else str(config.meta.ontology)
+        self.model_card_info["meta_cat_model_names"] = [
+            cnf.general.category_name for cnf in config.components.addons
+            if (isinstance(cnf, ConfigMetaCAT))]
+        self.model_card_info["model_last_modified_on"] = str(config.meta.last_saved)
 
     # helper MedCAT methods
     #
@@ -305,13 +307,13 @@ class MedCatProcessor(NlpProcessor):
         spacy_model = os.getenv("SPACY_MODEL", "")
 
         if spacy_model != "":
-            cdb.config.general["spacy_model"] = spacy_model
+            cdb.config.general.nlp.modelname = spacy_model
         else:
             logging.warning("SPACY_MODEL environment var not set" +
                             ", attempting to load the spacy model found within the CDB : "
-                            + cdb.config.general["spacy_model"])
+                            + cdb.config.general.nlp.modelname)
 
-            if cdb.config.general["spacy_model"] == "":
+            if cdb.config.general.nlp.modelname == "":
                 raise ValueError("No SPACY_MODEL env var declared, the CDB loaded does not have a\
                      spacy_model set in the config variable! \
                  To solve this declare the SPACY_MODEL in the env_medcat file.")
@@ -330,18 +332,21 @@ class MedCatProcessor(NlpProcessor):
         if os.getenv("APP_MODEL_META_PATH_LIST", None) is not None:
             self.log.debug("Loading META annotations ...")
             for model_path in os.getenv("APP_MODEL_META_PATH_LIST").split(":"):
-                m = MetaCAT.load(model_path)
+                m = MetaCATAddon.deserialise_from(model_path)
                 meta_models.append(m)
 
-        if cat:
-            meta_models.extend(cat._meta_cats)
+        # if cat:
+        #     meta_models.extend(cat._meta_cats)
 
         if self.app_model.lower() in [None, "unknown"]:
-            self.app_model = cdb.config.version.id
+            self.app_model = cdb.config.meta.hash
 
-        config.general["log_level"] = os.getenv("LOG_LEVEL", logging.INFO)
+        config.general.log_level = os.getenv("LOG_LEVEL", logging.INFO)
 
-        cat = CAT(cdb=cdb, config=config, vocab=vocab, meta_cats=meta_models)
+        cat = CAT(cdb=cdb, config=config, vocab=vocab)
+        # add MetaCATs
+        for mc in meta_models:
+            cat.add_addon(mc)
 
         self._populate_model_card_info(cat.config)
 
