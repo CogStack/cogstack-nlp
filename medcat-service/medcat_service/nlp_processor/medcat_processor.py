@@ -339,7 +339,7 @@ class MedCatProcessor(NlpProcessor):
         #     meta_models.extend(cat._meta_cats)
 
         if self.app_model.lower() in [None, "unknown"]:
-            self.app_model = cdb.config.version.id
+            self.app_model = cdb.config.meta.hash
 
         config.general.log_level = os.getenv("LOG_LEVEL", logging.INFO)
 
