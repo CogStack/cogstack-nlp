@@ -23,7 +23,7 @@ jobs:
 
     - name: Update install targets in requirements file
       run: |
-        python ../.ci/patch_notebooks_and_requirements.py webapp "${MEDCAT_BRANCH}"
+        python ../.ci/patch_notebooks_and_requirements.py webapp ${MEDCAT_BRANCH}
 
     - name: Set up Docker Compose
       run: sudo apt-get update && sudo apt-get install -y docker-compose
