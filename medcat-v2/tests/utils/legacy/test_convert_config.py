@@ -1,14 +1,19 @@
+from typing import Type
 import os
 
 from medcat.utils.legacy import convert_config
 
 from medcat.config import Config
+from medcat.config.config import SerialisableBaseModel
+from medcat.config.config_meta_cat import ConfigMetaCAT
+from medcat.config.config_rel_cat import ConfigRelCAT
+from medcat.config.config_transformers_ner import ConfigTransformersNER
 
 import unittest
 
 
-TESTS_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__),
-                                          "..", ".."))
+from ... import RESOURCES_PATH
+TESTS_PATH = os.path.dirname(RESOURCES_PATH)
 
 
 class ValAndModelGetterTests(unittest.TestCase):
@@ -78,3 +83,22 @@ class ConfigConverstionTests(unittest.TestCase):
     def test_preprocesses_sets(self):
         self.assertEqual(self.cnf.preprocessing.words_to_skip,
                          self.EXP_WORDS_TO_SKIP)
+
+
+class PerClsConfigConversionTests(unittest.TestCase):
+    PATHS_AND_CLASSES: list[str, Type[SerialisableBaseModel]] = [
+        (os.path.join(RESOURCES_PATH, "mct_v1_cnf.json"), Config),
+        (os.path.join(RESOURCES_PATH,
+         "mct_v1_meta_cat_cnf.json"), ConfigMetaCAT),
+        (os.path.join(RESOURCES_PATH,
+         "mct_v1_rel_cat_cnf.json"), ConfigRelCAT),
+        (os.path.join(RESOURCES_PATH,
+         "mct_v1_deid_cnf.json"), ConfigTransformersNER),
+    ]
+
+    def test_can_convert(self):
+        for path, cls in self.PATHS_AND_CLASSES:
+            with self.subTest(f"Testing {cls.__name__} at {path}"):
+                cnf = convert_config.get_config_from_old_per_cls(path, cls)
+                self.assertIsInstance(
+                    cnf, cls, f"Failed for {cls.__name__} at {path}")
