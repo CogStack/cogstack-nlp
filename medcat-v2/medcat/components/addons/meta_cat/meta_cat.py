@@ -180,6 +180,9 @@ class MetaCATAddon(AddonComponent):
             cnf = init_kwargs['cnf']
         else:
             config_path = os.path.join(folder_path, "meta_cat", "config")
+            if not os.path.exists(config_path):
+                # load legacy config (assuming it exists)
+                config_path += ".dat"
             logger.info(
                 "Was not provide a config when loading a meta cat from '%s'. "
                 "Inferring config from file at '%s'", folder_path,
