@@ -1,5 +1,5 @@
 import json
-from typing import Any, cast, Optional
+from typing import Any, cast, Optional, Type
 import logging
 
 from pydantic import BaseModel
@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from medcat.config import Config
 
 from medcat.utils.legacy.helpers import fix_old_style_cnf
+from medcat.config.config import SerialisableBaseModel
 
 
 logger = logging.getLogger(__name__)
@@ -185,3 +186,34 @@ def get_config_from_old(path: str) -> Config:
     with open(path) as f:
         old_cnf_data = json.load(f)
     return get_config_from_nested_dict(old_cnf_data)
+
+
+def get_config_from_old_per_cls(
+        path: str, cls: Type[SerialisableBaseModel]) -> SerialisableBaseModel:
+    """Convert the saved v1 config into a v2 Config for a specific class.
+
+    Args:
+        path (str): The v1 config path.
+        cls (Type[SerialisableBaseModel]): The class to convert to.
+
+    Returns:
+        SerialisableBaseModel: The converted config.
+    """
+    from medcat.config.config_meta_cat import ConfigMetaCAT
+    from medcat.config.config_transformers_ner import ConfigTransformersNER
+    from medcat.config.config_rel_cat import ConfigRelCAT
+    if cls is Config:
+        return get_config_from_old(path)
+    elif cls is ConfigMetaCAT:
+        from medcat.utils.legacy.convert_meta_cat import (
+            load_cnf as load_meta_cat_cnf)
+        return load_meta_cat_cnf(path)
+    elif cls is ConfigTransformersNER:
+        from medcat.utils.legacy.convert_deid import (
+            get_cnf as load_deid_cnf)
+        return load_deid_cnf(path)
+    elif cls is ConfigRelCAT:
+        from medcat.utils.legacy.convert_rel_cat import (
+            load_cnf as load_rel_cat_cnf)
+        return load_rel_cat_cnf(path)
+    raise ValueError(f"The config at '{path}' is not a {cls.__name__}!")

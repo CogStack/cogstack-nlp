@@ -1,3 +1,4 @@
+import os
 from typing import (Optional, Iterator, Iterable, TypeVar, cast, Type, Any,
                     Literal)
 from typing import Protocol, runtime_checkable
@@ -12,6 +13,9 @@ from medcat import __version__ as medcat_version
 from medcat.utils.defaults import workers
 from medcat.utils.envsnapshot import Environment, get_environment_info
 from medcat.utils.iterutils import callback_iterator
+from medcat.utils.defaults import (
+    avoid_legacy_conversion, doing_legacy_conversion_message,
+    LegacyConversionDisabledError)
 from medcat.storage.serialisables import SerialisingStrategy
 from medcat.storage.serialisers import deserialise
 
@@ -80,6 +84,13 @@ class SerialisableBaseModel(BaseModel):
 
     @classmethod
     def load(cls, path: str) -> Self:
+        if os.path.isfile(path) and path.endswith(".dat"):
+            if avoid_legacy_conversion():
+                raise LegacyConversionDisabledError(cls.__name__)
+            doing_legacy_conversion_message(logger, cls.__name__, path)
+            from medcat.utils.legacy.convert_config import (
+                get_config_from_old_per_cls)
+            return cast(Self, get_config_from_old_per_cls(path, cls))
         obj = deserialise(path)
         if not isinstance(obj, cls):
             raise ValueError(f"The path '{path}' is not a {cls.__name__}!")

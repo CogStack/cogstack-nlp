@@ -1,14 +1,19 @@
+from typing import Type, Any
 import os
 
 from medcat.utils.legacy import convert_config
 
 from medcat.config import Config
+from medcat.config.config import SerialisableBaseModel
+from medcat.config.config_meta_cat import ConfigMetaCAT
+from medcat.config.config_rel_cat import ConfigRelCAT
+from medcat.config.config_transformers_ner import ConfigTransformersNER
 
 import unittest
 
 
-TESTS_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__),
-                                          "..", ".."))
+from ... import RESOURCES_PATH
+TESTS_PATH = os.path.dirname(RESOURCES_PATH)
 
 
 class ValAndModelGetterTests(unittest.TestCase):
@@ -78,3 +83,47 @@ class ConfigConverstionTests(unittest.TestCase):
     def test_preprocesses_sets(self):
         self.assertEqual(self.cnf.preprocessing.words_to_skip,
                          self.EXP_WORDS_TO_SKIP)
+
+
+class PerClsConfigConversionTests(unittest.TestCase):
+    # paths, classes, expected path, expected value
+    # NOTE: These are hard-coded values I know I changed in the confgis
+    #       before saving
+    PATHS_AND_CLASSES: list[str, Type[SerialisableBaseModel], str, Any] = [
+        (os.path.join(RESOURCES_PATH,
+                      "mct_v1_cnf.json"), Config,
+         'meta.description', "FAKE MODEL"),
+        (os.path.join(RESOURCES_PATH,
+         "mct_v1_meta_cat_cnf.json"), ConfigMetaCAT,
+         "general.category_name", 'TEST CATEGORY'),
+        (os.path.join(RESOURCES_PATH,
+         "mct_v1_rel_cat_cnf.json"), ConfigRelCAT,
+         "general.model_name", 'bert-unknown'),
+        (os.path.join(RESOURCES_PATH,
+         "mct_v1_deid_cnf.json"), ConfigTransformersNER,
+         "general.name", 'NOT-DEID'),
+    ]
+
+    @classmethod
+    def setUpClass(cls):
+        return super().setUpClass()
+
+    def _get_attr_nested(self, obj: SerialisableBaseModel, path: str) -> Any:
+        """Get an attribute from a nested object using a dot-separated path."""
+        parts = path.split('.')
+        for part in parts:
+            obj = getattr(obj, part)
+        return obj
+
+    def assert_can_convert(
+            self, path, cls: Type[SerialisableBaseModel],
+            exp_path: str, exp_value: Any):
+        cnf = convert_config.get_config_from_old_per_cls(path, cls)
+        self.assertIsInstance(cnf, cls, f"Failed for {cls.__name__}")
+        self.assertEqual(self._get_attr_nested(cnf, exp_path), exp_value,
+                         f"Failed for {cls.__name__} at {exp_path}")
+
+    def test_can_convert(self):
+        for path, cls, exp_path, exp_value in self.PATHS_AND_CLASSES:
+            with self.subTest(f"Testing {cls.__name__} at {path}"):
+                self.assert_can_convert(path, cls, exp_path, exp_value)
