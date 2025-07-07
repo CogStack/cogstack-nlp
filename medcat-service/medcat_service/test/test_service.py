@@ -30,34 +30,9 @@ class TestMedcatService(unittest.TestCase):
         The Flask app instance is created only once when starting all the unit tests.
         :return:
         """
-        cls._start_mock()
-        print("SETUP EVERYTHING...START")
         cls._setup_logging(cls)
         cls._setup_medcat_processor(cls)
         cls._setup_flask_app(cls)
-
-    @classmethod
-    def _start_mock(cls):
-        print("SETUP Flask app now")
-        from unittest import mock
-        from medcat.pipeline.pipeline import Pipeline
-        orig_method = Pipeline._init_tokenizer
-
-        def init_tokenizer(pipe: Pipeline):
-            print("Call for mock init_tokenizer method")
-            if pipe.cdb.config.general.nlp.modelname == 'en_core_sci_lg':
-                print("Changing spacy model from 'en_core_sci_lg' to 'en_core_web_md'")
-                pipe.cdb.config.general.nlp.modelname = 'en_core_web_md'
-            orig_method(pipe)
-            print("Now got config with model:", pipe.cdb.config.general.nlp.modelname)
-
-        print("Mocking Pipe._init_tokenizer ...")
-        cls._patcher = mock.patch.object(Pipeline, "_init_tokenizer", side_effect=init_tokenizer)
-        cls._patcher.start()
-
-    @classmethod
-    def tearDownClass(cls):
-        cls._patcher.stop()
 
     @staticmethod
     def _setup_medcat_processor(cls, config=None):
