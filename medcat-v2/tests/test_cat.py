@@ -728,7 +728,7 @@ class BatchingTests(unittest.TestCase):
         # has all texts
         self.assertEqual(sum(len(batch) for batch in batches), self.NUM_TEXTS)
         # has all characters
-        self.assertEqual(sum(len(text[1]) for text in batches[0]),
+        self.assertEqual(sum(len(text[0]) for text in batches[0]),
                          self.total_text_length)
 
     def test_batching_gets_all_half_at_a_time(self):
@@ -746,7 +746,7 @@ class BatchingTests(unittest.TestCase):
         # has all texts
         self.assertEqual(sum(len(batch) for batch in batches), self.NUM_TEXTS)
         # has all characters
-        self.assertEqual(sum(len(text[1])
+        self.assertEqual(sum(len(text[0])
                              for batch in batches for text in batch),
                          self.total_text_length)
 
