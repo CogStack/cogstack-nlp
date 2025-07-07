@@ -198,9 +198,9 @@ class MedCatProcessor(NlpProcessor):
                 ann_res = self.cat.deid_multi_texts(MedCatProcessor._generate_input_doc(content, invalid_doc_ids),
                                                     redact=self.DEID_REDACT)
             else:
-                ann_res = self.cat.multiprocessing_batch_char_size(
+                ann_res = self.cat.get_entities_multi_texts(
                     MedCatProcessor._generate_input_doc(content, invalid_doc_ids), nproc=self.bulk_nproc)
-
+                ann_res = {ann_id: res for ann_id, res in ann_res}
         except Exception as e:
             self.log.error(repr(e))
 
