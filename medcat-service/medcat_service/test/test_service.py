@@ -40,7 +40,7 @@ class TestMedcatService(unittest.TestCase):
     def _start_mock(cls):
         print("SETUP Flask app now")
         from unittest import mock
-        from medcat.pipeline import Pipeline
+        from medcat.pipeline.pipeline import Pipeline
         orig_method = Pipeline._init_tokenizer
 
         def init_tokenizer(pipe: Pipeline):
