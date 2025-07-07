@@ -71,6 +71,7 @@ def get_val_and_parent_model(old_data: Optional[dict],
                 logger.warning(
                     "Optional path '%s' not found in old config. Ignoring",
                     path)
+                val = None
                 break
             val = val[cname]
     return val, target_model
