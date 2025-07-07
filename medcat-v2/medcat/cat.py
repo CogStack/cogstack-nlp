@@ -180,7 +180,7 @@ class CAT(AbstractSerialisable):
                 yield docs
                 docs = []
                 char_count = clen
-            docs.append((doc_index, doc, only_cui))
+            docs.append((doc, doc_index, only_cui))
 
         if len(docs) > 0:
             yield docs
