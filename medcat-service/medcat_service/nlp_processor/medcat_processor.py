@@ -189,7 +189,7 @@ class MedCatProcessor(NlpProcessor):
         # use generators both to provide input documents and to provide resulting annotations
         # to avoid too many mem-copies
         invalid_doc_ids = []
-        ann_res = []
+        ann_res = {}
 
         start_time_ns = time.time_ns()
 
@@ -198,11 +198,14 @@ class MedCatProcessor(NlpProcessor):
                 ann_res = self.cat.deid_multi_texts(MedCatProcessor._generate_input_doc(content, invalid_doc_ids),
                                                     redact=self.DEID_REDACT)
             else:
-                ann_res = self.cat.get_entities_multi_texts(
-                    MedCatProcessor._generate_input_doc(content, invalid_doc_ids), n_process=self.bulk_nproc)
-                ann_res = {ann_id: res for ann_id, res in ann_res}
+                text_input = MedCatProcessor._generate_input_doc(content, invalid_doc_ids)
+                ann_res = {
+                    ann_id: res for ann_id, res in
+                    self.cat.get_entities_multi_texts(
+                        text_input, n_process=self.bulk_nproc)
+                }
         except Exception as e:
-            self.log.error(repr(e))
+            self.log.error("Unable to process data", exc_info=e)
 
         additional_info = {"elapsed_time": str((time.time_ns() - start_time_ns) / 10e8)}
 
