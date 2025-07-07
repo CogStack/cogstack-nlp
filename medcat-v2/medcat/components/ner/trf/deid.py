@@ -34,7 +34,7 @@ The wrapper also exposes some CAT parts directly:
 - config
 - cdb
 """
-from typing import Union, Any, Optional
+from typing import Union, Any, Optional, Iterable
 import re
 import logging
 
@@ -91,6 +91,29 @@ class DeIdModel(NerModel):
         entities = self.cat.get_entities(text)['entities']
         return replace_entities_in_text(text, entities, self.cat.cdb.get_name,
                                         redact=redact)
+
+    def deid_multi_text(self, texts: Iterable[str], redact: bool = False,
+                        n_process: Optional[int] = None) -> list[str]:
+        if n_process is None:
+            n_process = 1
+
+        entities = self.cat.get_entities_multi_texts(
+            texts, n_process=n_process)
+        out: list[str] = []
+        for raw_text, (_, _ents) in zip(texts, entities):
+            ents = _ents['entities']
+            text: str
+            if isinstance(raw_text, tuple):
+                text = raw_text[1]
+            elif isinstance(raw_text, str):
+                text = raw_text
+            else:
+                raise ValueError("Unknown raw text: "
+                                 f"{type(raw_text)}: {raw_text}")
+            new_text = replace_entities_in_text(
+                text, ents, get_cui_name=self.cat.cdb.get_name, redact=redact)
+            out.append(new_text)
+        return out
 
     @classmethod
     def load_model_pack(cls, model_pack_path: str,
