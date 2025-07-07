@@ -14,14 +14,17 @@ defaults:
 
 jobs:
   build:
-    name: Build and release
+    name: Build medcat-v2 wheel
     runs-on: ubuntu-latest
-
+    outputs:
+      version_tag: ${{ steps.extract.outputs.version_tag }}
+      version_only: ${{ steps.extract.outputs.version_only }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Checkout release branch
+      - name: Extract version tag and checkout release branch
+        id: extract
         run: |
           # Fetch all branches to ensure we can access the one we need
           git fetch --all
@@ -31,16 +34,24 @@ jobs:
           # NOTE: branch name is in line with version tag, except for the patch version
           BRANCH_NAME="${VERSION_TAG%.*}"  # This removes the patch version (everything after the second dot)
 
+          # set version tag as output for later use
+          echo "version_tag=$VERSION_TAG" >> $GITHUB_OUTPUT
+
+          # only the version (no medcat/v prefix)
+          VERSION_ONLY="${VERSION_TAG#medcat/v}"
+          echo "version_only=$VERSION_ONLY" >> $GITHUB_OUTPUT
+
           # Check out the corresponding release branch (e.g., medcat/v0.1)
           git checkout $BRANCH_NAME
 
           # Ensure the branch is up-to-date with the remote
           git pull origin $BRANCH_NAME
 
-      - name: Set up Python
+        # NOTE: building with the lowest python version supported by the package
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.9"
 
       - name: Install build dependencies
         run: pip install --upgrade build
@@ -48,11 +59,144 @@ jobs:
       - name: Build package
         run: python -m build
 
+      - name: Upload wheel artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: medcat-v2-wheel
+          path: |
+            medcat-v2/dist/*.whl
+            medcat-v2/dist/*.tar.gz
+
+  bundle:
+    name: Build install bundles
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Generate requirements and download (CPU)
+        run: |
+          if [[ "${{ matrix.python-version }}" == "3.9" ]]; then
+            echo "Runnoing unsafe index strategy for Python 3.9 to avoid issues with torch / numpy compatibility"
+            # NOTE: for python 3.9 it will otherwise look for `numpy>2` in torch's index
+            #       but there's (as of writing on 2025-07-02) none there that support 3.9
+            #       (though there are ones that support 3.10+) and because of that this
+            #       step would fail wihtout the unsafe index match
+            #       for some documentation on dependency confusion attacks, can reference:
+            #       https://docs.astral.sh/uv/reference/settings/#pip_index-strategy
+            uv pip compile pyproject.toml --only-binary=:all: \
+              --extra spacy --extra deid --extra meta-cat --extra rel-cat \
+              --extra-index-url https://download.pytorch.org/whl/cpu \
+              --index-strategy unsafe-best-match \
+              > req-cpu.txt
+          else
+            uv pip compile pyproject.toml --only-binary=:all: \
+              --extra spacy --extra deid --extra meta-cat --extra rel-cat \
+              --extra-index-url https://download.pytorch.org/whl/cpu \
+              > req-cpu.txt
+          fi
+          uv venv .venv
+          .venv/bin/python -m ensurepip
+          .venv/bin/python -m pip download --only-binary=:all: --dest bundle-cpu -r req-cpu.txt --extra-index-url https://download.pytorch.org/whl/cpu
+
+#      - name: Generate requirements and download (GPU)
+#        run: |
+#          uv pip compile pyproject.toml --only-binary=:all: \
+#              --extra spacy --extra deid --extra meta-cat --extra rel-cat \
+#              > req-gpu.txt
+#          .venv/bin/python -m pip download --only-binary=:all: --dest bundle-gpu -r req-gpu.txt
+
+      - name: Run sanity check / integration tests on cpu-only bundle
+        run: |
+          .venv/bin/python -m pip install --no-index --find-links=bundle-cpu -r req-cpu.txt
+          uv run bash tests/backwards_compatibility/run_current.sh
+
+      - name: Clear virtual environment
+        run: |
+          rm -rf .venv
+
+      - name: Add README to bundles
+        run: |
+          cp .release/install_bundle_readme.md bundle-cpu/README.md
+          cp req-cpu.txt bundle-cpu/requirements.txt
+#          cp .release/install_bundle_readme.md bundle-gpu/README.md
+#          cp req-gpu.txt bundle-gpu/requirements.txt
+
+      - name: Download built medcat wheel for inclusion in bundles
+        uses: actions/download-artifact@v4
+        with:
+          name: medcat-v2-wheel
+          path: medcat-v2/built-wheel
+
+      - name: List downloaded artifacts
+        run: ls -lh built-wheel
+
+      - name: Copy built wheel to CPU bundle
+        run: |
+          cp built-wheel/medcat*.whl bundle-cpu/.
+#          cp built-wheel/medcat*.whl bundle-gpu/.
+
+      - name: Archive CPU and GPU bundles
+        run: |
+          tar -czf medcat-v${{ needs.build.outputs.version_only }}-${{ matrix.python-version }}-cpu.tar.gz -C bundle-cpu .
+#          tar -czf medcat-v${{ needs.build.outputs.version_only }}-${{ matrix.python-version }}-gpu.tar.gz -C bundle-gpu .
+
+      - name: Upload bundles as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundles-${{ matrix.python-version }}
+          path: |
+            medcat-v2/medcat-v${{ needs.build.outputs.version_only }}-${{ matrix.python-version }}-cpu.tar.gz
+#            medcat-v2/medcat-v${{ needs.build.outputs.version_only }}-${{ matrix.python-version }}-gpu.tar.gz
+
+  release:
+    name: Create GitHub Release
+    needs: [build, bundle]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: medcat-v2/artifacts
+
+      - name: Move all bundles to dist/
+        run: |
+          ls -l artifacts
+          mkdir -p dist
+          find artifacts -name '*.tar.gz' -exec mv {} dist/ \;
+          ls -l dist/
+
+      - name: Download built wheel
+        uses: actions/download-artifact@v4
+        with:
+          name: medcat-v2-wheel
+          path: medcat-v2/dist-wheel
+
+      - name: Move wheels to dist/
+        run: |
+          mv dist-wheel/*.whl dist/.
+          mv dist-wheel/*.tar.gz dist/.
+
+      - name: Show files in dist/ for sanity check
+        run: ls -l dist/
+
       - name: Create GitHub Release
         id: create_release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
+          tag_name: ${{ needs.build.outputs.version_tag }}
           draft: true
           # softprops/action-gh-release v2 doesnt support the working-directory field, so put the path in files
           files: |

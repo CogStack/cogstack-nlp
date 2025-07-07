@@ -31,6 +31,7 @@ from medcat.utils.defaults import avoid_legacy_conversion
 from medcat.utils.defaults import doing_legacy_conversion_message
 from medcat.utils.defaults import LegacyConversionDisabledError
 from medcat.utils.usage_monitoring import UsageMonitor
+from medcat.utils.import_utils import MissingDependenciesError
 
 
 logger = logging.getLogger(__name__)
@@ -157,6 +158,25 @@ class CAT(AbstractSerialisable):
             self,
             texts_and_indices: list[tuple[str, str, bool]]
             ) -> list[tuple[str, str, Union[dict, Entities, OnlyCUIEntities]]]:
+        # NOTE: this is needed for subprocess as otherwise they wouldn't have
+        #       any of these set
+        # NOTE: these need to by dynamic in case the extra's aren't included
+        try:
+            from medcat.components.addons.meta_cat import MetaCATAddon
+            has_meta_cat = True
+        except MissingDependenciesError:
+            has_meta_cat = False
+        try:
+            from medcat.components.addons.relation_extraction.rel_cat import (
+                RelCATAddon)
+            has_rel_cat = True
+        except MissingDependenciesError:
+            has_rel_cat = False
+        for addon in self._pipeline.iter_addons():
+            if has_meta_cat and isinstance(addon, MetaCATAddon):
+                addon._init_data_paths(self._pipeline.tokenizer)
+            elif has_rel_cat and isinstance(addon, RelCATAddon):
+                addon._rel_cat._init_data_paths()
         return [
             (text, text_index, self.get_entities(text, only_cui=only_cui))
             for text, text_index, only_cui in texts_and_indices]
@@ -180,7 +200,7 @@ class CAT(AbstractSerialisable):
                 yield docs
                 docs = []
                 char_count = clen
-            docs.append((doc_index, doc, only_cui))
+            docs.append((doc, doc_index, only_cui))
 
         if len(docs) > 0:
             yield docs
@@ -326,7 +346,7 @@ class CAT(AbstractSerialisable):
         if n_process == 1:
             # just do in series
             for batch in batch_iter:
-                for text_index, _, result in self._mp_worker_func(batch):
+                for _, text_index, result in self._mp_worker_func(batch):
                     yield text_index, result
             return
 
