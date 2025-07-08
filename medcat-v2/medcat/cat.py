@@ -5,6 +5,7 @@ import json
 from datetime import date
 from concurrent.futures import ProcessPoolExecutor, as_completed, Future
 import itertools
+from contextlib import contextmanager
 
 import shutil
 import logging
@@ -357,6 +358,32 @@ class CAT(AbstractSerialisable):
                     yield text_index, result
             return
 
+        with self._no_usage_monitor_exit_flushing():
+            self._multiprocess(n_process, batch_iter)
+
+    @contextmanager
+    def _no_usage_monitor_exit_flushing(self):
+        # NOTE: the `UsageMonitor.__del__` method can cause
+        #       multiprocessing to stall while it waits for it to be
+        #       called. So here we remove the method.
+        #       However, due to the object being pickled for multiprocessing
+        #       purposes, the class'es `__del__` method will be used anyway.
+        #       So we need to trick it into using a different class.
+        original_cls = self.usage_monitor.__class__
+
+        class NoDel(original_cls):
+            def __del__(self): pass
+
+        self.usage_monitor.__class__ = NoDel
+        try:
+            yield
+        finally:
+            self.usage_monitor.__class__ = original_cls
+
+    def _multiprocess(
+            self, n_process: int,
+            batch_iter: Iterator[list[tuple[str, str, bool]]]
+            ) -> Iterator[tuple[str, Union[dict, Entities, OnlyCUIEntities]]]:
         external_processes = n_process - 1
         with ProcessPoolExecutor(max_workers=external_processes) as executor:
             yield from self._mp_one_batch_per_process(
