@@ -121,6 +121,12 @@ class UsageMonitor:
                 raise
 
 
+class _NoDelUM(UsageMonitor):
+
+    def __del__(self):
+        pass
+
+
 # NOTE: at termination time, open is not available
 #       while this isn't great, there's nothing we can do
 def _says_open_not_available(err: NameError) -> bool:

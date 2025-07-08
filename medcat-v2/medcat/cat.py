@@ -31,7 +31,7 @@ from medcat.utils.legacy.identifier import is_legacy_model_pack
 from medcat.utils.defaults import avoid_legacy_conversion
 from medcat.utils.defaults import doing_legacy_conversion_message
 from medcat.utils.defaults import LegacyConversionDisabledError
-from medcat.utils.usage_monitoring import UsageMonitor
+from medcat.utils.usage_monitoring import UsageMonitor, _NoDelUM
 from medcat.utils.import_utils import MissingDependenciesError
 
 
@@ -370,11 +370,7 @@ class CAT(AbstractSerialisable):
         #       purposes, the class'es `__del__` method will be used anyway.
         #       So we need to trick it into using a different class.
         original_cls = self.usage_monitor.__class__
-
-        class NoDel(original_cls):
-            def __del__(self): pass
-
-        self.usage_monitor.__class__ = NoDel
+        self.usage_monitor.__class__ = _NoDelUM
         try:
             yield
         finally:
