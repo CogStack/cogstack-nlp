@@ -359,7 +359,7 @@ class CAT(AbstractSerialisable):
             return
 
         with self._no_usage_monitor_exit_flushing():
-            self._multiprocess(n_process, batch_iter)
+            yield from self._multiprocess(n_process, batch_iter)
 
     @contextmanager
     def _no_usage_monitor_exit_flushing(self):
