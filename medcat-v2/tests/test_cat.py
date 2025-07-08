@@ -418,12 +418,28 @@ class CATWithDictNERSupTrainingTests(CATSupTrainingTests):
             "The dog is sitting outside the house."
         ]
         ents = list(self.cat.get_entities_multi_texts(texts))
+        self.assert_ents(ents, texts)
+
+    def assert_ents(self, ents: list[tuple], texts: list[str]):
         self.assertEqual(len(ents), len(texts))
         # NOTE: text IDs are integers starting from 0
         exp_ids = set(str(i) for i in range(len(texts)))
         for ent_id_str, ent in ents:
             with self.subTest(f"Entity: {ent_id_str} [{ent}]"):
                 self.assertIn(ent_id_str, exp_ids)
+
+    def test_can_multiprocess_empty(self):
+        texts = []
+        ents = list(self.cat.get_entities_multi_texts(texts, n_process=3))
+        self.assert_ents(ents, texts)
+
+    def test_can_get_multiprocess(self):
+        texts = [
+            "The fittest most fit of chronic kidney failure",
+            "The dog is sitting outside the house."
+        ]
+        ents = list(self.cat.get_entities_multi_texts(texts, n_process=3))
+        self.assert_ents(ents, texts)
 
 
 class CATWithDocAddonTests(CATIncludingTests):
