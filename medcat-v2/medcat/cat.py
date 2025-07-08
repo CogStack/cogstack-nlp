@@ -265,6 +265,9 @@ class CAT(AbstractSerialisable):
                     executor.submit(self._mp_worker_func, batch))
             except StopIteration:
                 break
+        if not futures:
+            # NOTE: if there wasn't any data, we didn't process anything
+            return
         # Main process works on next batch while workers are busy
         main_batch: Optional[list[tuple[str, str, bool]]]
         try:
@@ -282,6 +285,10 @@ class CAT(AbstractSerialisable):
         # so we're going to wait for them to finish, yield their results,
         # and subsequently submit the next batch to keep them busy
         for _ in range(external_processes):
+            if not futures:
+                # NOTE: if there's no futures then there can't be
+                #       anything to batch
+                break
             # Wait for any future to complete
             done_future = next(as_completed(futures))
             futures.remove(done_future)
