@@ -5,6 +5,7 @@ from functools import partial
 
 
 rel_install_path = "../medcat-v2/"
+abs_install_path = str(pathlib.Path(rel_install_path).resolve())
 
 # Matches either:
 # 1. `! pip install medcat[extras]`
@@ -24,8 +25,8 @@ def repl_nb(m, file_path: pathlib.Path):
     if old_url and "medcat/v" in old_url:
         print(f"[WARN] {file_path} refers to alpha/tagged release: "
               f"{old_url.strip()}")
-    to_write = f'{m[1]}\\"{rel_install_path}{extras}\\"'
-    print(f"[PATCHED] {file_path}\n with:, {to_write}")
+    to_write = f'{m[1]}\\"{abs_install_path}{extras}\\"'
+    print(f"[PATCHED] {file_path}\n with: '{to_write}'")
     return to_write
 
 
