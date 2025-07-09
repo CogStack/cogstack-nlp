@@ -5,6 +5,7 @@ import json
 from datetime import date
 from concurrent.futures import ProcessPoolExecutor, as_completed, Future
 import itertools
+from contextlib import contextmanager
 
 import shutil
 import logging
@@ -30,7 +31,8 @@ from medcat.utils.legacy.identifier import is_legacy_model_pack
 from medcat.utils.defaults import avoid_legacy_conversion
 from medcat.utils.defaults import doing_legacy_conversion_message
 from medcat.utils.defaults import LegacyConversionDisabledError
-from medcat.utils.usage_monitoring import UsageMonitor
+from medcat.utils.usage_monitoring import UsageMonitor, _NoDelUM
+from medcat.utils.import_utils import MissingDependenciesError
 
 
 logger = logging.getLogger(__name__)
@@ -157,6 +159,25 @@ class CAT(AbstractSerialisable):
             self,
             texts_and_indices: list[tuple[str, str, bool]]
             ) -> list[tuple[str, str, Union[dict, Entities, OnlyCUIEntities]]]:
+        # NOTE: this is needed for subprocess as otherwise they wouldn't have
+        #       any of these set
+        # NOTE: these need to by dynamic in case the extra's aren't included
+        try:
+            from medcat.components.addons.meta_cat import MetaCATAddon
+            has_meta_cat = True
+        except MissingDependenciesError:
+            has_meta_cat = False
+        try:
+            from medcat.components.addons.relation_extraction.rel_cat import (
+                RelCATAddon)
+            has_rel_cat = True
+        except MissingDependenciesError:
+            has_rel_cat = False
+        for addon in self._pipeline.iter_addons():
+            if has_meta_cat and isinstance(addon, MetaCATAddon):
+                addon._init_data_paths(self._pipeline.tokenizer)
+            elif has_rel_cat and isinstance(addon, RelCATAddon):
+                addon._rel_cat._init_data_paths()
         return [
             (text, text_index, self.get_entities(text, only_cui=only_cui))
             for text, text_index, only_cui in texts_and_indices]
@@ -180,7 +201,7 @@ class CAT(AbstractSerialisable):
                 yield docs
                 docs = []
                 char_count = clen
-            docs.append((doc_index, doc, only_cui))
+            docs.append((doc, doc_index, only_cui))
 
         if len(docs) > 0:
             yield docs
@@ -245,6 +266,9 @@ class CAT(AbstractSerialisable):
                     executor.submit(self._mp_worker_func, batch))
             except StopIteration:
                 break
+        if not futures:
+            # NOTE: if there wasn't any data, we didn't process anything
+            return
         # Main process works on next batch while workers are busy
         main_batch: Optional[list[tuple[str, str, bool]]]
         try:
@@ -262,6 +286,10 @@ class CAT(AbstractSerialisable):
         # so we're going to wait for them to finish, yield their results,
         # and subsequently submit the next batch to keep them busy
         for _ in range(external_processes):
+            if not futures:
+                # NOTE: if there's no futures then there can't be
+                #       anything to batch
+                break
             # Wait for any future to complete
             done_future = next(as_completed(futures))
             futures.remove(done_future)
@@ -326,10 +354,32 @@ class CAT(AbstractSerialisable):
         if n_process == 1:
             # just do in series
             for batch in batch_iter:
-                for text_index, _, result in self._mp_worker_func(batch):
+                for _, text_index, result in self._mp_worker_func(batch):
                     yield text_index, result
             return
 
+        with self._no_usage_monitor_exit_flushing():
+            yield from self._multiprocess(n_process, batch_iter)
+
+    @contextmanager
+    def _no_usage_monitor_exit_flushing(self):
+        # NOTE: the `UsageMonitor.__del__` method can cause
+        #       multiprocessing to stall while it waits for it to be
+        #       called. So here we remove the method.
+        #       However, due to the object being pickled for multiprocessing
+        #       purposes, the class'es `__del__` method will be used anyway.
+        #       So we need to trick it into using a different class.
+        original_cls = self.usage_monitor.__class__
+        self.usage_monitor.__class__ = _NoDelUM
+        try:
+            yield
+        finally:
+            self.usage_monitor.__class__ = original_cls
+
+    def _multiprocess(
+            self, n_process: int,
+            batch_iter: Iterator[list[tuple[str, str, bool]]]
+            ) -> Iterator[tuple[str, Union[dict, Entities, OnlyCUIEntities]]]:
         external_processes = n_process - 1
         with ProcessPoolExecutor(max_workers=external_processes) as executor:
             yield from self._mp_one_batch_per_process(

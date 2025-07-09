@@ -418,12 +418,28 @@ class CATWithDictNERSupTrainingTests(CATSupTrainingTests):
             "The dog is sitting outside the house."
         ]
         ents = list(self.cat.get_entities_multi_texts(texts))
+        self.assert_ents(ents, texts)
+
+    def assert_ents(self, ents: list[tuple], texts: list[str]):
         self.assertEqual(len(ents), len(texts))
         # NOTE: text IDs are integers starting from 0
         exp_ids = set(str(i) for i in range(len(texts)))
         for ent_id_str, ent in ents:
             with self.subTest(f"Entity: {ent_id_str} [{ent}]"):
                 self.assertIn(ent_id_str, exp_ids)
+
+    def test_can_multiprocess_empty(self):
+        texts = []
+        ents = list(self.cat.get_entities_multi_texts(texts, n_process=3))
+        self.assert_ents(ents, texts)
+
+    def test_can_get_multiprocess(self):
+        texts = [
+            "The fittest most fit of chronic kidney failure",
+            "The dog is sitting outside the house."
+        ]
+        ents = list(self.cat.get_entities_multi_texts(texts, n_process=3))
+        self.assert_ents(ents, texts)
 
 
 class CATWithDocAddonTests(CATIncludingTests):
@@ -728,7 +744,7 @@ class BatchingTests(unittest.TestCase):
         # has all texts
         self.assertEqual(sum(len(batch) for batch in batches), self.NUM_TEXTS)
         # has all characters
-        self.assertEqual(sum(len(text[1]) for text in batches[0]),
+        self.assertEqual(sum(len(text[0]) for text in batches[0]),
                          self.total_text_length)
 
     def test_batching_gets_all_half_at_a_time(self):
@@ -746,7 +762,7 @@ class BatchingTests(unittest.TestCase):
         # has all texts
         self.assertEqual(sum(len(batch) for batch in batches), self.NUM_TEXTS)
         # has all characters
-        self.assertEqual(sum(len(text[1])
+        self.assertEqual(sum(len(text[0])
                              for batch in batches for text in batch),
                          self.total_text_length)
 
