@@ -4,7 +4,7 @@ import re
 from functools import partial
 
 
-repo_url = "git+https://github.com/CogStack/cogstack-nlp"
+rel_install_path = "../medcat-v2/"
 
 # Matches either:
 # 1. `! pip install medcat[extras]`
@@ -24,14 +24,7 @@ def repl_nb(m, file_path: pathlib.Path, branch: str):
     if old_url and "medcat/v" in old_url:
         print(f"[WARN] {file_path} refers to alpha/tagged release: "
               f"{old_url.strip()}")
-    return (f'{m[1]}\\"medcat{extras} @ {repo_url}@{branch}'
-            '#subdirectory=medcat-v2\\"')
-
-
-def repl_req(m, file_path: pathlib.Path, branch: str):
-    extras = m[2] if m[2] else ""
-    return (f"medcat{extras} @ {repo_url}@{branch}"
-            "#subdirectory=medcat-v2")
+    return (f'{m[1]}\\"medcat{extras} @ {rel_install_path}')
 
 
 def do_patch(nb_path: pathlib.Path, branch: str,
@@ -50,14 +43,10 @@ def main(path: str, branch: str):
     for nb_path in pathlib.Path(path).rglob("**/*.ipynb"):
         do_patch(nb_path, branch)
 
-    # Patch requirements.txt as well
-    do_patch(pathlib.Path(path, "requirements.txt"), branch,
-             regex=req_txt_pattern, repl_method=repl_req)
-
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
-        print("Usage: python patch_notebooks_and_requirements.py "
+        print("Usage: python patch_notebook_installs.py "
               "<path> <branch>")
         sys.exit(1)
 
