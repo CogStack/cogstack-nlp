@@ -24,7 +24,7 @@ def repl_nb(m, file_path: pathlib.Path):
     if old_url and "medcat/v" in old_url:
         print(f"[WARN] {file_path} refers to alpha/tagged release: "
               f"{old_url.strip()}")
-    return (f'{m[1]}\\"medcat{extras} @ {rel_install_path}')
+    return (f'{m[1]}\\"{rel_install_path}{extras}\\"')
 
 
 def do_patch(nb_path: pathlib.Path,
