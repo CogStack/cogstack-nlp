@@ -14,19 +14,7 @@ defaults:
     working-directory: ./medcat-v2-tutorials
 
 jobs:
-  preflight:
-    runs-on: ubuntu-latest
-    outputs:
-      medcat-branch: ${{ steps.resolve.outputs.branch }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Resolve medcat branch
-        id: resolve
-        run: |
-          echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF##*/}}" >> $GITHUB_OUTPUT
-
   basic-and-meta:
-    needs: preflight
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -38,7 +26,7 @@ jobs:
 
       - name: Update install targets in notebooks
         run: |
-          python ../.ci/patch_notebooks_and_requirements.py . ${{ needs.preflight.outputs.medcat-branch }}
+          python .ci/patch_notebook_installs.py .
 
       - name: Install dependencies
         run: |
@@ -62,7 +50,6 @@ jobs:
           pytest --nbmake -n=auto --nbmake-kernel=smoketests --nbmake-timeout=1800 ./notebooks/introductory/custom/*.ipynb
 
   migrate-and-advanved:
-    needs: preflight
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -81,7 +68,7 @@ jobs:
 
       - name: Update install targets in notebooks
         run: |
-          python ../.ci/patch_notebooks_and_requirements.py . ${{ needs.preflight.outputs.medcat-branch }}
+          python .ci/patch_notebook_installs.py .
 
       - name: Install dependencies
         run: |
