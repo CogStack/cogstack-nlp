@@ -11,8 +11,6 @@ services:
                python /webapp/manage.py runserver 0.0.0.0:8000"
     volumes:
       - ../medcat-v2/tests/resources:/webapp/models
-      # below is use to install push-time medcat library
-      - ../medcat-v2:/webapp/medcat-v2
     ports:
       - "8000:8000"
     env_file:
