@@ -16,6 +16,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     sqlite3 \
     libsqlite3-dev
 
+# NOTE: for test/CI time, this will install medcat based on local path
+ARG REINSTALL_CORE_FROM_LOCAL=false
+RUN if [ "$REINSTALL_CORE_FROM_LOCAL" = "true" ]; then \
+        echo "Reinstalling medcat based on relative path"; \
+        pip install -e "/webapp/medcat-v2[meta-cat,spacy]"; \
+    fi
+
+
 # Install Python dependencies
 ARG USE_CPU_TORCH=false
 # NOTE: Allow building without GPU so as to lower image size (disabled by default)
