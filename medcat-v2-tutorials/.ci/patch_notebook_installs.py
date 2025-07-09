@@ -4,8 +4,8 @@ import re
 from functools import partial
 
 
-rel_install_path = "../medcat-v2/"
-abs_install_path = str(pathlib.Path(rel_install_path).resolve())
+# rel_install_path = "../medcat-v2/"
+# abs_install_path = str(pathlib.Path(rel_install_path).resolve())
 
 # Matches either:
 # 1. `! pip install medcat[extras]`
@@ -20,12 +20,13 @@ req_txt_pattern = re.compile(
 
 
 def repl_nb(m, file_path: pathlib.Path):
-    extras = m[3]
+    # extras = m[3]
     old_url = m[4]
     if old_url and "medcat/v" in old_url:
         print(f"[WARN] {file_path} refers to alpha/tagged release: "
               f"{old_url.strip()}")
-    to_write = f'{m[1]}\\"{abs_install_path}{extras}\\"'
+    # to_write = f'{m[1]}\\"{abs_install_path}{extras}\\"'
+    to_write = '! pip install \\"pip\\"'
     print(f"[PATCHED] {file_path}\n with: '{to_write}'")
     return to_write
 
