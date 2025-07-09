@@ -18,7 +18,7 @@ req_txt_pattern = re.compile(
 )
 
 
-def repl_nb(m, file_path: pathlib.Path, branch: str):
+def repl_nb(m, file_path: pathlib.Path):
     extras = m[3]
     old_url = m[4]
     if old_url and "medcat/v" in old_url:
@@ -27,11 +27,11 @@ def repl_nb(m, file_path: pathlib.Path, branch: str):
     return (f'{m[1]}\\"medcat{extras} @ {rel_install_path}')
 
 
-def do_patch(nb_path: pathlib.Path, branch: str,
+def do_patch(nb_path: pathlib.Path,
              regex: re.Pattern = shell_pattern, repl_method=repl_nb):
     nb_text = nb_path.read_text(encoding="utf-8")
 
-    repl = partial(repl_method, file_path=nb_path, branch=branch)
+    repl = partial(repl_method, file_path=nb_path)
     new_text = regex.sub(repl, nb_text)
 
     if nb_text != new_text:
@@ -39,22 +39,20 @@ def do_patch(nb_path: pathlib.Path, branch: str,
         print(f"[PATCHED] {nb_path}")
 
 
-def main(path: str, branch: str):
+def main(path: str):
     for nb_path in pathlib.Path(path).rglob("**/*.ipynb"):
-        do_patch(nb_path, branch)
+        do_patch(nb_path)
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print("Usage: python patch_notebook_installs.py "
-              "<path> <branch>")
+    if len(sys.argv) != 2:
+        print("Usage: python patch_notebook_installs.py <path>")
         sys.exit(1)
 
     path = sys.argv[1]
-    branch = sys.argv[2]
 
     if not pathlib.Path(path).exists():
         print(f"Path {path} does not exist.")
         sys.exit(1)
 
-    main(path, branch)
+    main(path)
