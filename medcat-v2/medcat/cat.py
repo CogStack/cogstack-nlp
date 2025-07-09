@@ -41,6 +41,7 @@ logger = logging.getLogger(__name__)
 class CAT(AbstractSerialisable):
     """This is a collection of serialisable model parts.
     """
+    FORCE_SPAWN_MP = True
 
     def __init__(self,
                  cdb: CDB,
@@ -381,6 +382,13 @@ class CAT(AbstractSerialisable):
             batch_iter: Iterator[list[tuple[str, str, bool]]]
             ) -> Iterator[tuple[str, Union[dict, Entities, OnlyCUIEntities]]]:
         external_processes = n_process - 1
+        if self.FORCE_SPAWN_MP:
+            import multiprocessing as mp
+            logger.info(
+                "Forcing multiprocessing start method to 'spawn' "
+                "due to known compatibility issues with 'fork' and "
+                "libraries using threads or native extensions.")
+            mp.set_start_method("spawn", force=True)
         with ProcessPoolExecutor(max_workers=external_processes) as executor:
             yield from self._mp_one_batch_per_process(
                 executor, batch_iter, external_processes)
