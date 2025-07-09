@@ -438,7 +438,7 @@ class Trainer:
                         cui=cui, name=ann['value'], mut_doc=mut_doc,
                         mut_entity=mut_entity, negative=deleted,
                         devalue_others=devalue_others)
-                except ValueError as ve:
+                except (ValueError, KeyError) as ve:
                     context_window = 20  # characters
                     splitter_left, splitter_right = "<", ">"
                     cur_text = doc['text']

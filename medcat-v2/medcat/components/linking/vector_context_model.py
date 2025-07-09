@@ -344,7 +344,7 @@ class ContextModel(AbstractSerialisable):
                 if name not in self.name2info:
                     continue
                 per_cui_status = self.name2info[name]['per_cui_status']
-                cui_status = per_cui_status[cui]
+                cui_status = per_cui_status.get(cui, None)
                 if cui_status == ST.PRIMARY_STATUS_NO_DISAMB:
                     # Set this name to always be disambiguated, even
                     # though it is primary
