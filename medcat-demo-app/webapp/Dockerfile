@@ -16,13 +16,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     sqlite3 \
     libsqlite3-dev
 
-# NOTE: for test/CI time, this will install medcat based on local path
-ARG REINSTALL_CORE_FROM_LOCAL=false
-RUN if [ "$REINSTALL_CORE_FROM_LOCAL" = "true" ]; then \
-        echo "Reinstalling medcat based on relative path"; \
-        pip install -e "/webapp/medcat-v2[meta-cat,spacy]"; \
-    fi
-
 
 # Install Python dependencies
 ARG USE_CPU_TORCH=false
@@ -32,6 +25,13 @@ RUN pip install -U pip && if [ "$USE_CPU_TORCH" = "true" ]; then \
                           else \
                               pip install -r /webapp/requirements.txt; \
                           fi
+
+# NOTE: for test/CI time, this will install medcat based on local path
+ARG REINSTALL_CORE_FROM_LOCAL=false
+RUN if [ "$REINSTALL_CORE_FROM_LOCAL" = "true" ]; then \
+        echo "Reinstalling medcat based on relative path"; \
+        pip install -e "/webapp/medcat-v2[meta-cat,spacy]"; \
+    fi
 
 # Get the spacy model (for later copy)
 RUN python -m spacy download en_core_web_md
