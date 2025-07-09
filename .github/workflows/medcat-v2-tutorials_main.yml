@@ -82,5 +82,5 @@ jobs:
           python -m ipykernel install --name smoketests --user
       - name: Smoke test tutorial
         run: |
-          pytest --collect-only --nbmake ${{ matrix.part }}
-          pytest --nbmake -n=auto --nbmake-kernel=smoketests --nbmake-timeout=1800 ${{ matrix.part }}
+          pytest --capture=no --collect-only --nbmake ${{ matrix.part }}
+          pytest --capture=no --nbmake -n=auto --nbmake-kernel=smoketests --nbmake-timeout=1800 ${{ matrix.part }}
