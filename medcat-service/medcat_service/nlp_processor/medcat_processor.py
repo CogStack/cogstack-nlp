@@ -286,7 +286,7 @@ class MedCatProcessor(NlpProcessor):
                 cat.cdb.filter_by_cui(cuis_to_keep)
 
             if self.app_model.lower() in ["", "unknown", "medmen"]:
-                self.app_model = cat.config.version.id
+                self.app_model = cat.config.meta.hash
 
             self._populate_model_card_info(cat.config)
 
