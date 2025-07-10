@@ -66,6 +66,8 @@ jobs:
           build-args: |
             REINSTALL_CORE_FROM_LOCAL=true
 
+      - name: Make medact-v2 available within build
+        run: cp -r ../medcat-v2 medcat-v2
       
       - name: Extract metadata (tags, labels) for Docker MedCATservice-gpu
         id: meta-gpu

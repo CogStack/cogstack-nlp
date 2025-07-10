@@ -21,19 +21,19 @@ RUN pip install -U pip && \
         pip install --no-cache-dir -r requirements.txt; \
     fi
 
-# NOTE: for test/CI time, this will install medcat based on local path
-ARG REINSTALL_CORE_FROM_LOCAL=false
-RUN if [ "$REINSTALL_CORE_FROM_LOCAL" = "true" ]; then \
-        echo "Reinstalling medcat based on relative path"; \
-        pip install -e "../medcat-v2[meta-cat,spacy]"; \
-    fi
-
 # Get the spacy model
 ARG SPACY_MODELS="en_core_web_sm en_core_web_md en_core_web_lg"
 RUN for spacy_model in $SPACY_MODELS; do python -m spacy download $spacy_model; done
 
 # Copy the remaining files
 COPY . /cat
+
+# NOTE: for test/CI time, this will install medcat based on local path
+ARG REINSTALL_CORE_FROM_LOCAL=false
+RUN if [ "$REINSTALL_CORE_FROM_LOCAL" = "true" ]; then \
+        echo "Reinstalling medcat based on relative path"; \
+        pip install -e "../medcat-v2[meta-cat,spacy]"; \
+    fi
 
 # Now run the simple api
 CMD ["/bin/bash", "start_service_production.sh"]
