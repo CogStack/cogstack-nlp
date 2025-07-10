@@ -52,6 +52,9 @@ jobs:
             # Create version tag based on tag prefix
             type=match,pattern=medcat-service/v(\d+\.\d+\.\d+),group=1
 
+      - name: Make medact-v2 available within build
+        run: cp -r ../medcat-v2 medcat-v2
+
       - name: Build and push Docker MedCATservice image
         id: docker_build
         uses: docker/build-push-action@v6
@@ -65,9 +68,6 @@ jobs:
           cache-to: type=registry,ref=cogstacksystems/medcat-service:buildcache,mode=max
           build-args: |
             REINSTALL_CORE_FROM_LOCAL=true
-
-      - name: Make medact-v2 available within build
-        run: cp -r ../medcat-v2 medcat-v2
       
       - name: Extract metadata (tags, labels) for Docker MedCATservice-gpu
         id: meta-gpu
