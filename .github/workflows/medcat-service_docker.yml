@@ -103,6 +103,8 @@ jobs:
           push: true
           cache-from: type=registry,ref=cogstacksystems/medcat-service-gpu:buildcache
           cache-to: type=registry,ref=cogstacksystems/medcat-service-gpu:buildcache,mode=max
+          build-args: |
+            REINSTALL_CORE_FROM_LOCAL=true
           
       - name: Image digest
         run: echo ${{ steps.docker_build.outputs.digest }}
