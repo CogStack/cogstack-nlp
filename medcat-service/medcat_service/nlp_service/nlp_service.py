@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
+from typing import Optional
 import injector
 
 from medcat_service.nlp_processor import MedCatProcessor
@@ -15,7 +15,7 @@ class NlpService:
     def __init__(self):
         self.nlp = None
 
-    def get_processor(self):
+    def get_processor(self) -> Optional[MedCatProcessor]:
         """
         Returns the wrapped NLP processor
         :return:

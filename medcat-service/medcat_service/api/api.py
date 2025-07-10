@@ -97,3 +97,28 @@ def retrain_medcat(nlp_service: NlpService) -> Response:
     except Exception as e:
         log.error(traceback.format_exc())
         return Response(response="Internal processing error %s" % e, status=500)
+
+
+@api.route('/health/live')
+def liveness():
+    """
+    Liveness API checks if the application is running.
+    """
+    response = {"status": "UP", "checks": []}
+    return Response(response=json.dumps(response), status=200)
+
+
+
+@api.route('/health/ready')
+def readiness(nlp_service: NlpService) -> Response:
+    """
+    Readiness API checks if the application is ready to start accepting traffic
+    """
+    medcat_is_ready = nlp_service.get_processor().get_is_ready()
+
+    if medcat_is_ready["status"] == "UP":
+        response = {"status": "UP", "checks": [medcat_is_ready]}
+        return Response(response=json.dumps(response), status=200)
+    else:
+        response = {"status": "DOWN", "checks": [medcat_is_ready]}
+        return Response(response=json.dumps(response), status=503)

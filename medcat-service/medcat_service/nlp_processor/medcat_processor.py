@@ -15,6 +15,7 @@ from medcat.components.addons.meta_cat import MetaCATAddon
 from medcat.components.ner.trf.deid import DeIdModel
 from medcat.vocab import Vocab
 
+from medcat_service.types import HealthCheckResponse
 
 class NlpProcessor:
     """
@@ -40,6 +41,8 @@ class NlpProcessor:
     def process_content_bulk(self, content, *args, **kwargs):
         pass
 
+    def get_is_ready(self) -> bool:
+        return False
     @staticmethod
     def _get_timestamp():
         """
@@ -59,6 +62,7 @@ class MedCatProcessor(NlpProcessor):
         super().__init__()
 
         self.log.info("Initializing MedCAT processor ...")
+        self.is_ready = False
 
         self.app_name = os.getenv("APP_NAME", "MedCAT")
         self.app_lang = os.getenv("APP_MODEL_LANGUAGE", "en")
@@ -85,6 +89,20 @@ class MedCatProcessor(NlpProcessor):
         self.cat.train = os.getenv("APP_TRAINING_MODE", False)
 
         self.log.info("MedCAT processor is ready")
+        self.is_ready = True
+
+    def get_is_ready(self) -> HealthCheckResponse:
+        if self.is_ready:
+            return {
+                "name": "MedCAT",
+                "status": "UP"
+            }
+        else:
+            return {
+                "name": "MedCAT",
+                "status": "UP"
+            }
+
 
     def get_app_info(self):
         """Returns general information about the application.
