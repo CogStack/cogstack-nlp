@@ -96,7 +96,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: ./medcat-service/
-          file : "Dockerfile_gpu"
+          file : "./medcat-service/Dockerfile_gpu"
           allow: network.host
           tags: ${{ steps.meta-gpu.outputs.tags }}
           labels: ${{ steps.meta-gpu.outputs.labels }}
