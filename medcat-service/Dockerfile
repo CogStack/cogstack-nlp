@@ -25,7 +25,7 @@ RUN pip install -U pip && \
 ARG REINSTALL_CORE_FROM_LOCAL=false
 RUN if [ "$REINSTALL_CORE_FROM_LOCAL" = "true" ]; then \
         echo "Reinstalling medcat based on relative path"; \
-        pip install -e "/webapp/medcat-v2[meta-cat,spacy]"; \
+        pip install -e "../medcat-v2[meta-cat,spacy]"; \
     fi
 
 # Get the spacy model
