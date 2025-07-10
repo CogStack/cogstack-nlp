@@ -7,6 +7,7 @@ on:
       - 'medcat-service/v*.*.*'  # e.g., medcat-serice/v0.1.1
   pull_request:
     paths:
+      - 'medcat-v2/**'
       - 'medcat-service/**'
       - '.github/workflows/medcat-service**'
   release:
@@ -62,6 +63,9 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=registry,ref=cogstacksystems/medcat-service:buildcache
           cache-to: type=registry,ref=cogstacksystems/medcat-service:buildcache,mode=max
+          build-args: |
+            REINSTALL_CORE_FROM_LOCAL=true
+
       
       - name: Extract metadata (tags, labels) for Docker MedCATservice-gpu
         id: meta-gpu
@@ -79,6 +83,8 @@ jobs:
             type=sha
             # Create version tag based on tag prefix
             type=match,pattern=medcat-service/v(\d+\.\d+\.\d+),group=1
+          build-args: |
+            REINSTALL_CORE_FROM_LOCAL=true
 
       - name: Build and push Docker Jupyter singleuser image with GPU support
         id: docker_build_gpu
