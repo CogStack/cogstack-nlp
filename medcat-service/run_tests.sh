@@ -2,7 +2,8 @@
 set -e
 
 # download the sci-scpacy language model
-python3 -m pip install -r ./requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu/;
+# NOTE: requirements are installed separately in the workflow
+# python3 -m pip install -r ./requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu/;
 python3 -m spacy download en_core_web_sm
 python3 -m spacy download en_core_web_md
 python3 -m spacy download en_core_web_lg
