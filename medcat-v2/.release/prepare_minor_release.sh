@@ -19,8 +19,8 @@ while [[ $# -gt 0 ]]; do
     shift
 done
 
-if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-    echo "Error: version '$VERSION' must be in format X.Y.Z"
+if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([ab]|rc)?[0-9]*$ ]]; then
+    echo "Error: version '$VERSION' must be in format X.Y.Z or X.Y.Z<pre><n> (e.g 2.0.0b0)"
     exit 1
 fi
 VERSION_TAG="medcat/v$VERSION"
