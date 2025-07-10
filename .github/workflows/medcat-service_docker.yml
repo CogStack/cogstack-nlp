@@ -25,7 +25,10 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       image_version: ${{ steps.meta.outputs.version }}
-    steps:        
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Log in to Docker Hub
         uses: docker/login-action@v1
         with:
@@ -59,7 +62,7 @@ jobs:
         id: docker_build
         uses: docker/build-push-action@v6
         with:
-          context: "{{defaultContext}}:medcat-service" # Set the working directory as the action doesnt use the working-directory default
+          context: .
           push: true
           allow: network.host
           tags: ${{ steps.meta.outputs.tags }}
@@ -92,7 +95,7 @@ jobs:
         id: docker_build_gpu
         uses: docker/build-push-action@v6
         with:
-          context: "{{defaultContext}}:medcat-service" # Set the working directory as the action doesnt use the working-directory default
+          context: .
           file : "Dockerfile_gpu"
           allow: network.host
           tags: ${{ steps.meta-gpu.outputs.tags }}
