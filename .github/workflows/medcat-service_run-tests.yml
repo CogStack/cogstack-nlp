@@ -5,6 +5,7 @@ on:
     branches: [ main ]
   pull_request:
     paths:
+      - 'medcat-v2/**'
       - 'medcat-service/**'
       - '.github/workflows/medcat-service**'
 
