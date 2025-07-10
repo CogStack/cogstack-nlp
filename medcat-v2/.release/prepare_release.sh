@@ -47,6 +47,7 @@ done
 
 
 if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([ab]|rc)?[0-9]*$ ]]; then
+    echo " In OA "
     echo "Error: version '$VERSION' must be in format X.Y.Z or X.Y.Z<pre><n> (e.g 2.0.0b0)"
     exit 1
 fi
@@ -57,13 +58,6 @@ MINOR_SERIES="v$MAJOR.$MINOR"
 
 if git show-ref --verify --quiet "refs/remotes/origin/medcat/$MINOR_SERIES"; then
     echo "Branch 'medcat/$MINOR_SERIES' exists – patch release"
-    cmd=("$SCRIPT_DIR/prepare_minor_release.sh" "$VERSION")
-    if [[ ${#EXTRA_FLAGS[@]} -gt 0 ]]; then
-        cmd+=("${EXTRA_FLAGS[@]}")
-    fi
-    echo "Preparing minor release $VERSION"
-else
-    echo "Branch 'medcat/$MINOR_SERIES' does not exist – minor release"
     cmd=("$SCRIPT_DIR/prepare_patch_release.sh" "$VERSION")
     # Add extra flags only if they exist
     if [[ ${#EXTRA_FLAGS[@]} -gt 0 ]]; then
@@ -74,5 +68,12 @@ else
         cmd+=("${CHERRY_PICK_HASHES[@]}")
     fi
     echo "Preparing patch release $VERSION"
+else
+    echo "Branch 'medcat/$MINOR_SERIES' does not exist – minor release"
+    cmd=("$SCRIPT_DIR/prepare_minor_release.sh" "$VERSION")
+    if [[ ${#EXTRA_FLAGS[@]} -gt 0 ]]; then
+        cmd+=("${EXTRA_FLAGS[@]}")
+    fi
+    echo "Preparing minor release $VERSION"
 fi
 bash "${cmd[@]}"
