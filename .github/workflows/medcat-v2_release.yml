@@ -202,11 +202,7 @@ jobs:
           files: |
             medcat-v2/dist/*
 
-      # Uncomment and modify this for PyPI publishing in the future
-      # - name: Publish to PyPI
-      #   if: false # Set to `true` or remove when ready
-      #   env:
-      #     PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
-      #   run: |
-      #     pip install --upgrade twine
-      #     twine upload dist/*
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: medcat-v2/dist
