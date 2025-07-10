@@ -50,7 +50,8 @@ VERSION_TAG="medcat/v$VERSION"
 
 # Extract version components
 VERSION_MAJOR_MINOR="${VERSION%.*}"
-VERSION_PATCH="${VERSION##*.}"
+# work with alpha/beta/rc
+VERSION_PATCH="$(echo "$VERSION" | grep -oP '^\d+\.\d+\.\K\d+')"
 RELEASE_BRANCH="medcat/v$VERSION_MAJOR_MINOR"
 
 # some prerequisites
