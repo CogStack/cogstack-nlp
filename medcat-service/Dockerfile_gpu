@@ -50,7 +50,7 @@ COPY . /cat
 ARG REINSTALL_CORE_FROM_LOCAL=false
 RUN if [ "$REINSTALL_CORE_FROM_LOCAL" = "true" ]; then \
         echo "Reinstalling medcat based on relative path"; \
-        pip install -e "../medcat-v2[meta-cat,spacy]"; \
+        pip install -e "medcat-v2[meta-cat,spacy]"; \
     fi
 
 # Now run the simple api
