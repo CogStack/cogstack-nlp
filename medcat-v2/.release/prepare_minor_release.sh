@@ -27,7 +27,8 @@ VERSION_TAG="medcat/v$VERSION"
 
 # Extract version components
 VERSION_MAJOR_MINOR="${VERSION%.*}"
-VERSION_PATCH="${VERSION##*.}"
+# work with alpha/beta/rc
+VERSION_PATCH="$(echo "$VERSION" | sed -E 's/^[0-9]+\.[0-9]+\.([0-9]+).*/\1/')"
 RELEASE_BRANCH="medcat/v$VERSION_MAJOR_MINOR"
 
 # Helpers
