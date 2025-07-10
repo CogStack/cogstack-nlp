@@ -6,6 +6,9 @@ ENV CRYPTOGRAPHY_DONT_BUILD_RUST=1
 WORKDIR /cat
 COPY ./requirements.txt /cat
 
+# NOTE: need git for URL based installs
+RUN apt-get update && apt-get install -y git
+
 # Install Python dependencies
 ARG USE_CPU_TORCH=true
 # NOTE: Allow building without GPU so as to lower image size (GPU is disabled by default)
