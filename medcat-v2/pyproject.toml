@@ -33,10 +33,10 @@ classifiers = [
   #   3 - Alpha
   #   4 - Beta
   #   5 - Production/Stable
-  "Development Status :: 3 - Alpha",
+  "Development Status :: 4 - Beta",
 
-  "Intended Audience :: Hospital Trust Technical Management",
-  "Topic :: Natural Language Processing :: Named Entity Recognition and Linking",
+  "Intended Audience :: Healthcare Industry",
+  # "Topic :: Natural Language Processing :: Named Entity Recognition and Linking",
 
   # Specify the Python versions you support here. In particular, ensure
   # that you indicate you support Python 3. These classifiers are *not*
@@ -47,6 +47,7 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3 :: Only",
+  "Operating System :: OS Independent",
 ]
 
 # This field lists other packages that your project depends on to run.
