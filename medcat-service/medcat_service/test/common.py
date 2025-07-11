@@ -5,6 +5,7 @@ import os
 
 log = logging.getLogger(__name__)
 
+
 def get_example_short_document():
     """
     Returns an example short document to be processed with possibly minimal set of annotations to be validated

@@ -1,9 +1,7 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 import json
 import logging
-import os
 import unittest
 from unittest.mock import patch
 
@@ -37,8 +35,6 @@ class TestMedcatService(unittest.TestCase):
         common.setup_medcat_processor()
         cls._setup_flask_app(cls)
 
-
-
     @staticmethod
     def _setup_flask_app(cls):
         # TODO: this method may need later need to be tailored to create a custom MedCAT Flask app
@@ -47,23 +43,6 @@ class TestMedcatService(unittest.TestCase):
 
         cls.app.testing = True
         cls.client = cls.app.test_client()
-
-    def tesReadinessIsOk(self):
-        response = self.client.get(self.ENDPOINT_HEALTH_READY)
-        self.assertEqual(response.status_code, 200)
-        data = json.loads(response.data)
-        self.assertEqual(data, {"status": "UP", "checks": []})
-
-    def tesReadinessIsNotOk(self):
-        with patch('medcat_service.nlp_service.NlpService.get_processor') as mock_get_processor:
-            mock_processor = mock_get_processor.return_value
-            mock_processor.get_is_ready.return_value = {"status": "DOWN"}
-
-            response = self.client.get(self.ENDPOINT_HEALTH_READY)
-            self.assertEqual(response.status_code, 503)
-
-            data = json.loads(response.data)
-            self.assertEqual(data, {"status": "UP", "checks": []})
 
     @staticmethod
     def _setup_logging(cls):
@@ -125,7 +104,22 @@ class TestMedcatService(unittest.TestCase):
         response = self.client.get(self.ENDPOINT_HEALTH_LIVE)
         self.assertEqual(response.status_code, 200)
 
+    def tesReadinessIsOk(self):
+        response = self.client.get(self.ENDPOINT_HEALTH_READY)
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data)
+        self.assertEqual(data, {"status": "UP", "checks": []})
 
+    def tesReadinessIsNotOk(self):
+        with patch('medcat_service.nlp_service.NlpService.get_processor') as mock_get_processor:
+            mock_processor = mock_get_processor.return_value
+            mock_processor.get_is_ready.return_value = {"status": "DOWN"}
+
+            response = self.client.get(self.ENDPOINT_HEALTH_READY)
+            self.assertEqual(response.status_code, 503)
+
+            data = json.loads(response.data)
+            self.assertEqual(data, {"status": "UP", "checks": []})
 
     def testProcessSingleShortDoc(self):
         doc = common.get_example_short_document()

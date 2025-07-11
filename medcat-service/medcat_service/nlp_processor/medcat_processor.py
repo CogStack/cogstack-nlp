@@ -43,6 +43,7 @@ class NlpProcessor:
 
     def get_is_ready(self) -> bool:
         return False
+
     @staticmethod
     def _get_timestamp():
         """
@@ -90,7 +91,6 @@ class MedCatProcessor(NlpProcessor):
 
         self.is_ready = self._check_medcat_readiness()
 
-
     def _check_medcat_readiness(self) -> bool:
         readiness_text = "MedCAT is ready and can get_entities"
         try:
@@ -117,7 +117,6 @@ class MedCatProcessor(NlpProcessor):
                 "name": "MedCAT",
                 "status": "DOWN"
             }
-
 
     def get_app_info(self):
         """Returns general information about the application.
