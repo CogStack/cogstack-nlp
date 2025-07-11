@@ -113,7 +113,7 @@ class TestMedcatService(unittest.TestCase):
     def tesReadinessIsNotOk(self):
         with patch('medcat_service.nlp_service.NlpService.get_processor') as mock_get_processor:
             mock_processor = mock_get_processor.return_value
-            mock_processor.get_is_ready.return_value = {"status": "DOWN"}
+            mock_processor.is_ready.return_value = {"status": "DOWN"}
 
             response = self.client.get(self.ENDPOINT_HEALTH_READY)
             self.assertEqual(response.status_code, 503)

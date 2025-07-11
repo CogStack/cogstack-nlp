@@ -113,7 +113,7 @@ def readiness(nlp_service: NlpService) -> Response:
     """
     Readiness API checks if the application is ready to start accepting traffic
     """
-    medcat_is_ready = nlp_service.nlp.get_is_ready()
+    medcat_is_ready = nlp_service.nlp.is_ready()
 
     if medcat_is_ready["status"] == "UP":
         response = {"status": "UP", "checks": [medcat_is_ready]}

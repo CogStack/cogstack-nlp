@@ -41,7 +41,7 @@ class NlpProcessor:
     def process_content_bulk(self, content, *args, **kwargs):
         pass
 
-    def get_is_ready(self) -> HealthCheckResponse:
+    def is_ready(self) -> HealthCheckResponse:
         return {
             "name": "MedCAT",
             "status": "DOWN"
