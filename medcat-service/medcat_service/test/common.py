@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+import logging
+import os
 
+log = logging.getLogger(__name__)
 
 def get_example_short_document():
     """
@@ -56,3 +59,28 @@ def create_payload_content_from_doc_bulk(texts):
     :return: the payload (dict)
     """
     return {"content": [{"text": t} for t in texts]}
+
+
+def setup_medcat_processor():
+    # TODO: these parameters need to be externalized into config file and a custom MedCAT processor created here
+    if "APP_MODEL_CDB_PATH" not in os.environ:
+        log.warning("""Env variable: 'APP_MODEL_CDB_PATH': not set
+                            "-- setting to default: './models/medmen/cdb.dat'""")
+        os.environ["APP_MODEL_CDB_PATH"] = "./models/medmen/cdb.dat"
+
+    if "APP_MODEL_VOCAB_PATH" not in os.environ:
+        log.warning(
+            "OS ENV: APP_MODEL_VOCAB_PATH: not set -- setting to default: './models/medmen/vocab.dat'")
+        os.environ["APP_MODEL_VOCAB_PATH"] = "./models/medmen/vocab.dat"
+
+    if "APP_MODEL_META_PATH_LIST" not in os.environ:
+        log.warning("""OS ENV: APP_MODEL_META_PATH_LIST: not set -- setting to
+                            default: './models/medmen/Status'""")
+        os.environ["APP_MODEL_META_PATH_LIST"] = "./models/medmen/Status"
+
+    if "APP_BULK_NPROC" not in os.environ:
+        log.warning(
+            "OS ENV: APP_BULK_NPROC: not set -- setting to default: 8")
+        os.environ["APP_BULK_NPROC"] = "8"
+
+    os.environ["APP_TRAINING_MODE"] = "False"

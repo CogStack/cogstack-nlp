@@ -88,19 +88,34 @@ class MedCatProcessor(NlpProcessor):
         self.cat = self._create_cat()
         self.cat.train = os.getenv("APP_TRAINING_MODE", False)
 
-        self.log.info("MedCAT processor is ready")
-        self.is_ready = True
+        self.is_ready = self._check_medcat_readiness()
+
+
+    def _check_medcat_readiness(self) -> bool:
+        readiness_text = "MedCAT is ready and can get_entities"
+        try:
+            result = self.cat.get_entities(readiness_text)
+            self.log.debug("Result of readiness check is" + str(result))
+            self.log.info("MedCAT processor is ready")
+            return True
+        except Exception as e:
+            self.log.error(f"MedCAT processor is not ready. Failed the readiness check: {e}")
+            return False
 
     def get_is_ready(self) -> HealthCheckResponse:
+        """
+        Is the MedCAT processor ready to get entities from input text
+        """
         if self.is_ready:
             return {
                 "name": "MedCAT",
                 "status": "UP"
             }
         else:
+            self.log.warning("MedCAT Processor is not ready. Returning status DOWN")
             return {
                 "name": "MedCAT",
-                "status": "UP"
+                "status": "DOWN"
             }
 
 

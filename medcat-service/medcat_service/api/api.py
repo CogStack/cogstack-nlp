@@ -108,7 +108,6 @@ def liveness():
     return Response(response=json.dumps(response), status=200)
 
 
-
 @api.route('/health/ready')
 def readiness(nlp_service: NlpService) -> Response:
     """
