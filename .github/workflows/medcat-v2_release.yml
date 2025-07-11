@@ -204,6 +204,11 @@ jobs:
           files: |
             medcat-v2/dist/*
 
+      - name: Remove install bundles in preparations for PyPI push
+        run: |
+          rm dist/medcat-v${{ needs.build.outputs.version_only }}-*-cpu.tar.gz
+#          rm dist/medcat-v${{ needs.build.outputs.version_only }}-*-gpu.tar.gz
+
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
