@@ -21,7 +21,7 @@ class TestMedcatService(unittest.TestCase):
     ENDPOINT_PROCESS_BULK = '/api/process_bulk'
     ENDPOINT_HEALTH_LIVE = "/api/health/live"
     ENDPOINT_HEALTH_READY = "/api/health/ready"
-    
+
     # Static initialization methods
     #
     @classmethod
