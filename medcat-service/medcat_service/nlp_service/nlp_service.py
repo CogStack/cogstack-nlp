@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
-from typing import Optional
 import injector
 
 from medcat_service.nlp_processor import MedCatProcessor
