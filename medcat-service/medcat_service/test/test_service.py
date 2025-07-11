@@ -108,7 +108,7 @@ class TestMedcatService(unittest.TestCase):
         response = self.client.get(self.ENDPOINT_HEALTH_READY)
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.data)
-        self.assertEqual(data, {"status": "UP", "checks": []})
+        self.assertEqual(data, {"status": "UP", "checks": [{"name": "MedCAT", "status": "UP"}]})
 
     def testReadinessIsNotOk(self):
         with patch('medcat_service.nlp_service.NlpService.get_processor') as mock_get_processor:
