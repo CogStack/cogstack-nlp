@@ -102,7 +102,7 @@ class MedCatProcessor(NlpProcessor):
             self.log.info("MedCAT processor is ready")
             return True
         except Exception as e:
-            self.log.error(f"MedCAT processor is not ready. Failed the readiness check: {e}")
+            self.log.error("MedCAT processor is not ready. Failed the readiness check", exc_info=e)
             return False
 
     def is_ready(self) -> HealthCheckResponse:
