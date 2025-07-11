@@ -15,11 +15,13 @@ class NlpService:
     def __init__(self):
         self.nlp = None
 
-    def get_processor(self) -> Optional[MedCatProcessor]:
+    def get_processor(self) -> MedCatProcessor:
         """
         Returns the wrapped NLP processor
         :return:
         """
+        if self.nlp is None:
+            raise RuntimeError("NLP processor not set")
         return self.nlp
 
 
