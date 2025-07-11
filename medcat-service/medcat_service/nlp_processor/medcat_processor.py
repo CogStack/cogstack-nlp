@@ -41,8 +41,11 @@ class NlpProcessor:
     def process_content_bulk(self, content, *args, **kwargs):
         pass
 
-    def get_is_ready(self) -> bool:
-        return False
+    def get_is_ready(self) -> HealthCheckResponse:
+        return {
+            "name": "MedCAT",
+            "status": "DOWN"
+        }
 
     @staticmethod
     def _get_timestamp():
@@ -63,7 +66,7 @@ class MedCatProcessor(NlpProcessor):
         super().__init__()
 
         self.log.info("Initializing MedCAT processor ...")
-        self.is_ready = False
+        self._is_ready_flag = False
 
         self.app_name = os.getenv("APP_NAME", "MedCAT")
         self.app_lang = os.getenv("APP_MODEL_LANGUAGE", "en")
@@ -89,7 +92,7 @@ class MedCatProcessor(NlpProcessor):
         self.cat = self._create_cat()
         self.cat.train = os.getenv("APP_TRAINING_MODE", False)
 
-        self.is_ready = self._check_medcat_readiness()
+        self._is_ready_flag = self._check_medcat_readiness()
 
     def _check_medcat_readiness(self) -> bool:
         readiness_text = "MedCAT is ready and can get_entities"
@@ -102,11 +105,11 @@ class MedCatProcessor(NlpProcessor):
             self.log.error(f"MedCAT processor is not ready. Failed the readiness check: {e}")
             return False
 
-    def get_is_ready(self) -> HealthCheckResponse:
+    def is_ready(self) -> HealthCheckResponse:
         """
         Is the MedCAT processor ready to get entities from input text
         """
-        if self.is_ready:
+        if self._is_ready_flag:
             return {
                 "name": "MedCAT",
                 "status": "UP"
