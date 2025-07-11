@@ -1,4 +1,4 @@
-medcat @ git+https://github.com/CogStack/cogstack-nlp@medcat/v0.11.2#subdirectory=medcat-v2
+medcat~=2.0.0b
 ipykernel
 pytest-xdist~=3.6.0
 nbmake<1.6
