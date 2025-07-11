@@ -52,10 +52,13 @@ VERSION_TAG="medcat/v$VERSION"
 VERSION_MAJOR_MINOR="${VERSION%.*}"
 # work with alpha/beta/rc
 VERSION_PATCH="$(echo "$VERSION" | sed -E 's/^[0-9]+\.[0-9]+\.([0-9]+).*/\1/')"
+VERSION_PATCH_AND_PRERELEASE="${VERSION##*.}"
 RELEASE_BRANCH="medcat/v$VERSION_MAJOR_MINOR"
 
 # some prerequisites
-[[ "$VERSION_PATCH" == "0" ]] && error_exit "Patch version must not be 0."
+if [[ "$VERSION_PATCH" == "$VERSION_PATCH_AND_PRERELEASE" ]]; then
+    [[ "$VERSION_PATCH" == "0" ]] && error_exit "Patch version must not be 0."
+fi
 
 run_or_echo git fetch origin
 
