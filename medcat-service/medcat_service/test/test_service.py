@@ -104,22 +104,23 @@ class TestMedcatService(unittest.TestCase):
         response = self.client.get(self.ENDPOINT_HEALTH_LIVE)
         self.assertEqual(response.status_code, 200)
 
-    def tesReadinessIsOk(self):
+    def testReadinessIsOk(self):
         response = self.client.get(self.ENDPOINT_HEALTH_READY)
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.data)
         self.assertEqual(data, {"status": "UP", "checks": []})
 
-    def tesReadinessIsNotOk(self):
+    def testReadinessIsNotOk(self):
         with patch('medcat_service.nlp_service.NlpService.get_processor') as mock_get_processor:
             mock_processor = mock_get_processor.return_value
-            mock_processor.is_ready.return_value = {"status": "DOWN"}
+            mock_processor.is_ready.return_value = {"status": "DOWN", "name": "MedCAT"}
 
             response = self.client.get(self.ENDPOINT_HEALTH_READY)
             self.assertEqual(response.status_code, 503)
 
             data = json.loads(response.data)
-            self.assertEqual(data, {"status": "UP", "checks": []})
+            self.assertEqual(
+                data, {"status": "DOWN", "checks": [{"name": "MedCAT", "status": "DOWN"}]})
 
     def testProcessSingleShortDoc(self):
         doc = common.get_example_short_document()
