@@ -4,13 +4,13 @@
 Details are outlined [here](breaking_changes.md).
 
 [![Build Status](https://github.com/CogStack/cogstack-nlp/actions/workflows/medcat-v2_main.yml)](https://github.com/CogStack/cogstack-nlp/actions/workflows/medcat-v2_main.yml)
-[![Documentation Status](https://readthedocs.org/projects/medcat2/badge/?version=latest)](https://medcat2.readthedocs.io/en/latest/?badge=latest)
+[![Documentation Status](https://readthedocs.org/projects/cogstack-nlp/badge/?version=latest)](https://readthedocs.org/projects/cogstack-nlp/badge/?version=latest)
 [![Latest release](https://img.shields.io/github/v/release/CogStack/MedCAT2)](https://github.com/CogStack/MedCAT2/releases/latest)
 [![pypi Version](https://img.shields.io/pypi/v/medcat.svg?style=flat-square&logo=pypi&logoColor=white)](https://pypi.org/project/medcat/)
 
 MedCAT(*v2*) can be used to extract information from Electronic Health Records (EHRs) and link it to biomedical ontologies like SNOMED-CT and UMLS. Paper on [arXiv](https://arxiv.org/abs/2010.01165).
 
-**Official Docs [here](https://medcat2.readthedocs.io/en/latest/)**
+**Official Docs [here](https://cogstack-nlp.readthedocs.io/)**
 
 **Discussion Forum [here](https://discourse.cogstack.org/)**
 
