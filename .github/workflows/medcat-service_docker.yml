@@ -112,6 +112,9 @@ jobs:
   integration_test:
     runs-on: ubuntu-latest
     needs: build
+    strategy:
+      matrix:
+        variant: [v1, v2]
     steps:
       - name: Check out code
         uses: actions/checkout@v4
@@ -120,8 +123,8 @@ jobs:
         run: |
           echo "🧪 Running Examples test..."
           export IMAGE_TAG=${{ needs.build.outputs.image_version }} # Improve by running exact digest instead
-          echo "Running with image tag ${IMAGE_TAG}"
-          bash scripts/test_examples.sh
+          echo "Running with image tag ${IMAGE_TAG} and variant ${{ matrix.variant }}"
+          bash scripts/test_examples.sh ${{ matrix.variant }}
           
       - name: Report test result
         if: always()
