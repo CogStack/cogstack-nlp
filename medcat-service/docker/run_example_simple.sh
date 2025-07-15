@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 
-DOCKER_COMPOSE_FILE="docker-compose.example.yml"
+DOCKER_COMPOSE_FILE_V1="docker-compose.example.v1.yml"
+DOCKER_COMPOSE_FILE_V2="docker-compose.example.yml"
+# choose between file based on CLI argument
+if [ "$1" = "v1" ]; then
+  DOCKER_COMPOSE_FILE="$DOCKER_COMPOSE_FILE_V1"
+else
+  DOCKER_COMPOSE_FILE="$DOCKER_COMPOSE_FILE_V2"
+fi
 # To run in a container run "export LOCALHOST_NAME=host.docker.internal"
 LOCALHOST_NAME=${LOCALHOST_NAME:-localhost}
 

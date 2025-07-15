@@ -1,0 +1,10 @@
+name: cogstack-medcat-service
+services:
+  medcat-service:
+    image: cogstacksystems/medcat-service:${IMAGE_TAG-latest}
+    restart: unless-stopped
+    environment:
+      # Uses a preloaded model pack example inside the image
+      - APP_MEDCAT_MODEL_PACK=/cat/models/examples/example-medcat-v1-model-pack.zip 
+    ports:
+      - "5555:5000"

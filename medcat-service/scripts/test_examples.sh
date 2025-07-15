@@ -10,7 +10,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 
 cd ${SCRIPT_DIR}/../docker
-bash run_example_simple.sh
+bash run_example_simple.sh $1
 
 # Check if health check was successful
 if [ $? -eq 0 ]; then

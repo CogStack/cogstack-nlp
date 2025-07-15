@@ -12,7 +12,7 @@ __pycache__
 models/*
 !models/*.sh
 !models/examples
-models/examples/example-medcat-v1-model-pack
+models/examples/example-medcat-v[12]-model-pack
 
 # tmp folder
 tmp/*
