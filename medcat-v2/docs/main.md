@@ -4,13 +4,13 @@
 Details are outlined [here](breaking_changes.md).
 
 [![Build Status](https://github.com/CogStack/cogstack-nlp/actions/workflows/medcat-v2_main.yml)](https://github.com/CogStack/cogstack-nlp/actions/workflows/medcat-v2_main.yml)
-[![Documentation Status](https://readthedocs.org/projects/medcat2/badge/?version=latest)](https://medcat2.readthedocs.io/en/latest/?badge=latest)
+[![Documentation Status](https://readthedocs.org/projects/cogstack-nlp/badge/?version=latest)](https://readthedocs.org/projects/cogstack-nlp/badge/?version=latest)
 [![Latest release](https://img.shields.io/github/v/release/CogStack/MedCAT2)](https://github.com/CogStack/MedCAT2/releases/latest)
 [![pypi Version](https://img.shields.io/pypi/v/medcat.svg?style=flat-square&logo=pypi&logoColor=white)](https://pypi.org/project/medcat/)
 
 MedCAT(*v2*) can be used to extract information from Electronic Health Records (EHRs) and link it to biomedical ontologies like SNOMED-CT and UMLS. Paper on [arXiv](https://arxiv.org/abs/2010.01165).
 
-**Official Docs [here](https://medcat2.readthedocs.io/en/latest/)**
+**Official Docs [here](https://cogstack-nlp.readthedocs.io/)**
 
 **Discussion Forum [here](https://discourse.cogstack.org/)**
 
@@ -44,10 +44,15 @@ Some guides on how to use MedCAT v2 are available at [MedCAT Tutorials](https://
 ## Install using PIP (Requires Python 3.9+)
 Installation instructions are to follow upon a release of this version on PyPI.
 Though installation is likely to be simply `pip install "medcat>=2.0"` at that time.
-<!-- 0. Upgrade pip `pip install --upgrade pip`
-1. Install MedCAT
-- For macOS/linux: `pip install --upgrade medcat`
-- For Windows (see [PyTorch documentation](https://pytorch.org/get-started/previous-versions/)): `pip install --upgrade medcat -f https://download.pytorch.org/whl/torch_stable.html` -->
+Currently the installation for the 2.0 beta release is simply:
+```
+pip install medcat~=2.0.0b
+```
+Though note the extras you might need (e.g `spacy`, `meta-cat`, `rel-cat`, `deid`).
+If you need them, they need to be specified in brackets, e.g:
+```
+pip install medcat[spacy,meta-cat,rel-cat,deid]~=2.0.0b
+```
 
 2. Quickstart (MedCAT v2+):
 ```python
