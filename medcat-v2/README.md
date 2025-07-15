@@ -42,20 +42,19 @@ If you wish you can also convert the v1 models into the v2 format (see tutorial 
 ## Installation
 
 Currently MedCAT v2 is in Beta.
-As such, we're not yet pushing to PyPI.
-And because of that the current installation command for (only) core MedCAT v2 is:
+As such, you need to explicitly specify the beta release.
 ```
-pip install "medcat @ git+https://github.com/CogStack/cogstack-nlp.git@refs/tags/medcat/v0.10.0#subdirectory=medcat-v2"
+pip install medcat~=2.0.0b
 ```
 Do note that **this installs only the core MedCAT v2**.
 **It does not necessary dependencies for `spacy`-based tokenizing or MetaCATs or DeID**.
 However, all of those are supported as well.
 You can install them as follows:
 ```
-pip install "medcat[spacy] @ git+https://github.com/CogStack/cogstack-nlp.git@refs/tags/medcat/v0.10.0#subdirectory=medcat-v2"  # for spacy-based tokenizer
-pip install "medcat[meta-cat] @ git+https://github.com/CogStack/cogstack-nlp.git@refs/tags/medcat/v0.10.0#subdirectory=medcat-v2"  # for MetaCAT
-pip install "medcat[deid] @ git+https://github.com/CogStack/cogstack-nlp.git@refs/tags/medcat/v0.10.0#subdirectory=medcat-v2"  # for DeID models
-pip install "medcat[spacy,meta-cat,deid,rel-cat,dict-ner] @ git+https://github.com/CogStack/cogstack-nlp.git@refs/tags/medcat/v0.10.0#subdirectory=medcat-v2"  # for all of the sbove
+pip install medcat[spacy]~=2.0.0b # for spacy-based tokenizer
+pip install medcat[meta-cat]~=2.0.0b  # for MetaCAT
+pip install medcat[deid]~=2.0.0b  # for DeID models
+pip install medcat[spacy,meta-cat,deid,rel-cat,dict-ner]~=2.0.0b  # for all of the above
 ```
 
 PS:
@@ -63,17 +62,6 @@ For in the above example, we're installing the MedCAT v2 BETA version of `v0.8.0
 The README is unlikely to change after every new release.
 If another version is available / required, substitute the version tag as appropriate.
 
-<!-- 
-To install the latest version of MedCAT run the following command:
-```
-pip install medcat
-```
-Normal installations of MedCAT will install torch-gpu and all relevant dependancies (such as CUDA). This can require as much as 10 GB more disk space, which isn't required for CPU only usage.
-
-To install the latest version of MedCAT without torch GPU support run the following command:
-```
-pip install medcat --extra_index_url https://download.pytorch.org/whl/cpu/
-``` -->
 ## Demo
 
 The MedCAT v2 demo web app is available [here](https://medcatv2.sites.er.kcl.ac.uk/).

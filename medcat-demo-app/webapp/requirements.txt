@@ -2,5 +2,5 @@ Django==3.2.25
 django-dbbackup==4.0.0b0
 django-storages[boto3]==1.12.3
 django-cron==0.5.1
-medcat[meta-cat,spacy] @ git+https://github.com/CogStack/cogstack-nlp.git@refs/tags/medcat/v0.11.2#subdirectory=medcat-v2
+medcat[meta-cat,spacy]~=2.0.0b
 urllib3==1.26.18
