@@ -523,12 +523,13 @@ class MetaCAT(AbstractSerialisable):
             prerequisites=t_config.prerequisites, lowercase=g_config.lowercase)
 
         # Check is the name present
-        category_name = category_name = g_config.get_applicable_category_name(
+        category_name = g_config.get_applicable_category_name(
             data_in)
         if category_name is None:
+            in_cat_name = g_config.category_name
             raise Exception(
                 "The category name does not exist in this json file. "
-                f"You've provided '{category_name}', while the possible "
+                f"You've provided '{in_cat_name}', while the possible "
                 f"options are: {' | '.join(list(data_in.keys()))}. "
                 "Additionally, ensure the populate the "
                 "'alternative_category_names' attribute to accommodate "
