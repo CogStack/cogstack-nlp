@@ -68,7 +68,6 @@ class TrainedModelTests(unittest.TestCase):
     def setUpClass(cls):
         cls.model = cat.CAT.load_model_pack(cls.TRAINED_MODEL_PATH)
         if cls.model.config.components.linking.train:
-            print("TRAINING WAS ENABLE! NEED TO DISABLE")
             cls.model.config.components.linking.train = False
 
 
@@ -448,7 +447,8 @@ class CATWithDictNERSupTrainingTests(CATSupTrainingTests):
             self, save_to: str,
             chars_per_batch: int = 165,
             batches_per_save: int = 5,
-            exp_parts: int = 8
+            exp_parts: int = 8,
+            n_process: int = 1,
             ) -> tuple[list[str], list[tuple], dict[str, Any], int]:
         in_data = [
             f"The patient presented with {name} and "
@@ -460,7 +460,9 @@ class CATWithDictNERSupTrainingTests(CATSupTrainingTests):
             in_data,
             save_dir_path=save_to,
             batch_size_chars=chars_per_batch,
-            batches_per_save=batches_per_save))
+            batches_per_save=batches_per_save,
+            n_process=n_process,
+            ))
         out_dict_all = {
             key: cdata for key, cdata in out_data
         }
@@ -470,14 +472,16 @@ class CATWithDictNERSupTrainingTests(CATSupTrainingTests):
             self, save_to: str,
             chars_per_batch: int = 165,
             batches_per_save: int = 5,
-            exp_parts: int = 8
+            exp_parts: int = 8,
+            n_process: int = 1,
             ) -> tuple[
                 tuple[list[str], list[tuple], dict[str, Any], int],
                 tuple[tuple[list[str], int], list[str], int],
             ]:
         in_data, out_data, out_dict_all, exp_parts = (
             self._do_mp_run_with_save(
-                save_to, chars_per_batch, batches_per_save, exp_parts))
+                save_to, chars_per_batch, batches_per_save, exp_parts,
+                n_process=n_process))
         anns_file = os.path.join(save_to, 'annotated_ids.pickle')
         self.assertTrue(os.path.exists(anns_file))
         with open(anns_file, 'rb') as f:
@@ -491,7 +495,8 @@ class CATWithDictNERSupTrainingTests(CATSupTrainingTests):
             self, save_to: str,
             chars_per_batch: int = 165,
             batches_per_save: int = 5,
-            exp_parts: int = 8
+            exp_parts: int = 8,
+            n_process: int = 1,
             ) -> tuple[
                 tuple[list[str], list[tuple], dict[str, Any], int],
                 tuple[tuple[list[str], int], list[str], int],
@@ -500,7 +505,8 @@ class CATWithDictNERSupTrainingTests(CATSupTrainingTests):
         (in_data, out_data, out_dict_all, exp_parts), (
             loaded_data, ids, num_last_part
         ) = self.assert_mp_runs_with_save_and_load(
-            save_to, chars_per_batch, batches_per_save, exp_parts)
+            save_to, chars_per_batch, batches_per_save, exp_parts,
+            n_process=n_process)
         all_loaded_output = {}
         for num in range(num_last_part + 1):
             with self.subTest(f"Part {num}"):
@@ -535,6 +541,15 @@ class CATWithDictNERSupTrainingTests(CATSupTrainingTests):
             # NOTE: the number of parts is 1 greater
             self.assertEqual(num_last_part + 1, exp_parts)
 
+    def assert_correct_loaded_output(
+            self,
+            in_data: list[str],
+            out_dict_all: dict[str, Any],
+            all_loaded_output: dict[str, Any]):
+        self.assertEqual(len(all_loaded_output), len(in_data))
+        self.assertEqual(all_loaded_output.keys(), out_dict_all.keys())
+        self.assertEqual(all_loaded_output, out_dict_all)
+
     def test_mp_saves_correct_data(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             (in_data, out_data,
@@ -542,9 +557,28 @@ class CATWithDictNERSupTrainingTests(CATSupTrainingTests):
                  loaded_data, ids, num_last_part
              ), all_loaded_output = self.assert_mp_runs_save_load_gather(
                  temp_dir)
-            self.assertEqual(len(all_loaded_output), len(in_data))
-            self.assertEqual(all_loaded_output.keys(), out_dict_all.keys())
-            self.assertEqual(all_loaded_output, out_dict_all)
+            self.assert_correct_loaded_output(
+                in_data, out_dict_all, all_loaded_output)
+
+    def test_mp_saves_correct_data_with_2_proc(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            (in_data, out_data,
+             out_dict_all, exp_parts), (
+                 loaded_data, ids, num_last_part
+             ), all_loaded_output = self.assert_mp_runs_save_load_gather(
+                 temp_dir, n_process=2)
+            self.assert_correct_loaded_output(
+                in_data, out_dict_all, all_loaded_output)
+
+    def test_mp_saves_correct_data_with_3_proc(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            (in_data, out_data,
+             out_dict_all, exp_parts), (
+                 loaded_data, ids, num_last_part
+             ), all_loaded_output = self.assert_mp_runs_save_load_gather(
+                 temp_dir, n_process=3)
+            self.assert_correct_loaded_output(
+                in_data, out_dict_all, all_loaded_output)
 
 
 class CATWithDocAddonTests(CATIncludingTests):
