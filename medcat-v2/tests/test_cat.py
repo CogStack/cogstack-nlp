@@ -417,8 +417,9 @@ class CATWithDictNERSupTrainingTests(CATSupTrainingTests):
         texts = [
             "The fittest most fit of chronic kidney failure",
             "The dog is sitting outside the house."
-        ]
-        ents = list(self.cat.get_entities_multi_texts(texts))
+        ]*10
+        ents = list(self.cat.get_entities_multi_texts(
+            texts, batch_size=2, batch_size_chars=-1))
         self.assert_ents(ents, texts)
 
     def assert_ents(self, ents: list[tuple], texts: list[str]):
@@ -438,8 +439,9 @@ class CATWithDictNERSupTrainingTests(CATSupTrainingTests):
         texts = [
             "The fittest most fit of chronic kidney failure",
             "The dog is sitting outside the house."
-        ]
-        ents = list(self.cat.get_entities_multi_texts(texts, n_process=3))
+        ]*10
+        ents = list(self.cat.get_entities_multi_texts(
+            texts, n_process=3, batch_size=2, batch_size_chars=-1))
         self.assert_ents(ents, texts)
 
     def _do_mp_run_with_save(
