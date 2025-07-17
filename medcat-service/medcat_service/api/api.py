@@ -72,7 +72,7 @@ def process_bulk(nlp_service: NlpService) -> Response:
 
     try:
         result = nlp_service.nlp.process_content_bulk(payload['content'])
-        app_info : ServiceInfo = nlp_service.nlp.get_app_info()
+        app_info: ServiceInfo = nlp_service.nlp.get_app_info()
 
         response = {'result': result,
                     'medcat_info': app_info.model_dump()}
