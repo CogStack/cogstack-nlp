@@ -299,7 +299,7 @@ class CAT(AbstractSerialisable):
 
             cur_results = done_future.result()
             if saver:
-                saver(main_results)
+                saver(cur_results)
 
             # Yield all results from this batch
             yield from cur_results
@@ -766,7 +766,6 @@ class CAT(AbstractSerialisable):
             if isinstance(addon := deserialise(addon_path), AddonComponent)
         ]
         return [(addon.full_name, addon) for addon in loaded_addons]
-
 
     @overload
     def get_model_card(self, as_dict: Literal[True]) -> ModelCard:
