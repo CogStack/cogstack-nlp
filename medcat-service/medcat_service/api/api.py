@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 import logging
 import os
@@ -9,7 +8,7 @@ import simplejson as json
 from flask import Blueprint, Response, request
 
 from medcat_service.nlp_service import NlpService
-from medcat_service.types import HealthCheckResponse, HealthCheckResponseContainer, ServiceInfo
+from medcat_service.types import HealthCheckResponseContainer, ServiceInfo
 
 log = logging.getLogger("API")
 log.setLevel(level=os.getenv("APP_LOG_LEVEL", logging.INFO))
