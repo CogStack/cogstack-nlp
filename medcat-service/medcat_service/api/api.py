@@ -29,8 +29,9 @@ def info(nlp_service: NlpService) -> Response:
     :param nlp_service: NLP Service provided by dependency injection
     :return: Flask Response
     """
-    app_info : ServiceInfo = nlp_service.nlp.get_app_info()
+    app_info: ServiceInfo = nlp_service.nlp.get_app_info()
     return Response(response=app_info.model_dump_json(), status=200, mimetype="application/json")
+
 
 @api.route('/process', methods=['POST'])
 def process(nlp_service: NlpService) -> Response:
@@ -50,12 +51,13 @@ def process(nlp_service: NlpService) -> Response:
         result = nlp_service.nlp.process_content(payload['content'], meta_anns_filters=meta_anns_filters)
         app_info : ServiceInfo = nlp_service.nlp.get_app_info()
         response = {'result': result, 'medcat_info': app_info.model_dump()}
-        return Response(response=json.dumps(response, iterable_as_array=True, default=str), status=200, mimetype="application/json")
+        return Response(response=json.dumps(response, iterable_as_array=True, default=str),
+                         status=200, mimetype="application/json")
 
     except Exception as e:
         log.error(traceback.format_exc())
         return Response(response="Internal processing error %s" % e, status=500)
-
+# '{"result": {"text": "The patient was diagnosed with Kidney Failure", "annotations": [{"0": {"pretty_name": "Kidney Failure", "cui": "1", "type_ids": ["T047"], "source_value": "Kidney Failure", "detected_name": "kidney~failure", "acc": 1, "context_similarity": 1, "start": 31, "end": 45, "id": 0, "meta_anns": {}, "context_left": [], "context_center": [], "context_right": []}}], "success": true, "timestamp": "2025-07-17T14:59:18.661+00:00", "elapsed_time": 0.00316816}, "medcat_info": {"service_app_name": "MedCAT", "service_language": "en", "service_version": "2.0.0.dev0", "service_model": "5872fbb254a6e42e", "model_card_info": {"ontologies": "None", "meta_cat_model_names": [], "model_last_modified_on": "2025-07-17 14:59:16.999370"}}}'
 
 @api.route('/process_bulk', methods=['POST'])
 def process_bulk(nlp_service: NlpService) -> Response:
@@ -74,7 +76,8 @@ def process_bulk(nlp_service: NlpService) -> Response:
 
         response = {'result': result,
                     'medcat_info': app_info.model_dump()}
-        return Response(response=json.dumps(response, iterable_as_array=True, default=str), status=200, mimetype="application/json")
+        return Response(response=json.dumps(response, iterable_as_array=True, default=str),
+                         status=200, mimetype="application/json")
 
     except Exception as e:
         log.error(traceback.format_exc())
