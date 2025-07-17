@@ -2,7 +2,7 @@ import os
 import unittest.mock
 import pandas as pd
 import json
-from typing import Optional
+from typing import Optional, Any
 from collections import Counter
 
 from medcat import cat
@@ -21,6 +21,7 @@ from medcat.utils.defaults import LegacyConversionDisabledError
 
 import unittest
 import tempfile
+import pickle
 
 from . import EXAMPLE_MODEL_PACK_ZIP
 from . import V1_MODEL_PACK_PATH, UNPACKED_V1_MODEL_PACK_PATH
@@ -440,6 +441,108 @@ class CATWithDictNERSupTrainingTests(CATSupTrainingTests):
         ]
         ents = list(self.cat.get_entities_multi_texts(texts, n_process=3))
         self.assert_ents(ents, texts)
+
+    def _do_mp_run_with_save(
+            self, save_to: str,
+            chars_per_batch: int = 165,
+            batches_per_save: int = 5,
+            exp_parts: int = 8
+            ) -> tuple[list[str], list[tuple], dict[str, Any], int]:
+        in_data = [
+            f"The patient presented with {name} and "
+            f"did not have {negname}"
+            for name in self.cdb.name2info
+            for negname in self.cdb.name2info if name != negname
+        ]
+        out_data = list(self.cat.get_entities_multi_texts(
+            in_data,
+            save_dir_path=save_to,
+            batch_size_chars=chars_per_batch,
+            batches_per_save=batches_per_save))
+        out_dict_all = {
+            key: cdata for key, cdata in out_data
+        }
+        return in_data, out_data, out_dict_all, exp_parts
+
+    def assert_mp_runs_with_save_and_load(
+            self, save_to: str,
+            chars_per_batch: int = 165,
+            batches_per_save: int = 5,
+            exp_parts: int = 8
+            ) -> tuple[
+                tuple[list[str], list[tuple], dict[str, Any], int],
+                tuple[tuple[list[str], int], list[str], int],
+            ]:
+        in_data, out_data, out_dict_all, exp_parts = (
+            self._do_mp_run_with_save(
+                save_to, chars_per_batch, batches_per_save, exp_parts))
+        anns_file = os.path.join(save_to, 'annotated_ids.pickle')
+        self.assertTrue(os.path.exists(anns_file))
+        with open(anns_file, 'rb') as f:
+            loaded_data = pickle.load(f)
+        self.assertEqual(len(loaded_data), 2)
+        ids, last_part_num = loaded_data
+        return (in_data, out_data, out_dict_all, exp_parts), (
+            loaded_data, ids, last_part_num)
+
+    def assert_mp_runs_save_load_gather(
+            self, save_to: str,
+            chars_per_batch: int = 165,
+            batches_per_save: int = 5,
+            exp_parts: int = 8
+            ) -> tuple[
+                tuple[list[str], list[tuple], dict[str, Any], int],
+                tuple[tuple[list[str], int], list[str], int],
+                dict[str, Any]
+            ]:
+        (in_data, out_data, out_dict_all, exp_parts), (
+            loaded_data, ids, num_last_part
+        ) = self.assert_mp_runs_with_save_and_load(
+            save_to, chars_per_batch, batches_per_save, exp_parts)
+        all_loaded_output = {}
+        for num in range(num_last_part + 1):
+            with self.subTest(f"Part {num}"):
+                part_name = f"part_{num}.pickle"
+                part_path = os.path.join(save_to, part_name)
+                self.assertTrue(os.path.exists(part_path))
+                with open(part_path, 'rb') as f:
+                    part_data = pickle.load(f)
+                self.assertIsInstance(part_data, dict)
+                self.assertTrue(
+                    all(key not in all_loaded_output for key in part_data))
+                all_loaded_output.update(part_data)
+        return (in_data, out_data, out_dict_all, exp_parts), (
+            loaded_data, ids, num_last_part), all_loaded_output
+
+    def test_multiprocessing_can_save_indices(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            (in_data, out_data,
+             out_dict_all, exp_parts), (
+                 loaded_data, ids, num_last_part
+             ) = self.assert_mp_runs_with_save_and_load(temp_dir)
+            self.assertEqual(len(out_data), len(in_data))
+            self.assertEqual(len(in_data), len(ids))
+
+    def test_mp_saves_all_parts(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            (in_data, out_data,
+             out_dict_all, exp_parts), (
+                 loaded_data, ids, num_last_part
+             ), all_loaded_output = self.assert_mp_runs_save_load_gather(
+                 temp_dir)
+            # NOTE: the number of parts is 1 greater
+            self.assertEqual(num_last_part + 1, exp_parts)
+
+    def test_mp_saves_correct_data(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            (in_data, out_data,
+             out_dict_all, exp_parts), (
+                 loaded_data, ids, num_last_part
+             ), all_loaded_output = self.assert_mp_runs_save_load_gather(
+                 temp_dir)
+            self.assertEqual(len(all_loaded_output), len(in_data))
+            self.assertEqual(all_loaded_output.keys(), out_dict_all.keys())
+            self.assertEqual(all_loaded_output, out_dict_all)
 
 
 class CATWithDocAddonTests(CATIncludingTests):
