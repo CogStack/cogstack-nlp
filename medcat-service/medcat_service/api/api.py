@@ -9,6 +9,7 @@ import simplejson as json
 from flask import Blueprint, Response, request
 
 from medcat_service.nlp_service import NlpService
+from medcat_service.types import HealthCheckResponse, HealthCheckResponseContainer, ServiceInfo
 
 log = logging.getLogger("API")
 log.setLevel(level=os.getenv("APP_LOG_LEVEL", logging.INFO))
@@ -29,9 +30,8 @@ def info(nlp_service: NlpService) -> Response:
     :param nlp_service: NLP Service provided by dependency injection
     :return: Flask Response
     """
-    app_info = nlp_service.nlp.get_app_info()
-    return Response(response=json.dumps(app_info), status=200, mimetype="application/json")
-
+    app_info : ServiceInfo = nlp_service.nlp.get_app_info()
+    return Response(response=app_info.model_dump_json(), status=200, mimetype="application/json")
 
 @api.route('/process', methods=['POST'])
 def process(nlp_service: NlpService) -> Response:
@@ -49,9 +49,9 @@ def process(nlp_service: NlpService) -> Response:
 
     try:
         result = nlp_service.nlp.process_content(payload['content'], meta_anns_filters=meta_anns_filters)
-        app_info = nlp_service.nlp.get_app_info()
-        response = {'result': result, 'medcat_info': app_info}
-        return Response(response=json.dumps(response, iterable_as_array=True), status=200, mimetype="application/json")
+        app_info : ServiceInfo = nlp_service.nlp.get_app_info()
+        response = {'result': result, 'medcat_info': app_info.model_dump()}
+        return Response(response=json.dumps(response, iterable_as_array=True, default=str), status=200, mimetype="application/json")
 
     except Exception as e:
         log.error(traceback.format_exc())
@@ -71,10 +71,11 @@ def process_bulk(nlp_service: NlpService) -> Response:
 
     try:
         result = nlp_service.nlp.process_content_bulk(payload['content'])
-        app_info = nlp_service.nlp.get_app_info()
+        app_info : ServiceInfo = nlp_service.nlp.get_app_info()
 
-        response = {'result': result, 'medcat_info': app_info}
-        return Response(response=json.dumps(response, iterable_as_array=True), status=200, mimetype="application/json")
+        response = {'result': result,
+                    'medcat_info': app_info.model_dump()}
+        return Response(response=json.dumps(response, iterable_as_array=True, default=str), status=200, mimetype="application/json")
 
     except Exception as e:
         log.error(traceback.format_exc())
@@ -104,8 +105,8 @@ def liveness():
     """
     Liveness API checks if the application is running.
     """
-    response = {"status": "UP", "checks": []}
-    return Response(response=json.dumps(response), status=200)
+    response = HealthCheckResponseContainer(status="UP", checks=[])
+    return Response(response=response.model_dump_json(), status=200)
 
 
 @api.route('/health/ready')
@@ -115,9 +116,9 @@ def readiness(nlp_service: NlpService) -> Response:
     """
     medcat_is_ready = nlp_service.get_processor().is_ready()
 
-    if medcat_is_ready["status"] == "UP":
-        response = {"status": "UP", "checks": [medcat_is_ready]}
-        return Response(response=json.dumps(response), status=200)
+    if medcat_is_ready.status == "UP":
+        response = HealthCheckResponseContainer(status="UP", checks=[medcat_is_ready])
+        return Response(response=response.model_dump_json(), status=200)
     else:
-        response = {"status": "DOWN", "checks": [medcat_is_ready]}
-        return Response(response=json.dumps(response), status=503)
+        response = HealthCheckResponseContainer(status="DOWN", checks=[medcat_is_ready])
+        return Response(response=response.model_dump_json(), status=503)

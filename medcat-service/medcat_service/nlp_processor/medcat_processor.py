@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 import logging
 import os
@@ -9,13 +8,14 @@ from datetime import datetime, timezone
 import simplejson as json
 from medcat.cat import CAT
 from medcat.cdb import CDB
-from medcat.config import Config
-from medcat.config.config_meta_cat import ConfigMetaCAT
 from medcat.components.addons.meta_cat import MetaCATAddon
 from medcat.components.ner.trf.deid import DeIdModel
+from medcat.config import Config
+from medcat.config.config_meta_cat import ConfigMetaCAT
 from medcat.vocab import Vocab
 
-from medcat_service.types import HealthCheckResponse
+from medcat_service.types import HealthCheckResponse, ModelCardInfo, ServiceInfo
+
 
 class NlpProcessor:
     """
@@ -42,10 +42,10 @@ class NlpProcessor:
         pass
 
     def is_ready(self) -> HealthCheckResponse:
-        return {
-            "name": "MedCAT",
-            "status": "DOWN"
-        }
+        return HealthCheckResponse(
+            name="MedCAT",
+            status="DOWN"
+        )
 
     @staticmethod
     def _get_timestamp():
@@ -72,13 +72,15 @@ class MedCatProcessor(NlpProcessor):
         self.app_lang = os.getenv("APP_MODEL_LANGUAGE", "en")
         self.app_version = MedCatProcessor._get_medcat_version()
         self.app_model = os.getenv("APP_MODEL_NAME", "unknown")
-        self.entity_output_mode = os.getenv("ANNOTATIONS_ENTITY_OUTPUT_MODE", "dict").lower()
+        self.entity_output_mode = os.getenv(
+            "ANNOTATIONS_ENTITY_OUTPUT_MODE", "dict").lower()
 
         self.bulk_nproc = int(os.getenv("APP_BULK_NPROC", 8))
         self.torch_threads = int(os.getenv("APP_TORCH_THREADS", -1))
         self.DEID_MODE = eval(os.getenv("DEID_MODE", "False"))
         self.DEID_REDACT = eval(os.getenv("DEID_REDACT", "True"))
-        self.model_card_info = {}
+        self.model_card_info = ModelCardInfo(
+            ontologies=None, meta_cat_model_names=[], model_last_modified_on=None)
 
         # this is available to constrain torch threads when there
         # isn't a GPU
@@ -102,7 +104,8 @@ class MedCatProcessor(NlpProcessor):
             self.log.info("MedCAT processor is ready")
             return True
         except Exception as e:
-            self.log.error("MedCAT processor is not ready. Failed the readiness check", exc_info=e)
+            self.log.error(
+                "MedCAT processor is not ready. Failed the readiness check", exc_info=e)
             return False
 
     def is_ready(self) -> HealthCheckResponse:
@@ -110,29 +113,30 @@ class MedCatProcessor(NlpProcessor):
         Is the MedCAT processor ready to get entities from input text
         """
         if self._is_ready_flag:
-            return {
-                "name": "MedCAT",
-                "status": "UP"
-            }
+            return HealthCheckResponse(
+                name="MedCAT",
+                status="UP"
+            )
         else:
-            self.log.warning("MedCAT Processor is not ready. Returning status DOWN")
-            return {
-                "name": "MedCAT",
-                "status": "DOWN"
-            }
+            self.log.warning(
+                "MedCAT Processor is not ready. Returning status DOWN")
+            return HealthCheckResponse(
+                name="MedCAT",
+                status="DOWN"
+            )
 
-    def get_app_info(self):
+    def get_app_info(self) -> ServiceInfo:
         """Returns general information about the application.
 
         Returns:
             dict: Application information stored as KVPs.
         """
-        return {"service_app_name": self.app_name,
-                "service_language": self.app_lang,
-                "service_version": self.app_version,
-                "service_model": self.app_model,
-                "model_card_info": self.model_card_info
-                }
+        return ServiceInfo(service_app_name=self.app_name,
+                           service_language=self.app_lang,
+                           service_version=self.app_version,
+                           service_model=self.app_model,
+                           model_card_info=self.model_card_info
+                           )
 
     def process_entities(self, entities, *args, **kwargs):
         """Process entities for repsonse and serialisation
@@ -188,7 +192,8 @@ class MedCatProcessor(NlpProcessor):
             else:
                 entities = []
 
-        elapsed_time = (time.time_ns() - start_time_ns) / 10e8  # nanoseconds to seconds
+        elapsed_time = (time.time_ns() - start_time_ns) / \
+            10e8  # nanoseconds to seconds
 
         if kwargs.get("meta_anns_filters"):
             meta_anns_filters = kwargs.get("meta_anns_filters")
@@ -233,7 +238,8 @@ class MedCatProcessor(NlpProcessor):
                 ann_res = self.cat.deid_multi_texts(MedCatProcessor._generate_input_doc(content, invalid_doc_ids),
                                                     redact=self.DEID_REDACT)
             else:
-                text_input = MedCatProcessor._generate_input_doc(content, invalid_doc_ids)
+                text_input = MedCatProcessor._generate_input_doc(
+                    content, invalid_doc_ids)
                 ann_res = {
                     ann_id: res for ann_id, res in
                     self.cat.get_entities_multi_texts(
@@ -242,7 +248,8 @@ class MedCatProcessor(NlpProcessor):
         except Exception as e:
             self.log.error("Unable to process data", exc_info=e)
 
-        additional_info = {"elapsed_time": str((time.time_ns() - start_time_ns) / 10e8)}
+        additional_info = {"elapsed_time": str(
+            (time.time_ns() - start_time_ns) / 10e8)}
 
         return self._generate_result(content, ann_res, invalid_doc_ids, additional_info)
 
@@ -266,7 +273,8 @@ class MedCatProcessor(NlpProcessor):
 
         self.log.info("Retraining Medcat Started...")
 
-        p, r, f1, tp_dict, fp_dict, fn_dict = MedCatProcessor._retrain_supervised(self, CDB_PATH, DATA_PATH, VOCAB_PATH)
+        p, r, f1, tp_dict, fp_dict, fn_dict = MedCatProcessor._retrain_supervised(
+            self, CDB_PATH, DATA_PATH, VOCAB_PATH)
 
         self.log.info("Retraining Medcat Completed...")
 
@@ -278,12 +286,12 @@ class MedCatProcessor(NlpProcessor):
         Args:
             config (Config): MedCAT configuration object.
         """
-        self.model_card_info["ontologies"] = config.meta.ontology \
+        self.model_card_info.ontologies = config.meta.ontology \
             if (isinstance(config.meta.ontology, list)) else str(config.meta.ontology)
-        self.model_card_info["meta_cat_model_names"] = [
-            cnf.general.category_name for cnf in config.components.addons
+        self.model_card_info.meta_cat_model_names = [
+            cnf.general.category_name or "None" for cnf in config.components.addons
             if (isinstance(cnf, ConfigMetaCAT))]
-        self.model_card_info["model_last_modified_on"] = str(config.meta.last_saved)
+        self.model_card_info.model_last_modified_on = config.meta.last_saved
 
     # helper MedCAT methods
     #
@@ -304,7 +312,8 @@ class MedCatProcessor(NlpProcessor):
             self.log.debug("Loading CUI filter ...")
             with open(os.getenv("APP_MODEL_CUI_FILTER_PATH")) as cui_file:
                 all_lines = (line.rstrip() for line in cui_file)
-                cuis_to_keep = [line for line in all_lines if line]  # filter blank lines
+                # filter blank lines
+                cuis_to_keep = [line for line in all_lines if line]
 
         model_pack_path = os.getenv("APP_MEDCAT_MODEL_PACK", "").strip()
 
@@ -320,7 +329,7 @@ class MedCatProcessor(NlpProcessor):
                 self.log.debug("Applying CUI filter ...")
                 cat.cdb.filter_by_cui(cuis_to_keep)
 
-            if self.app_model.lower() in ["", "unknown", "medmen"]:
+            if self.app_model.lower() in ["", "unknown", "medmen"] and cat.config.meta.hash is not None:
                 self.app_model = cat.config.meta.hash
 
             self._populate_model_card_info(cat.config)
@@ -331,13 +340,15 @@ class MedCatProcessor(NlpProcessor):
 
         # Vocabulary and Concept Database are mandatory
         if os.getenv("APP_MODEL_VOCAB_PATH", None) is None and cat is None:
-            raise ValueError("Vocabulary (env: APP_MODEL_VOCAB_PATH) not specified")
+            raise ValueError(
+                "Vocabulary (env: APP_MODEL_VOCAB_PATH) not specified")
         else:
             self.log.debug("Loading VOCAB ...")
             vocab = Vocab.load(os.getenv("APP_MODEL_VOCAB_PATH"))
 
         if os.getenv("APP_MODEL_CDB_PATH", None) is None and cat is None:
-            raise Exception("Concept database (env: APP_MODEL_CDB_PATH) not specified")
+            raise Exception(
+                "Concept database (env: APP_MODEL_CDB_PATH) not specified")
         else:
             self.log.debug("Loading CDB ...")
             cdb = CDB.load(os.getenv("APP_MODEL_CDB_PATH"))
@@ -376,7 +387,7 @@ class MedCatProcessor(NlpProcessor):
         # if cat:
         #     meta_models.extend(cat._meta_cats)
 
-        if self.app_model.lower() in [None, "unknown"]:
+        if self.app_model.lower() in [None, "unknown"] and cdb.config.meta.hash is not None:
             self.app_model = cdb.config.meta.hash
 
         config.general.log_level = os.getenv("LOG_LEVEL", logging.INFO)
@@ -494,11 +505,13 @@ class MedCatProcessor(NlpProcessor):
         """
 
         data = json.load(open(data_path))
-        correct_ids = MedCatProcessor._prepareDocumentsForPeformanceAnalysis(data)
+        correct_ids = MedCatProcessor._prepareDocumentsForPeformanceAnalysis(
+            data)
 
         cat = MedCatProcessor._create_cat(self)
 
-        f1_base = MedCatProcessor._computeF1forDocuments(self, data, self.cat, correct_ids)[2]
+        f1_base = MedCatProcessor._computeF1forDocuments(
+            self, data, self.cat, correct_ids)[2]
         self.log.info("Base model F1: " + str(f1_base))
 
         cat.train = True
@@ -508,11 +521,13 @@ class MedCatProcessor(NlpProcessor):
         self.log.info("Starting supervised training...")
 
         try:
-            cat.train_supervised(data_path=data_path, lr=1, test_size=0.1, use_groups=None, nepochs=3)
+            cat.train_supervised(data_path=data_path, lr=1,
+                                 test_size=0.1, use_groups=None, nepochs=3)
         except Exception:
             self.log.info("Did not complete all supervised training")
 
-        p, r, f1, tp_dict, fp_dict, fn_dict = MedCatProcessor._computeF1forDocuments(self, data, cat, correct_ids)
+        p, r, f1, tp_dict, fp_dict, fn_dict = MedCatProcessor._computeF1forDocuments(
+            self, data, cat, correct_ids)
 
         self.log.info("Trained model F1: " + str(f1))
 
@@ -553,7 +568,8 @@ class MedCatProcessor(NlpProcessor):
                 false_negatives_dict[project["id"]][document["id"]] = {}
 
                 results = cat.get_entities(document["text"])
-                predictions[document["id"]] = [[a["start"], a["end"], a["cui"]] for a in results]
+                predictions[document["id"]] = [
+                    [a["start"], a["end"], a["cui"]] for a in results]
 
                 tps, fps, fns = MedCatProcessor._getAccuraciesforDocument(
                     predictions[document["id"]],
@@ -570,7 +586,8 @@ class MedCatProcessor(NlpProcessor):
         if (true_positive_no + false_positive_no) == 0:
             precision = 0
         else:
-            precision = true_positive_no / (true_positive_no + false_positive_no)
+            precision = true_positive_no / \
+                (true_positive_no + false_positive_no)
         if (true_positive_no + false_negative_no) == 0:
             recall = 0
         else:
@@ -601,7 +618,8 @@ class MedCatProcessor(NlpProcessor):
                     if entry["correct"]:
                         if document["id"] not in correct_ids[project["id"]]:
                             correct_ids[project["id"]][document["id"]] = []
-                        correct_ids[project["id"]][document["id"]].append([entry["start"], entry["end"], entry["cui"]])
+                        correct_ids[project["id"]][document["id"]].append(
+                            [entry["start"], entry["end"], entry["cui"]])
 
         return correct_ids
 
