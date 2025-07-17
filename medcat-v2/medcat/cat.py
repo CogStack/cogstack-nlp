@@ -271,7 +271,7 @@ class CAT(AbstractSerialisable):
                 break
         if not futures:
             # NOTE: if there wasn't any data, we didn't process anything
-            return
+            raise OutOfDataException()
         # Main process works on next batch while workers are busy
         main_batch: Optional[list[tuple[str, str, bool]]]
         try:
@@ -303,17 +303,6 @@ class CAT(AbstractSerialisable):
 
             # Yield all results from this batch
             yield from cur_results
-
-            # Submit next batch to keep workers busy
-            try:
-                batch = next(batch_iter)
-                futures.append(
-                    executor.submit(self._mp_worker_func, batch))
-            except StopIteration:
-                # NOTE: if there's nothing to batch, we've got nothing
-                #       to submit in terms of new work to the workers,
-                #       but we may still have some futures to wait for
-                pass
 
     def get_entities_multi_texts(
             self,
@@ -420,8 +409,12 @@ class CAT(AbstractSerialisable):
                 "libraries using threads or native extensions.")
             mp.set_start_method("spawn", force=True)
         with ProcessPoolExecutor(max_workers=external_processes) as executor:
-            yield from self._mp_one_batch_per_process(
-                executor, batch_iter, external_processes, saver=saver)
+            while True:
+                try:
+                    yield from self._mp_one_batch_per_process(
+                        executor, batch_iter, external_processes, saver=saver)
+                except OutOfDataException:
+                    break
 
     def _get_entity(self, ent: MutableEntity,
                     doc_tokens: list[str],
@@ -823,3 +816,7 @@ class CAT(AbstractSerialisable):
     def add_addon(self, addon: AddonComponent) -> None:
         self.config.components.addons.append(addon.config)
         self._pipeline.add_addon(addon)
+
+
+class OutOfDataException(ValueError):
+    pass
