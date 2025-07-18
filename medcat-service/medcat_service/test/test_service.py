@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 import medcat_service.test.common as common
 from medcat_service.app import app as medcat_app
+from medcat_service.types import HealthCheckResponse
 
 
 class TestMedcatService(unittest.TestCase):
@@ -113,7 +114,7 @@ class TestMedcatService(unittest.TestCase):
     def testReadinessIsNotOk(self):
         with patch('medcat_service.nlp_service.NlpService.get_processor') as mock_get_processor:
             mock_processor = mock_get_processor.return_value
-            mock_processor.is_ready.return_value = {"status": "DOWN", "name": "MedCAT"}
+            mock_processor.is_ready.return_value = HealthCheckResponse(**{"status": "DOWN", "name": "MedCAT"})
 
             response = self.client.get(self.ENDPOINT_HEALTH_READY)
             self.assertEqual(response.status_code, 503)
