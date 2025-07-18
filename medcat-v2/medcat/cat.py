@@ -1,5 +1,5 @@
 from typing import Optional, Union, Any, overload, Literal, Iterable, Iterator
-from typing import cast
+from typing import cast, Type, TypeVar
 import os
 import json
 from datetime import date
@@ -37,6 +37,9 @@ from medcat.utils.import_utils import MissingDependenciesError
 
 
 logger = logging.getLogger(__name__)
+
+
+AddonType = TypeVar("AddonType", bound="AddonComponent")
 
 
 class CAT(AbstractSerialisable):
@@ -841,6 +844,15 @@ class CAT(AbstractSerialisable):
     def add_addon(self, addon: AddonComponent) -> None:
         self.config.components.addons.append(addon.config)
         self._pipeline.add_addon(addon)
+
+    def get_addons(self) -> list[AddonComponent]:
+        return list(self._pipeline.iter_addons())
+
+    def get_addons_of_type(self, addon_type: Type[AddonType]) -> list[AddonType]:
+        return [
+            addon for addon in self.get_addons()
+            if isinstance(addon, addon_type)
+        ]
 
 
 class OutOfDataException(ValueError):
