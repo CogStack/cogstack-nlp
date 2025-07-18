@@ -22,6 +22,7 @@ from medcat.utils.defaults import LegacyConversionDisabledError
 import unittest
 import tempfile
 import pickle
+import shutil
 
 from . import EXAMPLE_MODEL_PACK_ZIP
 from . import V1_MODEL_PACK_PATH, UNPACKED_V1_MODEL_PACK_PATH
@@ -30,18 +31,19 @@ from .utils.legacy.test_conversion_all import ConvertedFunctionalityTests
 
 orig_init = cat.CAT.__init__
 
+expected_model_pack_path = EXAMPLE_MODEL_PACK_ZIP.replace(".zip", "")
+
 
 class ModelLoadTests(unittest.TestCase):
 
     def assert_has_model_name(self, func):
-        expected_model_packl_name = EXAMPLE_MODEL_PACK_ZIP.replace(".zip", "")
 
         def wrapper(*args, **kwargs):
             if 'model_load_path' in kwargs:
                 self.assertEqual(kwargs['model_load_path'],
-                                 expected_model_packl_name)
+                                 expected_model_pack_path)
             else:
-                self.assertEqual(args[-1], expected_model_packl_name)
+                self.assertEqual(args[-1], expected_model_pack_path)
             return func(*args, **kwargs)
         return wrapper
 
@@ -59,6 +61,31 @@ class ModelLoadTests(unittest.TestCase):
     def test_can_load_CDB_from_model_pack(self):
         cdb = cat.CAT.load_cdb(EXAMPLE_MODEL_PACK_ZIP)
         self.assertIsInstance(cdb, CDB)
+
+
+class ModelLoadIWithHiddenFilesTests(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls._temp_dir = tempfile.TemporaryDirectory()
+        cls.model_path = os.path.join(cls._temp_dir.name, "model")
+        shutil.copytree(expected_model_pack_path, cls.model_path)
+        # add file
+        file_path = os.path.join(cls.model_path, '.some_file.txt')
+        with open(file_path, 'w') as f:
+            f.write("Nothing")
+        # add folder
+        folder_path = os.path.join(cls.model_path, '.some_folder')
+        os.mkdir(folder_path)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls._temp_dir.cleanup()
+
+    def test_can_load_with_add_hidden_files_and_folders(self):
+        # try load
+        inst = cat.CAT.load_model_pack(self.model_path)
+        self.assertIsInstance(inst, cat.CAT)
 
 
 class TrainedModelTests(unittest.TestCase):
