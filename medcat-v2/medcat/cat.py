@@ -747,16 +747,20 @@ class CAT(AbstractSerialisable):
         components_folder = os.path.join(model_pack_path, COMPONENTS_FOLDER)
         if not os.path.exists(components_folder):
             return []
-        addon_paths = [
-            folder_path
+        addon_paths_and_names = [
+            (folder_path, folder_name.removeprefix(AddonComponent.NAME_PREFIX))
             for folder_name in os.listdir(components_folder)
             if os.path.isdir(folder_path := os.path.join(
                 components_folder, folder_name))
             and folder_name.startswith(AddonComponent.NAME_PREFIX)
         ]
         loaded_addons = [
-            addon for addon_path in addon_paths
-            if isinstance(addon := deserialise(addon_path), AddonComponent)
+            addon for addon_path, addon_name in addon_paths_and_names
+            if isinstance(addon := (
+                deserialise(addon_path, model_config=meta_cat_config_dict)
+                if ('meta_cat' in addon_name and meta_cat_config_dict)
+                else deserialise(addon_path)
+                ), AddonComponent)
         ]
         return [(addon.full_name, addon) for addon in loaded_addons]
 
