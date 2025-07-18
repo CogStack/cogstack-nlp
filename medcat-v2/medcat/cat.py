@@ -1,5 +1,5 @@
 from typing import Optional, Union, Any, overload, Literal, Iterable, Iterator
-from typing import cast
+from typing import cast, Type, TypeVar
 import os
 import json
 from datetime import date
@@ -37,6 +37,9 @@ from medcat.utils.import_utils import MissingDependenciesError
 
 
 logger = logging.getLogger(__name__)
+
+
+AddonType = TypeVar("AddonType", bound="AddonComponent")
 
 
 class CAT(AbstractSerialisable):
@@ -839,8 +842,35 @@ class CAT(AbstractSerialisable):
     # addon (e.g MetaCAT) related stuff
 
     def add_addon(self, addon: AddonComponent) -> None:
+        """Add the addon to the model pack an pipe.
+
+        Args:
+            addon (AddonComponent): The addon to add.
+        """
         self.config.components.addons.append(addon.config)
         self._pipeline.add_addon(addon)
+
+    def get_addons(self) -> list[AddonComponent]:
+        """Get the list of all addons in this model pack.
+
+        Returns:
+            list[AddonComponent]: The list of addons present.
+        """
+        return list(self._pipeline.iter_addons())
+
+    def get_addons_of_type(self, addon_type: Type[AddonType]) -> list[AddonType]:
+        """Get a list of addons of a specific type.
+
+        Args:
+            addon_type (Type[AddonType]): The type of addons to look for.
+
+        Returns:
+            list[AddonType]: The list of addons of this specific type.
+        """
+        return [
+            addon for addon in self.get_addons()
+            if isinstance(addon, addon_type)
+        ]
 
 
 class OutOfDataException(ValueError):
