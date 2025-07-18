@@ -187,26 +187,26 @@ class Pipeline:
                 if name == full_name:
                     addon_cnf.merge_config(config_dict)
                     return
+                continue
+            logger.warning(
+                "No implementation specified for defining if/when %s"
+                "should apply to addon config (e.g %s)",
+                type(addon_cnf).__name__, name)
+            # if only 1 of the type, then just merge
+            similars = [cd for oname, cd in addon_config_dict.items()
+                        if oname.startswith(addon_cnf.comp_name)]
+            if len(similars) == 1:
+                logger.warning(
+                    "Since there is only 1 config for this type (%s) specified "
+                    "we will just merge the configs (@%s).",
+                    addon_cnf.comp_name, name)
+                addon_cnf.merge_config(config_dict)
+                return
             else:
                 logger.warning(
-                    "No implementation specified for defining if/when %s"
-                    "should apply to addon config (e.g %s)",
-                    type(addon_cnf).__name__, name)
-                # if only 1 of the type, then just merge
-                similars = [cd for oname, cd in addon_config_dict.items()
-                            if oname.startswith(addon_cnf.comp_name)]
-                if len(similars) == 1:
-                    logger.warning(
-                        "Since there is only 1 config for this type (%s) specified "
-                        "we will just merge the configs (@%s).",
-                        addon_cnf.comp_name, name)
-                    addon_cnf.merge_config(config_dict)
-                    return
-                else:
-                    logger.warning(
-                        "There are %d similar configs (%s) specified, so unable to "
-                        "merge the config since it's ambiguous (@%s)",
-                        len(similars), addon_cnf.comp_name, name)
+                    "There are %d similar configs (%s) specified, so unable to "
+                    "merge the config since it's ambiguous (@%s)",
+                    len(similars), addon_cnf.comp_name, name)
 
     def _init_components(self, model_load_path: Optional[str],
                          old_pipe: Optional['Pipeline'],
