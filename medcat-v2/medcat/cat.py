@@ -49,7 +49,8 @@ class CAT(AbstractSerialisable):
                  vocab: Union[Vocab, None] = None,
                  config: Optional[Config] = None,
                  model_load_path: Optional[str] = None,
-                 config_dict: Optional[dict] = None
+                 config_dict: Optional[dict] = None,
+                 addon_config_dict: Optional[dict[str, dict]] = None,
                  ) -> None:
         self.cdb = cdb
         self.vocab = vocab
@@ -65,18 +66,20 @@ class CAT(AbstractSerialisable):
             self.config.merge_config(config_dict)
 
         self._trainer: Optional[Trainer] = None
-        self._pipeline = self._recreate_pipe(model_load_path)
+        self._pipeline = self._recreate_pipe(model_load_path, addon_config_dict)
         self.usage_monitor = UsageMonitor(
             self._get_hash, self.config.general.usage_monitor)
 
-    def _recreate_pipe(self, model_load_path: Optional[str] = None
+    def _recreate_pipe(self, model_load_path: Optional[str] = None,
+                       addon_config_dict: Optional[dict[str, dict]] = None,
                        ) -> Pipeline:
         if hasattr(self, "_pipeline"):
             old_pipe = self._pipeline
         else:
             old_pipe = None
         self._pipeline = Pipeline(self.cdb, self.vocab, model_load_path,
-                                  old_pipe=old_pipe)
+                                  old_pipe=old_pipe,
+                                  addon_config_dict=addon_config_dict)
         return self._pipeline
 
     @classmethod
@@ -672,13 +675,20 @@ class CAT(AbstractSerialisable):
 
     @classmethod
     def load_model_pack(cls, model_pack_path: str,
-                        config_dict: Optional[dict] = None) -> 'CAT':
+                        config_dict: Optional[dict] = None,
+                        addon_config_dict: Optional[dict[str, dict]] = None
+                        ) -> 'CAT':
         """Load the model pack from file.
 
         Args:
             model_pack_path (str): The model pack path.
             config_dict (Optional[dict]): The model config to
                 merge in before initialising the pipe. Defaults to None.
+            addon_config_dict (Optional[dict]): The Addon-specific
+                config dict to merge in before pipe initialisation.
+                If specified, it needs to have an addon dict per name.
+                For instance, `{"meta_cat.Subject": {}}` would apply
+                to the specific MetaCAT.
 
         Raises:
             ValueError: If the saved data does not represent a model pack.
@@ -710,7 +720,8 @@ class CAT(AbstractSerialisable):
                             # components will be loaded semi-manually
                             # within the creation of pipe
                             COMPONENTS_FOLDER},
-                          config_dict=config_dict)
+                          config_dict=config_dict,
+                          addon_config_dict=addon_config_dict)
         # NOTE: deserialising of components that need serialised
         #       will be dealt with upon pipeline creation automatically
         if not isinstance(cat, CAT):
