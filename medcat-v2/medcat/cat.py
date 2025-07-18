@@ -703,7 +703,9 @@ class CAT(AbstractSerialisable):
                             TOKENIZER_PREFIX,
                             # components will be loaded semi-manually
                             # within the creation of pipe
-                            COMPONENTS_FOLDER})
+                            COMPONENTS_FOLDER,
+                            # ignore hidden files/folders
+                            '.'})
         # NOTE: deserialising of components that need serialised
         #       will be dealt with upon pipeline creation automatically
         if not isinstance(cat, CAT):
