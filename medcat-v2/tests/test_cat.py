@@ -71,6 +71,19 @@ class TrainedModelTests(unittest.TestCase):
             cls.model.config.components.linking.train = False
 
 
+class ConfigMergeTests(unittest.TestCase):
+    spacy_model_name = 'en_core_web_lg'
+    model_dict = {
+        "general": {'nlp': {"modelname": spacy_model_name}}
+    }
+
+    def test_can_merge_config(self):
+        model = cat.CAT.load_model_pack(
+            EXAMPLE_MODEL_PACK_ZIP, config_dict=self.model_dict)
+        self.assertEqual(
+            model.config.general.nlp.modelname, self.spacy_model_name)
+
+
 class InferenceFromLoadedTests(TrainedModelTests):
 
     def test_can_load_model(self):
