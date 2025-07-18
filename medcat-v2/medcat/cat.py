@@ -18,6 +18,7 @@ from medcat.trainer import Trainer
 from medcat.storage.serialisers import serialise, AvailableSerialisers
 from medcat.storage.serialisers import deserialise
 from medcat.storage.serialisables import AbstractSerialisable
+from medcat.storage.mp_ents_save import BatchAnnotationSaver
 from medcat.utils.fileutils import ensure_folder_if_parent
 from medcat.utils.hasher import Hasher
 from medcat.pipeline.pipeline import Pipeline
@@ -159,7 +160,7 @@ class CAT(AbstractSerialisable):
     def _mp_worker_func(
             self,
             texts_and_indices: list[tuple[str, str, bool]]
-            ) -> list[tuple[str, str, Union[dict, Entities, OnlyCUIEntities]]]:
+            ) -> list[tuple[str, Union[dict, Entities, OnlyCUIEntities]]]:
         # NOTE: this is needed for subprocess as otherwise they wouldn't have
         #       any of these set
         # NOTE: these need to by dynamic in case the extra's aren't included
@@ -180,7 +181,7 @@ class CAT(AbstractSerialisable):
             elif has_rel_cat and isinstance(addon, RelCATAddon):
                 addon._rel_cat._init_data_paths()
         return [
-            (text, text_index, self.get_entities(text, only_cui=only_cui))
+            (text_index, self.get_entities(text, only_cui=only_cui))
             for text, text_index, only_cui in texts_and_indices]
 
     def _generate_batches_by_char_length(
@@ -256,7 +257,8 @@ class CAT(AbstractSerialisable):
             self,
             executor: ProcessPoolExecutor,
             batch_iter: Iterator[list[tuple[str, str, bool]]],
-            external_processes: int
+            external_processes: int,
+            saver: Optional[BatchAnnotationSaver],
             ) -> Iterator[tuple[str, Union[dict, Entities, OnlyCUIEntities]]]:
         futures: list[Future] = []
         # submit batches, one for each external processes
@@ -269,16 +271,16 @@ class CAT(AbstractSerialisable):
                 break
         if not futures:
             # NOTE: if there wasn't any data, we didn't process anything
-            return
+            raise OutOfDataException()
         # Main process works on next batch while workers are busy
         main_batch: Optional[list[tuple[str, str, bool]]]
         try:
             main_batch = next(batch_iter)
             main_results = self._mp_worker_func(main_batch)
-
+            if saver:
+                saver(main_results)
             # Yield main process results immediately
-            for result in main_results:
-                yield result[1], result[2]
+            yield from main_results
 
         except StopIteration:
             main_batch = None
@@ -295,20 +297,12 @@ class CAT(AbstractSerialisable):
             done_future = next(as_completed(futures))
             futures.remove(done_future)
 
-            # Yield all results from this batch
-            for result in done_future.result():
-                yield result[1], result[2]
+            cur_results = done_future.result()
+            if saver:
+                saver(cur_results)
 
-            # Submit next batch to keep workers busy
-            try:
-                batch = next(batch_iter)
-                futures.append(
-                    executor.submit(self._mp_worker_func, batch))
-            except StopIteration:
-                # NOTE: if there's nothing to batch, we've got nothing
-                #       to submit in terms of new work to the workers,
-                #       but we may still have some futures to wait for
-                pass
+            # Yield all results from this batch
+            yield from cur_results
 
     def get_entities_multi_texts(
             self,
@@ -317,6 +311,8 @@ class CAT(AbstractSerialisable):
             n_process: int = 1,
             batch_size: int = -1,
             batch_size_chars: int = 1_000_000,
+            save_dir_path: Optional[str] = None,
+            batches_per_save: int = 20,
             ) -> Iterator[tuple[str, Union[dict, Entities, OnlyCUIEntities]]]:
         """Get entities from multiple texts (potentially in parallel).
 
@@ -343,6 +339,16 @@ class CAT(AbstractSerialisable):
                 Each process will be given batch of texts with a total
                 number of characters not exceeding this value. Defaults
                 to 1,000,000 characters. Set to -1 to disable.
+            save_dir_path (Optional[str]):
+                The path to where (if specified) the results are saved.
+                The directory will have a `annotated_ids.pickle` file
+                containing the tuple[list[str], int] with a list of
+                indices already saved and then umber of parts already saved.
+                In addition there will be (usually multuple) files in the
+                `part_<num>.pickle` format with the partial outputs.
+            batches_per_save (int):
+                The number of patches to save (if `save_dir_path` is specified)
+                at once. Defaults to 20.
 
         Yields:
             Iterator[tuple[str, Union[dict, Entities, OnlyCUIEntities]]]:
@@ -352,15 +358,27 @@ class CAT(AbstractSerialisable):
             Union[Iterator[str], Iterator[tuple[str, str]]], iter(texts))
         batch_iter = self._generate_batches(
             text_iter, batch_size, batch_size_chars, only_cui)
+        if save_dir_path:
+            saver = BatchAnnotationSaver(save_dir_path, batches_per_save)
+        else:
+            saver = None
         if n_process == 1:
             # just do in series
             for batch in batch_iter:
-                for _, text_index, result in self._mp_worker_func(batch):
-                    yield text_index, result
+                batch_results = self._mp_worker_func(batch)
+                if saver is not None:
+                    saver(batch_results)
+                yield from batch_results
+            if saver:
+                # save remainder
+                saver._save_cache()
             return
 
         with self._no_usage_monitor_exit_flushing():
-            yield from self._multiprocess(n_process, batch_iter)
+            yield from self._multiprocess(n_process, batch_iter, saver)
+        if saver:
+            # save remainder
+            saver._save_cache()
 
     @contextmanager
     def _no_usage_monitor_exit_flushing(self):
@@ -379,7 +397,8 @@ class CAT(AbstractSerialisable):
 
     def _multiprocess(
             self, n_process: int,
-            batch_iter: Iterator[list[tuple[str, str, bool]]]
+            batch_iter: Iterator[list[tuple[str, str, bool]]],
+            saver: Optional[BatchAnnotationSaver],
             ) -> Iterator[tuple[str, Union[dict, Entities, OnlyCUIEntities]]]:
         external_processes = n_process - 1
         if self.FORCE_SPAWN_MP:
@@ -390,8 +409,12 @@ class CAT(AbstractSerialisable):
                 "libraries using threads or native extensions.")
             mp.set_start_method("spawn", force=True)
         with ProcessPoolExecutor(max_workers=external_processes) as executor:
-            yield from self._mp_one_batch_per_process(
-                executor, batch_iter, external_processes)
+            while True:
+                try:
+                    yield from self._mp_one_batch_per_process(
+                        executor, batch_iter, external_processes, saver=saver)
+                except OutOfDataException:
+                    break
 
     def _get_entity(self, ent: MutableEntity,
                     doc_tokens: list[str],
@@ -737,7 +760,6 @@ class CAT(AbstractSerialisable):
         ]
         return [(addon.full_name, addon) for addon in loaded_addons]
 
-
     @overload
     def get_model_card(self, as_dict: Literal[True]) -> ModelCard:
         pass
@@ -794,3 +816,7 @@ class CAT(AbstractSerialisable):
     def add_addon(self, addon: AddonComponent) -> None:
         self.config.components.addons.append(addon.config)
         self._pipeline.add_addon(addon)
+
+
+class OutOfDataException(ValueError):
+    pass
