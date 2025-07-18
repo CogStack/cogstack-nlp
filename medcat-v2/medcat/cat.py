@@ -49,6 +49,7 @@ class CAT(AbstractSerialisable):
                  vocab: Union[Vocab, None] = None,
                  config: Optional[Config] = None,
                  model_load_path: Optional[str] = None,
+                 config_dict: Optional[dict] = None
                  ) -> None:
         self.cdb = cdb
         self.vocab = vocab
@@ -60,6 +61,8 @@ class CAT(AbstractSerialisable):
         elif config is not None:
             self.cdb.config = config
         self.config = config
+        if config_dict:
+            self.config.merge_config(config_dict)
 
         self._trainer: Optional[Trainer] = None
         self._pipeline = self._recreate_pipe(model_load_path)
@@ -668,11 +671,14 @@ class CAT(AbstractSerialisable):
         return model_pack_path
 
     @classmethod
-    def load_model_pack(cls, model_pack_path: str) -> 'CAT':
+    def load_model_pack(cls, model_pack_path: str,
+                        config_dict: Optional[dict] = None) -> 'CAT':
         """Load the model pack from file.
 
         Args:
             model_pack_path (str): The model pack path.
+            config_dict (Optional[dict]): The model config to
+                merge in before initialising the pipe. Defaults to None.
 
         Raises:
             ValueError: If the saved data does not represent a model pack.
@@ -703,7 +709,8 @@ class CAT(AbstractSerialisable):
                             TOKENIZER_PREFIX,
                             # components will be loaded semi-manually
                             # within the creation of pipe
-                            COMPONENTS_FOLDER})
+                            COMPONENTS_FOLDER},
+                          config_dict=config_dict)
         # NOTE: deserialising of components that need serialised
         #       will be dealt with upon pipeline creation automatically
         if not isinstance(cat, CAT):
