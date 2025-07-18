@@ -748,16 +748,19 @@ class CAT(AbstractSerialisable):
 
     @classmethod
     def load_addons(
-            cls, model_pack_path: str, meta_cat_config_dict: Optional[dict] = None
+            cls, model_pack_path: str,
+            addon_config_dict: Optional[dict[str, dict]] = None
             ) -> list[tuple[str, AddonComponent]]:
         """Load addons based on a model pack path.
 
         Args:
             model_pack_path (str): path to model pack, zip or dir.
-            meta_cat_config_dict (Optional[dict]):
-                A config dict that will overwrite existing configs in meta_cat.
-                e.g. meta_cat_config_dict = {'general': {'device': 'cpu'}}.
-                Defaults to None.
+            addon_config_dict (Optional[dict]): The Addon-specific
+                config dict to merge in before pipe initialisation.
+                If specified, it needs to have an addon dict per name.
+                For instance,
+                `{"meta_cat.Subject": {'general': {'device': 'cpu'}}}`
+                would apply to the specific MetaCAT.
 
         Returns:
             List[tuple(str, AddonComponent)]: list of pairs of adddon names the addons.
@@ -775,9 +778,9 @@ class CAT(AbstractSerialisable):
         loaded_addons = [
             addon for addon_path, addon_name in addon_paths_and_names
             if isinstance(addon := (
-                deserialise(addon_path, model_config=meta_cat_config_dict)
-                if ('meta_cat' in addon_name and meta_cat_config_dict)
-                else deserialise(addon_path)
+                deserialise(addon_path, model_config=addon_config_dict.get(addon_name))
+                if addon_config_dict else
+                deserialise(addon_path)
                 ), AddonComponent)
         ]
         return [(addon.full_name, addon) for addon in loaded_addons]

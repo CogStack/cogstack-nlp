@@ -313,8 +313,9 @@ class CatWithMetaCATSaveLoadTests(CatWithMetaCATTests):
 
     def test_can_load_meta_cat_with_addon_cnf(self, seed: int = -41):
         mc: MetaCATAddon = cat.CAT.load_addons(
-            self.mpp, meta_cat_config_dict={
-                "general": {"seed": seed}})[0][1]
+            self.mpp, addon_config_dict={
+                "meta_cat.Status": {
+                    "general": {"seed": seed}}})[0][1]
         self.assertEqual(mc.config.general.seed, seed)
 
     def test_can_merge_cnf_upon_load(self, use_seed: int = -4):
