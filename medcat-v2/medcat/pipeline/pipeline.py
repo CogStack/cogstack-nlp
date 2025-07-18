@@ -173,8 +173,9 @@ class Pipeline:
                 f"'{comp.get_type().name}' instead.")
         return comp
 
+    @classmethod
     def _attempt_merge(
-            self, addon_cnf: ComponentConfig,
+            cls, addon_cnf: ComponentConfig,
             addon_config_dict: dict[str, dict]) -> None:
         for name, config_dict in addon_config_dict.items():
             if not name.startswith(addon_cnf.comp_name):
