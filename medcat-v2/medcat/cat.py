@@ -722,7 +722,9 @@ class CAT(AbstractSerialisable):
                             TOKENIZER_PREFIX,
                             # components will be loaded semi-manually
                             # within the creation of pipe
-                            COMPONENTS_FOLDER},
+                            COMPONENTS_FOLDER,
+                            # ignore hidden files/folders
+                            '.'},
                           config_dict=config_dict,
                           addon_config_dict=addon_config_dict)
         # NOTE: deserialising of components that need serialised
