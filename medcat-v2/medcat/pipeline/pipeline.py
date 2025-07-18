@@ -72,7 +72,8 @@ class Pipeline:
     def __init__(self, cdb: CDB, vocab: Optional[Vocab],
                  model_load_path: Optional[str],
                  # NOTE: upon reload, old pipe can be useful
-                 old_pipe: Optional['Pipeline'] = None):
+                 old_pipe: Optional['Pipeline'] = None,
+                 addon_config_dict: Optional[dict[str, dict]] = None):
         self.cdb = cdb
         # NOTE: Vocab is None in case of DeID models and thats fine then,
         #       but it should be non-None otherwise
@@ -81,7 +82,7 @@ class Pipeline:
         self._tokenizer = self._init_tokenizer()
         self._components: list[CoreComponent] = []
         self._addons: list[AddonComponent] = []
-        self._init_components(model_load_path, old_pipe)
+        self._init_components(model_load_path, old_pipe, addon_config_dict)
 
     @property
     def tokenizer(self) -> BaseTokenizer:
@@ -172,8 +173,45 @@ class Pipeline:
                 f"'{comp.get_type().name}' instead.")
         return comp
 
+    @classmethod
+    def _attempt_merge(
+            cls, addon_cnf: ComponentConfig,
+            addon_config_dict: dict[str, dict]) -> None:
+        for name, config_dict in addon_config_dict.items():
+            if not name.startswith(addon_cnf.comp_name):
+                continue
+            # TODO: is there an option to do this in a more general way?
+            #       right now it's an implementation-specific code smell
+            if isinstance(addon_cnf, ConfigMetaCAT):
+                full_name = f"{addon_cnf.comp_name}.{addon_cnf.general.category_name}"
+                if name == full_name:
+                    addon_cnf.merge_config(config_dict)
+                    return
+                continue
+            logger.warning(
+                "No implementation specified for defining if/when %s"
+                "should apply to addon config (e.g %s)",
+                type(addon_cnf).__name__, name)
+            # if only 1 of the type, then just merge
+            similars = [cd for oname, cd in addon_config_dict.items()
+                        if oname.startswith(addon_cnf.comp_name)]
+            if len(similars) == 1:
+                logger.warning(
+                    "Since there is only 1 config for this type (%s) specified "
+                    "we will just merge the configs (@%s).",
+                    addon_cnf.comp_name, name)
+                addon_cnf.merge_config(config_dict)
+                return
+            else:
+                logger.warning(
+                    "There are %d similar configs (%s) specified, so unable to "
+                    "merge the config since it's ambiguous (@%s)",
+                    len(similars), addon_cnf.comp_name, name)
+
     def _init_components(self, model_load_path: Optional[str],
-                         old_pipe: Optional['Pipeline']) -> None:
+                         old_pipe: Optional['Pipeline'],
+                         addon_config_dict: Optional[dict[str, dict]],
+                         ) -> None:
         (loaded_core_component_paths,
          loaded_addon_component_paths) = self._get_loaded_components_paths(
              model_load_path)
@@ -186,6 +224,8 @@ class Pipeline:
                     CoreComponentType[cct_name], model_load_path)
             self._components.append(comp)
         for addon_cnf in self.config.components.addons:
+            if addon_config_dict:
+                self._attempt_merge(addon_cnf, addon_config_dict)
             addon = self._init_addon(
                 addon_cnf, loaded_addon_component_paths, old_pipe)
             # mark as not dirty at loat / init time

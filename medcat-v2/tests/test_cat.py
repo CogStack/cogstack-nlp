@@ -71,6 +71,19 @@ class TrainedModelTests(unittest.TestCase):
             cls.model.config.components.linking.train = False
 
 
+class ConfigMergeTests(unittest.TestCase):
+    spacy_model_name = 'en_core_web_lg'
+    model_dict = {
+        "general": {'nlp': {"modelname": spacy_model_name}}
+    }
+
+    def test_can_merge_config(self):
+        model = cat.CAT.load_model_pack(
+            EXAMPLE_MODEL_PACK_ZIP, config_dict=self.model_dict)
+        self.assertEqual(
+            model.config.general.nlp.modelname, self.spacy_model_name)
+
+
 class InferenceFromLoadedTests(TrainedModelTests):
 
     def test_can_load_model(self):
@@ -297,6 +310,22 @@ class CatWithMetaCATSaveLoadTests(CatWithMetaCATTests):
         self.assertEqual(len(addons), 1)
         _, addon = addons[0]
         self.assertIsInstance(addon, MetaCATAddon)
+
+    def test_can_load_meta_cat_with_addon_cnf(self, seed: int = -41):
+        mc: MetaCATAddon = cat.CAT.load_addons(
+            self.mpp, addon_config_dict={
+                "meta_cat.Status": {
+                    "general": {"seed": seed}}})[0][1]
+        self.assertEqual(mc.config.general.seed, seed)
+
+    def test_can_merge_cnf_upon_load(self, use_seed: int = -4):
+        loaded = cat.CAT.load_model_pack(
+            self.mpp,
+            addon_config_dict={
+                "meta_cat.Status": {"general": {"seed": use_seed}}
+            })
+        addon: MetaCATAddon = list(loaded._pipeline.iter_addons())[0]
+        self.assertEqual(addon.config.general.seed, use_seed)
 
 
 class CatWithChangesMetaCATTests(CatWithMetaCATTests):

@@ -49,6 +49,8 @@ class CAT(AbstractSerialisable):
                  vocab: Union[Vocab, None] = None,
                  config: Optional[Config] = None,
                  model_load_path: Optional[str] = None,
+                 config_dict: Optional[dict] = None,
+                 addon_config_dict: Optional[dict[str, dict]] = None,
                  ) -> None:
         self.cdb = cdb
         self.vocab = vocab
@@ -60,20 +62,24 @@ class CAT(AbstractSerialisable):
         elif config is not None:
             self.cdb.config = config
         self.config = config
+        if config_dict:
+            self.config.merge_config(config_dict)
 
         self._trainer: Optional[Trainer] = None
-        self._pipeline = self._recreate_pipe(model_load_path)
+        self._pipeline = self._recreate_pipe(model_load_path, addon_config_dict)
         self.usage_monitor = UsageMonitor(
             self._get_hash, self.config.general.usage_monitor)
 
-    def _recreate_pipe(self, model_load_path: Optional[str] = None
+    def _recreate_pipe(self, model_load_path: Optional[str] = None,
+                       addon_config_dict: Optional[dict[str, dict]] = None,
                        ) -> Pipeline:
         if hasattr(self, "_pipeline"):
             old_pipe = self._pipeline
         else:
             old_pipe = None
         self._pipeline = Pipeline(self.cdb, self.vocab, model_load_path,
-                                  old_pipe=old_pipe)
+                                  old_pipe=old_pipe,
+                                  addon_config_dict=addon_config_dict)
         return self._pipeline
 
     @classmethod
@@ -668,11 +674,21 @@ class CAT(AbstractSerialisable):
         return model_pack_path
 
     @classmethod
-    def load_model_pack(cls, model_pack_path: str) -> 'CAT':
+    def load_model_pack(cls, model_pack_path: str,
+                        config_dict: Optional[dict] = None,
+                        addon_config_dict: Optional[dict[str, dict]] = None
+                        ) -> 'CAT':
         """Load the model pack from file.
 
         Args:
             model_pack_path (str): The model pack path.
+            config_dict (Optional[dict]): The model config to
+                merge in before initialising the pipe. Defaults to None.
+            addon_config_dict (Optional[dict]): The Addon-specific
+                config dict to merge in before pipe initialisation.
+                If specified, it needs to have an addon dict per name.
+                For instance, `{"meta_cat.Subject": {}}` would apply
+                to the specific MetaCAT.
 
         Raises:
             ValueError: If the saved data does not represent a model pack.
@@ -703,7 +719,9 @@ class CAT(AbstractSerialisable):
                             TOKENIZER_PREFIX,
                             # components will be loaded semi-manually
                             # within the creation of pipe
-                            COMPONENTS_FOLDER})
+                            COMPONENTS_FOLDER},
+                          config_dict=config_dict,
+                          addon_config_dict=addon_config_dict)
         # NOTE: deserialising of components that need serialised
         #       will be dealt with upon pipeline creation automatically
         if not isinstance(cat, CAT):
@@ -730,16 +748,19 @@ class CAT(AbstractSerialisable):
 
     @classmethod
     def load_addons(
-            cls, model_pack_path: str, meta_cat_config_dict: Optional[dict] = None
+            cls, model_pack_path: str,
+            addon_config_dict: Optional[dict[str, dict]] = None
             ) -> list[tuple[str, AddonComponent]]:
         """Load addons based on a model pack path.
 
         Args:
             model_pack_path (str): path to model pack, zip or dir.
-            meta_cat_config_dict (Optional[dict]):
-                A config dict that will overwrite existing configs in meta_cat.
-                e.g. meta_cat_config_dict = {'general': {'device': 'cpu'}}.
-                Defaults to None.
+            addon_config_dict (Optional[dict]): The Addon-specific
+                config dict to merge in before pipe initialisation.
+                If specified, it needs to have an addon dict per name.
+                For instance,
+                `{"meta_cat.Subject": {'general': {'device': 'cpu'}}}`
+                would apply to the specific MetaCAT.
 
         Returns:
             List[tuple(str, AddonComponent)]: list of pairs of adddon names the addons.
@@ -747,16 +768,20 @@ class CAT(AbstractSerialisable):
         components_folder = os.path.join(model_pack_path, COMPONENTS_FOLDER)
         if not os.path.exists(components_folder):
             return []
-        addon_paths = [
-            folder_path
+        addon_paths_and_names = [
+            (folder_path, folder_name.removeprefix(AddonComponent.NAME_PREFIX))
             for folder_name in os.listdir(components_folder)
             if os.path.isdir(folder_path := os.path.join(
                 components_folder, folder_name))
             and folder_name.startswith(AddonComponent.NAME_PREFIX)
         ]
         loaded_addons = [
-            addon for addon_path in addon_paths
-            if isinstance(addon := deserialise(addon_path), AddonComponent)
+            addon for addon_path, addon_name in addon_paths_and_names
+            if isinstance(addon := (
+                deserialise(addon_path, model_config=addon_config_dict.get(addon_name))
+                if addon_config_dict else
+                deserialise(addon_path)
+                ), AddonComponent)
         ]
         return [(addon.full_name, addon) for addon in loaded_addons]
 
