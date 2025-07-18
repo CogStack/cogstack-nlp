@@ -317,6 +317,15 @@ class CatWithMetaCATSaveLoadTests(CatWithMetaCATTests):
                 "general": {"seed": seed}})[0][1]
         self.assertEqual(mc.config.general.seed, seed)
 
+    def test_can_merge_cnf_upon_load(self, use_seed: int = -4):
+        loaded = cat.CAT.load_model_pack(
+            self.mpp,
+            addon_config_dict={
+                "meta_cat.Status": {"general": {"seed": use_seed}}
+            })
+        addon: MetaCATAddon = list(loaded._pipeline.iter_addons())[0]
+        self.assertEqual(addon.config.general.seed, use_seed)
+
 
 class CatWithChangesMetaCATTests(CatWithMetaCATTests):
     EXPECTED_HASH = "0b22401059a08380"
