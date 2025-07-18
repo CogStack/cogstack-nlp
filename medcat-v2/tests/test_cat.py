@@ -298,6 +298,12 @@ class CatWithMetaCATSaveLoadTests(CatWithMetaCATTests):
         _, addon = addons[0]
         self.assertIsInstance(addon, MetaCATAddon)
 
+    def test_can_load_meta_cat_with_addon_cnf(self, seed: int = -41):
+        mc: MetaCATAddon = cat.CAT.load_addons(
+            self.mpp, meta_cat_config_dict={
+                "general": {"seed": seed}})[0][1]
+        self.assertEqual(mc.config.general.seed, seed)
+
 
 class CatWithChangesMetaCATTests(CatWithMetaCATTests):
     EXPECTED_HASH = "0b22401059a08380"
