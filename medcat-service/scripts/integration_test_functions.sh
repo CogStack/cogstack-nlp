@@ -41,6 +41,8 @@ smoketest_medcat_service() {
 integration_test_medcat_service() {
   local localhost_name=$1
   local port=${2:-5555}
+
+  # Test /api/process
   local api="http://${localhost_name}:${port}/api/process"
   local input_text="The patient was diagnosed with Kidney Failure"
   local input_payload="{\"content\":{\"text\":\"${input_text}\"}}"
@@ -59,10 +61,38 @@ integration_test_medcat_service() {
   actual_annotation=$(echo "$actual" | jq -r '.result.annotations[0]["0"].pretty_name')
 
   if [[ "$actual_annotation" == "$expected_annotation" ]]; then
-    echo "Service working and extracting annotations"
+    echo "Service working and extracting annotations for Process API"
   else
     echo "Expected: $expected_annotation, Got: $actual_annotation"
     echo -e "Actual response was:\n${actual}"
     return 1
   fi
+
+  # Test /api/process_bulk
+  local api="http://${localhost_name}:${port}/api/process_bulk"
+  local input_text="The patient was diagnosed with Kidney Failure"
+  local input_payload="{\"content\": [{\"text\":\"${input_text}\"}]}"
+  local expected_annotation="Kidney Failure"
+
+
+  echo "Calling POST $api with payload '$input_payload'"
+  local actual
+
+  actual=$(curl -s -X POST $api \
+    -H 'Content-Type: application/json' \
+    -d "$input_payload")
+
+  echo "Recieved result '$actual'"
+
+  local actual_annotation
+  actual_annotation=$(echo "$actual" | jq -r '.result[0].annotations[0]["0"].pretty_name')
+
+  if [[ "$actual_annotation" == "$expected_annotation" ]]; then
+    echo "Service working and extracting annotations for Process Bulk API"
+  else
+    echo "Expected: $expected_annotation, Got: $actual_annotation"
+    echo -e "Actual response was:\n${actual}"
+    return 1
+  fi
+
 }

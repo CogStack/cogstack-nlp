@@ -14,7 +14,7 @@ from medcat.config import Config
 from medcat.config.config_meta_cat import ConfigMetaCAT
 from medcat.vocab import Vocab
 
-from medcat_service.types import HealthCheckResponse, ModelCardInfo, ServiceInfo
+from medcat_service.types import HealthCheckResponse, ModelCardInfo, ProcessErrorsResult, ProcessResult, ServiceInfo
 
 
 class NlpProcessor:
@@ -168,11 +168,11 @@ class MedCatProcessor(NlpProcessor):
         """
         if "text" not in content:
             error_msg = "'text' field missing in the payload content."
-            nlp_result = {
-                "success": False,
-                "errors": [error_msg],
-                "timestamp": NlpProcessor._get_timestamp(),
-            }
+            nlp_result = ProcessErrorsResult(
+                success=False,
+                errors=[error_msg],
+                timestamp=NlpProcessor._get_timestamp(),
+            )
 
             return nlp_result
 
@@ -201,19 +201,16 @@ class MedCatProcessor(NlpProcessor):
                         all(e['meta_anns'][task]['value'] in filter_values
                             for task, filter_values in meta_anns_filters)]
 
-        entities = self.process_entities(entities, **kwargs)
+        entities = list(self.process_entities(entities, **kwargs))
 
-        nlp_result = {
-            "text": str(text),
-            "annotations": entities,
-            "success": True,
-            "timestamp": NlpProcessor._get_timestamp(),
-            "elapsed_time":  elapsed_time
-        }
-
-        # append the footer
-        if "footer" in content:
-            nlp_result["footer"] = content["footer"]
+        nlp_result = ProcessResult(
+            text=str(text),
+            annotations=entities,
+            success=True,
+            timestamp=NlpProcessor._get_timestamp(),
+            elapsed_time=elapsed_time,
+            footer=content.get("footer"),
+        )
 
         return nlp_result
 
@@ -441,7 +438,7 @@ class MedCatProcessor(NlpProcessor):
             if not self.DEID_MODE and i in annotations.keys():
                 # generate output for valid annotations
 
-                entities = self.process_entities(annotations.get(i))
+                entities = list(self.process_entities(annotations.get(i)))
 
                 # parse the result
                 out_res = {"text": str(in_ct["text"]),

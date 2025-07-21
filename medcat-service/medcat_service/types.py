@@ -1,8 +1,9 @@
 from datetime import datetime
-from typing import Dict, List, Literal, Optional, Tuple, Union
 
-from medcat.data.entities import Entity
 from pydantic import BaseModel
+from typing_extensions import Any, Dict, List, Literal, Optional, Tuple, Union
+
+from medcat_service.types_entities import Entity
 
 
 class HealthCheckResponse(BaseModel):
@@ -55,13 +56,30 @@ class BulkProcessAPIInput(BaseModel):
     content: List[ProcessAPIInputContent]
 
 
-class ProcessAPIResult(BaseModel):
+class ProcessResult(BaseModel):
     text: str
-    annotations: List[Dict[str, Entity]]
+    # TODO: Any set as annotations has many different types
+    annotations: Union[List[Dict[str, Entity]], Any]
     """
         # e.g. [{"0": {...}}, {"1": {...}}]
     """
     success: bool
-    timestamp: datetime
+    timestamp: str
     elapsed_time: float
     footer: Optional[str] = None
+
+
+class ProcessErrorsResult(BaseModel):
+    success: bool
+    timestamp: str
+    errors: List[str]
+
+
+class ProcessAPIResponse(BaseModel):
+    medcat_info: ServiceInfo
+    result: Union[ProcessResult, ProcessErrorsResult]
+
+
+class BulkProcessAPIResponse(BaseModel):
+    medcat_info: ServiceInfo
+    result: List[Union[ProcessResult, ProcessErrorsResult]]
