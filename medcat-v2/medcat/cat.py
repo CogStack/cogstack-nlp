@@ -1,5 +1,5 @@
 from typing import Optional, Union, Any, overload, Literal, Iterable, Iterator
-from typing import cast
+from typing import cast, Type, TypeVar
 import os
 import json
 from datetime import date
@@ -18,6 +18,7 @@ from medcat.trainer import Trainer
 from medcat.storage.serialisers import serialise, AvailableSerialisers
 from medcat.storage.serialisers import deserialise
 from medcat.storage.serialisables import AbstractSerialisable
+from medcat.storage.mp_ents_save import BatchAnnotationSaver
 from medcat.utils.fileutils import ensure_folder_if_parent
 from medcat.utils.hasher import Hasher
 from medcat.pipeline.pipeline import Pipeline
@@ -38,6 +39,9 @@ from medcat.utils.import_utils import MissingDependenciesError
 logger = logging.getLogger(__name__)
 
 
+AddonType = TypeVar("AddonType", bound="AddonComponent")
+
+
 class CAT(AbstractSerialisable):
     """This is a collection of serialisable model parts.
     """
@@ -48,6 +52,8 @@ class CAT(AbstractSerialisable):
                  vocab: Union[Vocab, None] = None,
                  config: Optional[Config] = None,
                  model_load_path: Optional[str] = None,
+                 config_dict: Optional[dict] = None,
+                 addon_config_dict: Optional[dict[str, dict]] = None,
                  ) -> None:
         self.cdb = cdb
         self.vocab = vocab
@@ -59,20 +65,24 @@ class CAT(AbstractSerialisable):
         elif config is not None:
             self.cdb.config = config
         self.config = config
+        if config_dict:
+            self.config.merge_config(config_dict)
 
         self._trainer: Optional[Trainer] = None
-        self._pipeline = self._recreate_pipe(model_load_path)
+        self._pipeline = self._recreate_pipe(model_load_path, addon_config_dict)
         self.usage_monitor = UsageMonitor(
             self._get_hash, self.config.general.usage_monitor)
 
-    def _recreate_pipe(self, model_load_path: Optional[str] = None
+    def _recreate_pipe(self, model_load_path: Optional[str] = None,
+                       addon_config_dict: Optional[dict[str, dict]] = None,
                        ) -> Pipeline:
         if hasattr(self, "_pipeline"):
             old_pipe = self._pipeline
         else:
             old_pipe = None
         self._pipeline = Pipeline(self.cdb, self.vocab, model_load_path,
-                                  old_pipe=old_pipe)
+                                  old_pipe=old_pipe,
+                                  addon_config_dict=addon_config_dict)
         return self._pipeline
 
     @classmethod
@@ -159,7 +169,7 @@ class CAT(AbstractSerialisable):
     def _mp_worker_func(
             self,
             texts_and_indices: list[tuple[str, str, bool]]
-            ) -> list[tuple[str, str, Union[dict, Entities, OnlyCUIEntities]]]:
+            ) -> list[tuple[str, Union[dict, Entities, OnlyCUIEntities]]]:
         # NOTE: this is needed for subprocess as otherwise they wouldn't have
         #       any of these set
         # NOTE: these need to by dynamic in case the extra's aren't included
@@ -180,7 +190,7 @@ class CAT(AbstractSerialisable):
             elif has_rel_cat and isinstance(addon, RelCATAddon):
                 addon._rel_cat._init_data_paths()
         return [
-            (text, text_index, self.get_entities(text, only_cui=only_cui))
+            (text_index, self.get_entities(text, only_cui=only_cui))
             for text, text_index, only_cui in texts_and_indices]
 
     def _generate_batches_by_char_length(
@@ -256,7 +266,8 @@ class CAT(AbstractSerialisable):
             self,
             executor: ProcessPoolExecutor,
             batch_iter: Iterator[list[tuple[str, str, bool]]],
-            external_processes: int
+            external_processes: int,
+            saver: Optional[BatchAnnotationSaver],
             ) -> Iterator[tuple[str, Union[dict, Entities, OnlyCUIEntities]]]:
         futures: list[Future] = []
         # submit batches, one for each external processes
@@ -269,16 +280,16 @@ class CAT(AbstractSerialisable):
                 break
         if not futures:
             # NOTE: if there wasn't any data, we didn't process anything
-            return
+            raise OutOfDataException()
         # Main process works on next batch while workers are busy
         main_batch: Optional[list[tuple[str, str, bool]]]
         try:
             main_batch = next(batch_iter)
             main_results = self._mp_worker_func(main_batch)
-
+            if saver:
+                saver(main_results)
             # Yield main process results immediately
-            for result in main_results:
-                yield result[1], result[2]
+            yield from main_results
 
         except StopIteration:
             main_batch = None
@@ -295,20 +306,12 @@ class CAT(AbstractSerialisable):
             done_future = next(as_completed(futures))
             futures.remove(done_future)
 
-            # Yield all results from this batch
-            for result in done_future.result():
-                yield result[1], result[2]
+            cur_results = done_future.result()
+            if saver:
+                saver(cur_results)
 
-            # Submit next batch to keep workers busy
-            try:
-                batch = next(batch_iter)
-                futures.append(
-                    executor.submit(self._mp_worker_func, batch))
-            except StopIteration:
-                # NOTE: if there's nothing to batch, we've got nothing
-                #       to submit in terms of new work to the workers,
-                #       but we may still have some futures to wait for
-                pass
+            # Yield all results from this batch
+            yield from cur_results
 
     def get_entities_multi_texts(
             self,
@@ -317,6 +320,8 @@ class CAT(AbstractSerialisable):
             n_process: int = 1,
             batch_size: int = -1,
             batch_size_chars: int = 1_000_000,
+            save_dir_path: Optional[str] = None,
+            batches_per_save: int = 20,
             ) -> Iterator[tuple[str, Union[dict, Entities, OnlyCUIEntities]]]:
         """Get entities from multiple texts (potentially in parallel).
 
@@ -343,6 +348,16 @@ class CAT(AbstractSerialisable):
                 Each process will be given batch of texts with a total
                 number of characters not exceeding this value. Defaults
                 to 1,000,000 characters. Set to -1 to disable.
+            save_dir_path (Optional[str]):
+                The path to where (if specified) the results are saved.
+                The directory will have a `annotated_ids.pickle` file
+                containing the tuple[list[str], int] with a list of
+                indices already saved and then umber of parts already saved.
+                In addition there will be (usually multuple) files in the
+                `part_<num>.pickle` format with the partial outputs.
+            batches_per_save (int):
+                The number of patches to save (if `save_dir_path` is specified)
+                at once. Defaults to 20.
 
         Yields:
             Iterator[tuple[str, Union[dict, Entities, OnlyCUIEntities]]]:
@@ -352,15 +367,27 @@ class CAT(AbstractSerialisable):
             Union[Iterator[str], Iterator[tuple[str, str]]], iter(texts))
         batch_iter = self._generate_batches(
             text_iter, batch_size, batch_size_chars, only_cui)
+        if save_dir_path:
+            saver = BatchAnnotationSaver(save_dir_path, batches_per_save)
+        else:
+            saver = None
         if n_process == 1:
             # just do in series
             for batch in batch_iter:
-                for _, text_index, result in self._mp_worker_func(batch):
-                    yield text_index, result
+                batch_results = self._mp_worker_func(batch)
+                if saver is not None:
+                    saver(batch_results)
+                yield from batch_results
+            if saver:
+                # save remainder
+                saver._save_cache()
             return
 
         with self._no_usage_monitor_exit_flushing():
-            yield from self._multiprocess(n_process, batch_iter)
+            yield from self._multiprocess(n_process, batch_iter, saver)
+        if saver:
+            # save remainder
+            saver._save_cache()
 
     @contextmanager
     def _no_usage_monitor_exit_flushing(self):
@@ -379,7 +406,8 @@ class CAT(AbstractSerialisable):
 
     def _multiprocess(
             self, n_process: int,
-            batch_iter: Iterator[list[tuple[str, str, bool]]]
+            batch_iter: Iterator[list[tuple[str, str, bool]]],
+            saver: Optional[BatchAnnotationSaver],
             ) -> Iterator[tuple[str, Union[dict, Entities, OnlyCUIEntities]]]:
         external_processes = n_process - 1
         if self.FORCE_SPAWN_MP:
@@ -390,8 +418,12 @@ class CAT(AbstractSerialisable):
                 "libraries using threads or native extensions.")
             mp.set_start_method("spawn", force=True)
         with ProcessPoolExecutor(max_workers=external_processes) as executor:
-            yield from self._mp_one_batch_per_process(
-                executor, batch_iter, external_processes)
+            while True:
+                try:
+                    yield from self._mp_one_batch_per_process(
+                        executor, batch_iter, external_processes, saver=saver)
+                except OutOfDataException:
+                    break
 
     def _get_entity(self, ent: MutableEntity,
                     doc_tokens: list[str],
@@ -645,11 +677,21 @@ class CAT(AbstractSerialisable):
         return model_pack_path
 
     @classmethod
-    def load_model_pack(cls, model_pack_path: str) -> 'CAT':
+    def load_model_pack(cls, model_pack_path: str,
+                        config_dict: Optional[dict] = None,
+                        addon_config_dict: Optional[dict[str, dict]] = None
+                        ) -> 'CAT':
         """Load the model pack from file.
 
         Args:
             model_pack_path (str): The model pack path.
+            config_dict (Optional[dict]): The model config to
+                merge in before initialising the pipe. Defaults to None.
+            addon_config_dict (Optional[dict]): The Addon-specific
+                config dict to merge in before pipe initialisation.
+                If specified, it needs to have an addon dict per name.
+                For instance, `{"meta_cat.Subject": {}}` would apply
+                to the specific MetaCAT.
 
         Raises:
             ValueError: If the saved data does not represent a model pack.
@@ -680,7 +722,11 @@ class CAT(AbstractSerialisable):
                             TOKENIZER_PREFIX,
                             # components will be loaded semi-manually
                             # within the creation of pipe
-                            COMPONENTS_FOLDER})
+                            COMPONENTS_FOLDER,
+                            # ignore hidden files/folders
+                            '.'},
+                          config_dict=config_dict,
+                          addon_config_dict=addon_config_dict)
         # NOTE: deserialising of components that need serialised
         #       will be dealt with upon pipeline creation automatically
         if not isinstance(cat, CAT):
@@ -707,16 +753,19 @@ class CAT(AbstractSerialisable):
 
     @classmethod
     def load_addons(
-            cls, model_pack_path: str, meta_cat_config_dict: Optional[dict] = None
+            cls, model_pack_path: str,
+            addon_config_dict: Optional[dict[str, dict]] = None
             ) -> list[tuple[str, AddonComponent]]:
         """Load addons based on a model pack path.
 
         Args:
             model_pack_path (str): path to model pack, zip or dir.
-            meta_cat_config_dict (Optional[dict]):
-                A config dict that will overwrite existing configs in meta_cat.
-                e.g. meta_cat_config_dict = {'general': {'device': 'cpu'}}.
-                Defaults to None.
+            addon_config_dict (Optional[dict]): The Addon-specific
+                config dict to merge in before pipe initialisation.
+                If specified, it needs to have an addon dict per name.
+                For instance,
+                `{"meta_cat.Subject": {'general': {'device': 'cpu'}}}`
+                would apply to the specific MetaCAT.
 
         Returns:
             List[tuple(str, AddonComponent)]: list of pairs of adddon names the addons.
@@ -724,19 +773,22 @@ class CAT(AbstractSerialisable):
         components_folder = os.path.join(model_pack_path, COMPONENTS_FOLDER)
         if not os.path.exists(components_folder):
             return []
-        addon_paths = [
-            folder_path
+        addon_paths_and_names = [
+            (folder_path, folder_name.removeprefix(AddonComponent.NAME_PREFIX))
             for folder_name in os.listdir(components_folder)
             if os.path.isdir(folder_path := os.path.join(
                 components_folder, folder_name))
             and folder_name.startswith(AddonComponent.NAME_PREFIX)
         ]
         loaded_addons = [
-            addon for addon_path in addon_paths
-            if isinstance(addon := deserialise(addon_path), AddonComponent)
+            addon for addon_path, addon_name in addon_paths_and_names
+            if isinstance(addon := (
+                deserialise(addon_path, model_config=addon_config_dict.get(addon_name))
+                if addon_config_dict else
+                deserialise(addon_path)
+                ), AddonComponent)
         ]
         return [(addon.full_name, addon) for addon in loaded_addons]
-
 
     @overload
     def get_model_card(self, as_dict: Literal[True]) -> ModelCard:
@@ -792,5 +844,36 @@ class CAT(AbstractSerialisable):
     # addon (e.g MetaCAT) related stuff
 
     def add_addon(self, addon: AddonComponent) -> None:
+        """Add the addon to the model pack an pipe.
+
+        Args:
+            addon (AddonComponent): The addon to add.
+        """
         self.config.components.addons.append(addon.config)
         self._pipeline.add_addon(addon)
+
+    def get_addons(self) -> list[AddonComponent]:
+        """Get the list of all addons in this model pack.
+
+        Returns:
+            list[AddonComponent]: The list of addons present.
+        """
+        return list(self._pipeline.iter_addons())
+
+    def get_addons_of_type(self, addon_type: Type[AddonType]) -> list[AddonType]:
+        """Get a list of addons of a specific type.
+
+        Args:
+            addon_type (Type[AddonType]): The type of addons to look for.
+
+        Returns:
+            list[AddonType]: The list of addons of this specific type.
+        """
+        return [
+            addon for addon in self.get_addons()
+            if isinstance(addon, addon_type)
+        ]
+
+
+class OutOfDataException(ValueError):
+    pass

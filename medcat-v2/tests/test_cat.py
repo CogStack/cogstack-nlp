@@ -2,7 +2,7 @@ import os
 import unittest.mock
 import pandas as pd
 import json
-from typing import Optional
+from typing import Optional, Any
 from collections import Counter
 
 from medcat import cat
@@ -21,6 +21,8 @@ from medcat.utils.defaults import LegacyConversionDisabledError
 
 import unittest
 import tempfile
+import pickle
+import shutil
 
 from . import EXAMPLE_MODEL_PACK_ZIP
 from . import V1_MODEL_PACK_PATH, UNPACKED_V1_MODEL_PACK_PATH
@@ -29,18 +31,19 @@ from .utils.legacy.test_conversion_all import ConvertedFunctionalityTests
 
 orig_init = cat.CAT.__init__
 
+expected_model_pack_path = EXAMPLE_MODEL_PACK_ZIP.replace(".zip", "")
+
 
 class ModelLoadTests(unittest.TestCase):
 
     def assert_has_model_name(self, func):
-        expected_model_packl_name = EXAMPLE_MODEL_PACK_ZIP.replace(".zip", "")
 
         def wrapper(*args, **kwargs):
             if 'model_load_path' in kwargs:
                 self.assertEqual(kwargs['model_load_path'],
-                                 expected_model_packl_name)
+                                 expected_model_pack_path)
             else:
-                self.assertEqual(args[-1], expected_model_packl_name)
+                self.assertEqual(args[-1], expected_model_pack_path)
             return func(*args, **kwargs)
         return wrapper
 
@@ -60,6 +63,31 @@ class ModelLoadTests(unittest.TestCase):
         self.assertIsInstance(cdb, CDB)
 
 
+class ModelLoadIWithHiddenFilesTests(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls._temp_dir = tempfile.TemporaryDirectory()
+        cls.model_path = os.path.join(cls._temp_dir.name, "model")
+        shutil.copytree(expected_model_pack_path, cls.model_path)
+        # add file
+        file_path = os.path.join(cls.model_path, '.some_file.txt')
+        with open(file_path, 'w') as f:
+            f.write("Nothing")
+        # add folder
+        folder_path = os.path.join(cls.model_path, '.some_folder')
+        os.mkdir(folder_path)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls._temp_dir.cleanup()
+
+    def test_can_load_with_add_hidden_files_and_folders(self):
+        # try load
+        inst = cat.CAT.load_model_pack(self.model_path)
+        self.assertIsInstance(inst, cat.CAT)
+
+
 class TrainedModelTests(unittest.TestCase):
     TRAINED_MODEL_PATH = EXAMPLE_MODEL_PACK_ZIP
 
@@ -67,8 +95,20 @@ class TrainedModelTests(unittest.TestCase):
     def setUpClass(cls):
         cls.model = cat.CAT.load_model_pack(cls.TRAINED_MODEL_PATH)
         if cls.model.config.components.linking.train:
-            print("TRAINING WAS ENABLE! NEED TO DISABLE")
             cls.model.config.components.linking.train = False
+
+
+class ConfigMergeTests(unittest.TestCase):
+    spacy_model_name = 'en_core_web_lg'
+    model_dict = {
+        "general": {'nlp': {"modelname": spacy_model_name}}
+    }
+
+    def test_can_merge_config(self):
+        model = cat.CAT.load_model_pack(
+            EXAMPLE_MODEL_PACK_ZIP, config_dict=self.model_dict)
+        self.assertEqual(
+            model.config.general.nlp.modelname, self.spacy_model_name)
 
 
 class InferenceFromLoadedTests(TrainedModelTests):
@@ -298,6 +338,22 @@ class CatWithMetaCATSaveLoadTests(CatWithMetaCATTests):
         _, addon = addons[0]
         self.assertIsInstance(addon, MetaCATAddon)
 
+    def test_can_load_meta_cat_with_addon_cnf(self, seed: int = -41):
+        mc: MetaCATAddon = cat.CAT.load_addons(
+            self.mpp, addon_config_dict={
+                "meta_cat.Status": {
+                    "general": {"seed": seed}}})[0][1]
+        self.assertEqual(mc.config.general.seed, seed)
+
+    def test_can_merge_cnf_upon_load(self, use_seed: int = -4):
+        loaded = cat.CAT.load_model_pack(
+            self.mpp,
+            addon_config_dict={
+                "meta_cat.Status": {"general": {"seed": use_seed}}
+            })
+        addon: MetaCATAddon = list(loaded._pipeline.iter_addons())[0]
+        self.assertEqual(addon.config.general.seed, use_seed)
+
 
 class CatWithChangesMetaCATTests(CatWithMetaCATTests):
     EXPECTED_HASH = "0b22401059a08380"
@@ -416,8 +472,9 @@ class CATWithDictNERSupTrainingTests(CATSupTrainingTests):
         texts = [
             "The fittest most fit of chronic kidney failure",
             "The dog is sitting outside the house."
-        ]
-        ents = list(self.cat.get_entities_multi_texts(texts))
+        ]*10
+        ents = list(self.cat.get_entities_multi_texts(
+            texts, batch_size=2, batch_size_chars=-1))
         self.assert_ents(ents, texts)
 
     def assert_ents(self, ents: list[tuple], texts: list[str]):
@@ -437,9 +494,147 @@ class CATWithDictNERSupTrainingTests(CATSupTrainingTests):
         texts = [
             "The fittest most fit of chronic kidney failure",
             "The dog is sitting outside the house."
-        ]
-        ents = list(self.cat.get_entities_multi_texts(texts, n_process=3))
+        ]*10
+        ents = list(self.cat.get_entities_multi_texts(
+            texts, n_process=3, batch_size=2, batch_size_chars=-1))
         self.assert_ents(ents, texts)
+
+    def _do_mp_run_with_save(
+            self, save_to: str,
+            chars_per_batch: int = 165,
+            batches_per_save: int = 5,
+            exp_parts: int = 8,
+            n_process: int = 1,
+            ) -> tuple[list[str], list[tuple], dict[str, Any], int]:
+        in_data = [
+            f"The patient presented with {name} and "
+            f"did not have {negname}"
+            for name in self.cdb.name2info
+            for negname in self.cdb.name2info if name != negname
+        ]
+        out_data = list(self.cat.get_entities_multi_texts(
+            in_data,
+            save_dir_path=save_to,
+            batch_size_chars=chars_per_batch,
+            batches_per_save=batches_per_save,
+            n_process=n_process,
+            ))
+        out_dict_all = {
+            key: cdata for key, cdata in out_data
+        }
+        return in_data, out_data, out_dict_all, exp_parts
+
+    def assert_mp_runs_with_save_and_load(
+            self, save_to: str,
+            chars_per_batch: int = 165,
+            batches_per_save: int = 5,
+            exp_parts: int = 8,
+            n_process: int = 1,
+            ) -> tuple[
+                tuple[list[str], list[tuple], dict[str, Any], int],
+                tuple[tuple[list[str], int], list[str], int],
+            ]:
+        in_data, out_data, out_dict_all, exp_parts = (
+            self._do_mp_run_with_save(
+                save_to, chars_per_batch, batches_per_save, exp_parts,
+                n_process=n_process))
+        anns_file = os.path.join(save_to, 'annotated_ids.pickle')
+        self.assertTrue(os.path.exists(anns_file))
+        with open(anns_file, 'rb') as f:
+            loaded_data = pickle.load(f)
+        self.assertEqual(len(loaded_data), 2)
+        ids, last_part_num = loaded_data
+        return (in_data, out_data, out_dict_all, exp_parts), (
+            loaded_data, ids, last_part_num)
+
+    def assert_mp_runs_save_load_gather(
+            self, save_to: str,
+            chars_per_batch: int = 165,
+            batches_per_save: int = 5,
+            exp_parts: int = 8,
+            n_process: int = 1,
+            ) -> tuple[
+                tuple[list[str], list[tuple], dict[str, Any], int],
+                tuple[tuple[list[str], int], list[str], int],
+                dict[str, Any]
+            ]:
+        (in_data, out_data, out_dict_all, exp_parts), (
+            loaded_data, ids, num_last_part
+        ) = self.assert_mp_runs_with_save_and_load(
+            save_to, chars_per_batch, batches_per_save, exp_parts,
+            n_process=n_process)
+        all_loaded_output = {}
+        for num in range(num_last_part + 1):
+            with self.subTest(f"Part {num}"):
+                part_name = f"part_{num}.pickle"
+                part_path = os.path.join(save_to, part_name)
+                self.assertTrue(os.path.exists(part_path))
+                with open(part_path, 'rb') as f:
+                    part_data = pickle.load(f)
+                self.assertIsInstance(part_data, dict)
+                self.assertTrue(
+                    all(key not in all_loaded_output for key in part_data))
+                all_loaded_output.update(part_data)
+        return (in_data, out_data, out_dict_all, exp_parts), (
+            loaded_data, ids, num_last_part), all_loaded_output
+
+    def test_multiprocessing_can_save_indices(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            (in_data, out_data,
+             out_dict_all, exp_parts), (
+                 loaded_data, ids, num_last_part
+             ) = self.assert_mp_runs_with_save_and_load(temp_dir)
+            self.assertEqual(len(out_data), len(in_data))
+            self.assertEqual(len(in_data), len(ids))
+
+    def test_mp_saves_all_parts(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            (in_data, out_data,
+             out_dict_all, exp_parts), (
+                 loaded_data, ids, num_last_part
+             ), all_loaded_output = self.assert_mp_runs_save_load_gather(
+                 temp_dir)
+            # NOTE: the number of parts is 1 greater
+            self.assertEqual(num_last_part + 1, exp_parts)
+
+    def assert_correct_loaded_output(
+            self,
+            in_data: list[str],
+            out_dict_all: dict[str, Any],
+            all_loaded_output: dict[str, Any]):
+        self.assertEqual(len(all_loaded_output), len(in_data))
+        self.assertEqual(all_loaded_output.keys(), out_dict_all.keys())
+        self.assertEqual(all_loaded_output, out_dict_all)
+
+    def test_mp_saves_correct_data(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            (in_data, out_data,
+             out_dict_all, exp_parts), (
+                 loaded_data, ids, num_last_part
+             ), all_loaded_output = self.assert_mp_runs_save_load_gather(
+                 temp_dir)
+            self.assert_correct_loaded_output(
+                in_data, out_dict_all, all_loaded_output)
+
+    def test_mp_saves_correct_data_with_2_proc(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            (in_data, out_data,
+             out_dict_all, exp_parts), (
+                 loaded_data, ids, num_last_part
+             ), all_loaded_output = self.assert_mp_runs_save_load_gather(
+                 temp_dir, n_process=2)
+            self.assert_correct_loaded_output(
+                in_data, out_dict_all, all_loaded_output)
+
+    def test_mp_saves_correct_data_with_3_proc(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            (in_data, out_data,
+             out_dict_all, exp_parts), (
+                 loaded_data, ids, num_last_part
+             ), all_loaded_output = self.assert_mp_runs_save_load_gather(
+                 temp_dir, n_process=3)
+            self.assert_correct_loaded_output(
+                in_data, out_dict_all, all_loaded_output)
 
 
 class CATWithDocAddonTests(CATIncludingTests):

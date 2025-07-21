@@ -221,6 +221,8 @@ class MetaCATAddon(AddonComponent):
                 "Inferring config from file at '%s'", folder_path,
                 config_path)
             cnf = ConfigMetaCAT.load(config_path)
+        if 'model_config' in init_kwargs:
+            cnf.merge_config(init_kwargs['model_config'])
         if 'tokenizer' in init_kwargs:
             tokenizer = init_kwargs['tokenizer']
         else:
