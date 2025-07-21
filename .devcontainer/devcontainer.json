@@ -29,7 +29,8 @@
 	"workspaceMount": "source=${localWorkspaceFolder},target=${localWorkspaceFolder},type=bind",
 	"mounts": [
 		"source=${localEnv:HOME}/.cache/pip,target=/home/vscode/.cache/pip,type=bind",
-		"source=${localEnv:HOME}/.cache/uv,target=/home/vscode/.cache/uv,type=bind"
+		"source=${localEnv:HOME}/.cache/uv,target=/home/vscode/.cache/uv,type=bind",
+		"source=${localEnv:HOME}/.cache/huggingface,target=/home/vscode/.cache/huggingface,type=bind",
 	],
 	"customizations": {
 		"vscode": {

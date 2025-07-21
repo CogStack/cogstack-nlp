@@ -1,13 +1,13 @@
 smoketest_medcat_service() {
     local localhost_name="$1"
     local docker_compose_file="$2"
-
+    local port=${3:-5555}
     if [ -z "$localhost_name" ] || [ -z "$docker_compose_file" ]; then
         echo "Invalid arguments. Usage: health_check <localhost_name> <docker_compose_file>" >&2
         return 1
     fi
 
-    API="http://${localhost_name}:5555/api/info"
+    API="http://${localhost_name}:${port}/api/info"
 
     MAX_RETRIES=12
     RETRY_DELAY=5
@@ -40,13 +40,15 @@ smoketest_medcat_service() {
 
 integration_test_medcat_service() {
   local localhost_name=$1
-  local api="http://${localhost_name}:5555/api/process"
+  local port=${2:-5555}
+  local api="http://${localhost_name}:${port}/api/process"
   local input_text="The patient was diagnosed with Kidney Failure"
   local input_payload="{\"content\":{\"text\":\"${input_text}\"}}"
   local expected_annotation="Kidney Failure"
 
   echo "Calling POST $api with payload '$input_payload'"
   local actual
+
   actual=$(curl -s -X POST $api \
     -H 'Content-Type: application/json' \
     -d "$input_payload")
@@ -61,6 +63,6 @@ integration_test_medcat_service() {
   else
     echo "Expected: $expected_annotation, Got: $actual_annotation"
     echo -e "Actual response was:\n${actual}"
-    exit 1
+    return 1
   fi
 }
