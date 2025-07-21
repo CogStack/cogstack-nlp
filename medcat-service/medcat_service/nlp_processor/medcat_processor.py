@@ -235,6 +235,7 @@ class MedCatProcessor(NlpProcessor):
 
         try:
             if self.DEID_MODE:
+                # TODO 2025-07-21: deid_multi_texts doesnt exist in medcat 2?
                 ann_res = self.cat.deid_multi_texts(MedCatProcessor._generate_input_doc(content, invalid_doc_ids),
                                                     redact=self.DEID_REDACT)
             else:

@@ -4,11 +4,12 @@ import logging
 import os
 import traceback
 
+from pydantic import ValidationError
 import simplejson as json
 from flask import Blueprint, Response, request
 
 from medcat_service.nlp_service import NlpService
-from medcat_service.types import HealthCheckResponseContainer, ServiceInfo
+from medcat_service.types import BulkProcessAPIInput, HealthCheckResponseContainer, ProcessAPIInput, ServiceInfo
 
 log = logging.getLogger("API")
 log.setLevel(level=os.getenv("APP_LOG_LEVEL", logging.INFO))
@@ -44,12 +45,18 @@ def process(nlp_service: NlpService) -> Response:
     if payload is None or 'content' not in payload or payload['content'] is None:
         return Response(response="Input Payload should be JSON", status=400)
 
+    try:
+        ProcessAPIInput.model_validate(payload)
+    except (ValidationError) as e:
+        return Response(response="Input Payload missing required fields: " + e.json(), status=400)
+
+    payload_validated = ProcessAPIInput(**payload)
     # send across the meta_anns filters in the request.
-    meta_anns_filters = payload.get('meta_anns_filters', None)
+    meta_anns_filters = payload_validated.meta_anns_filters
 
     try:
         result = nlp_service.nlp.process_content(
-            payload['content'], meta_anns_filters=meta_anns_filters)
+            payload_validated.content.model_dump(), meta_anns_filters=meta_anns_filters)
         app_info: ServiceInfo = nlp_service.nlp.get_app_info()
         response = {'result': result, 'medcat_info': app_info.model_dump()}
         return Response(response=json.dumps(response, iterable_as_array=True, default=str),
@@ -72,7 +79,15 @@ def process_bulk(nlp_service: NlpService) -> Response:
         return Response(response="Input Payload should be JSON", status=400)
 
     try:
-        result = nlp_service.nlp.process_content_bulk(payload['content'])
+        BulkProcessAPIInput.model_validate(payload)
+    except (ValidationError):
+        return Response(response="Input Payload missing required fields", status=400)
+
+    payload_validated = BulkProcessAPIInput(**payload)
+
+    try:
+        result = nlp_service.nlp.process_content_bulk(
+            payload_validated.model_dump()['content'])
         app_info: ServiceInfo = nlp_service.nlp.get_app_info()
 
         response = {'result': result,
@@ -93,7 +108,8 @@ def retrain_medcat(nlp_service: NlpService) -> Response:
         return Response(response="Input Payload should be JSON", status=400)
 
     try:
-        result = nlp_service.nlp.retrain_medcat(payload['content'], payload['replace_cdb'])
+        result = nlp_service.nlp.retrain_medcat(
+            payload['content'], payload['replace_cdb'])
         app_info = nlp_service.nlp.get_app_info()
         response = {'result': result,
                     'annotations': payload['content'], 'medcat_info': app_info}

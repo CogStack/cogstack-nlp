@@ -145,6 +145,11 @@ class TestMedcatService(unittest.TestCase):
             data = json.loads(response.get_data(as_text=True))
             self.assertEqual(len(data["result"]["annotations"][0]), 0)
 
+    def testProcessBadRequest(self):
+        payload = {"content": {"bad_request": "NA"}}
+        response = self.client.post(self.ENDPOINT_PROCESS_SINGLE, json=payload)
+        self.assertEqual(response.status_code, 400)
+
     def testProcessBulkBlankDocs(self):
         docs = common.get_blank_documents()
         payload = common.create_payload_content_from_doc_bulk(docs)
