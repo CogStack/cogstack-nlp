@@ -16,7 +16,8 @@ def process(payload: ProcessAPIInput, medcat_processor: MedCatProcessorDep) -> P
     Returns the annotations extracted from a provided single document
     """
     try:
-        process_result = medcat_processor.process_content(payload.content.model_dump(), meta_anns_filters=payload.meta_anns_filters)
+        process_result = medcat_processor.process_content(
+            payload.content.model_dump(), meta_anns_filters=payload.meta_anns_filters)
         app_info = medcat_processor.get_app_info()
         return ProcessAPIResponse(result=process_result, medcat_info=app_info)
     except Exception as e:

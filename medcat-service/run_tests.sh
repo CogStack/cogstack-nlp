@@ -18,13 +18,7 @@ export APP_VOCAB_MODEL="$PWD/models/medmen/vocab.dat"
 echo "Starting the tests ..."
 
 # run the python tests
-python3 -m medcat_service.test.test_service
-if [ "$?" -ne "0" ]; then
-    echo "Error: one or more tests failed"
-    exit 1
-fi
-
-python3 -m medcat_service.test.test_medcat_processor
+python -m unittest discover -s medcat_service/tests
 if [ "$?" -ne "0" ]; then
     echo "Error: one or more tests failed"
     exit 1

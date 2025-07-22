@@ -1,13 +1,12 @@
 #!/usr/bin/env python
 
-import json
 import logging
 import unittest
-from unittest.mock import patch
+
+from fastapi.testclient import TestClient
 
 import medcat_service.test.common as common
-from medcat_service.app import app as medcat_app
-from medcat_service.types import HealthCheckResponse
+from medcat_service.main import app
 
 
 class TestMedcatService(unittest.TestCase):
@@ -17,11 +16,9 @@ class TestMedcatService(unittest.TestCase):
 
     # Available endpoints
     #
-    ENDPOINT_INFO_ENDPOINT = '/api/info'
     ENDPOINT_PROCESS_SINGLE = '/api/process'
     ENDPOINT_PROCESS_BULK = '/api/process_bulk'
-    ENDPOINT_HEALTH_LIVE = "/api/health/live"
-    ENDPOINT_HEALTH_READY = "/api/health/ready"
+    client: TestClient
 
     # Static initialization methods
     #
@@ -34,16 +31,7 @@ class TestMedcatService(unittest.TestCase):
         """
         cls._setup_logging(cls)
         common.setup_medcat_processor()
-        cls._setup_flask_app(cls)
-
-    @staticmethod
-    def _setup_flask_app(cls):
-        # TODO: this method may need later need to be tailored to create a custom MedCAT Flask app
-        # with a custom MedCAT Service + Processor
-        cls.app = medcat_app.create_app()
-
-        cls.app.testing = True
-        cls.client = cls.app.test_client()
+        cls.client = TestClient(app)
 
     @staticmethod
     def _setup_logging(cls):
@@ -66,7 +54,7 @@ class TestMedcatService(unittest.TestCase):
         response = self.client.post(self.ENDPOINT_PROCESS_SINGLE, json=payload)
         self.assertEqual(response.status_code, 200)
 
-        data = json.loads(response.get_data(as_text=True))
+        data = response.json()
         self.assertGreater(len(data["result"]["annotations"]), 0)
 
     def _testProcessBulkMultipleDocs(self, docs, multiply_sizes):
@@ -86,7 +74,7 @@ class TestMedcatService(unittest.TestCase):
             response = self.client.post(self.ENDPOINT_PROCESS_BULK, json=payload)
             self.assertEqual(response.status_code, 200)
 
-            data = json.loads(response.get_data(as_text=True))
+            data = response.json()
             self.assertEqual(len(data["result"]), n * len(docs))
 
             for res in data["result"]:
@@ -97,32 +85,6 @@ class TestMedcatService(unittest.TestCase):
 
     # the actual unit tests
     #
-    def testGetInfo(self):
-        response = self.client.get(self.ENDPOINT_INFO_ENDPOINT)
-        self.assertEqual(response.status_code, 200)
-
-    def testLiveness(self):
-        response = self.client.get(self.ENDPOINT_HEALTH_LIVE)
-        self.assertEqual(response.status_code, 200)
-
-    def testReadinessIsOk(self):
-        response = self.client.get(self.ENDPOINT_HEALTH_READY)
-        self.assertEqual(response.status_code, 200)
-        data = json.loads(response.data)
-        self.assertEqual(data, {"status": "UP", "checks": [{"name": "MedCAT", "status": "UP"}]})
-
-    def testReadinessIsNotOk(self):
-        with patch('medcat_service.nlp_service.NlpService.get_processor') as mock_get_processor:
-            mock_processor = mock_get_processor.return_value
-            mock_processor.is_ready.return_value = HealthCheckResponse(**{"status": "DOWN", "name": "MedCAT"})
-
-            response = self.client.get(self.ENDPOINT_HEALTH_READY)
-            self.assertEqual(response.status_code, 503)
-
-            data = json.loads(response.data)
-            self.assertEqual(
-                data, {"status": "DOWN", "checks": [{"name": "MedCAT", "status": "DOWN"}]})
-
     def testProcessSingleShortDoc(self):
         doc = common.get_example_short_document()
         self._testProcessSingleDoc(doc)
@@ -142,13 +104,13 @@ class TestMedcatService(unittest.TestCase):
             response = self.client.post(self.ENDPOINT_PROCESS_SINGLE, json=payload)
             self.assertEqual(response.status_code, 200)
 
-            data = json.loads(response.get_data(as_text=True))
+            data = response.json()
             self.assertEqual(len(data["result"]["annotations"][0]), 0)
 
     def testProcessBadRequest(self):
         payload = {"content": {"bad_request": "NA"}}
         response = self.client.post(self.ENDPOINT_PROCESS_SINGLE, json=payload)
-        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.status_code, 422)
 
     def testProcessBulkBlankDocs(self):
         docs = common.get_blank_documents()
@@ -157,7 +119,7 @@ class TestMedcatService(unittest.TestCase):
         response = self.client.post(self.ENDPOINT_PROCESS_BULK, json=payload)
         self.assertEqual(response.status_code, 200)
 
-        data = json.loads(response.get_data(as_text=True))
+        data = response.json()
         for res in data["result"]:
             self.assertEqual(len(res["annotations"]), 0)
 

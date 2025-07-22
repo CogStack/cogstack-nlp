@@ -2,12 +2,12 @@ import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from medcat_service.routers import health, process
+from medcat_service.routers import admin, health, process
 from medcat_service.types import HealthCheckFailedException
 
 app = FastAPI(
     title="MedCAT Service",
-    summary="MedCAT Service Annotation API.",
+    summary="MedCAT Service",
     contact={
         "name": "CogStack Org",
         "url": "https://cogstack.org/",
@@ -19,6 +19,7 @@ app = FastAPI(
     },
 )
 
+app.include_router(admin.router)
 app.include_router(health.router)
 app.include_router(process.router)
 
