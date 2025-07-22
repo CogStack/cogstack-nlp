@@ -1,8 +1,9 @@
-
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 
 from medcat_service.routers import health, process
+from medcat_service.types import HealthCheckFailedException
 
 app = FastAPI(
     title="MedCAT Service",
@@ -20,6 +21,12 @@ app = FastAPI(
 
 app.include_router(health.router)
 app.include_router(process.router)
+
+
+@app.exception_handler(HealthCheckFailedException)
+async def healthcheck_failed_exception_handler(request: Request, exc: HealthCheckFailedException):
+    return JSONResponse(status_code=503, content=exc.reason.model_dump())
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -1,7 +1,7 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 
 from medcat_service.dependencies import MedCatProcessorDep
-from medcat_service.types import HealthCheckResponseContainer
+from medcat_service.types import HealthCheckFailedException, HealthCheckResponseContainer
 
 router = APIRouter(tags=["health"])
 
@@ -13,7 +13,7 @@ def liveness() -> HealthCheckResponseContainer:
     """
     response = HealthCheckResponseContainer(status="UP", checks=[])
     if response.status == "DOWN":
-        raise HTTPException(status_code=503, detail=response)
+        raise HealthCheckFailedException(reason=response)
     else:
         return response
 
@@ -29,4 +29,4 @@ def readiness(medcat_processor: MedCatProcessorDep) -> HealthCheckResponseContai
         return HealthCheckResponseContainer(status="UP", checks=[medcat_is_ready])
     else:
         response = HealthCheckResponseContainer(status="DOWN", checks=[medcat_is_ready])
-        raise HTTPException(status_code=503, detail=response)
+        raise HealthCheckFailedException(reason=response)

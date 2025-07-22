@@ -1,7 +1,8 @@
 from datetime import datetime
+from typing import Dict, List, Optional, Tuple, Union
 
 from pydantic import BaseModel
-from typing_extensions import Any, Dict, List, Literal, Optional, Tuple, Union
+from typing_extensions import Any, Literal
 
 from medcat_service.types_entities import Entity
 
@@ -18,6 +19,11 @@ class HealthCheckResponse(BaseModel):
 class HealthCheckResponseContainer(BaseModel):
     status: Literal["UP", "DOWN"]
     checks: list[HealthCheckResponse]
+
+
+class HealthCheckFailedException(Exception):
+    def __init__(self, reason: HealthCheckResponseContainer):
+        self.reason = reason
 
 
 class NoProtectedBaseModel(BaseModel, protected_namespaces=()):
