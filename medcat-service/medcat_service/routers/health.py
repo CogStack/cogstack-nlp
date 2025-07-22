@@ -6,7 +6,7 @@ from medcat_service.types import HealthCheckResponseContainer
 router = APIRouter(tags=["health"])
 
 
-@router.get("/health/live")
+@router.get("/api/health/live")
 def liveness() -> HealthCheckResponseContainer:
     """
     Liveness API checks if the application is running.
@@ -18,7 +18,7 @@ def liveness() -> HealthCheckResponseContainer:
         return response
 
 
-@router.get("/health/ready")
+@router.get("/api/health/ready")
 def readiness(medcat_processor: MedCatProcessorDep) -> HealthCheckResponseContainer:
     """
     Readiness API checks if the application is ready to start accepting traffic

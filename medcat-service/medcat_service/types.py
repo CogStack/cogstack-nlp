@@ -82,4 +82,4 @@ class ProcessAPIResponse(BaseModel):
 
 class BulkProcessAPIResponse(BaseModel):
     medcat_info: ServiceInfo
-    result: List[Union[ProcessResult, ProcessErrorsResult]]
+    result: List[ProcessResult]
