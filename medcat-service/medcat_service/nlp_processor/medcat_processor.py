@@ -192,8 +192,7 @@ class MedCatProcessor(NlpProcessor):
             else:
                 entities = []
 
-        elapsed_time = (time.time_ns() - start_time_ns) / \
-            10e8  # nanoseconds to seconds
+        elapsed_time = (time.time_ns() - start_time_ns) / 10e8  # nanoseconds to seconds
 
         if kwargs.get("meta_anns_filters"):
             meta_anns_filters = kwargs.get("meta_anns_filters")
@@ -246,10 +245,9 @@ class MedCatProcessor(NlpProcessor):
         except Exception as e:
             self.log.error("Unable to process data", exc_info=e)
 
-        additional_info = {"elapsed_time": str(
-            (time.time_ns() - start_time_ns) / 10e8)}
+        elapsed_time = (time.time_ns() - start_time_ns) / 10e8  # nanoseconds to seconds
 
-        return self._generate_result(content, ann_res, invalid_doc_ids, additional_info)
+        return self._generate_result(content, ann_res, elapsed_time)
 
     def retrain_medcat(self, content, replace_cdb):
         """Retrains Medcat and redeploys model.
@@ -420,14 +418,14 @@ class MedCatProcessor(NlpProcessor):
             else:
                 invalid_doc_idx.append(i)
 
-    def _generate_result(self, in_documents, annotations, invalid_doc_idx, additional_info={}):
+    def _generate_result(self, in_documents, annotations, elapsed_time):
         """Generator function merging the resulting annotations with the input documents.
 
         Args:
             in_documents (list): Array of input documents that contain "text" field.
             annotations (dict): Array of annotations extracted from documents.
-            invalid_doc_idx (list): Array of invalid document idx.
             additional_info (dict, optional): Additional information to include in results. Defaults to {}.
+            elapsed_time: Total elapsed time to get annotations
 
         Yields:
             dict: Merged document with annotations.
@@ -440,29 +438,35 @@ class MedCatProcessor(NlpProcessor):
 
                 entities = list(self.process_entities(annotations.get(i)))
 
-                # parse the result
-                out_res = {"text": str(in_ct["text"]),
-                           "annotations": entities,
-                           "success": True,
-                           "timestamp": NlpProcessor._get_timestamp()}
-                out_res.update(additional_info)
+                out_res = ProcessResult(
+                    text=str(in_ct["text"]),
+                    annotations=entities,
+                    success=True,
+                    timestamp=NlpProcessor._get_timestamp(),
+                    elapsed_time=elapsed_time,
+                    footer=in_ct.get("footer"),
+                )
             elif self.DEID_MODE:
-                out_res = {"text": in_ct["text"],
-                           "annotations": [],
-                           "success": True,
-                           "timestamp": NlpProcessor._get_timestamp()}
-                out_res.update(additional_info)
+
+                out_res = ProcessResult(
+                    text=str(in_ct["text"]),
+                    annotations=[],
+                    success=True,
+                    timestamp=NlpProcessor._get_timestamp(),
+                    elapsed_time=elapsed_time,
+                    footer=in_ct.get("footer"),
+                )
             else:
                 # Don't fetch an annotation set
                 # as the document was invalid
-                out_res = {"text": in_ct["text"],
-                           "annotations": [],
-                           "success": True,
-                           "timestamp": NlpProcessor._get_timestamp()}
-
-            # append the footer
-            if "footer" in in_ct:
-                out_res["footer"] = in_ct["footer"]
+                out_res = ProcessResult(
+                    text=str(in_ct["text"]),
+                    annotations=[],
+                    success=True,
+                    timestamp=NlpProcessor._get_timestamp(),
+                    elapsed_time=elapsed_time,
+                    footer=in_ct.get("footer"),
+                )
 
             yield out_res
 

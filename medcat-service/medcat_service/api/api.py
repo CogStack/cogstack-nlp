@@ -4,9 +4,9 @@ import logging
 import os
 import traceback
 
-from pydantic import ValidationError
 import simplejson as json
 from flask import Blueprint, Response, request
+from pydantic import ValidationError
 
 from medcat_service.nlp_service import NlpService
 from medcat_service.types import (
@@ -63,12 +63,10 @@ def process(nlp_service: NlpService) -> Response:
 
     try:
         process_result = nlp_service.nlp.process_content(
-            payload_validated.content.model_dump(), meta_anns_filters=meta_anns_filters
-        )
+            payload_validated.content.model_dump(), meta_anns_filters=meta_anns_filters)
         app_info: ServiceInfo = nlp_service.nlp.get_app_info()
 
-        response = ProcessAPIResponse(
-            result=process_result, medcat_info=app_info)
+        response = ProcessAPIResponse(result=process_result, medcat_info=app_info)
 
         return Response(response=response.model_dump_json(), status=200, mimetype="application/json")
 
@@ -96,15 +94,12 @@ def process_bulk(nlp_service: NlpService) -> Response:
     payload_validated = BulkProcessAPIInput(**payload)
 
     try:
-        result = list(nlp_service.nlp.process_content_bulk(
-            payload_validated.model_dump()["content"]))
+        result = list(nlp_service.nlp.process_content_bulk(payload_validated.model_dump()["content"]))
         app_info: ServiceInfo = nlp_service.nlp.get_app_info()
 
         response = BulkProcessAPIResponse(result=result, medcat_info=app_info)
 
-        return Response(
-            response=response.model_dump_json(), status=200, mimetype="application/json"
-        )
+        return Response(response=response.model_dump_json(), status=200, mimetype="application/json")
 
     except Exception as e:
         log.error(traceback.format_exc())
@@ -118,11 +113,9 @@ def retrain_medcat(nlp_service: NlpService) -> Response:
         return Response(response="Input Payload should be JSON", status=400)
 
     try:
-        result = nlp_service.nlp.retrain_medcat(
-            payload["content"], payload["replace_cdb"])
+        result = nlp_service.nlp.retrain_medcat(payload["content"], payload["replace_cdb"])
         app_info = nlp_service.nlp.get_app_info()
-        response = {"result": result,
-                    "annotations": payload["content"], "medcat_info": app_info}
+        response = {"result": result, "annotations": payload["content"], "medcat_info": app_info}
         return Response(response=json.dumps(response), status=200, mimetype="application/json")
 
     except Exception as e:
@@ -147,10 +140,8 @@ def readiness(nlp_service: NlpService) -> Response:
     medcat_is_ready = nlp_service.get_processor().is_ready()
 
     if medcat_is_ready.status == "UP":
-        response = HealthCheckResponseContainer(
-            status="UP", checks=[medcat_is_ready])
+        response = HealthCheckResponseContainer(status="UP", checks=[medcat_is_ready])
         return Response(response=response.model_dump_json(), status=200)
     else:
-        response = HealthCheckResponseContainer(
-            status="DOWN", checks=[medcat_is_ready])
+        response = HealthCheckResponseContainer(status="DOWN", checks=[medcat_is_ready])
         return Response(response=response.model_dump_json(), status=503)
