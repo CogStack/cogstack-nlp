@@ -28,7 +28,8 @@ async def retrain_medcat(request: Request, medcat_processor: MedCatProcessorDep)
     try:
         result = medcat_processor.retrain_medcat(payload["content"], payload["replace_cdb"])
         app_info = medcat_processor.get_app_info()
-        return JSONResponse(status_code=200, content={"result": result, "annotations": payload["content"], "medcat_info": app_info})
+        return JSONResponse(status_code=200, content={"result": result, "annotations": payload["content"],
+                                                      "medcat_info": app_info})
 
     except Exception as e:
         log.error(traceback.format_exc())
