@@ -24,6 +24,7 @@ app.include_router(health.router)
 app.include_router(process.router)
 app.include_router(legacy.router)
 
+
 @app.exception_handler(HealthCheckFailedException)
 async def healthcheck_failed_exception_handler(request: Request, exc: HealthCheckFailedException):
     return JSONResponse(status_code=503, content=exc.reason.model_dump())

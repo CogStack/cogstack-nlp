@@ -6,18 +6,18 @@ from fastapi.responses import JSONResponse
 
 from medcat_service.dependencies import MedCatProcessorDep
 
-router = APIRouter(tags=["health"])
+router = APIRouter(tags=["Legacy"])
 log = logging.getLogger(__name__)
 
 
-@router.post("/api/retrain_medcat", include_in_schema=False)
+@router.post("/api/retrain_medcat")
 async def retrain_medcat(request: Request, medcat_processor: MedCatProcessorDep) -> JSONResponse:
     """
     Deprecated API.
 
     Retrain Medcat.
 
-    This has been migrated from Flask to FastAPI without full testing. Contact CogStack if any issues are found. 
+    This has been migrated from Flask to FastAPI without full testing. Contact CogStack if any issues are found.
     """
 
     payload = await request.json()
