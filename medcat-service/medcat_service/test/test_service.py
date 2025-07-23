@@ -150,6 +150,21 @@ class TestMedcatService(unittest.TestCase):
         response = self.client.post(self.ENDPOINT_PROCESS_SINGLE, json=payload)
         self.assertEqual(response.status_code, 400)
 
+    def testProcessMetaAnnsFilter(self):
+        payload = {
+            "content": {
+                "text": "< some clinical text>"
+            },
+            "meta_anns_filters": [
+                ["Presence", ["True"]],
+                ["Subject", ["Patient", "Family"]],
+                ["Time", ["Recent"]]
+            ]
+        }
+        response = self.client.post(self.ENDPOINT_PROCESS_SINGLE, json=payload)
+        self.assertEqual(response.status_code, 500,
+                          "Bug: KeyError: 'Presence' on all(e['meta_anns'][task]['value'] in filter_values")
+
     def testProcessBulkBlankDocs(self):
         docs = common.get_blank_documents()
         payload = common.create_payload_content_from_doc_bulk(docs)
