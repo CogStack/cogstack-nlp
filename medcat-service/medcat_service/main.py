@@ -2,7 +2,7 @@ import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from medcat_service.routers import admin, health, process, legacy
+from medcat_service.routers import admin, health, legacy, process
 from medcat_service.types import HealthCheckFailedException
 
 app = FastAPI(

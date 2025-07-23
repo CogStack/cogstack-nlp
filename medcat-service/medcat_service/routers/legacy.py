@@ -15,7 +15,9 @@ async def retrain_medcat(request: Request, medcat_processor: MedCatProcessorDep)
     """
     Deprecated API.
 
-    Retrain Medcat
+    Retrain Medcat.
+
+    This has been migrated from Flask to FastAPI without full testing. Contact CogStack if any issues are found. 
     """
 
     payload = await request.json()
