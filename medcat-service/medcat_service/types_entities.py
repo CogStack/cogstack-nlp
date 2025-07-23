@@ -1,8 +1,8 @@
 from typing_extensions import TypedDict
 
 # Duplicates from medcat/data/entities.py
-# These have been copied here and edited in order to fix the error: 
-# "pydantic.errors.PydanticUserError: Please use `typing_extensions.TypedDict` 
+# These have been copied here and edited in order to fix the error:
+# "pydantic.errors.PydanticUserError: Please use `typing_extensions.TypedDict`
 #   instead of `typing.TypedDict` on Python < 3.12."
 
 
