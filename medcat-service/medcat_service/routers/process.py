@@ -1,6 +1,7 @@
 import logging
+from typing import Annotated
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Body
 
 from medcat_service.dependencies import MedCatProcessorDep
 from medcat_service.types import BulkProcessAPIInput, BulkProcessAPIResponse, ProcessAPIInput, ProcessAPIResponse
@@ -11,7 +12,24 @@ router = APIRouter(tags=["Process"])
 
 
 @router.post("/api/process")
-def process(payload: ProcessAPIInput, medcat_processor: MedCatProcessorDep) -> ProcessAPIResponse:
+def process(
+        payload: Annotated[
+            ProcessAPIInput,
+            Body(
+                examples=[
+                    {
+                        "content": {
+                            "text": "Patient had been diagnosed with acute Kidney Failure the week before",
+                        }
+                    },
+                    {
+                        "content": {"text": "Patient had been diagnosed with acute Kidney Failure the week before", "footer": "string"},
+                        "meta_anns_filters": [("Presence", ["True"]), ("Subject", ["Patient", "Family"])],
+                    },
+                ]
+            ),
+        ],
+        medcat_processor: MedCatProcessorDep) -> ProcessAPIResponse:
     """
     Returns the annotations extracted from a provided single document
     """
