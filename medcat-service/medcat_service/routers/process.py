@@ -30,7 +30,10 @@ def process(
                     "summary": "A complete example",
                     "description": "Complete use adds a footer and meta annotations filter.",
                     "value": {
-                        "content": {"text": "Patient had been diagnosed with acute Kidney Failure the week before", "footer": "string"},
+                        "content": {
+                            "text": "Patient had been diagnosed with acute Kidney Failure the week before",
+                            "footer": "string",
+                        },
                         "meta_anns_filters": [("Presence", ["True"]), ("Subject", ["Patient", "Family"])],
                     },
                 },
@@ -43,7 +46,9 @@ def process(
     Returns the annotations extracted from a provided single document
     """
     try:
-        process_result = medcat_processor.process_content(payload.content.model_dump(), meta_anns_filters=payload.meta_anns_filters)
+        process_result = medcat_processor.process_content(
+            payload.content.model_dump(), meta_anns_filters=payload.meta_anns_filters
+        )
         app_info = medcat_processor.get_app_info()
         return ProcessAPIResponse(result=process_result, medcat_info=app_info)
     except Exception as e:
