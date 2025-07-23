@@ -71,7 +71,7 @@ class MedCatProcessor():
         :return: timestamp string
         """
         return datetime.now(tz=timezone.utc).isoformat(timespec="milliseconds")
-    
+
     def _check_medcat_readiness(self) -> bool:
         readiness_text = "MedCAT is ready and can get_entities"
         try:
@@ -147,7 +147,7 @@ class MedCatProcessor():
             nlp_result = ProcessErrorsResult(
                 success=False,
                 errors=[error_msg],
-                timestamp=NlpProcessor._get_timestamp(),
+                timestamp=self._get_timestamp(),
             )
 
             return nlp_result
@@ -182,7 +182,7 @@ class MedCatProcessor():
             text=str(text),
             annotations=entities,
             success=True,
-            timestamp=NlpProcessor._get_timestamp(),
+            timestamp=self._get_timestamp(),
             elapsed_time=elapsed_time,
             footer=content.get("footer"),
         )
@@ -418,7 +418,7 @@ class MedCatProcessor():
                     text=str(in_ct["text"]),
                     annotations=entities,
                     success=True,
-                    timestamp=NlpProcessor._get_timestamp(),
+                    timestamp=self._get_timestamp(),
                     elapsed_time=elapsed_time,
                     footer=in_ct.get("footer"),
                 )
@@ -428,7 +428,7 @@ class MedCatProcessor():
                     text=str(in_ct["text"]),
                     annotations=[],
                     success=True,
-                    timestamp=NlpProcessor._get_timestamp(),
+                    timestamp=self._get_timestamp(),
                     elapsed_time=elapsed_time,
                     footer=in_ct.get("footer"),
                 )
@@ -439,7 +439,7 @@ class MedCatProcessor():
                     text=str(in_ct["text"]),
                     annotations=[],
                     success=True,
-                    timestamp=NlpProcessor._get_timestamp(),
+                    timestamp=self._get_timestamp(),
                     elapsed_time=elapsed_time,
                     footer=in_ct.get("footer"),
                 )
