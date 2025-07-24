@@ -28,6 +28,7 @@ class EntityAnnotationDisplay(BaseModel):
     """
     DIsplay data format for use in a datatable
     """
+
     pretty_name: str
     identifier: str
     score: float
@@ -41,6 +42,7 @@ class EntityResponse(BaseModel):
     """
     Expected data format of gradio highlightedtext component
     """
+
     entities: List[EntityAnnotation]
     text: str
 
@@ -65,7 +67,7 @@ def convert_annotation_to_display_model(entity: Entity) -> EntityAnnotationDispl
         end=entity.get("end", -1),
         id=entity.get("id", -1),
         # medcat-demo-app/webapp/demo/views.py
-        # if key == 'meta_anns': 
+        # if key == 'meta_anns':
         # meta_anns=ent.get("meta_anns", {})
         # if meta_anns:
         # for meta_ann in meta_anns.keys():
