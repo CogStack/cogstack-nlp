@@ -8,3 +8,4 @@ transformers>=4.34.0,<5.0.0
 requests==2.32.4
 fastapi[standard]==0.113.0
 pydantic==2.9.2
+pydantic-settings==2.10.1
