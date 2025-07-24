@@ -64,7 +64,8 @@ def convert_annotation_to_display_model(entity: Entity) -> EntityAnnotationDispl
         start=entity.get("start", -1),
         end=entity.get("end", -1),
         id=entity.get("id", -1),
-        # if key == 'meta_anns': # https://github.com/CogStack/cogstack-nlp/blob/e55bf6cd3fd453c0feafb10f50d33d5732c7ace0/medcat-demo-app/webapp/demo/views.py
+        # medcat-demo-app/webapp/demo/views.py
+        # if key == 'meta_anns': 
         # meta_anns=ent.get("meta_anns", {})
         # if meta_anns:
         # for meta_ann in meta_anns.keys():
@@ -121,7 +122,7 @@ He had been experiencing falling spells without associated LOC up to several tim
 MEDS: procardia SR, Lasix, Ecotrin, KCL, Digoxin, Colace, Coumadin.
 
 PMH: 1)8/92 evaluation for presyncope (Echocardiogram showed: AV fibrosis/calcification, AV stenosis/insufficiency, MV stenosis with annular calcification and regurgitation, moderate TR, Decreased LV systolic function, severe LAE. MRI brain: focal areas of increased T2 signal in the left cerebellum and in the brainstem probably representing microvascular ischemic disease. IVG (MUGA scan)revealed: global hypokinesis of the LV and biventricular dysfunction, RV ejection Fx 45% and LV ejection Fx 39%. He was subsequently placed on coumadin severe valvular heart disease), 2)HTN, 3)Rheumatic fever and heart disease, 4)COPD, 5)ETOH abuse, 6)colonic polyps, 7)CAD, 8)CHF, 9)Appendectomy, 10)Junctional tachycardia.
-"""
+"""  # noqa: E501
 
 article_footer = """
 ## Disclaimer
@@ -130,7 +131,7 @@ This software is intended solely for the testing purposes and non-commercial use
 contact@cogstack.com for more information.
 
 Please note this is a limited version of MedCAT and it is not trained or validated by clinicans.
-"""
+"""  # noqa: E501
 
 io = gr.Interface(
     fn=process_input,
