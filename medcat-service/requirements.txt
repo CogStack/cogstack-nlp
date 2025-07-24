@@ -6,6 +6,6 @@ medcat[meta-cat,spacy,deid]~=2.0.0b
 # pinned because of issues with de-id models and past models (it will not do any de-id)
 transformers>=4.34.0,<5.0.0
 requests==2.32.4
-fastapi[standard]==0.113.0
+fastapi[standard]==0.115.2
 pydantic==2.9.2
 gradio==5.38.0
