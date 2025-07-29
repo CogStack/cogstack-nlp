@@ -2,11 +2,11 @@ import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from medcat_service.config import Settings
+from medcat_service.dependencies import get_settings
 from medcat_service.routers import admin, health, legacy, process
 from medcat_service.types import HealthCheckFailedException
 
-settings = Settings()
+settings = get_settings()
 
 app = FastAPI(
     title="MedCAT Service",
