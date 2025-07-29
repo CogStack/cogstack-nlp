@@ -14,7 +14,7 @@ def get_medcat_processor() -> MedCatProcessor:
 
 @lru_cache
 def get_settings() -> Settings:
-    return Settings() 
+    return Settings()
 
 
 MedCatProcessorDep = Annotated[MedCatProcessor, Depends(get_medcat_processor)]
