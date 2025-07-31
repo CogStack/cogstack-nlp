@@ -123,7 +123,9 @@ class TestMedcatService(unittest.TestCase):
                 ["Time", ["Recent"]]
             ]
         }
-        response = self.client.post(self.ENDPOINT_PROCESS_SINGLE, json=payload)
+
+        a_client = TestClient(app, raise_server_exceptions=False)
+        response = a_client.post(self.ENDPOINT_PROCESS_SINGLE, json=payload)
         self.assertEqual(
             response.status_code, 500,
             "Bug: KeyError: 'Presence' on all(e['meta_anns'][task]['value'] in filter_values")
