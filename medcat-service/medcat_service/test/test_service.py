@@ -124,8 +124,9 @@ class TestMedcatService(unittest.TestCase):
             ]
         }
         response = self.client.post(self.ENDPOINT_PROCESS_SINGLE, json=payload)
-        self.assertEqual(response.status_code, 500,
-                          "Bug: KeyError: 'Presence' on all(e['meta_anns'][task]['value'] in filter_values")
+        self.assertEqual(
+            response.status_code, 500,
+            "Bug: KeyError: 'Presence' on all(e['meta_anns'][task]['value'] in filter_values")
 
     def testProcessBulkBlankDocs(self):
         docs = common.get_blank_documents()
