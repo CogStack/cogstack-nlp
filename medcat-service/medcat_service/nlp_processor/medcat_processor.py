@@ -17,9 +17,10 @@ from medcat.vocab import Vocab
 from medcat_service.types import HealthCheckResponse, ModelCardInfo, ProcessErrorsResult, ProcessResult, ServiceInfo
 
 
-class NlpProcessor:
-    """
-    This class defines an interface for NLP Processor
+class MedCatProcessor():
+    """"
+    MedCAT Processor class is wrapper over MedCAT that implements annotations extractions functionality
+    (both single and bulk processing) that can be easily exposed for an API.
     """
 
     def __init__(self):
@@ -31,39 +32,6 @@ class NlpProcessor:
 
         self.log.debug("APP log level set to : " + str(app_log_level))
         self.log.debug("MedCAT log level set to : " + str(medcat_log_level))
-
-    def get_app_info(self):
-        pass
-
-    def process_content(self, content, *args, **kwargs):
-        pass
-
-    def process_content_bulk(self, content, *args, **kwargs):
-        pass
-
-    def is_ready(self) -> HealthCheckResponse:
-        return HealthCheckResponse(
-            name="MedCAT",
-            status="DOWN"
-        )
-
-    @staticmethod
-    def _get_timestamp():
-        """
-        Returns the current timestamp in ISO 8601 format. Formatted as "yyyy-MM-dd"T"HH:mm:ss.SSSXXX".
-        :return: timestamp string
-        """
-        return datetime.now(tz=timezone.utc).isoformat(timespec="milliseconds")
-
-
-class MedCatProcessor(NlpProcessor):
-    """"
-    MedCAT Processor class is wrapper over MedCAT that implements annotations extractions functionality
-    (both single and bulk processing) that can be easily exposed for an API.
-    """
-
-    def __init__(self):
-        super().__init__()
 
         self.log.info("Initializing MedCAT processor ...")
         self._is_ready_flag = False
@@ -95,6 +63,14 @@ class MedCatProcessor(NlpProcessor):
         self.cat.train = os.getenv("APP_TRAINING_MODE", False)
 
         self._is_ready_flag = self._check_medcat_readiness()
+
+    @staticmethod
+    def _get_timestamp():
+        """
+        Returns the current timestamp in ISO 8601 format. Formatted as "yyyy-MM-dd"T"HH:mm:ss.SSSXXX".
+        :return: timestamp string
+        """
+        return datetime.now(tz=timezone.utc).isoformat(timespec="milliseconds")
 
     def _check_medcat_readiness(self) -> bool:
         readiness_text = "MedCAT is ready and can get_entities"
@@ -171,7 +147,7 @@ class MedCatProcessor(NlpProcessor):
             nlp_result = ProcessErrorsResult(
                 success=False,
                 errors=[error_msg],
-                timestamp=NlpProcessor._get_timestamp(),
+                timestamp=self._get_timestamp(),
             )
 
             return nlp_result
@@ -206,7 +182,7 @@ class MedCatProcessor(NlpProcessor):
             text=str(text),
             annotations=entities,
             success=True,
-            timestamp=NlpProcessor._get_timestamp(),
+            timestamp=self._get_timestamp(),
             elapsed_time=elapsed_time,
             footer=content.get("footer"),
         )
@@ -442,7 +418,7 @@ class MedCatProcessor(NlpProcessor):
                     text=str(in_ct["text"]),
                     annotations=entities,
                     success=True,
-                    timestamp=NlpProcessor._get_timestamp(),
+                    timestamp=self._get_timestamp(),
                     elapsed_time=elapsed_time,
                     footer=in_ct.get("footer"),
                 )
@@ -452,7 +428,7 @@ class MedCatProcessor(NlpProcessor):
                     text=str(in_ct["text"]),
                     annotations=[],
                     success=True,
-                    timestamp=NlpProcessor._get_timestamp(),
+                    timestamp=self._get_timestamp(),
                     elapsed_time=elapsed_time,
                     footer=in_ct.get("footer"),
                 )
@@ -463,7 +439,7 @@ class MedCatProcessor(NlpProcessor):
                     text=str(in_ct["text"]),
                     annotations=[],
                     success=True,
-                    timestamp=NlpProcessor._get_timestamp(),
+                    timestamp=self._get_timestamp(),
                     elapsed_time=elapsed_time,
                     footer=in_ct.get("footer"),
                 )

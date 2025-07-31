@@ -1,7 +1,8 @@
 from datetime import datetime
+from typing import Dict, List, Optional, Tuple, Union
 
-from pydantic import BaseModel
-from typing_extensions import Any, Dict, List, Literal, Optional, Tuple, Union
+from pydantic import BaseModel, Field
+from typing_extensions import Any, Literal
 
 from medcat_service.types_entities import Entity
 
@@ -18,6 +19,11 @@ class HealthCheckResponse(BaseModel):
 class HealthCheckResponseContainer(BaseModel):
     status: Literal["UP", "DOWN"]
     checks: list[HealthCheckResponse]
+
+
+class HealthCheckFailedException(Exception):
+    def __init__(self, reason: HealthCheckResponseContainer):
+        self.reason = reason
 
 
 class NoProtectedBaseModel(BaseModel, protected_namespaces=()):
@@ -39,16 +45,23 @@ class ServiceInfo(NoProtectedBaseModel):
 
 
 class ProcessAPIInputContent(BaseModel):
-    text: str
+    text: str = Field(examples=["Patient had been diagnosed with acute Kidney Failure the week before"])
     footer: Optional[str] = None
 
 
 class ProcessAPIInput(BaseModel):
     content: ProcessAPIInputContent
-    meta_anns_filters: Optional[List[Tuple[str, List[str]]]] = None
+    meta_anns_filters: Optional[List[Tuple[str, List[str]]]] = Field(default=None,
+                                                                     examples=[
+                                                                         [("Presence", ["True"]),
+                                                                          ("Subject", ["Patient", "Family"])]
+                                                                     ])
     """
-    Optional list of (task, values) pairs to filter entities by their meta annotations.
-    Example: [('Presence', ['True']), ('Subject', ['Patient', 'Family'])]
+    meta_anns_filters (List[Tuple[str, List[str]]]): List of task and filter values pairs to filter
+        entities by. Example: meta_anns_filters = [("Presence", ["True"]),
+        ("Subject", ["Patient", "Family"])] would filter entities where each
+        entity.meta_anns['Presence']['value'] is 'True' and
+        entity.meta_anns['Subject']['value'] is 'Patient' or 'Family'
     """
 
 
@@ -82,4 +95,4 @@ class ProcessAPIResponse(BaseModel):
 
 class BulkProcessAPIResponse(BaseModel):
     medcat_info: ServiceInfo
-    result: List[Union[ProcessResult, ProcessErrorsResult]]
+    result: List[ProcessResult]

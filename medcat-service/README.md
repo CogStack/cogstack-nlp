@@ -29,7 +29,7 @@ The application can be run either as a standalone Python application or as runni
 Please note that prior running the application a number of requirements need to installed (see: `requirements.txt`).
 
 There are two scripts provided implementing starting the application:
-- `start_service_debug.sh` - starts the application in the development mode and using `werkzeug` server for serving Flask applications,
+- `start_service_debug.sh` - starts the application in the development mode
 - `start_service_production.sh` - starts the application in 'production' mode and using `gunicorn` server.
 
 ## Running in a Docker container
