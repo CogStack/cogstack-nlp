@@ -130,7 +130,7 @@ class TestMedcatService(unittest.TestCase):
             response.status_code, 500,
             """
             This test currently shows that there is a bug with the meta anns filter.
-            Correct version should return 200. 
+            Correct version should return 200.
             KeyError: 'Presence' on all(e['meta_anns'][task]['vaue'] in filter_values"
             """)
 
