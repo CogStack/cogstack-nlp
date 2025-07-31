@@ -17,7 +17,7 @@ with open("install_requires.txt") as f:
 setuptools.setup(
     name="medcat",
     setup_requires=["setuptools_scm"],
-    use_scm_version={"local_scheme": "no-local-version", "fallback_version": "unknown"},
+    use_scm_version={"local_scheme": "no-local-version", "fallback_version": "0.0.0"},
     author="w-is-h",
     author_email="w.kraljevic@gmail.com",
     description="Concept annotation tool for Electronic Health Records",
