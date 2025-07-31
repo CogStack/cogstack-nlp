@@ -128,7 +128,11 @@ class TestMedcatService(unittest.TestCase):
         response = a_client.post(self.ENDPOINT_PROCESS_SINGLE, json=payload)
         self.assertEqual(
             response.status_code, 500,
-            "Bug: KeyError: 'Presence' on all(e['meta_anns'][task]['value'] in filter_values")
+            """
+            This test currently shows that there is a bug with the meta anns filter.
+            Correct version should return 200. 
+            KeyError: 'Presence' on all(e['meta_anns'][task]['vaue'] in filter_values"
+            """)
 
     def testProcessBulkBlankDocs(self):
         docs = common.get_blank_documents()
