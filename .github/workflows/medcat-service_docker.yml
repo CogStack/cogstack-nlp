@@ -10,8 +10,6 @@ on:
       - 'medcat-v2/**'
       - 'medcat-service/**'
       - '.github/workflows/medcat-service**'
-  release:
-    types: [published]
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -54,6 +52,7 @@ jobs:
             type=sha
             # Create version tag based on tag prefix
             type=match,pattern=medcat-service/v(\d+\.\d+\.\d+),group=1
+          flavor: latest=false
 
       - name: Make medact-v2 available within build
         run: cp -r ../medcat-v2 medcat-v2
@@ -88,6 +87,7 @@ jobs:
             type=sha
             # Create version tag based on tag prefix
             type=match,pattern=medcat-service/v(\d+\.\d+\.\d+),group=1
+          flavor: latest=false
           build-args: |
             REINSTALL_CORE_FROM_LOCAL=true
 
