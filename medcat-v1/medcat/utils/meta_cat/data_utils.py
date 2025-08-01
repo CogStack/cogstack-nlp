@@ -1,9 +1,13 @@
-from typing import Any, Dict, Optional, Tuple, Iterable, List, Union
+from typing import Any, Dict, Optional, Tuple, Iterable, List, Union, cast
 from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBase
 import copy
 import logging
 
 logger = logging.getLogger(__name__)
+
+MCDataSetCategoryItem = Tuple[List[int], list[int], str]
+MCDataSetCategory = List[MCDataSetCategoryItem]
+MCDataSet = Dict[str, MCDataSetCategory]
 
 
 def prepare_from_json(data: Dict,
@@ -13,7 +17,8 @@ def prepare_from_json(data: Dict,
                       cui_filter: Optional[set] = None,
                       replace_center: Optional[str] = None,
                       prerequisites: Dict = {},
-                      lowercase: bool = True) -> Dict:
+                      lowercase: bool = True
+                      ) -> MCDataSet:
     """Convert the data from a json format into a CSV-like format for training. This function is not very efficient (the one
     working with spacy documents as part of the meta_cat.pipe method is much better). If your dataset is > 1M documents think
     about rewriting this function - but would be strange to have more than 1M manually annotated documents.
@@ -39,10 +44,10 @@ def prepare_from_json(data: Dict,
             CUI filter if set. Defaults to None.
 
     Returns:
-        out_data (dict):
+        out_data (MCDataSet):
             Example: {'category_name': [('<category_value>', '<[tokens]>', '<center_token>'), ...], ...}
     """
-    out_data: Dict = {}
+    out_data: MCDataSet = {}
 
     # inline list just to lower indentation
     for document in [d for p in data['projects'] for d in p['documents']]:
@@ -113,7 +118,9 @@ def prepare_from_json(data: Dict,
                     name = meta_ann['name']
                     value = meta_ann['value']
 
-                    sample = [tkns, cpos_new, value]
+                    # NOTE: easier to do typing for tuples, but need assignment
+                    #       so it'll be a list
+                    sample = cast(MCDataSetCategoryItem, [tkns, cpos_new, value])
 
                     if name in out_data:
                         out_data[name].append(sample)
@@ -155,7 +162,7 @@ def prepare_for_oversampled_data(data: List,
     return data_sampled
 
 
-def encode_category_values(data: Dict, existing_category_value2id: Optional[Dict] = None,
+def encode_category_values(data: MCDataSetCategory, existing_category_value2id: Optional[Dict] = None,
                            category_undersample=None, alternative_class_names: List[List] = []) -> Tuple:
     """Converts the category values in the data outputted by `prepare_from_json`
     into integer values.
@@ -181,7 +188,6 @@ def encode_category_values(data: Dict, existing_category_value2id: Optional[Dict
     Raises:
         Exception: If categoryvalue2id is pre-defined and its labels do not match the labels found in the data
     """
-    data = list(data)
     if existing_category_value2id is not None:
         category_value2id = existing_category_value2id
     else:
@@ -233,7 +239,9 @@ def encode_category_values(data: Dict, existing_category_value2id: Optional[Dict
 
     # Map values to numbers
     for i in range(len(data)):
-        data[i][2] = category_value2id[data[i][2]]
+        # NOTE: this is assignment to what is a tuple in terms
+        #       of typing, but a list in terms of implementation
+        data[i][2] = category_value2id[data[i][2]]  # type: ignore
 
     # Creating dict with labels and its number of samples
     label_data_ = {v: 0 for v in category_value2id.values()}
