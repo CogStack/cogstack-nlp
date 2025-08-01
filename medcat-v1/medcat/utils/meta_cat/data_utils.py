@@ -44,79 +44,81 @@ def prepare_from_json(data: Dict,
     """
     out_data: Dict = {}
 
-    for project in data['projects']:
-        for document in project['documents']:
-            text = str(document['text'])
-            if lowercase:
-                text = text.lower()
+    # inline list just to lower indentation
+    for document in [d for p in data['projects'] for d in p['documents']]:
+        text = str(document['text'])
+        if lowercase:
+            text = text.lower()
 
-            if len(text) > 0:
-                doc_text = tokenizer(text)
+        if len(text) <= 0:
+            continue
+        doc_text = tokenizer(text)
 
-                for ann in document.get('annotations', document.get('entities',
-                                                                    {}).values()):  # A hack to support entities and annotations
-                    cui = ann['cui']
-                    skip = False
-                    if 'meta_anns' in ann and prerequisites:
-                        # It is possible to require certain meta_anns to exist and have a specific value
-                        for meta_ann in prerequisites:
-                            if meta_ann not in ann['meta_anns'] or ann['meta_anns'][meta_ann]['value'] != prerequisites[meta_ann]:
-                                # Skip this annotation as the prerequisite is not met
-                                skip = True
-                                break
+        for ann in document.get('annotations', document.get('entities',
+                                                            {}).values()):  # A hack to support entities and annotations
+            cui = ann['cui']
+            skip = False
+            if 'meta_anns' in ann and prerequisites:
+                # It is possible to require certain meta_anns to exist and have a specific value
+                for meta_ann in prerequisites:
+                    if meta_ann not in ann['meta_anns'] or ann['meta_anns'][meta_ann]['value'] != prerequisites[meta_ann]:
+                        # Skip this annotation as the prerequisite is not met
+                        skip = True
+                        break
 
-                    if not skip and (cui_filter is None or not cui_filter or cui in cui_filter):
-                        if ann.get('validated', True) and (
-                                not ann.get('deleted', False) and not ann.get('killed', False)
-                                and not ann.get('irrelevant', False)):
-                            start = ann['start']
-                            end = ann['end']
+            if skip or (cui_filter is not None and cui_filter and cui not in cui_filter):
+                continue
+            if ann.get('validated', True) and (
+                    not ann.get('deleted', False) and not ann.get('killed', False)
+                    and not ann.get('irrelevant', False)):
+                start = ann['start']
+                end = ann['end']
 
-                            # Updated implementation to extract all the tokens for the medical entity (rather than the one)
-                            ctoken_idx = []
-                            for ind, pair in enumerate(doc_text['offset_mapping']):
-                                if start <= pair[0] or start <= pair[1]:
-                                    if end <= pair[1]:
-                                        ctoken_idx.append(ind)
-                                        break
-                                    else:
-                                        ctoken_idx.append(ind)
+                # Updated implementation to extract all the tokens for the medical entity (rather than the one)
+                ctoken_idx = []
+                for ind, pair in enumerate(doc_text['offset_mapping']):
+                    if start <= pair[0] or start <= pair[1]:
+                        if end <= pair[1]:
+                            ctoken_idx.append(ind)
+                            break
+                        else:
+                            ctoken_idx.append(ind)
 
-                            _start = max(0, ctoken_idx[0] - cntx_left)
-                            _end = min(len(doc_text['input_ids']), ctoken_idx[-1] + 1 + cntx_right)
+                _start = max(0, ctoken_idx[0] - cntx_left)
+                _end = min(len(doc_text['input_ids']), ctoken_idx[-1] + 1 + cntx_right)
 
-                            cpos = cntx_left + min(0, ind - cntx_left)
-                            cpos_new = [x - _start for x in ctoken_idx]
-                            tkns = doc_text['input_ids'][_start:_end]
+                cpos = cntx_left + min(0, ind - cntx_left)
+                cpos_new = [x - _start for x in ctoken_idx]
+                tkns = doc_text['input_ids'][_start:_end]
 
-                            if replace_center is not None:
-                                if lowercase:
-                                    replace_center = replace_center.lower()
-                                for p_ind, pair in enumerate(doc_text['offset_mapping']):
-                                    if start >= pair[0] and start < pair[1]:
-                                        s_ind = p_ind
-                                    if end > pair[0] and end <= pair[1]:
-                                        e_ind = p_ind
+                if replace_center is not None:
+                    if lowercase:
+                        replace_center = replace_center.lower()
+                    for p_ind, pair in enumerate(doc_text['offset_mapping']):
+                        if start >= pair[0] and start < pair[1]:
+                            s_ind = p_ind
+                        if end > pair[0] and end <= pair[1]:
+                            e_ind = p_ind
 
-                                ln = e_ind - s_ind
-                                tkns = tkns[:cpos] + tokenizer(replace_center)['input_ids'] + tkns[cpos + ln + 1:]
+                    ln = e_ind - s_ind
+                    tkns = tkns[:cpos] + tokenizer(replace_center)['input_ids'] + tkns[cpos + ln + 1:]
 
-                            meta_anns: Union[Dict[Any, Any], List, Any] = []
+                meta_anns: Union[Dict[Any, Any], List, Any] = []
 
-                            if 'meta_anns' in ann:
-                                meta_anns = ann['meta_anns'].values() if isinstance(ann['meta_anns'], dict) else ann['meta_anns']
+                if 'meta_anns' in ann:
+                    meta_anns = ann['meta_anns'].values() if isinstance(ann['meta_anns'], dict) else ann['meta_anns']
 
-                            # If the annotation is validated
-                            for meta_ann in meta_anns:
-                                name = meta_ann['name']
-                                value = meta_ann['value']
+                # If the annotation is validated
+                for meta_ann in meta_anns:
+                    name = meta_ann['name']
+                    value = meta_ann['value']
 
-                                sample = [tkns, cpos_new, value]
+                    sample = [tkns, cpos_new, value]
 
-                                if name in out_data:
-                                    out_data[name].append(sample)
-                                else:
-                                    out_data[name] = [sample]
+                    if name in out_data:
+                        out_data[name].append(sample)
+                    else:
+                        out_data[name] = [sample]
     return out_data
 
 
