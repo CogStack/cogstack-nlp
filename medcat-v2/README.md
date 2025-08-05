@@ -1,7 +1,8 @@
 # Medical  <img src="https://github.com/CogStack/cogstack-nlp/blob/main/media/cat-logo.png?raw=true" width=45> oncept Annotation Tool (version 2)
 
 **There's a number of breaking changes in MedCAT v2 compared to v1.**
-Details are outlined [here](docs/breaking_changes.md).
+When moving from v1 to v2, please refer to the [migration guide](docs/migration_guide_v2.md).
+Details on breaking are outlined [here](docs/breaking_changes.md).
 
 [![Build Status](https://github.com/CogStack/cogstack-nlp/actions/workflows/medcat-v2_main.yml/badge.svg?branch=main)](https://github.com/CogStack/cogstack-nlp/actions/workflows/medcat-v2_main.yml/badge.svg?branch=main)
 [![Documentation Status](https://readthedocs.org/projects/cogstack-nlp/badge/?version=latest)](https://readthedocs.org/projects/cogstack-nlp/badge/?version=latest)
