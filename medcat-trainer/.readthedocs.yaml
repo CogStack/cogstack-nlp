@@ -17,7 +17,3 @@ python:
     - requirements: medcat-trainer/docs/requirements.txt
     - method: pip
       path: medcat-trainer/
-  install:
-    - requirements: medcat-v2/docs/requirements.txt
-    - method: pip
-      path: medcat-v2/
