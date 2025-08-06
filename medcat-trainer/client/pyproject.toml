@@ -14,5 +14,5 @@ dependencies = ["requests"]
 
 [project.urls]
 Homepage = "https://github.com/CogStack/cogstack-nlp/"
-Documentation = "https://medcattrainer.readthedocs.io/en/latest/"
+Documentation = "https://docs.cogstack.org/projects/medcat-trainer"
 Source = "https://github.com/CogStack/cogstack-nlp/"

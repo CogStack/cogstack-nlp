@@ -14,6 +14,6 @@ MedCATTrainer was presented at EMNLP/IJCNLP 2019 :tada:
 
 # Documentation and Discussion
 
-Official docs available [here](https://docs.cogstack.org/projects/medcat-trainer/en/latest//)
+Official docs available [here](https://docs.cogstack.org/projects/medcat-trainer)
 
 If you have any questions why not reach out to the community [discourse forum here](https://discourse.cogstack.org/)
