@@ -1,8 +1,13 @@
-name: release-build
+name: medcat-trainer release-build
 
 on:
   push:
-    tags: ["v*.*.*"]
+    tags:
+      - 'medcat-trainer/v*.*.*'  
+
+defaults:
+  run:
+    working-directory: ./medcat-trainer
 
 jobs:
   # Test, build and publish client library
@@ -47,6 +52,7 @@ jobs:
         uses: pypa/gh-action-pypi-publish@v1.4.2
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
+          packages-dir: medcat-trainer/dist
 
   # Build and test webapp container
   build-and-push:

@@ -1,8 +1,14 @@
-name: qa-build
+name: medcat-trainer ci-build
 
 on:
-  push:
-    branches: [ main ]
+  pull_request:
+    paths:
+      - 'medcat-trainer/**'
+      - '.github/workflows/medcat-trainer**'
+
+defaults:
+  run:
+    working-directory: ./medcat-trainer
 
 jobs:
   # Test and build client library
@@ -12,7 +18,7 @@ jobs:
       - name: Checkout main
         uses: actions/checkout@v4
         with:
-          ref: 'main'
+          ref: ${{ github.ref }}
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -39,12 +45,6 @@ jobs:
           cd client
           python -m build
 
-      - name: Publish dev distribution to Test PyPI
-        uses: pypa/gh-action-pypi-publish@v1.4.2
-        with:
-          password: ${{ secrets.TEST_PYPI_API_TOKEN }}
-          repository_url: https://test.pypi.org/legacy/
-
   # Build and test webapp container
   build-and-push:
     runs-on: ubuntu-latest
@@ -53,25 +53,16 @@ jobs:
       - name: Checkout main
         uses: actions/checkout@v4
         with:
-          ref: 'main'
+          ref: ${{ github.ref }}
 
       - name: Build
+        env:
+          IMAGE_TAG: ${{ env.RELEASE_VERSION }}
         run: |
-          docker build -t cogstacksystems/medcat-trainer:latest webapp/.
-
+          docker build -t cogstacksystems/medcat-trainer:dev-latest webapp/.
       - name: Run Django Tests
         env:
-          IMAGE_TAG: latest
+          IMAGE_TAG: ${{ env.RELEASE_VERSION }}
         run: |
           # run tests
-          docker run --rm cogstacksystems/medcat-trainer:latest python manage.py test
-
-      - name: Login to DockerHub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Push to DockerHub
-        run: |
-          docker push cogstacksystems/medcat-trainer:latest
+          docker run --rm cogstacksystems/medcat-trainer:dev-latest python manage.py test
