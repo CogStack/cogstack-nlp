@@ -15,5 +15,3 @@ sphinx:
 python:
   install:
     - requirements: medcat-trainer/docs/requirements.txt
-    - method: pip
-      path: medcat-trainer/
