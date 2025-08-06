@@ -105,14 +105,14 @@ class BertForMetaAnnotation(nn.Module):
         if config.model['input_size'] != _bertconfig.hidden_size:
             logger.warning("Input size for %s model should be %d, provided input size is %d. Input size changed to %d",config.model.model_variant,_bertconfig.hidden_size,config.model['input_size'],_bertconfig.hidden_size)
 
-        if config.model['load_bert_pretrained_weights']:
-            try:
-                bert = BertModel.from_pretrained(config.model.model_variant, config=_bertconfig)
-            except Exception:
-                raise Exception(
-                    "Could not load BERT pretrained weights from Hugging Face. \nIf you're seeing a connection error, set `config.model.load_bert_pretrained_weights=False` and make sure to load the model pack from disk instead.")
-        else:
+        try:
+            bert = BertModel.from_pretrained(config.model.model_variant, config=_bertconfig)
+        except Exception:
             bert = BertModel(_bertconfig)
+            if save_dir_path:
+                logger.info("Could not load BERT pretrained weights from Hugging Face. BERT model loaded with random weights. \nThis workflow is fine since model initialization is performed while loading model pack from disk.")
+            else:
+                logger.warning("Could not load BERT pretrained weights from Hugging Face. BERT model loaded with random weights.\nDO NOT use this model without loading model pack.")
 
         self.config = config
         self.config.use_return_dict = False

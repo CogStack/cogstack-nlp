@@ -133,10 +133,6 @@ class Model(MixingConfig, BaseModel):
 
     NB! For these changes to take effect, the pipe would need to be recreated.
     """
-    load_bert_pretrained_weights: bool = False
-    """Applicable only when using BERT:
-    Determines if the pretrained weights for BERT are loaded
-    This should be True if you don't plan on using the model pack weights"""
     num_layers: int = 2
     """Number of layers in the model (both LSTM and BERT)
 
