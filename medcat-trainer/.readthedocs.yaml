@@ -10,8 +10,14 @@ build:
     python: "3.9"
 
 sphinx:
-  configuration: docs/conf.py
+  configuration: medcat-trainer/docs/conf.py
 
 python:
   install:
-    - requirements: docs/requirements.txt
+    - requirements: medcat-trainer/docs/requirements.txt
+    - method: pip
+      path: medcat-trainer/
+  install:
+    - requirements: medcat-v2/docs/requirements.txt
+    - method: pip
+      path: medcat-v2/
