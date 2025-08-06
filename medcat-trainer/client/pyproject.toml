@@ -13,6 +13,6 @@ authors = [{ name = "Tom Searle", email = "tom@cogstack.org" }]
 dependencies = ["requests"]
 
 [project.urls]
-Homepage = "https://github.com/CogStack/MedCATtrainer/"
+Homepage = "https://github.com/CogStack/cogstack-nlp/"
 Documentation = "https://medcattrainer.readthedocs.io/en/latest/"
-Source = "https://github.com/CogStack/MedCATtrainer/"
+Source = "https://github.com/CogStack/cogstack-nlp/"
