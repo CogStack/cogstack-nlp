@@ -5,7 +5,7 @@ Details are outlined [here](breaking_changes.md).
 
 [![Build Status](https://github.com/CogStack/cogstack-nlp/actions/workflows/medcat-v2_main.yml)](https://github.com/CogStack/cogstack-nlp/actions/workflows/medcat-v2_main.yml)
 [![Documentation Status](https://readthedocs.org/projects/cogstack-nlp/badge/?version=latest)](https://readthedocs.org/projects/cogstack-nlp/badge/?version=latest)
-[![Latest release](https://img.shields.io/github/v/release/CogStack/MedCAT2)](https://github.com/CogStack/MedCAT2/releases/latest)
+[![Latest release](https://img.shields.io/github/v/release/CogStack/cogstack-nlp?filter=medcat/*)](https://github.com/CogStack/cogstack-nlp/releases/latest)
 [![pypi Version](https://img.shields.io/pypi/v/medcat.svg?style=flat-square&logo=pypi&logoColor=white)](https://pypi.org/project/medcat/)
 
 MedCAT(*v2*) can be used to extract information from Electronic Health Records (EHRs) and link it to biomedical ontologies like SNOMED-CT and UMLS. Paper on [arXiv](https://arxiv.org/abs/2010.01165).
@@ -34,11 +34,11 @@ MedCAT(*v2*) can be used to extract information from Electronic Health Records (
 A demo application is available [here](https://medcatv2.rosalind.kcl.ac.uk).
 
 ## Tutorials
-Some guides on how to use MedCAT v2 are available at [MedCAT Tutorials](https://github.com/CogStack/MedCATv2tutorials).
+Some guides on how to use MedCAT v2 are available at [MedCAT Tutorials](https://github.com/CogStack/cogstack-nlp/tree/main/medcat-v2-tutorials).
 
 ## Related Projects
 - [MedCAT](https://github.com/CogStack/cogstack-nlp/blob/main/medcat-v2/) - the original version of MedCAT that this v2 is based one.
-- [MedCATtrainer](https://github.com/CogStack/MedCATtrainer/) - an interface for building, improving and customising a given Named Entity Recognition and Linking (NER+L) model (MedCAT) for biomedical domain text.
+- [MedCATtrainer](https://github.com/CogStack/cogstack-nlp/tree/main/medcat-trainer/) - an interface for building, improving and customising a given Named Entity Recognition and Linking (NER+L) model (MedCAT) for biomedical domain text.
 - [MedCATservice](https://github.com/CogStack/cogstack-nlp/blob/main/medcat-service/) - implements the MedCAT NLP application as a service behind a REST API.
 
 ## Install using PIP (Requires Python 3.9+)

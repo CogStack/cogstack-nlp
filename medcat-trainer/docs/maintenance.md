@@ -6,7 +6,7 @@ be upgrading to the latest release.
 
 The latest stable releases update the `docker-compose.yml` and `docker-compose-prod.yml` files.
 
-To update these docker compose files, either copy them directly from the [repo](https://github.com/CogStack/MedCATtrainer)
+To update these docker compose files, either copy them directly from the [repo](https://github.com/CogStack/cogstack-nlp/tree/main/medcat-trainer)
 or update the cloned files via:
 
 ```shell

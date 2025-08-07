@@ -69,7 +69,7 @@ Admin users have extra options on the home screen:
 3. Save Model - Write the in memory model to disk - to save the current in memory model state. This option is generally not advised as full model training should be done outside the trainer instance ideally. 
 
 ### Notes
-- Example Concept and Vocab databses are freely available on MedCAT [github](https://github.com/CogStack/MedCAT).
+- Example Concept and Vocab databses are freely available on MedCAT [github](https://github.com/CogStack/cogstack-nlp/tree/main/medcat-v2).
 Note. UMLS and SNOMED-CT are licensed products so only these smaller trained concept / vocab databases are made available currently.
 - More documentation on the creation of UMLS / SNOMED-CT CDBs from respective source data will be released soon.
 - Tasks allow for the creation of meta-annotations and their associated set of values an annotator can use.

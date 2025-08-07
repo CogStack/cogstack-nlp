@@ -7,8 +7,8 @@ DOCKER_COMP_FILE=dc.yml
 ENV_FILE=/tmp/mc_trainer/envs/env
 
 echo "Downloading docker-compose.yml and default env vars"
-curl https://cdn.githubraw.com/CogStack/MedCATtrainer/9fbd517e/docker-compose.yml > $DOCKER_COMP_FILE
-curl https://raw.githubusercontent.com/CogStack/MedCATtrainer/9fbd517e/envs/env > $ENV_FILE
+curl https://raw.githubusercontent.com/CogStack/cogstack-nlp/09e32429/medcat-trainer/docker-compose.yml > $DOCKER_COMP_FILE
+curl https://raw.githubusercontent.com/CogStack/cogstack-nlp/09e32429/medcat-trainer/envs/env > $ENV_FILE
 trap 'rm -rf /tmp/mc_trainer && cd $CURR_LOC' EXIT
 
 echo "Starting MedCATtrainer containers"

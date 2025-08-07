@@ -4,8 +4,8 @@ MedCATtrainer is a docker-compose packaged Django application.
 ## Download from Dockerhub
 Clone the repo, run the default docker-compose file and default env var:
 ```shell
-$ git clone https://github.com/CogStack/MedCATtrainer
-$ cd MedCATtrainer
+$ git clone https://github.com/CogStack/cogstack-nlp
+$ cd cogstack-nlp/medcat-trainer
 $ docker-compose up
 ```
 
@@ -61,7 +61,7 @@ Environment variables are used to configure the app:
 
 |Parameter|Description|
 |---------|-----------|
-|MEDCAT_CONFIG_FILE|MedCAT config file as described [here](https://github.com/CogStack/MedCAT/blob/master/medcat/config.py)|
+|MEDCAT_CONFIG_FILE|MedCAT config file as described [here](https://github.com/CogStack/cogstack-nlp/blob/main/medcat-v2/medcat/config/config.py)|
 |BEHIND_RP| If you're running MedCATtrainer, use 1, otherwise this defaults to 0 i.e. False|
 |MCTRAINER_PORT|The port to run the trainer app on|
 |EMAIL_USER|Email address which will be used to send users emails regarding password resets|
