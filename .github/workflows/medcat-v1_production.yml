@@ -1,6 +1,5 @@
 # TODO: Fix Medcat V1 Release Actions
 # Disabled waiting for designed release process
-# Disabled waiting for PYPI_API_TOKEN
 name: medcat-v1 - production
 
 on:
@@ -18,8 +17,7 @@ jobs:
     runs-on: ubuntu-24.04
     concurrency: build-n-publish-to-pypi
     if: | 
-     github.repository == 'CogStack/cogstack-nlp' &&
-     false   
+     github.repository == 'CogStack/cogstack-nlp'
 
     steps:
       - name: Checkout production
@@ -65,4 +63,5 @@ jobs:
         if: startsWith(github.ref, 'refs/tags') && ! github.event.release.prerelease
         uses: pypa/gh-action-pypi-publish@v1.4.2
         with:
+          # TODO CU-869a25n7e Use Trusted Platform Publisher based PyPI release
           password: ${{ secrets.PYPI_API_TOKEN }}

@@ -74,13 +74,11 @@ jobs:
           python tests/check_deprecations.py "$VERSION" --next-version --remove-prefix
 
   publish-to-test-pypi:
-    # Disable pypy publish waiting for TEST_PYPI_API_TOKEN
     if: |
       github.repository == 'CogStack/cogstack-nlp' &&
       github.ref == 'refs/heads/main' &&
       github.event_name == 'push' &&
-      startsWith(github.ref, 'refs/tags') != true &&
-      false 
+      startsWith(github.ref, 'refs/tags') != true
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     concurrency: publish-to-test-pypi
