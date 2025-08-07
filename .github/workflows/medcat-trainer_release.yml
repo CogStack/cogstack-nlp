@@ -20,7 +20,8 @@ jobs:
           ref: "main"
 
       - name: Release Tag
-        run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+        # If GITHUB_REF=refs/tags/medcat-trainer/v0.1.2, this returns v0.1.2. Note it's including the "v" though it probably shouldnt
+        run: echo "RELEASE_VERSION=${GITHUB_REF##refs/*/}" >> $GITHUB_ENV
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -52,7 +53,7 @@ jobs:
         uses: pypa/gh-action-pypi-publish@v1.4.2
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
-          packages_dir: client/dist
+          packages_dir: medcat-trainer/client/dist
 
   # Build and test webapp container
   build-and-push:
