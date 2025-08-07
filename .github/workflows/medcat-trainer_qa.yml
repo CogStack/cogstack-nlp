@@ -2,7 +2,7 @@ name: medcat-trainer qa-build
 
 on:
   push:
-
+    branches: [ main ]
 
 defaults:
   run:
