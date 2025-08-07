@@ -2,7 +2,7 @@ name: medcat-trainer qa-build
 
 on:
   push:
-    branches: [ main ]
+
 
 defaults:
   run:
@@ -48,7 +48,7 @@ jobs:
         with:
           password: ${{ secrets.TEST_PYPI_API_TOKEN }}
           repository_url: https://test.pypi.org/legacy/
-          packages-dir: medcat-trainer/dist
+          packages-dir: client/dist
 
   # Build and test webapp container
   build-and-push:
