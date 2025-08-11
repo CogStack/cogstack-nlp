@@ -1,9 +1,6 @@
 import setuptools
 import shutil
 
-from importlib.metadata import version
-print("setuptools-scm version:", version('setuptools-scm'))
-
 with open("./README.md", "r") as fh:
     long_description = fh.read()
 
