@@ -3,5 +3,4 @@ requires = ["setuptools>=42", "setuptools_scm[toml]>=6.2,<9", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "medcat"
 version = "1.16.1"
