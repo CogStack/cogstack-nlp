@@ -19,7 +19,7 @@ jobs:
     concurrency: build-n-publish-to-pypi
     if: |
       github.repository == 'CogStack/cogstack-nlp' &&
-      (github.event_name != 'release' || startsWith(github.event.release.tag_name, 'medcat-v1'))
+      (github.event_name != 'release' || startsWith(github.event.release.tag_name, 'medcat/v1.'))
 
 
     steps:
