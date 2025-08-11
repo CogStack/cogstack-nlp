@@ -53,6 +53,7 @@ jobs:
 
       - name: Build a binary wheel and a source tarball
         run: >-
+          SETUPTOOLS_SCM_PRETEND_VERSION_FOR_MEDCAT="1.16.1"
           python -m
           build
           --sdist
