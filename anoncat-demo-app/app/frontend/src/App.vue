@@ -21,7 +21,7 @@
         <br>
         <p>Please DO NOT test with any real sensitive PHI data.</p>
         <br>
-        <p>Local validation and fine-tuning available via <a href="https://github.com/CogStack/MedCATtrainer">MedCATtrainer</a>.
+        <p>Local validation and fine-tuning available via <a href="https://github.com/CogStack/cogstack-nlp/tree/main/medcat-trainer">MedCATtrainer</a>.
           Email us, <a href="mailto:contact@cogstack.org">contact@cogstack.org</a>, to discuss model access, model performance, and your use case.
         </p>
         <br>

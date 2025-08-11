@@ -114,7 +114,7 @@ test = []  # TODO - list
 [project.urls]
 "Homepage" = "https://cogstack.org/"
 "Bug Reports" = "https://discourse.cogstack.org/"
-"Source" = "https://github.com/CogStack/MedCAT/"
+"Source" = "https://github.com/CogStack/cogstack-nlp/"
 
 [build-system]
 # These are the assumed default build requirements from pip:
