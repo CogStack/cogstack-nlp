@@ -6,8 +6,9 @@ on:
   push:
     branches: [ "medcat-v1/production", "medcat-v1/v[0-9]+.[0-9]+.post" ]
   
-  # release:
-  #   types: [ published , edited ]
+  release:
+    types: [ published , edited ]
+
 defaults:
   run:
     working-directory: ./medcat-v1
@@ -16,8 +17,10 @@ jobs:
 
     runs-on: ubuntu-24.04
     concurrency: build-n-publish-to-pypi
-    if: | 
-     github.repository == 'CogStack/cogstack-nlp'
+    if: |
+      github.repository == 'CogStack/cogstack-nlp' &&
+      (github.event_name != 'release' || startsWith(github.event.release.tag_name, 'medcat-v1'))
+
 
     steps:
       - name: Checkout production
