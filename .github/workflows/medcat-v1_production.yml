@@ -70,4 +70,4 @@ jobs:
         with:
           # TODO CU-869a25n7e Use Trusted Platform Publisher based PyPI release
           password: ${{ secrets.PYPI_API_TOKEN }}
-          packages-dir: medcat-v2/dist
+          packages-dir: medcat-v1/dist
