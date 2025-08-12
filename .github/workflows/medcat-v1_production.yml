@@ -24,7 +24,7 @@ jobs:
 
     steps:
       - name: Checkout production
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.event.release.target_commitish }}
           fetch-depth: 0
