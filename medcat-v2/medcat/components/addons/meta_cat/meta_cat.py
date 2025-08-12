@@ -298,7 +298,7 @@ class MetaCAT(AbstractSerialisable):
 
     @classmethod
     def ignore_attrs(cls) -> list[str]:
-        return ['model']
+        return ['model', 'save_dir_path']
 
     @classmethod
     def include_properties(cls) -> list[str]:
