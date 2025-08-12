@@ -3,7 +3,7 @@ name: medcat-v2 - Build Python Package
 on:
   push:
     tags:
-      - "medcat/v*"
+      - "medcat/v2*"
 
 permissions:
   contents: write
