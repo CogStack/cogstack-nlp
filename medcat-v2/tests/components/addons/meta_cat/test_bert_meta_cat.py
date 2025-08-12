@@ -12,10 +12,12 @@ from .test_meta_cat import FakeTokenizer
 
 
 @contextmanager
-def no_network():
+def assert_tries_network():
     real_socket = socket.socket
+    calls = []
 
     def guard(*args, **kwargs):
+        calls.append((len(args), len(kwargs)))
         raise OSError("Network disabled for test")
 
     socket.socket = guard
@@ -23,6 +25,7 @@ def no_network():
         yield
     finally:
         socket.socket = real_socket
+        assert calls, "No network calls were made during the test"
 
 
 class BERTMetaCATTests(unittest.TestCase):
@@ -50,6 +53,6 @@ class BERTMetaCATTests(unittest.TestCase):
         cls.temp_dir.cleanup()
 
     def test_no_network_load(self):
-        with no_network():
+        with assert_tries_network():
             mc = deserialise(self.mc_save_path)
         self.assertIsInstance(mc, meta_cat.MetaCATAddon)
