@@ -150,6 +150,11 @@ class MetaCATAddon(AddonComponent):
             raise MisconfiguredMetaCATException(
                 "Unable to save MetaCAT without a tokenizer")
         self.mc.tokenizer.save(tokenizer_folder)
+        if self.config.model.model_name == 'bert':
+            model_config_save_path = os.path.join(
+                folder_path, 'bert_config.json')
+            self._mc.model.bert_config.to_json_file(  # type: ignore
+                model_config_save_path)
 
     def _init_data_paths(self, base_tokenizer: BaseTokenizer):
         # a dictionary like {category_name: value, ...}
