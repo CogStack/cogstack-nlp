@@ -125,7 +125,7 @@ class MetaCATAddon(AddonComponent):
     def load(self, folder_path: str) -> 'MetaCAT':
         mc_path, tokenizer_folder = self._get_meta_cat_and_tokenizer_paths(
             folder_path)
-        mc = cast(MetaCAT, deserialise(mc_path))
+        mc = cast(MetaCAT, deserialise(mc_path, save_dir_path=folder_path))
         mc.tokenizer = self._load_tokenizer(self.config, tokenizer_folder)
         return mc
 
@@ -308,10 +308,12 @@ class MetaCAT(AbstractSerialisable):
                  tokenizer: Optional[TokenizerWrapperBase] = None,
                  embeddings: Optional[Union[Tensor, numpy.ndarray]] = None,
                  config: Optional[ConfigMetaCAT] = None,
-                 _model_state_dict: Optional[dict[str, Any]] = None) -> None:
+                 _model_state_dict: Optional[dict[str, Any]] = None,
+                 save_dir_path: Optional[str] = None) -> None:
         if config is None:
             config = ConfigMetaCAT()
         self.config = config
+        self.save_dir_path = save_dir_path
         set_all_seeds(config.general.seed)
 
         self.tokenizer = tokenizer
@@ -355,7 +357,7 @@ class MetaCAT(AbstractSerialisable):
         elif config.model.model_name == 'bert':
             from medcat.components.addons.meta_cat.models import (
                 BertForMetaAnnotation)
-            model = BertForMetaAnnotation(config)
+            model = BertForMetaAnnotation(config, self.save_dir_path)
 
             if not config.model.model_freeze_layers:
                 peft_config = LoraConfig(
