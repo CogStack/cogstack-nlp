@@ -121,7 +121,7 @@ class MetaCATWithCATTests(MetaCATBaseTests):
             self.assertEqual(len(meta_cats), 1)
             mc = meta_cats[0]
             self.assertIsNotNone(mc.mc.save_dir_path)
-            self.assertEquals(mc.mc.save_dir_path, exp_meta_cat_path)
+            self.assertEqual(mc.mc.save_dir_path, exp_meta_cat_path)
 
     def test_turns_up_in_output(self):
         ents = self.cat.get_entities(
