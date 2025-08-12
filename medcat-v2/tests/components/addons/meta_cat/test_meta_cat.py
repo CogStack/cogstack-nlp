@@ -116,16 +116,12 @@ class MetaCATWithCATTests(MetaCATBaseTests):
                 COMPONENTS_FOLDER,
                 self.meta_cat.get_folder_name()
             )
-            with unittest.mock.patch.object(
-                    meta_cat.MetaCAT, "__init__",
-                    wraps=meta_cat.MetaCAT.__init__,
-                    autospec=True) as mock_load:
-                CAT.load_model_pack(file_name)
-                mock_load.assert_called_once()
-                _, call_kwargs = mock_load.call_args
-                self.assertIn('save_dir_path', call_kwargs)
-                self.assertEqual(
-                    call_kwargs['save_dir_path'], exp_meta_cat_path)
+            cat = CAT.load_model_pack(file_name)
+            meta_cats = cat.get_addons_of_type(meta_cat.MetaCATAddon)
+            self.assertEqual(len(meta_cats), 1)
+            mc = meta_cats[0]
+            self.assertIsNotNone(mc.mc.save_dir_path)
+            self.assertEquals(mc.mc.save_dir_path, exp_meta_cat_path)
 
     def test_turns_up_in_output(self):
         ents = self.cat.get_entities(
