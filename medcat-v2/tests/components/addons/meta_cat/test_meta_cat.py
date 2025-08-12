@@ -6,7 +6,10 @@ from medcat.storage.serialisables import Serialisable, ManualSerialisable
 from medcat.storage.serialisers import serialise, AvailableSerialisers
 from medcat.config.config_meta_cat import ConfigMetaCAT
 from medcat.config.config import Config
+from medcat.utils.defaults import COMPONENTS_FOLDER
 
+import os
+import unittest.mock
 import unittest
 import tempfile
 
@@ -103,6 +106,26 @@ class MetaCATWithCATTests(MetaCATBaseTests):
                 temp_dir, serialiser_type=self.SER_TYPE)
             cat2 = CAT.load_model_pack(file_name)
         self.assert_has_meta_cat(cat2, False)
+
+    def test_loading_uses_save_dir_path(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            file_name = self.cat.save_model_pack(
+                temp_dir, serialiser_type=self.SER_TYPE)
+            exp_meta_cat_path = os.path.join(
+                file_name.removesuffix(".zip"),
+                COMPONENTS_FOLDER,
+                self.meta_cat.get_folder_name()
+            )
+            with unittest.mock.patch.object(
+                    meta_cat.MetaCAT, "__init__",
+                    wraps=meta_cat.MetaCAT.__init__,
+                    autospec=True) as mock_load:
+                CAT.load_model_pack(file_name)
+                mock_load.assert_called_once()
+                _, call_kwargs = mock_load.call_args
+                self.assertIn('save_dir_path', call_kwargs)
+                self.assertEqual(
+                    call_kwargs['save_dir_path'], exp_meta_cat_path)
 
     def test_turns_up_in_output(self):
         ents = self.cat.get_entities(
