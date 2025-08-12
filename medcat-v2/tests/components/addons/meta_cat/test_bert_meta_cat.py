@@ -7,6 +7,9 @@ from medcat.storage.serialisers import serialise, deserialise
 import unittest
 import tempfile
 import os
+from functools import partial
+
+import transformers
 
 from .test_meta_cat import FakeTokenizer
 
@@ -26,6 +29,22 @@ def assert_tries_network():
     finally:
         socket.socket = real_socket
         assert calls, "No network calls were made during the test"
+
+
+# NOTE: need to disable the usage of the cache
+#       otherwise other parts of the test suite
+#       might have already downloaded and cached
+#       the model and no network calls may be made
+#       in such a situation
+@contextmanager
+def force_hf_download():
+    orig_from_pretrained = transformers.BertModel.from_pretrained
+    transformers.BertModel.from_pretrained = partial(
+        orig_from_pretrained, force_download=True)
+    try:
+        yield
+    finally:
+        transformers.BertModel.from_pretrained = orig_from_pretrained
 
 
 class BERTMetaCATTests(unittest.TestCase):
@@ -54,5 +73,6 @@ class BERTMetaCATTests(unittest.TestCase):
 
     def test_no_network_load(self):
         with assert_tries_network():
-            mc = deserialise(self.mc_save_path)
+            with force_hf_download():
+                mc = deserialise(self.mc_save_path)
         self.assertIsInstance(mc, meta_cat.MetaCATAddon)
