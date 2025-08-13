@@ -1,0 +1,82 @@
+name: medcat-trainer-v1 qa-build
+
+on:
+  push:
+    branches: [ main ]
+
+defaults:
+  run:
+    working-directory: ./v1/medcat-trainer
+
+jobs:
+  # Test and build client library
+  test-client:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: 'main'
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests pytest build
+
+      - name: Install client package in development mode
+        run: |
+          cd client
+          pip install -e .
+
+      - name: Run client tests
+        run: |
+          cd client
+          python -m pytest tests/ -v
+
+      - name: Build client package
+        run: |
+          cd client
+          python -m build
+
+      # - name: Publish dev distribution to Test PyPI
+      #   uses: pypa/gh-action-pypi-publish@v1.4.2
+      #   with:
+      #     password: ${{ secrets.MEDCAT_TRAINER_TEST_PYPI_API_TOKEN }}
+      #     repository_url: https://test.pypi.org/legacy/
+      #     packages_dir: v1/medcat-trainer/client/dist
+
+  # Build and test webapp container
+  build-and-push:
+    runs-on: ubuntu-latest
+    needs: test-client
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: 'main'
+
+      - name: Build
+        run: |
+          docker build -t cogstacksystems/medcat-trainer:v1-latest webapp/.
+
+      - name: Run Django Tests
+        env:
+          IMAGE_TAG: latest
+        run: |
+          # run tests
+          docker run --rm cogstacksystems/medcat-trainer:v1-latest python manage.py test
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - name: Push to DockerHub
+        run: |
+          docker push cogstacksystems/medcat-trainer:v1-latest
