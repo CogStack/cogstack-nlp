@@ -1,0 +1,3 @@
+SHELL=/bin/bash
+BASH_ENV=/etc/environment
+0 22 * * * root /home/scripts/backup_db.sh > /proc/1/fd/1 2>/proc/1/fd/2

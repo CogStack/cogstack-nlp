@@ -1,0 +1,57 @@
+# Prod compose file -
+
+services:
+  medcattrainer:
+    container_name: medcattrainer
+    hostname: medcat
+    restart: always
+    image: cogstacksystems/medcat-trainer:v2.22.1
+    volumes:
+      - api-media:/home/api/media
+      - api-static:/home/api/static
+      - api-db:/home/api/db
+      - api-db-backup:/home/api/db-backup
+      - ./supervisord.conf:/etc/supervisord.conf
+      - ./configs:/home/configs
+    env_file:
+      - ./envs/env-prod
+    environment:
+      - MCT_VERSION=v2.22.1
+    command: /usr/bin/supervisord -c /etc/supervisord.conf
+    
+  nginx:
+    container_name: medcattrainer_nginx
+    image: nginx
+    restart: always
+    volumes:
+      - api-media:/home/api/media
+      - api-static:/home/api/static
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/sites-enabled/:/etc/nginx/sites-enabled
+    env_file:
+      - ./envs/env-prod
+    ports:
+      - "${MCTRAINER_PORT:-8001}:8000"
+    depends_on:
+      - medcattrainer
+      - solr
+
+  solr:
+    container_name: mct_solr
+    image: solr:8
+    restart: always
+    env_file:
+      - ./envs/env-prod
+    expose:
+      - "8983"
+    volumes:
+      - solr-data:/var/solr
+    command:
+      - -cloud  # solr cloud launches
+
+volumes:
+  api-media:
+  api-static:
+  api-db:
+  api-db-backup:
+  solr-data:

@@ -1,0 +1,30 @@
+server {
+    listen 8000;
+    server_name localhost;
+    charset utf-8;
+    large_client_header_buffers 4 32k;
+
+    location /static {
+        alias /home/api/static;
+    }
+
+    location /media {
+        alias /home/api/media;
+    }
+
+    location /api/concepts/ {
+        proxy_pass http://mct_solr:8983/solr/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    location / {
+        proxy_pass http://medcattrainer:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+}
+

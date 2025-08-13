@@ -1,0 +1,91 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+
+        
+        {
+            "name": "frontend",
+            "type": "node",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/webapp/frontend",
+            "runtimeExecutable": "npm",
+            "runtimeArgs": [
+                "run",
+                "dev"
+            ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "frontend build",
+            "type": "node",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/webapp/frontend",
+            "runtimeExecutable": "npm",
+            "runtimeArgs": [
+                "run",
+                "build"
+            ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "django shell",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/webapp/api/manage.py",
+            "args": [
+                "shell"
+            ],
+            "django": true
+        },
+        {
+            "name": "make migrations",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/webapp/api/manage.py",
+            "args": [
+                "makemigrations"
+            ],
+            "django": true
+        },
+        {
+            "name": "migrate",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/webapp/api/manage.py",
+            "args": [
+                "migrate"
+            ],
+            "django": true
+        },
+        {
+            "name": "run server",
+            "type": "debugpy",
+            "request": "launch",
+            "args": [
+                "runserver",
+                "0.0.0.0:8001"
+            ],
+            "env": {
+                "CONCEPT_SEARCH_SERVICE_HOST": "localhost"
+            },
+            "django": true,
+            "program": "${workspaceFolder}/webapp/api/manage.py"
+        },
+        {
+            "name": "process tasks",
+            "type": "debugpy",
+            "request": "launch",
+            "args": [
+                "process_tasks"
+            ],
+            "env": {
+                "CONCEPT_SEARCH_SERVICE_HOST": "localhost"
+            },
+            "django": true,
+            "program": "${workspaceFolder}/webapp/api/manage.py"
+        }
+    ]
+}
