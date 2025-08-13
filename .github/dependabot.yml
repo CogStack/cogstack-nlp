@@ -8,14 +8,16 @@ version: 2
 updates:
  - package-ecosystem: "devcontainers"
    directory: "/"
-   prefix: "chore: "
+   commit-message:
+     prefix: "chore: "
    schedule:
      interval: weekly
  - package-ecosystem: "github-actions"
    directory: "/"
    schedule:
      interval: "weekly"
-   prefix: "build: "
+   commit-message:
+     prefix: "build: "
    groups:
      actions-deps:
        patterns:
