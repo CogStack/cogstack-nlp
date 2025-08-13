@@ -5,13 +5,13 @@ on:
     branches: [ main ]
   pull_request:
     paths:
-      - 'medcat-v1/**'
-      - 'medcat-v1-tutorials/**'
+      - 'v1/medcat/**'
+      - 'v1/medcat-tutorials/**'
       - '.github/workflows/medcat-v1**'
       - '.github/workflows/medcat-v1-tutorials**'
 defaults:
   run:
-    working-directory: ./medcat-v1-tutorials
+    working-directory: ./v1/medcat-tutorials
 
 jobs:
   main:

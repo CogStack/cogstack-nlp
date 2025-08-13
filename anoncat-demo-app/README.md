@@ -1,6 +1,6 @@
 # Deidentify app
 
-Demo for AnonCAT. It uses [MedCAT](https://github.com/CogStack/cogstack-nlp/tree/main/medcat-v1), an advanced natural language processing tool, to identify and classify sensitive information, such as names, addresses, and medical terms.
+Demo for AnonCAT. It uses [MedCAT](https://github.com/CogStack/cogstack-nlp/tree/main/v1/medcat), an advanced natural language processing tool, to identify and classify sensitive information, such as names, addresses, and medical terms.
 
 ## Example
 
@@ -22,7 +22,7 @@ MODEL_NAME = '<NAME OF MODEL HERE.zip>'
 
 ### Build your own model
 
-To build your own models please follow the tutorials outlined in [MedCATtutorials](https://github.com/CogStack/cogstack-nlp/tree/main/medcat-v1-tutorials)
+To build your own models please follow the tutorials outlined in [MedCATtutorials](https://github.com/CogStack/cogstack-nlp/tree/main/v1/medcat-tutorials)
 
 *__Note:__ This is currently under development*
 

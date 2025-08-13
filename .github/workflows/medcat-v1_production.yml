@@ -11,7 +11,7 @@ on:
 
 defaults:
   run:
-    working-directory: ./medcat-v1
+    working-directory: ./v1/medcat
 jobs:
   build-n-publish-to-pypi:
 
@@ -70,4 +70,4 @@ jobs:
         with:
           # TODO CU-869a25n7e Use Trusted Platform Publisher based PyPI release
           password: ${{ secrets.PYPI_API_TOKEN }}
-          packages_dir: medcat-v1/dist
+          packages_dir: v1/medcat/dist
