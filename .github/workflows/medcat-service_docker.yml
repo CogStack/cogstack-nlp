@@ -17,9 +17,8 @@ defaults:
   run:
     working-directory: ./medcat-service
 jobs:
-
   build:
-
+    if: github.event.pull_request.user.login != 'dependabot[bot]' && github.repository == 'CogStack/cogstack-nlp'
     runs-on: ubuntu-latest
     outputs:
       image_version: ${{ steps.meta.outputs.version }}
