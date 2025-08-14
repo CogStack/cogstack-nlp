@@ -38,6 +38,9 @@ jobs:
           cd client
           python -m pytest tests/ -v
 
+      - name: Bump version for TestPyPI
+        run: sed -i "s/^version = .*/version = \"1.0.0.dev$(date +%s)\"/" client/pyproject.toml
+
       - name: Build client package
         run: |
           cd client
