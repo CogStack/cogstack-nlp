@@ -5,6 +5,7 @@ import os
 import time
 from datetime import datetime, timezone
 
+import numpy as np
 import simplejson as json
 from medcat.cat import CAT
 from medcat.cdb import CDB
@@ -121,6 +122,8 @@ class MedCatProcessor():
             if "entities" in entities.keys():
                 entities = entities["entities"]
 
+            self._fix_floats(entities)
+
             if self.entity_output_mode == "list":
                 entities = list(entities.values())
 
@@ -160,7 +163,7 @@ class MedCatProcessor():
         start_time_ns = time.time_ns()
 
         if self.DEID_MODE:
-            entities = self.cat.get_entities(text)["entities"]
+            entities = self.cat.get_entities(text)
             text = self.cat.deid_text(text, redact=self.DEID_REDACT)
         else:
             if text is not None and len(text.strip()) > 0:
@@ -638,3 +641,14 @@ class MedCatProcessor():
             return True
         else:
             return False
+
+    # NOTE: numpy uses np.float32 and those are not json serialisable
+    #       so we need to fix that
+
+    def _fix_floats(self, in_dict: dict) -> dict:
+        for k, v in in_dict.items():
+            if isinstance(v, np.floating):
+                in_dict[k] = float(v)
+            elif isinstance(v, dict):
+                self._fix_floats(v)
+        return in_dict
