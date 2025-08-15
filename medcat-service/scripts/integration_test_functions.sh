@@ -70,7 +70,7 @@ integration_test_medcat_service() {
 
   # Test /api/process_bulk
 
-  if [[ "$actual_annotation" == "PATIENT" ]]; then
+  if [[ "$expected_annotation" == "PATIENT" ]]; then
      echo "Skipping Process_bulk test for DeID Mode testing "
      echo "Process_bulk in DeID mode appears to have a bug making it return the text without deid"
      return 0
