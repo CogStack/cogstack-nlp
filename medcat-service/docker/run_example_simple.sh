@@ -35,7 +35,7 @@ if [ $EXAMPLE_TO_RUN = "DeID" ]; then
 else
   EXPECTED_ANNOTATION="Kidney Failure"
 fi
-integration_test_medcat_service $LOCALHOST_NAME 5555 $EXPECTED_ANNOTATION
+integration_test_medcat_service $LOCALHOST_NAME 5555 "$EXPECTED_ANNOTATION"
 if [ $? -ne 0 ]; then
     echo "Failed integration test"
     exit 1
