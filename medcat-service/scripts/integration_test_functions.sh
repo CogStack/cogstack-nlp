@@ -41,12 +41,12 @@ smoketest_medcat_service() {
 integration_test_medcat_service() {
   local localhost_name=$1
   local port=${2:-5555}
+  local expected_annotation=${3:-Kidney Failure}
 
   # Test /api/process
   local api="http://${localhost_name}:${port}/api/process"
-  local input_text="The patient was diagnosed with Kidney Failure"
+  local input_text="The patient J. Smith was diagnosed with Kidney Failure"
   local input_payload="{\"content\":{\"text\":\"${input_text}\"}}"
-  local expected_annotation="Kidney Failure"
 
   echo "Calling POST $api with payload '$input_payload'"
   local actual
@@ -95,4 +95,8 @@ integration_test_medcat_service() {
     return 1
   fi
 
+}
+
+integration_test_medcat_service_deid() {
+    integration_test_medcat_service $1 $2 "PATIENT"
 }

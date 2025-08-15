@@ -6,3 +6,9 @@
 
 It isn't a trained model, but has the concepts "Kidney Failure" and "Failure of Kidneys" built in
 
+
+## [example-deid-model-pack](models/examples/example-deid-model.zip)
+- This is a deid model only for a single input text for testing.
+- Only understands PATIENT for deid in very limited cases
+- Trained using 10k synthetic data of just a few example sentences like "Patient {full} had been diagnosed with acute kidney failure the week before"
+

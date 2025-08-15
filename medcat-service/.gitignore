@@ -15,6 +15,7 @@ models/*
 !models/*.sh
 !models/examples
 models/examples/example-medcat-v[12]-model-pack
+models/examples/example-deid-model-pack
 
 # tmp folder
 tmp/*

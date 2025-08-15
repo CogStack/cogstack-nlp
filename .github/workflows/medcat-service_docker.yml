@@ -113,7 +113,7 @@ jobs:
     needs: build
     strategy:
       matrix:
-        variant: [v1, v2]
+        variant: [v1, v2, DeID]
     steps:
       - name: Check out code
         uses: actions/checkout@v4
