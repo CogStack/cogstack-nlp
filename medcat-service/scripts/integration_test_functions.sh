@@ -74,9 +74,10 @@ integration_test_medcat_service() {
      echo "Skipping Process_bulk test for DeID Mode testing "
      echo "Process_bulk in DeID mode appears to have a bug making it return the text without deid"
      return 0
+  fi
 
   local api="http://${localhost_name}:${port}/api/process_bulk"
-  local input_text="The patient was diagnosed with Kidney Failure"
+  local input_text="The patient J. Smith was diagnosed with Kidney Failure"
   local input_payload="{\"content\": [{\"text\":\"${input_text}\"}]}"
   local expected_annotation="Kidney Failure"
 
