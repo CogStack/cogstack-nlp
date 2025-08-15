@@ -3,10 +3,6 @@ name: medcat-trainer qa-build
 on:
   push:
     branches: [ main ]
-  pull_request:
-    paths:
-      - 'medcat-trainer/**'
-      - '.github/workflows/medcat-trainer_qa.yml'
 
 defaults:
   run:
