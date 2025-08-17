@@ -376,6 +376,35 @@ class Linking(ComponentConfig):
     class Config:
         extra = 'allow'
 
+class EmbeddingLinking(Linking):
+    
+    """The embedding linker never needs to be trained in its 
+    current implementation."""
+    train: bool = False
+    """Similarity between context bert-like vector and names or
+    cui preferred names"""
+    similarity_threshold: float = 0.25
+    """Name of the embedding model. It must be downloadable from 
+    huggingface linked from an appropriate file directory"""
+    embedding_model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
+    """Max number of tokens to be embedded from a name."""
+    max_token_length: int = 64
+    """How many pieces names can be embedded at once, useful when 
+    embedding name2info names, cui2info names"""
+    embedding_batch_size: int = 4096
+    """How many entities to be linked at once"""
+    linking_batch_size: int = 512
+    """Choose the linking method, via all names or a single name 
+    representing a cui. Defaults to cuis if this is changed"""
+    linking_strategy: str = "names"
+    """Choose a device for the linking model to be stored. If None
+    then an appropriate GPU device that is available will be chosen"""
+    gpu_device: Optional[Any] = None
+    """Choose the window size to get context vectors."""
+    context_window_size: int = 11
+    """Link candidates are provided by some NER steps. This will flag if 
+    you want to trust them or not."""
+    use_ner_link_candidates: bool = True
 
 class Preprocessing(SerialisableBaseModel):
     """The preprocessing part of the config"""
