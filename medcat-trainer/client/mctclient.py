@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 import json
 import os
 from abc import ABC
@@ -13,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class MCTObj(ABC):
-    id: str=None
+    id: Union[str, int]=None
 
     def valid(self):
         return self.id is not None
@@ -33,6 +34,20 @@ class MCTDataset(MCTObj):
 
     def __str__(self):
         return f'{self.id} : {self.name} \t {self.dataset_file}'
+
+
+@dataclass
+class MCTDocument(MCTObj):
+    """A document in the MedCATTrainer instance.
+    Intentionally NOT including the text in here.
+
+    Attributes:
+        name (str): The name of the document.
+    """
+    name: str=None
+
+    def __str__(self):
+        return f'{self.id} : {self.name}'
 
 
 @dataclass
@@ -135,8 +150,14 @@ class MCTProject(MCTObj):
     Attributes:
         name (str): The name of the project.
         description (str): The description of the project.
+        create_time (datetime): The date and time the project was created.
+        last_modified (datetime): The date and time the project was last modified.
         cuis (str): The CUIs to be used in the project filter.
         dataset (MCTDataset): The dataset to be used in the project.
+        annotation_classification (bool): Whether the project is an annotation classification project.
+        project_locked (bool): Whether the project is locked.
+        project_status (str): The status of the project. Active, Discontinued (Fail) or Complete.
+        deid_model_annotation (bool): Whether the project is a de-identification model annotation project.
         concept_db (MCTConceptDB): The concept database to be used in the project.
         vocab (MCTVocab): The vocabulary to be used in the project.
         members (List[MCTUser]): The annotators for the project.
@@ -145,8 +166,15 @@ class MCTProject(MCTObj):
     """
     name: str=None
     description: str=None
+    create_time: Union[datetime, str]=None
+    last_modified: Union[datetime, str]=None
     cuis: str=None
     dataset: MCTDataset=None
+    validated_documents: List[MCTDocument]=None
+    annotation_classification: bool=None
+    project_locked: bool=None
+    project_status: str='A'
+    deid_model_annotation: bool=False
     concept_db: MCTConceptDB=None
     vocab: MCTVocab=None
     members: List[MCTUser]=None
@@ -223,6 +251,8 @@ class MedCATTrainerSession:
                        dataset: Union[MCTDataset, str],
                        cuis: List[str]=[],
                        cuis_file: str=None,
+                       deid_model_annotation: bool=False,
+                       annotation_classification: bool=False,
                        concept_db: Union[MCTConceptDB, str]=None,
                        vocab: Union[MCTVocab, str]=None,
                        cdb_search_filter: Union[MCTConceptDB, str]=None,
@@ -244,7 +274,9 @@ class MedCATTrainerSession:
             dataset (Union[MCTDataset, str]): The dataset to be used in the project.
             cuis (List[str]): The CUIs to be used in the project filter.
             cuis_file (str): The file containing the CUIs to be used in the project filter, will be appended to the cuis list.
+            annotation_classification (bool): Whether the project will contribute to a 'globally' fine-tuned model or not. Defaults to False.
             concept_db (Union[MCTConceptDB, str], optional): The concept database to be used in the project. Defaults to None.
+            deid_model_annotation (bool): Whether the project is a de-identification model annotation project. Defaults to False.
             vocab (Union[MCTVocab, str], optional): The vocabulary to be used in the project. Defaults to None.
             cdb_search_filter (Union[MCTConceptDB, str], optional): _description_. Defaults to None.
             modelpack (Union[MCTModelPack, str], optional): _description_. Defaults to None.
@@ -319,7 +351,9 @@ class MedCATTrainerSession:
             'dataset': dataset.id,
             'members': [m.id for m in members],
             'tasks': [mt.id for mt in meta_tasks],
-            'relations': [rt.id for rt in rel_tasks]
+            'relations': [rt.id for rt in rel_tasks],
+            'annotation_classification': annotation_classification,
+            'deid_model_annotation': deid_model_annotation,
         }
 
         if concept_db and vocab:
@@ -340,7 +374,9 @@ class MedCATTrainerSession:
             resp_json = json.loads(resp.text)
             return MCTProject(id=resp_json['id'], name=name, description=description, cuis=cuis,
                               dataset=dataset, concept_db=concept_db, vocab=vocab, members=members,
-                              meta_tasks=meta_tasks, rel_tasks=rel_tasks)
+                              meta_tasks=meta_tasks, rel_tasks=rel_tasks,
+                              annotation_classification=annotation_classification,
+                              deid_model_annotation=deid_model_annotation)
         else:
             raise MCTUtilsException(f'Failed to create project with name: {name}', resp.text)
 
@@ -497,7 +533,14 @@ class MedCATTrainerSession:
         """
         resp = json.loads(requests.get(f'{self.server}/api/project-annotate-entities/', headers=self.headers).text)['results']
         mct_projects = [MCTProject(id=p['id'], name=p['name'], description=p['description'], cuis=p['cuis'],
+                                    create_time=p['create_time'],
+                                    last_modified=p['last_modified'],
+                                    annotation_classification=p['annotation_classification'],
+                                    project_locked=p['project_locked'],
+                                    project_status=p['project_status'],
+                                    deid_model_annotation=p['deid_model_annotation'],
                                     dataset=MCTDataset(id=p['id']),
+                                    validated_documents=[MCTDocument(id=d) for d in p['validated_documents']],
                                     concept_db=MCTConceptDB(id=p['concept_db']),
                                     vocab=MCTVocab(id=p['vocab']),
                                     members=[MCTUser(id=u) for u in p['members']],
