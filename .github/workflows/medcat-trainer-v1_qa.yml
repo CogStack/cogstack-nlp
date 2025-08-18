@@ -9,47 +9,6 @@ defaults:
     working-directory: ./v1/medcat-trainer
 
 jobs:
-  # Test and build client library
-  test-client:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout main
-        uses: actions/checkout@v4
-        with:
-          ref: 'main'
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install requests pytest build
-
-      - name: Install client package in development mode
-        run: |
-          cd client
-          pip install -e .
-
-      - name: Run client tests
-        run: |
-          cd client
-          python -m pytest tests/ -v
-
-      - name: Build client package
-        run: |
-          cd client
-          python -m build
-
-      # - name: Publish dev distribution to Test PyPI
-      #   uses: pypa/gh-action-pypi-publish@v1.4.2
-      #   with:
-      #     password: ${{ secrets.MEDCAT_TRAINER_TEST_PYPI_API_TOKEN }}
-      #     repository_url: https://test.pypi.org/legacy/
-      #     packages_dir: v1/medcat-trainer/client/dist
-
   # Build and test webapp container
   build-and-push:
     runs-on: ubuntu-latest

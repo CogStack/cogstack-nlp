@@ -3,63 +3,16 @@ name: medcat-trainer-v1 release-build
 on:
   push:
     tags:
-      - 'medcat-trainer/v1.*.*'  
+      - 'medcat-trainer/v1.*.*'
 
 defaults:
   run:
     working-directory: ./v1/medcat-trainer
 
 jobs:
-  # Test, build and publish client library
-  test-and-publish-client:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout main
-        uses: actions/checkout@v4
-        with:
-          ref: "main"
-
-      - name: Release Tag
-        # If GITHUB_REF=refs/tags/medcat-trainer/v0.1.2, this returns v0.1.2. Note it's including the "v" though it probably shouldnt
-        run: echo "RELEASE_VERSION=${GITHUB_REF##refs/*/}" >> $GITHUB_ENV
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install requests pytest build twine
-
-      - name: Install client package in development mode
-        run: |
-          cd client
-          pip install -e .
-
-      - name: Run client tests
-        run: |
-          cd client
-          python -m pytest tests/ -v
-
-      - name: Build client package
-        run: |
-          cd client
-          python -m build
-
-      - name: Publish production distribution to PyPI
-        if: startsWith(github.ref, 'refs/tags') && ! github.event.release.prerelease
-        uses: pypa/gh-action-pypi-publish@v1.4.2
-        with:
-          # TODO CU-869a25n7e Use Trusted Platform Publisher based PyPI release
-          password: ${{ secrets.PYPI_API_TOKEN }}
-          packages_dir: v1/medcat-trainer/client/dist
-
   # Build and test webapp container
   build-and-push:
     runs-on: ubuntu-latest
-    needs: test-and-publish-client
     steps:
       - name: Checkout main
         uses: actions/checkout@v4
