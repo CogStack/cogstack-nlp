@@ -240,7 +240,10 @@ class StatsBuilder:
         try:
             prec = self.tp / (self.tp + self.fp)
             rec = self.tp / (self.tp + self.fn)
-            f1 = 2 * (prec * rec) / (prec + rec)
+            if prec == 0 and rec == 0:
+                f1 = 0
+            else:
+                f1 = 2 * (prec * rec) / (prec + rec)
             if do_print:
                 print("Epoch: {}, Prec: {}, Rec: {}, F1: {}\n".format(
                     epoch, prec, rec, f1))
