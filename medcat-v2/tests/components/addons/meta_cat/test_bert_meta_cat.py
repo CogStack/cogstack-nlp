@@ -38,9 +38,17 @@ def assert_tries_network():
 #       in such a situation
 @contextmanager
 def force_hf_download():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        with _force_hf_download(temp_dir):
+            yield
+
+
+@contextmanager
+def _force_hf_download(temp_dir_path: str):
     orig_from_pretrained = transformers.BertModel.from_pretrained
     transformers.BertModel.from_pretrained = partial(
-        orig_from_pretrained, force_download=True)
+        orig_from_pretrained, force_download=True,
+        cache_dir=temp_dir_path)
     try:
         yield
     finally:
