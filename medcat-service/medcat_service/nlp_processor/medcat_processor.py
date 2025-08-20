@@ -18,7 +18,7 @@ from medcat.vocab import Vocab
 from medcat_service.types import HealthCheckResponse, ModelCardInfo, ProcessErrorsResult, ProcessResult, ServiceInfo
 
 
-class MedCatProcessor():
+class MedCatProcessor:
     """"
     MedCAT Processor class is wrapper over MedCAT that implements annotations extractions functionality
     (both single and bulk processing) that can be easily exposed for an API.
@@ -209,14 +209,13 @@ class MedCatProcessor():
         start_time_ns = time.time_ns()
 
         try:
+            text_input = MedCatProcessor._generate_input_doc(content, invalid_doc_ids)
             if self.DEID_MODE:
-                # TODO 2025-07-21: deid_multi_texts doesnt exist in medcat 2? Was renamed by error I think.
-                # TODO 2025-08-20: deid_multi_text appears to not return the same results as deid_text for the same input.
-                ann_res = self.cat.deid_multi_text(MedCatProcessor._generate_input_doc(content, invalid_doc_ids),
-                                                    redact=self.DEID_REDACT)
+                text_to_deid_from_tuple = (x[1] for x in text_input)
+
+                ann_res = self.cat.deid_multi_text(list(text_to_deid_from_tuple),
+                                                   redact=self.DEID_REDACT, n_process=self.bulk_nproc)
             else:
-                text_input = MedCatProcessor._generate_input_doc(
-                    content, invalid_doc_ids)
                 ann_res = {
                     ann_id: res for ann_id, res in
                     self.cat.get_entities_multi_texts(
@@ -427,9 +426,11 @@ class MedCatProcessor():
                     footer=in_ct.get("footer"),
                 )
             elif self.DEID_MODE:
-
                 out_res = ProcessResult(
-                    text=str(in_ct["text"]),
+                    # TODO: DEID mode is passing the resulting text in the annotations field here but shouldnt.
+                    text=str(annotations[i]),
+                    # TODO: DEID bulk mode should also be able to return the list of annotations found,
+                    #  to match the features of the singular api. CU-869a6wc6z
                     annotations=[],
                     success=True,
                     timestamp=self._get_timestamp(),
