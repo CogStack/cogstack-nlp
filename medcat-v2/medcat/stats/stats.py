@@ -238,8 +238,14 @@ class StatsBuilder:
                 Defaults to True.
         """
         try:
-            prec = self.tp / (self.tp + self.fp)
-            rec = self.tp / (self.tp + self.fn)
+            if self.tp + self.fp == 0:
+                prec = 0
+            else:
+                prec = self.tp / (self.tp + self.fp)
+            if self.tp + self.fp == 0:
+                rec = 0
+            else:
+                rec = self.tp / (self.tp + self.fn)
             if prec == 0 and rec == 0:
                 f1 = 0
             else:
