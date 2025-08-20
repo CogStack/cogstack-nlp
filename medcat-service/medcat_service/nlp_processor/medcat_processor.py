@@ -210,8 +210,9 @@ class MedCatProcessor():
 
         try:
             if self.DEID_MODE:
-                # TODO 2025-07-21: deid_multi_texts doesnt exist in medcat 2?
-                ann_res = self.cat.deid_multi_texts(MedCatProcessor._generate_input_doc(content, invalid_doc_ids),
+                # TODO 2025-07-21: deid_multi_texts doesnt exist in medcat 2? Was renamed by error I think.
+                # TODO 2025-08-20: deid_multi_text appears to not return the same results as deid_text for the same input.
+                ann_res = self.cat.deid_multi_text(MedCatProcessor._generate_input_doc(content, invalid_doc_ids),
                                                     redact=self.DEID_REDACT)
             else:
                 text_input = MedCatProcessor._generate_input_doc(

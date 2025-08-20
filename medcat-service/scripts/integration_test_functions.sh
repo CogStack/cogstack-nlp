@@ -70,11 +70,11 @@ integration_test_medcat_service() {
 
   # Test /api/process_bulk
 
-  if [[ "$expected_annotation" == "PATIENT" ]]; then
-     echo "Skipping Process_bulk test for DeID Mode testing "
-     echo "Process_bulk in DeID mode appears to have a bug making it return the text without deid"
-     return 0
-  fi
+  # if [[ "$expected_annotation" == "PATIENT" ]]; then
+  #    echo "Skipping Process_bulk test for DeID Mode testing "
+  #    echo "Process_bulk in DeID mode appears to have a bug making it return the text without deid"
+  #    return 0
+  # fi
 
   local api="http://${localhost_name}:${port}/api/process_bulk"
   local input_text="Patient J. Smith had been diagnosed with acute kidney failure the week before"
