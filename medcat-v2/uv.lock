@@ -841,6 +841,7 @@ deid = [
 dev = [
     { name = "mypy" },
     { name = "ruff" },
+    { name = "timeout-decorator" },
     { name = "types-pyyaml" },
     { name = "types-setuptools" },
     { name = "types-tqdm" },
@@ -882,6 +883,7 @@ requires-dist = [
     { name = "scipy", marker = "extra == 'meta-cat'" },
     { name = "spacy", marker = "python_full_version == '3.9.*' and extra == 'spacy'", specifier = "<3.8.4" },
     { name = "spacy", marker = "extra == 'spacy'" },
+    { name = "timeout-decorator", marker = "extra == 'dev'", specifier = "==0.5.0" },
     { name = "torch", marker = "extra == 'deid'", specifier = ">=2.4.0,<3.0" },
     { name = "torch", marker = "extra == 'meta-cat'", specifier = ">=2.4.0,<3.0" },
     { name = "torch", marker = "extra == 'rel-cat'", specifier = ">=2.4.0,<3.0" },
@@ -2355,6 +2357,12 @@ sdist = { url = "https://files.pythonhosted.org/packages/b7/4d/08c89e34946fce2ae
 wheels = [
     { url = "https://files.pythonhosted.org/packages/32/d5/f9a850d79b0851d1d4ef6456097579a9005b31fea68726a4ae5f2d82ddd9/threadpoolctl-3.6.0-py3-none-any.whl", hash = "sha256:43a0b8fd5a2928500110039e43a5eed8480b918967083ea48dc3ab9f13c4a7fb", size = 18638, upload-time = "2025-03-13T13:49:21.846Z" },
 ]
+
+[[package]]
+name = "timeout-decorator"
+version = "0.5.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/80/f8/0802dd14c58b5d3d72bb9caa4315535f58787a1dc50b81bbbcaaa15451be/timeout-decorator-0.5.0.tar.gz", hash = "sha256:6a2f2f58db1c5b24a2cc79de6345760377ad8bdc13813f5265f6c3e63d16b3d7", size = 4754, upload-time = "2020-11-15T00:53:06.506Z" }
 
 [[package]]
 name = "tokenizers"

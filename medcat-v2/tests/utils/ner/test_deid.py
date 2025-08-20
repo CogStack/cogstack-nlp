@@ -166,18 +166,31 @@ class DeIDModelWorks(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.deid_model = train_model_once()[1]
+        # import torch
+        # torch.set_num_threads(1)
 
     def tearDown(self):
         if os.path.exists(self.save_folder):
             shutil.rmtree(self.save_folder)
 
-    def test_model_works_deid_text(self):
-        anon_text = self.deid_model.deid_text(input_text)
+    def assert_deid_annotations(self, anon_text: str):
         self.assertIn("[DOCTOR]", anon_text)
         self.assertNotIn("M. Sully", anon_text)
         self.assertIn("[HOSPITAL]", anon_text)
         # self.assertNotIn("Dublin", anon_text)
         self.assertNotIn("7 Eccles Street", anon_text)
+
+    def assert_deid_redact(self, anon_text: str):
+        self.assertIn("****", anon_text)
+        self.assertNotIn("[DOCTOR]", anon_text)
+        self.assertNotIn("M. Sully", anon_text)
+        self.assertNotIn("[HOSPITAL]", anon_text)
+        # self.assertNotIn("Dublin", anon_text)
+        self.assertNotIn("7 Eccles Street", anon_text)
+
+    def test_model_works_deid_text(self):
+        anon_text = self.deid_model.deid_text(input_text)
+        self.assert_deid_annotations(anon_text)
 
     def test_model_works_dunder_call(self):
         anon_doc = self.deid_model(input_text)
@@ -186,64 +199,34 @@ class DeIDModelWorks(unittest.TestCase):
 
     def test_model_works_deid_text_redact(self):
         anon_text = self.deid_model.deid_text(input_text, redact=True)
-        self.assertIn("****", anon_text)
-        self.assertNotIn("[DOCTOR]", anon_text)
-        self.assertNotIn("M. Sully", anon_text)
-        self.assertNotIn("[HOSPITAL]", anon_text)
-        # self.assertNotIn("Dublin", anon_text)
-        self.assertNotIn("7 Eccles Street", anon_text)
+        self.assert_deid_redact(anon_text)
 
+    def test_model_works_deid_multi_text_single_threaded(self):
+        processed = self.deid_model.deid_multi_text([input_text, input_text], n_process=1)
+        self.assertEqual(len(processed), 2)
+        for anon_text in processed:
+            self.assert_deid_annotations(anon_text)
 
-# class DeIDModelMultiprocessingWorks(unittest.TestCase):
-#     processes = 2
+    def test_model_works_deid_multi_text_single_threaded_redact(self):
+        processed = self.deid_model.deid_multi_text([input_text, input_text],
+                                                    n_process=1, redact=True)
+        self.assertEqual(len(processed), 2)
+        for anon_text in processed:
+            self.assert_deid_redact(anon_text)
 
-#     @classmethod
-#     def setUpClass(cls) -> None:
-#         Span.set_extension('link_candidates', default=None, force=True)
-#         _add_model(cls)
-#         cls.deid_model = train_model_once(cls.deid_model)[1]
-#         with open(TEST_DATA) as f:
-#             raw_data = json.load(f)
-#         cls.data = []
-#         for project in raw_data['projects']:
-#             for doc in project['documents']:
-#                 cls.data.append(
-#                     (f"{project['name']}_{doc['name']}", doc['text']))
-#         # NOTE: Comment and subsequent code
-#         #       copied from CAT.multiprocessing_batch_char_size
-#         #       (lines 1234 - 1237)
-#         # Hack for torch using multithreading, which is not good if not
-#         # separate_nn_components, need for CPU runs only
-#         import torch
-#         torch.set_num_threads(1)
-
-#     def assertTextHasBeenDeIded(self, text: str, redacted: bool):
-#         if not redacted:
-#             for cui in self.deid_model.cdb.cui2names:
-#                 cui_name = self.deid_model.cdb.get_name(cui)
-#                 if cui_name in text:
-#                     # all good
-#                     return
-#         else:
-#             # if redacted, only check once...
-#             if "******" in text:
-#                 # all good
-#                 return
-#         raise AssertionError("None of the CUIs found")
-
-    # # @timeout_decorator.timeout(3 * 60)  # 3 minutes max
+    # @timeout_decorator.timeout(3 * 60)  # 3 minutes max
     # def test_model_can_multiprocess_no_redact(self):
-    #     processed = self.deid_model.deid_multi_texts(
-    #         self.data, n_process=self.processes)
-    #     self.assertEqual(len(processed), 5)
+    #     processed = self.deid_model.deid_multi_text(
+    #         [input_text, input_text], n_process=2)
+    #     self.assertEqual(len(processed), 2)
     #     for tid, new_text in enumerate(processed):
     #         with self.subTest(str(tid)):
-    #             self.assertTextHasBeenDeIded(new_text, redacted=False)
+    #             self.assert_deid_annotations(new_text)
 
-    # # @timeout_decorator.timeout(3 * 60)  # 3 minutes max
+    # @timeout_decorator.timeout(3 * 60)  # 3 minutes max
     # def test_model_can_multiprocess_redact(self):
-    #     processed = self.deid_model.deid_multi_texts(
-    #         self.data, n_process=self.processes, redact=True)
+    #     processed = self.deid_model.deid_multi_text(
+    #         [input_text, input_text], n_process=2, redact=True)
     #     self.assertEqual(len(processed), 5)
     #     for tid, new_text in enumerate(processed):
     #         with self.subTest(str(tid)):

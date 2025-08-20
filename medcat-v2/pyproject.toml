@@ -82,6 +82,7 @@ dev = [
   "types-tqdm",
   "types-setuptools",
   "types-PyYAML",
+  "timeout-decorator==0.5.0",
 ]
 spacy = [
   "spacy",
