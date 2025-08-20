@@ -30,7 +30,6 @@ class TestMedcatServiceDeId(unittest.TestCase):
 
         cls.client = TestClient(app)
 
-   # @unittest.skip("Disabled until deid model is committed")
     def testDeidProcess(self):
         payload = common.create_payload_content_from_doc_single(
             "John had been diagnosed with acute Kidney Failure the week before"
