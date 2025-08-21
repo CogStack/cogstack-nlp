@@ -49,13 +49,20 @@ def force_hf_download():
 @contextmanager
 def _force_hf_download(temp_dir_path: str):
     orig_from_pretrained = transformers.BertModel.from_pretrained
-    transformers.BertModel.from_pretrained = partial(
-        orig_from_pretrained, force_download=True,
-        cache_dir=temp_dir_path)
+
+    method_calls = []
+
+    def replacement_method(*args, **kwargs):
+        method_calls.append((len(args), len(kwargs)))
+        return orig_from_pretrained(
+            *args, force_download=True,
+            cache_dir=temp_dir_path, **kwargs)
+    transformers.BertModel.from_pretrained = replacement_method
     try:
         yield
     finally:
         transformers.BertModel.from_pretrained = orig_from_pretrained
+        assert method_calls, "BertModel.from_pretrained should be called"
 
 
 class BERTMetaCATTests(unittest.TestCase):
