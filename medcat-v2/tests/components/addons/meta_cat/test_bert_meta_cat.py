@@ -88,6 +88,8 @@ class BERTMetaCATTests(unittest.TestCase):
         cls.meta_cat = meta_cat.MetaCATAddon.create_new(cls.cnf, cls.tokenizer)
 
         cls.temp_dir = tempfile.TemporaryDirectory()
+        # change model variant to force a network call upon load
+        cls.cnf.model.model_variant = 'prajjwal1/bert-small'
         cls.mc_save_path = os.path.join(cls.temp_dir.name, "bert_meta_cat")
         serialise('dill', cls.meta_cat, cls.mc_save_path)
 
