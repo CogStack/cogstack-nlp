@@ -8,6 +8,8 @@ import itertools
 from contextlib import contextmanager
 
 import shutil
+import zipfile
+import tempfile
 import logging
 
 from medcat.utils.defaults import DEFAULT_PACK_NAME, COMPONENTS_FOLDER
@@ -837,35 +839,51 @@ class CAT(AbstractSerialisable):
     @overload
     @classmethod
     def load_model_card_off_disk(cls, model_pack_path: str,
-                                 as_dict: Literal[True]) -> ModelCard:
+                                 as_dict: Literal[True],
+                                 avoid_unpack: bool = False) -> ModelCard:
         pass
 
     @overload
     @classmethod
     def load_model_card_off_disk(cls, model_pack_path: str,
-                                 as_dict: Literal[False]) -> str:
+                                 as_dict: Literal[False],
+                                 avoid_unpack: bool = False) -> str:
         pass
 
     @classmethod
     def load_model_card_off_disk(cls, model_pack_path: str,
-                                 as_dict: bool = False
+                                 as_dict: bool = False,
+                                 avoid_unpack: bool = False,
                                  ) -> Union[str, ModelCard]:
         """Load the model card off disk as a (nested) `dict` or a json string.
 
         Args:
             model_pack_path (str): The path to the model pack (zip or folder).
             as_dict (bool): Whether to return as dict. Defaults to False.
+            avoid_unpack (bool): Whether to avoid unpacking the model pack if
+                no previous unpacked path exists. Defaults to False.
 
         Returns:
             Union[str, ModelCard]: The model card.
         """
+        model_card: Optional[ModelCard] = None
         # unpack if needed
         if model_pack_path.endswith(".zip"):
-            model_pack_path = cls.attempt_unpack(model_pack_path)
-        # load model card
-        model_card_path = os.path.join(model_pack_path, "model_card.json")
-        with open(model_card_path) as f:
-            model_card = json.load(f)
+            if (avoid_unpack and
+                    not os.path.exists(model_pack_path.removesuffix(".zip"))):
+                # stream the model card directly from the zip
+                with zipfile.ZipFile(model_pack_path) as zf:
+                    with zf.open("model_card.json") as src:
+                        model_card = json.load(src)
+            else:
+                # if allowed to unpack or already unpacked anyway
+                model_pack_path = cls.attempt_unpack(model_pack_path)
+        if model_card is None:
+            # i.e not loaded directly off disk
+            # load model card
+            model_card_path = os.path.join(model_pack_path, "model_card.json")
+            with open(model_card_path) as f:
+                model_card = json.load(f)
         # return as dict or json
         if as_dict:
             return model_card
