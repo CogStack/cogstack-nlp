@@ -10,7 +10,6 @@ from medcat_service.main import app
 
 
 def get_settings_override():
-    print("Overriding settings")
     return Settings(deid_mode=True, deid_redact=True)
 
 
@@ -21,7 +20,6 @@ class TestMedcatServiceDeId(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        print("Setting up class")
         common.setup_medcat_processor()
 
         if "APP_MEDCAT_MODEL_PACK" not in os.environ:
