@@ -21,8 +21,10 @@ from .test_meta_cat import FakeTokenizer
 def assert_tries_network():
     real_socket = socket.socket
     calls = []
+    print(f"=== DEBUG: Network call interception started on thread {threading.get_ident()} ===")
 
     def guard(*args, **kwargs):
+        print(f"=== DEBUG: Network call intercepted on thread {threading.get_ident()} ===")
         calls.append((len(args), len(kwargs)))
         raise OSError("Network disabled for test")
 
@@ -62,6 +64,7 @@ def _force_hf_download(temp_dir_path: str):
         yield
     finally:
         transformers.BertModel.from_pretrained = orig_from_pretrained
+        print(f"=== DEBUG: from_pretrained called {len(method_calls)} times ===")
         assert method_calls, "BertModel.from_pretrained should be called"
 
 
