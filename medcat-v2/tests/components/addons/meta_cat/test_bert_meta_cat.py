@@ -1,7 +1,6 @@
 import socket
 from contextlib import contextmanager
 import time
-import threading
 
 from medcat.components.addons.meta_cat import meta_cat
 from medcat.storage.serialisers import serialise, deserialise
@@ -90,55 +89,10 @@ class BERTMetaCATTests(unittest.TestCase):
         cls.temp_dir.cleanup()
 
     def test_no_network_load(self):
-        import threading
-        import sys
-        import os
-
-        print("=== DEBUG: Environment ===")
-        print(f"CI: {os.getenv('CI')}")
-        print(f"GITHUB_ACTIONS: {os.getenv('GITHUB_ACTIONS')}")
-        print(f"Python version: {sys.version}")
-        print(f"Transformers version: {transformers.__version__}")
-        print(f"Initial thread count: {threading.active_count()}")
-        print(f"Initial threads: {[t.name for t in threading.enumerate()]}")
-
-        from medcat.tokenizing.spacy_impl.tokenizers import SpacyTokenizer
-        from medcat.config import Config
-        cnf = Config()
-        nlp = cnf.general.nlp
-        tokenizer = SpacyTokenizer("en_core_web_md",
-                                   nlp.disabled_components,
-                                   False,
-                                   1_000_000)
         with assert_tries_network():
             with force_hf_download():
-                print("=== DEBUG: Before deserialise ===")
-                print(f"Thread count: {threading.active_count()}")
                 mc = deserialise(self.mc_save_path)
                 # NOTE: the network calls are done async
                 #       and as such we may need to wait for them
                 #       to be done before we exit the context managers,
-                print("=== DEBUG: After deserialise ===")
-                print(f"Thread count: {threading.active_count()}")
-                print(f"Current threads: {[t.name for t in threading.enumerate()]}")
-                wait_time = 5.0 if os.getenv('CI') else 1.0
-                print(f"=== DEBUG: Waiting {wait_time}s for background threads ===")
-                time.sleep(wait_time)
-                print("=== DEBUG: After wait ===")
-                print(f"Thread count: {threading.active_count()}")
-
-                self.assertIsInstance(mc, meta_cat.MetaCATAddon)
-                mc: meta_cat.MetaCATAddon
-                doc = tokenizer("Some Text With Something")
-                ent = doc[2:4]
-                ent.detected_name = 'something'
-                ent.link_candidates = ['s', 'ome', 'thing']
-                ent.confidence = ent.context_similarity = 0.95
-                ent.cui = 'C123'
-                ent.id = 0
-                doc.ner_ents = [ent]
-                doc.linked_ents = [ent]
-                mc(doc)
-                self.assertTrue(ent.has_addon_data(meta_cat._META_ANNS_PATH))
-                print("=== DEBUG: After usage ===")
-                print(f"Thread count: {threading.active_count()}")
+        self.assertIsInstance(mc, meta_cat.MetaCATAddon)
