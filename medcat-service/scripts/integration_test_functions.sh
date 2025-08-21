@@ -73,8 +73,7 @@ integration_test_medcat_service() {
   local api="http://${localhost_name}:${port}/api/process_bulk"
   local input_text="Patient J. Smith had been diagnosed with acute kidney failure the week before"
   local input_payload="{\"content\": [{\"text\":\"${input_text}\"}]}"
-  local expected_annotation="Kidney Failure"
-
+  local expected_annotation=${3:-Kidney Failure}
 
   echo "Calling POST $api with payload '$input_payload'"
   local actual
