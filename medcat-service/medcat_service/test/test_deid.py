@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 import medcat_service.test.common as common
 from medcat_service.main import app
 
+
 class TestMedcatServiceDeId(unittest.TestCase):
     """
     Implementation of test cases for MedCAT service
@@ -56,9 +57,9 @@ class TestMedcatServiceDeId(unittest.TestCase):
         self.assertEqual(ann["cui"], expected["cui"])
 
     def testDeidProcessBulk(self):
-        payload = common.create_payload_content_from_doc_bulk(
-           [ "John had been diagnosed with acute Kidney Failure the week before" ]
-        )
+        payload = common.create_payload_content_from_doc_bulk([
+            "John had been diagnosed with acute Kidney Failure the week before"
+        ])
         response = self.client.post(self.ENDPOINT_PROCESS_BULK, json=payload)
         self.assertEqual(response.status_code, 200)
 
@@ -73,8 +74,11 @@ class TestMedcatServiceDeId(unittest.TestCase):
         self.assertEqual(len(actual["result"]), 1)
         self.assertEqual(actual["result"][0]["text"], expected["text"])
 
-        self.assertEqual(len(actual["result"][0]["annotations"]), 0,
-                         "CU-869a6wc6z No annotations are currently returned by the bulk API")
+        self.assertEqual(
+            len(actual["result"][0]["annotations"]),
+            0,
+            "CU-869a6wc6z No annotations are currently returned by the bulk API",
+        )
 
         # ann = actual["result"][0]["annotations"][0]["0"]
         # self.assertEqual(ann["pretty_name"], expected["pretty_name"])
