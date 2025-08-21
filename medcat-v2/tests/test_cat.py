@@ -62,6 +62,17 @@ class ModelLoadTests(unittest.TestCase):
         cdb = cat.CAT.load_cdb(EXAMPLE_MODEL_PACK_ZIP)
         self.assertIsInstance(cdb, CDB)
 
+    def test_can_load_model_card_off_disk_from_zip_to_json(self):
+        out = cat.CAT.load_model_card_off_disk(
+            EXAMPLE_MODEL_PACK_ZIP, as_dict=False)
+        self.assertIsInstance(out, str)
+
+    def test_can_load_model_card_off_disk_from_folder_to_dict(self):
+        # NOTE: the model gets unpacked automatically due to __init__.py
+        out = cat.CAT.load_model_card_off_disk(
+            expected_model_pack_path, as_dict=True)
+        self.assertIsInstance(out, dict)
+
 
 class ModelLoadIWithHiddenFilesTests(unittest.TestCase):
 
