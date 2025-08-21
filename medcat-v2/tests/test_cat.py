@@ -73,6 +73,17 @@ class ModelLoadTests(unittest.TestCase):
             expected_model_pack_path, as_dict=True)
         self.assertIsInstance(out, dict)
 
+    def test_can_load_model_ard_without_unzipping(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            zip_path = os.path.join(temp_dir, "model_pazk.zip")
+            # copy to another location to avoid a previoulsy unpacked model
+            shutil.copy(EXAMPLE_MODEL_PACK_ZIP, zip_path)
+            out = cat.CAT.load_model_card_off_disk(
+                expected_model_pack_path, avoid_unpack=True)
+            # make sure the folder doesn't exist
+            self.assertFalse(os.path.exists(zip_path.removesuffix(".zip")))
+            self.assertIsInstance(out, str)
+
 
 class ModelLoadIWithHiddenFilesTests(unittest.TestCase):
 
