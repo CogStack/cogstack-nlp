@@ -4,36 +4,38 @@ import unittest
 from fastapi.testclient import TestClient
 
 import medcat_service.test.common as common
+from medcat_service.config import Settings
+from medcat_service.dependencies import get_settings
 from medcat_service.main import app
 
 
-class TestMedcatServiceDeId(unittest.TestCase):
-    """
-    Implementation of test cases for MedCAT service
-    """
+def get_settings_override():
+    print("Overriding settings")
+    return Settings(deid_mode=True, deid_redact=True)
 
-    # Available endpoints
-    #
+
+class TestMedcatServiceDeId(unittest.TestCase):
     ENDPOINT_PROCESS_SINGLE = "/api/process"
     ENDPOINT_PROCESS_BULK = "/api/process_bulk"
     client: TestClient
 
-    # Running before every test due to env var usage meaning it can be overriden by other test classse
-    # Should instead move to use pydantic settings for easy test overrides. CU-8699xd2r1
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
+        print("Setting up class")
         common.setup_medcat_processor()
-        os.environ["DEID_MODE"] = "True"
-        os.environ["DEID_REDACT"] = "True"
 
         if "APP_MEDCAT_MODEL_PACK" not in os.environ:
             os.environ["APP_MEDCAT_MODEL_PACK"] = "./models/examples/example-deid-model-pack.zip"
 
-        self.client = TestClient(app)
+        app.dependency_overrides[get_settings] = get_settings_override
+        cls.client = TestClient(app)
 
     def testDeidProcess(self):
         payload = common.create_payload_content_from_doc_single(
             "John had been diagnosed with acute Kidney Failure the week before"
         )
+        app.dependency_overrides[get_settings] = get_settings_override
+
         response = self.client.post(self.ENDPOINT_PROCESS_SINGLE, json=payload)
         self.assertEqual(response.status_code, 200)
 
@@ -54,11 +56,14 @@ class TestMedcatServiceDeId(unittest.TestCase):
         self.assertEqual(ann["pretty_name"], expected["pretty_name"])
         self.assertEqual(ann["source_value"], expected["source_value"])
         self.assertEqual(ann["cui"], expected["cui"])
+        app.dependency_overrides = {}
 
     def testDeidProcessBulk(self):
         payload = common.create_payload_content_from_doc_bulk([
             "John had been diagnosed with acute Kidney Failure the week before"
         ])
+        app.dependency_overrides[get_settings] = get_settings_override
+
         response = self.client.post(self.ENDPOINT_PROCESS_BULK, json=payload)
         self.assertEqual(response.status_code, 200)
 
@@ -83,3 +88,4 @@ class TestMedcatServiceDeId(unittest.TestCase):
         # self.assertEqual(ann["pretty_name"], expected["pretty_name"])
         # self.assertEqual(ann["source_value"], expected["source_value"])
         # self.assertEqual(ann["cui"], expected["cui"])
+        app.dependency_overrides = {}

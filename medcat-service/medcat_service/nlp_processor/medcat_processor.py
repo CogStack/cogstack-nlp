@@ -15,6 +15,7 @@ from medcat.config import Config
 from medcat.config.config_meta_cat import ConfigMetaCAT
 from medcat.vocab import Vocab
 
+from medcat_service.config import Settings
 from medcat_service.types import HealthCheckResponse, ModelCardInfo, ProcessErrorsResult, ProcessResult, ServiceInfo
 
 
@@ -24,7 +25,7 @@ class MedCatProcessor:
     (both single and bulk processing) that can be easily exposed for an API.
     """
 
-    def __init__(self):
+    def __init__(self, settings: Settings):
         app_log_level = os.getenv("APP_LOG_LEVEL", logging.INFO)
         medcat_log_level = os.getenv("LOG_LEVEL", logging.INFO)
 
@@ -46,8 +47,8 @@ class MedCatProcessor:
 
         self.bulk_nproc = int(os.getenv("APP_BULK_NPROC", 8))
         self.torch_threads = int(os.getenv("APP_TORCH_THREADS", -1))
-        self.DEID_MODE = eval(os.getenv("DEID_MODE", "False"))
-        self.DEID_REDACT = eval(os.getenv("DEID_REDACT", "True"))
+        self.DEID_MODE = settings.deid_mode
+        self.DEID_REDACT = settings.deid_redact
         self.model_card_info = ModelCardInfo(
             ontologies=None, meta_cat_model_names=[], model_last_modified_on=None)
 
