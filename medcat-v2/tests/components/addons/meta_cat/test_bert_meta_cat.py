@@ -1,5 +1,6 @@
 import socket
 from contextlib import contextmanager
+import time
 
 from medcat.components.addons.meta_cat import meta_cat
 from medcat.storage.serialisers import serialise, deserialise
@@ -83,4 +84,8 @@ class BERTMetaCATTests(unittest.TestCase):
         with assert_tries_network():
             with force_hf_download():
                 mc = deserialise(self.mc_save_path)
+                # NOTE: the network calls are done async
+                #       and as such we may need to wait for them
+                #       to be done before we exit the context managers,
+                time.sleep(1.0)
         self.assertIsInstance(mc, meta_cat.MetaCATAddon)
