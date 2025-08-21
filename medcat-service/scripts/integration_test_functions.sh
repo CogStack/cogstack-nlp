@@ -85,14 +85,14 @@ integration_test_medcat_service() {
 
   # Split body and code
   http_code=$(echo "$response" | tail -n1)
-  body=$(echo "$response" | sed '$d')
+  actual=$(echo "$response" | sed '$d')
 
   echo "HTTP status: $http_code"
-  echo "Response body: '$body'"
+  echo "Response body: '$actual'"
 
   if [[ "$http_code" != "200" ]]; then
     echo "ERROR: Expected HTTP 200, got $http_code"
-    echo -e "Actual response was:\n${body}"
+    echo -e "Actual response was:\n${actual}"
     return 1
   fi
 
@@ -103,7 +103,7 @@ integration_test_medcat_service() {
   fi
 
   local actual_annotation
-  actual_annotation=$(echo "$actual" | jq -r '.body[0].annotations[0]["0"].pretty_name')
+  actual_annotation=$(echo "$actual" | jq -r '.result[0].annotations[0]["0"].pretty_name')
 
   if [[ "$actual_annotation" == "$expected_annotation" ]]; then
     echo "Service working and extracting annotations for Process Bulk API"
