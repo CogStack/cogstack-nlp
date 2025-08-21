@@ -31,6 +31,7 @@ def assert_tries_network():
         yield
     finally:
         socket.socket = real_socket
+        print(f"=== DEBUG: Found", len(calls), "network calls")
         assert calls, "No network calls were made during the test"
 
 
@@ -66,6 +67,7 @@ def _force_hf_download(temp_dir_path: str):
     finally:
         transformers.BertModel.from_pretrained = orig_from_pretrained
         print(f"=== DEBUG: from_pretrained called {len(method_calls)} times ===")
+        print(f"=== DEBUG: Found", len(method_calls), "BertModel.from_pretrained calls")
         assert method_calls, "BertModel.from_pretrained should be called"
 
 
