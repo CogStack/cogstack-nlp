@@ -18,10 +18,9 @@ class TestMedcatServiceDeId(unittest.TestCase):
     ENDPOINT_PROCESS_BULK = "/api/process_bulk"
     client: TestClient
 
-    # Static initialization methods
-    #
-    @classmethod
-    def setUpClass(cls):
+    # Running before every test due to env var usage meaning it can be overriden by other test classse
+    # Should instead move to use pydantic settings for easy test overrides. CU-8699xd2r1
+    def setUp(self):
         common.setup_medcat_processor()
         os.environ["DEID_MODE"] = "True"
         os.environ["DEID_REDACT"] = "True"
@@ -29,7 +28,7 @@ class TestMedcatServiceDeId(unittest.TestCase):
         if "APP_MEDCAT_MODEL_PACK" not in os.environ:
             os.environ["APP_MEDCAT_MODEL_PACK"] = "./models/examples/example-deid-model-pack.zip"
 
-        cls.client = TestClient(app)
+        self.client = TestClient(app)
 
     def testDeidProcess(self):
         payload = common.create_payload_content_from_doc_single(
