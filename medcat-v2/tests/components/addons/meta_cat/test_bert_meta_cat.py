@@ -143,5 +143,6 @@ class BERTMetaCATTests(unittest.TestCase):
                 doc.ner_ents = [ent]
                 doc.linked_ents = [ent]
                 mc(doc)
+                self.assertTrue(ent.has_addon_data(meta_cat._META_ANNS_PATH))
                 print("=== DEBUG: After usage ===")
                 print(f"Thread count: {threading.active_count()}")
