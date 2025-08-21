@@ -1,6 +1,8 @@
 import socket
 from contextlib import contextmanager
 import time
+import threading
+import traceback
 
 from medcat.components.addons.meta_cat import meta_cat
 from medcat.storage.serialisers import serialise, deserialise
@@ -81,11 +83,33 @@ class BERTMetaCATTests(unittest.TestCase):
         cls.temp_dir.cleanup()
 
     def test_no_network_load(self):
+        import threading
+        import sys
+        import os
+
+        print("=== DEBUG: Environment ===")
+        print(f"CI: {os.getenv('CI')}")
+        print(f"GITHUB_ACTIONS: {os.getenv('GITHUB_ACTIONS')}")
+        print(f"Python version: {sys.version}")
+        print(f"Transformers version: {transformers.__version__}")
+        print(f"Initial thread count: {threading.active_count()}")
+        print(f"Initial threads: {[t.name for t in threading.enumerate()]}")
+
         with assert_tries_network():
             with force_hf_download():
+                print("=== DEBUG: Before deserialise ===")
+                print(f"Thread count: {threading.active_count()}")
                 mc = deserialise(self.mc_save_path)
                 # NOTE: the network calls are done async
                 #       and as such we may need to wait for them
                 #       to be done before we exit the context managers,
-                time.sleep(1.0)
+                print(f"=== DEBUG: After deserialise ===")
+                print(f"Thread count: {threading.active_count()}")
+                print(f"Current threads: {[t.name for t in threading.enumerate()]}")
+                wait_time = 5.0 if os.getenv('CI') else 1.0
+                print(f"=== DEBUG: Waiting {wait_time}s for background threads ===")
+                time.sleep(wait_time)
+                print("=== DEBUG: After wait ===")
+                print(f"Thread count: {threading.active_count()}")
+
         self.assertIsInstance(mc, meta_cat.MetaCATAddon)
