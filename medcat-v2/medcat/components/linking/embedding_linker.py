@@ -38,20 +38,21 @@ class Linker(AbstractCoreComponent):
         self.embedding_model_name = self.cnf_l.embedding_model_name
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+        self._name_keys = list(self.cdb.name2info)
+        self._cui_keys = list(self.cdb.cui2info)
+
         # these only need to be populated when called for embedding or inference
-        self._name_keys = None
-        self._cui_keys = None
         self._names_context_matrix = None
         self._cui_context_matrix = None
 
-        # used for filters, and if the name contains a valid cui see: _set_filters
+        # used for filters and name embedding, and if the name contains a valid cui see: _set_filters
         self._last_include_set = None
         self._last_exclude_set = None
         self._allowed_mask = None
         self._name_has_allowed_cui = None
 
-        self._cui_to_idx = {cui: idx for idx, cui in enumerate(self.cui_keys)}
-        self._name_to_idx = {name: idx for idx, name in enumerate(self.name_keys)}
+        self._cui_to_idx = {cui: idx for idx, cui in enumerate(self._cui_keys)}
+        self._name_to_idx = {name: idx for idx, name in enumerate(self._name_keys)}
         self._name_to_cui_idxs = [
             [ self._cui_to_idx[cui]
             for cui in self.cdb.name2info[name].get("per_cui_status", {}).keys()
@@ -73,8 +74,7 @@ class Linker(AbstractCoreComponent):
         else:
             self.embedding_model_name = embedding_model_name
         self._load_transformers(embedding_model_name)
-        # use the preferred name, if not take the longest name
-        # cui_names = [self.cdb.cui2info[cui]["preferred_name"] for cui in self._name_keys]
+        # Use the longest name
         cui_names = [max(self.cdb.cui2info[cui]["names"], key=len) for cui in self._cui_keys]
         # embed each name in batches. Because there can be 3+ million names
         total_batches = math.ceil(len(cui_names) / self.cnf_l.embedding_batch_size)
@@ -88,7 +88,6 @@ class Linker(AbstractCoreComponent):
         # cat all batches into one tensor
         all_embeddings = torch.cat(all_embeddings, dim=0)
         self.cdb.addl_info["cui_embeddings"] = all_embeddings
-        self.cdb.addl_info["cui_to_idx"] = {cui: idx for idx, cui in enumerate(self._cui_keys)}
         logger.debug("Embedding cui names done, total: %d", len(names))
 
     def embed_names(self, 
@@ -111,12 +110,11 @@ class Linker(AbstractCoreComponent):
         for names in tqdm(self._batch_data(names, self.cnf_l.embedding_batch_size), total=total_batches, desc="Embedding names"):
             with torch.no_grad():
                 # removing ~ from names, as it is used to indicate a space in the CDB
-                names_to_embed = [name.replace("~", " ") for name in names]
+                names_to_embed = [name.replace(self.config.general.separator, " ") for name in names]
                 embeddings = self._embed(names_to_embed, self.device)
                 all_embeddings.append(embeddings.cpu())
         all_embeddings = torch.cat(all_embeddings, dim=0)
         self.cdb.addl_info["name_embeddings"] = all_embeddings
-        self.cdb.addl_info["name_to_idx"] = {name: idx for idx, name in enumerate(self.name_keys)}
         logger.debug("Embedding names done, total: %d", len(names))
     
 
@@ -155,13 +153,11 @@ class Linker(AbstractCoreComponent):
         outputs = F.normalize(outputs, p=2, dim=1)
         return outputs.half()
 
-    def _get_context_tokens(self, 
+    def _get_context(self, 
                             entity: MutableEntity, 
                             doc: MutableDocument,
                             size: int
-                           ) -> tuple[list[MutableToken],
-                                      list[MutableToken],
-                                      list[MutableToken]]:
+                           ) -> str:
         """Get context tokens for an entity
 
         Args:
@@ -176,14 +172,14 @@ class Linker(AbstractCoreComponent):
         start_ind = entity.base.start_index
         end_ind = entity.base.end_index
 
-        _left_tokens = doc[max(0, start_ind - size):start_ind]
-        tokens_left = [tkn for tkn in _left_tokens]
-        tokens_center: list[MutableToken] = list(
-            cast(Iterable[MutableToken], entity))
-        _right_tokens = doc[end_ind + 1:end_ind + 1 + size]
-        tokens_right = [tkn for tkn in _right_tokens]
-        
-        return tokens_left, tokens_center, tokens_right
+        left_most_token = doc[max(0, start_ind - size)]
+        left_index = left_most_token.base.char_index
+
+        right_most_token = doc[min(len(doc) - 1, end_ind + size)]
+        right_index = right_most_token.base.char_index + len(right_most_token.base.text)
+
+        snippet = doc.base.text[left_index:right_index]
+        return snippet
 
     def _get_context_vectors(self,
                              doc: MutableDocument,
@@ -199,9 +195,7 @@ class Linker(AbstractCoreComponent):
                 The tokens on the left, centre, and right."""
         texts = []
         for entity in entities:
-            tokens_left, tokens_center, tokens_right = self._get_context_tokens(entity, doc, size)
-            tokens = tokens_left + tokens_center + tokens_right
-            text = " ".join(token.base.text for token in tokens)
+            text = self._get_context(entity, doc, size)
             texts.append(text)
         return self._embed(texts, self.device)
     
@@ -237,7 +231,7 @@ class Linker(AbstractCoreComponent):
 
         # checking if a name has at least 1 cui related to it. Might as well do this cheeck here.
         _has_cuis_all = torch.tensor(
-            [bool(self.cdb.name2info[name]["per_cui_status"]) for name in self.name_keys],
+            [bool(self.cdb.name2info[name]["per_cui_status"]) for name in self._name_keys],
             device=self.device
         )
         self._valid_names  = (_has_cuis_all & allowed_mask)
@@ -266,7 +260,7 @@ class Linker(AbstractCoreComponent):
         similarity = candidate_scores[candidate_idx].item()
         return predicted_cui, similarity
 
-    def _inference_by_names(
+    def _inference(
             self, 
             doc: MutableDocument,
             entities: list[MutableEntity]) -> Iterator[MutableEntity]:
@@ -288,11 +282,11 @@ class Linker(AbstractCoreComponent):
 
         for i, entity in enumerate(entities):
             link_candidates = [cui for cui in entity.link_candidates if self.cnf_l.filters.check_filters(cui)]
-            if self.cnf_l.use_ner_link_candidates and len(link_candidates) == 1:
+            if len(link_candidates) == 1:
                 best_idx = self._cui_to_idx[link_candidates[0]]
                 predicted_cui = link_candidates[0]
                 similarity = names_scores[i, best_idx].item()
-            elif self.cnf_l.use_ner_link_candidates and len(link_candidates) > 1:
+            elif len(link_candidates) > 1:
                 name_to_cuis = defaultdict(list)
                 for cui in link_candidates:
                     for name in self.cdb.cui2info[cui]["names"]:
@@ -304,13 +298,13 @@ class Linker(AbstractCoreComponent):
                 best_local_pos = torch.argmax(indexed_scores).item()
                 best_global_idx = name_idxs[best_local_pos]
                 similarity = names_scores[i, best_global_idx].item()
-                best_name = self.name_keys[best_global_idx]
-                best_cuis = name_to_cuis[best_name]
-                if (len(best_cuis) ==  1):
-                    predicted_cui = best_cuis[0]
+                best_name = self._name_keys[best_global_idx]
+                cuis = name_to_cuis[best_name]
+                if (len(cuis) ==  1):
+                    predicted_cui = cuis[0]
                 else:
                     predicted_cui, _ = self._disambiguate_by_cui(
-                        best_cuis,
+                        cuis,
                         cui_scores[i,:]
                     )
             else:
@@ -322,73 +316,25 @@ class Linker(AbstractCoreComponent):
                 # Get global index + name
                 top_name_idx = row_sorted[first_true_pos].item()
                 similarity = names_scores[i, top_name_idx].item()
-                detected_name = self.name_keys[top_name_idx]
-                cuis = self.cdb.name2info[detected_name]["per_cui_status"]
+                detected_name = self._name_keys[top_name_idx]
+                cuis = list(self.cdb.name2info[detected_name]["per_cui_status"].keys())
 
-                # Disambiguate by CUI
                 predicted_cui, _ = self._disambiguate_by_cui(
-                    cuis, cui_scores[i,:]
+                    cuis, 
+                    cui_scores[i,:]
                 )
 
-            entity.cui = predicted_cui        
-            entity.context_similarity = similarity
-
-            yield entity
-        
-    def _inference_by_cui(
-            self, 
-            doc: MutableDocument,
-            entities: list[MutableEntity]
-            ) -> Iterator[MutableEntity]:
-        """Infer all entities at once (or in batches), to avoid multiple gpu calls when it isn't nessescary.
-        Args:
-            doc (BaseDocument): The document look in.
-            name_keys (list[str]): list of all names2info
-            cui_keys (list[str]): list of all cuis2info
-            context_matrix: Tensor of context matrix we're planning to use 
-            embedded from names in cui2info[cui]["preferred_name"]
-        Yields:
-            entity (MutableEntity): Entity with a relevant cui prediction - or skip if it's not suitable."""
-        # 14 is a nice average between contexts in the context based linker
-        detected_context_vectors = self._get_context_vectors(doc, entities, self.cnf_l.context_window_size)
-        cui_to_idx = {cui: idx for idx, cui in enumerate(self.cui_keys)}
-        # score all detected contexts vs all cui preferred names, handle in the loop each individual case
-        scores = detected_context_vectors @ self.cui_context_matrix.T
-        sorted_indices = torch.argsort(scores, dim=1, descending=True)
-        for i, entity in enumerate(entities):
-            # might as well filter here rather than later
-            link_candidates = [cui for cui in entity.link_candidates if self.cnf_l.filters.check_filters(cui)]
-            if self.cnf_l.use_ner_link_candidates and len(link_candidates) == 1:
-                best_idx = cui_to_idx[link_candidates[0]]
-                entity.cui = link_candidates[0]
-                
-                similarity = scores[i, best_idx].item()
+            if self.cnf_l.use_similarity_threshold and self._check_similarity(similarity):
+                entity.cui = predicted_cui
                 entity.context_similarity = similarity
-            elif self.cnf_l.use_ner_link_candidates and len(link_candidates) > 1:
-                predicted_cui, similarity = self._disambiguate_by_cui(
-                    link_candidates,
-                    scores[i,:]
-                )
-                entity.cui = predicted_cui        
-                entity.context_similarity = similarity
-            else:
-                # no link candidates -> i.e. filtered or none from NER
-                # therefore: score vs all cui preffered names!
-                top_cui_idx = sorted_indices[i, 0].item()
-                entity.cui = self.cui_keys[top_cui_idx]
-                entity.context_similarity = scores[i, top_cui_idx].item()
-
-            yield entity
+                yield entity
             
-    def _check_similarity(self, cui: str, context_similarity: float) -> bool:
-        th_type = self.cnf_l.similarity_threshold_type
-        threshold = self.cnf_l.similarity_threshold
-        if th_type == 'static':
+    def _check_similarity(self, context_similarity: float) -> bool:
+        if self.cnf_l.use_similarity_threshold:
+            threshold = self.cnf_l.similarity_threshold
             return context_similarity >= threshold
-        if th_type == 'dynamic':
-            conf = self.cdb.cui2info[cui]['average_confidence']
-            return context_similarity >= conf * threshold
-        return False
+        else:
+            return True
     
     def _last_token_pool(self, last_hidden_states: Tensor,
                  attention_mask: Tensor) -> Tensor:
@@ -400,14 +346,79 @@ class Linker(AbstractCoreComponent):
             batch_size = last_hidden_states.shape[0]
             return last_hidden_states[torch.arange(batch_size, device=last_hidden_states.device), sequence_lengths]
     
-    def _build_context_matrices(self):
-        self._name_keys = list(self.cdb.name2info)
-        self._cui_keys = list(self.cdb.cui2info)
-        
+    def _build_context_matrices(self) -> None:
         if "name_embeddings" in self.cdb.addl_info:
             self._names_context_matrix = self.cdb.addl_info["name_embeddings"].half().to(self.device)
         if "cui_embeddings" in self.cdb.addl_info:
             self._cui_context_matrix = self.cdb.addl_info["cui_embeddings"].half().to(self.device)
+
+
+    def _generate_link_candidates(self,
+                                  doc: MutableDocument,
+                                  entities: list[MutableEntity]
+                                  ) -> None:
+        """Generate link candidates for each detected entity based on context vectors with size 0.
+        Compare to names to get the most similar name in the cdb to the detected concept."""
+        detected_context_vectors = self._get_context_vectors(doc, entities, 0)
+
+        # score all detected contexts vs all names, handle in the loop each individual case
+        names_scores = detected_context_vectors @ self.names_context_matrix.T
+        sorted_indices = torch.argsort(names_scores, dim=1, descending=True)
+
+        for i, entity in enumerate(entities):
+            row_sorted = sorted_indices[i]  # sorted candidate indices for entity i
+
+            valid_mask = self._valid_names[row_sorted]
+            # TODO: potentially choose multiple names that are all within a certain range of the top scoring.
+            # for now just choose the highest scoring name
+            valid_positions = torch.nonzero(valid_mask, as_tuple=True)[0][:1]
+
+            cuis = set()
+            for pos in valid_positions.tolist():
+                top_name_idx = row_sorted[pos].item()
+                detected_name = self._name_keys[top_name_idx]
+                cuis.update(self.cdb.name2info[detected_name]["per_cui_status"].keys())
+
+            entity.link_candidates = list(cuis)
+
+
+    def _pre_inference(self,
+                       doc: MutableDocument) -> tuple[list, list]:
+        """Checking all entities for entites with only a single link candidate and to avoid full inference step.
+        If we want to calculate similarities, or not use link candidates then just return the entities"""
+        all_ents = doc.ner_ents
+        if not self.cnf_l.use_ner_link_candidates:
+            to_generate_link_candidates = all_ents
+        else:
+            to_generate_link_candidates = [entity for entity in all_ents if not entity.link_candidates]
+
+        # generate our own link candidates if it's required, or wanted
+        for entities in self._batch_data(to_generate_link_candidates, self.cnf_l.linking_batch_size):
+            self._generate_link_candidates(doc, entities)
+
+        if self.cnf_l.always_calculate_similarity:
+            return [], all_ents
+
+        le = []
+        to_infer = []
+        for entity in all_ents:
+            if len(entity.link_candidates) == 1:
+                # if the include filter exists and the only cui is in it
+                if self.cnf_l.filters.cuis and entity.link_candidates[0] in self.cnf_l.filters.cuis:
+                    entity.cui = entity.link_candidates[0]
+                    entity.context_similarity = 1
+                    le.append(entity)
+                    continue
+                # if only the exclude filter exists and the only cui is NOT in it
+                elif self.cnf_l.filters.cuis_exclude and entity.link_candidates[0] not in self.cnf_l.filters.cuis_exclude:
+                    entity.cui = entity.link_candidates[0]
+                    entity.context_similarity = 1
+                    le.append(entity)
+                    continue
+            # if it has to be inferred due to filters or number of link candidates then add it to the infer list
+            to_infer.append(entity)
+        return le, to_infer
+
         
     def __call__(self, doc: MutableDocument) -> MutableDocument:
         # Reset main entities, will be recreated later
@@ -416,36 +427,21 @@ class Linker(AbstractCoreComponent):
         self._load_transformers(self.embedding_model_name)
         if self.cnf_l.train:
             logger.warning("Attemping to train an embedding linker. This is not required.")
+        if self.cnf_l.filters.cuis and self.cnf_l.filters.cuis_exclude:
+            logger.warning("You have both include and exclude filters for CUIs set. This will result in only include CUIs being filtered.")
             
-        inference = self._inference_by_cui
-        if self.cnf_l.linking_strategy == "names":
-            inference = self._inference_by_names
-            # filters are only done this way when infering by names
-            self._set_filters()
+        self._set_filters()
 
-        all_ents = doc.ner_ents
-        le = []
         with torch.no_grad():
-            for entities in self._batch_data(all_ents, self.cnf_l.linking_batch_size):
-                le.extend(list(inference(doc, entities)))
+            le, to_infer = self._pre_inference(doc)
+            for entities in self._batch_data(to_infer, self.cnf_l.linking_batch_size):
+                le.extend(list(self._inference(doc, entities)))
 
         doc.ner_ents.clear()
         doc.ner_ents.extend(le)
         create_main_ann(doc)
 
         return doc
-    
-    @property
-    def name_keys(self):
-        if self._name_keys is None:
-            self._build_context_matrices()
-        return self._name_keys
-
-    @property
-    def cui_keys(self):
-        if self._cui_keys is None:
-            self._build_context_matrices()
-        return self._cui_keys
 
     @property
     def names_context_matrix(self):

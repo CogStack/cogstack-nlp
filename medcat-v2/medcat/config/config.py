@@ -394,9 +394,6 @@ class EmbeddingLinking(Linking):
     embedding_batch_size: int = 4096
     """How many entities to be linked at once"""
     linking_batch_size: int = 512
-    """Choose the linking method, via all names or a single name 
-    representing a cui. Defaults to cuis if this is changed"""
-    linking_strategy: str = "names"
     """Choose a device for the linking model to be stored. If None
     then an appropriate GPU device that is available will be chosen"""
     gpu_device: Optional[Any] = None
@@ -405,6 +402,9 @@ class EmbeddingLinking(Linking):
     """Link candidates are provided by some NER steps. This will flag if 
     you want to trust them or not."""
     use_ner_link_candidates: bool = True
+    """"""
+    """Do we have a similarity threshold we care about?"""
+    use_similarity_threshold: bool = True
 
 class Preprocessing(SerialisableBaseModel):
     """The preprocessing part of the config"""
