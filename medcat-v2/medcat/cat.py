@@ -834,6 +834,41 @@ class CAT(AbstractSerialisable):
             return model_card
         return json.dumps(model_card, indent=2, sort_keys=False)
 
+    @overload
+    @classmethod
+    def load_model_card_off_disk(cls, as_dict: Literal[True]) -> ModelCard:
+        pass
+
+    @overload
+    @classmethod
+    def load_model_card_off_disk(cls, as_dict: Literal[False]) -> str:
+        pass
+
+    @classmethod
+    def load_model_card_off_disk(cls, model_pack_path: str,
+                                 as_dict: bool = False
+                                 ) -> Union[str, ModelCard]:
+        """Load the model card off disk as a (nested) `dict` or a json string.
+
+        Args:
+            model_pack_path (str): The path to the model pack (zip or folder).
+            as_dict (bool): Whether to return as dict. Defaults to False.
+
+        Returns:
+            Union[str, ModelCard]: The model card.
+        """
+        # unpack if needed
+        if model_pack_path.endswith(".zip"):
+            model_pack_path = cls.attempt_unpack(model_pack_path)
+        # load model card
+        model_card_path = os.path.join(model_pack_path, "model_card.json")
+        with open(model_card_path) as f:
+            model_card = json.load(f)
+        # return as dict or json
+        if as_dict:
+            return model_card
+        return json.dumps(model_card, indent=2, sort_keys=False)
+
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, CAT):
             return False
