@@ -9,7 +9,6 @@ from contextlib import contextmanager
 
 import shutil
 import zipfile
-import tempfile
 import logging
 
 from medcat.utils.defaults import DEFAULT_PACK_NAME, COMPONENTS_FOLDER
