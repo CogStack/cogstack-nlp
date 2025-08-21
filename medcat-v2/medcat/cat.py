@@ -836,12 +836,14 @@ class CAT(AbstractSerialisable):
 
     @overload
     @classmethod
-    def load_model_card_off_disk(cls, as_dict: Literal[True]) -> ModelCard:
+    def load_model_card_off_disk(cls, model_pack_path: str,
+                                 as_dict: Literal[True]) -> ModelCard:
         pass
 
     @overload
     @classmethod
-    def load_model_card_off_disk(cls, as_dict: Literal[False]) -> str:
+    def load_model_card_off_disk(cls, model_pack_path: str,
+                                 as_dict: Literal[False]) -> str:
         pass
 
     @classmethod
