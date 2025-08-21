@@ -54,12 +54,9 @@ def _force_hf_download(temp_dir_path: str):
 
     def replacement_method(*args, **kwargs):
         method_calls.append((len(args), len(kwargs)))
-        print(f"=== DEBUG: Cache dir contents BEFORE: {os.listdir(temp_dir_path)} ===")
-        result = orig_from_pretrained(
+        return orig_from_pretrained(
             *args, force_download=True,
             cache_dir=temp_dir_path, **kwargs)
-        print(f"=== DEBUG: Cache dir contents AFTER: {os.listdir(temp_dir_path)} ===")
-        return result
     transformers.BertModel.from_pretrained = replacement_method
     try:
         yield
