@@ -28,7 +28,7 @@ class TestMedcatServiceDeId(unittest.TestCase):
         app.dependency_overrides[get_settings] = get_settings_override
         cls.client = TestClient(app)
 
-    def testDeidProcess(self):
+    def test_deid_process_api(self):
         payload = common.create_payload_content_from_doc_single(
             "John had been diagnosed with acute Kidney Failure the week before"
         )
@@ -56,7 +56,7 @@ class TestMedcatServiceDeId(unittest.TestCase):
         self.assertEqual(ann["cui"], expected["cui"])
         app.dependency_overrides = {}
 
-    def testDeidProcessBulk(self):
+    def test_deid_process_bulk_api(self):
         payload = common.create_payload_content_from_doc_bulk([
             "John had been diagnosed with acute Kidney Failure the week before"
         ])
@@ -81,7 +81,8 @@ class TestMedcatServiceDeId(unittest.TestCase):
             0,
             "CU-869a6wc6z No annotations are currently returned by the bulk API",
         )
-
+        
+        # Note: CU-869a6wc6z commended out these asserts until annations are returned
         # ann = actual["result"][0]["annotations"][0]["0"]
         # self.assertEqual(ann["pretty_name"], expected["pretty_name"])
         # self.assertEqual(ann["source_value"], expected["source_value"])
