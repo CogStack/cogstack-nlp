@@ -9,16 +9,16 @@ from medcat.tokenizing.tokenizers import BaseTokenizer
 from medcat.vocab import Vocab
 from medcat.cdb import CDB
 from medcat.config.config import ComponentConfig
-
-from ahocorasick import Automaton
 import medcat
 
 
 # NOTE: the _ is converted to - automatically
 _EXTRA_NAME = "dict-ner"
 
-
+# NOTE: need to do this before below import for more useful error
 ensure_optional_extras_installed(medcat.__name__, _EXTRA_NAME)
+
+from ahocorasick import Automaton # noqa
 
 
 logger = logging.getLogger(__name__)
