@@ -86,6 +86,10 @@ class CAT(AbstractSerialisable):
                                   addon_config_dict=addon_config_dict)
         return self._pipeline
 
+    @property
+    def pipe(self) -> Pipeline:
+        return self._pipeline
+
     @classmethod
     def get_init_attrs(cls) -> list[str]:
         return ['cdb', 'vocab']
