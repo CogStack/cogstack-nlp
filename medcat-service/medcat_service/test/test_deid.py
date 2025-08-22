@@ -81,7 +81,7 @@ class TestMedcatServiceDeId(unittest.TestCase):
             0,
             "CU-869a6wc6z No annotations are currently returned by the bulk API",
         )
-        
+
         # Note: CU-869a6wc6z commended out these asserts until annations are returned
         # ann = actual["result"][0]["annotations"][0]["0"]
         # self.assertEqual(ann["pretty_name"], expected["pretty_name"])
