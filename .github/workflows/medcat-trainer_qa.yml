@@ -50,9 +50,8 @@ jobs:
           python -m build
 
       - name: Publish dev distribution to Test PyPI
-        uses: pypa/gh-action-pypi-publish@v1.12.4
+        uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          password: ${{ secrets.MEDCAT_TRAINER_TEST_PYPI_API_TOKEN }}
           repository_url: https://test.pypi.org/legacy/
           packages_dir: medcat-trainer/client/dist
 
