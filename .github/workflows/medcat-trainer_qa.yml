@@ -2,7 +2,7 @@ name: medcat-trainer qa-build
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, "CU-869a3ycrj-trusted-publisher" ]
 
 permissions:
   id-token: write
