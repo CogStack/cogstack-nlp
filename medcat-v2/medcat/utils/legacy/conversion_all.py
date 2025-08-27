@@ -147,7 +147,8 @@ class Converter:
         if self.new_model_folder:
             logger.info("Saving converted model to '%s'",
                         self.new_model_folder)
-            cat.save_model_pack(self.new_model_folder, pack_name=self.old_model_name + 'v2',
+            cat.save_model_pack(self.new_model_folder,
+                                pack_name=self.old_model_name + 'v2',
                                 serialiser_type=self.ser_type)
         return cat
 
