@@ -21,7 +21,21 @@ Original paper for v1 on [arXiv](https://arxiv.org/abs/2010.01165).
 As MedCAT v2 is still in early release, we do not currently have any models publically available.
 You can still use models for v1, however (see the [README](https://github.com/CogStack/cogstack-nlp/blob/main/medcat-v2/README.md) there).
 
-If you wish you can also convert the v1 models into the v2 format (see tutorial (TODO + link)).
+If you wish you can also convert the v1 models into the v2 format (see [tutorial](https://github.com/CogStack/cogstack-nlp/blob/main/medcat-v2-tutorials/notebooks/introductory/migration/1._Migrate_v1_model_to_v2.ipynb)).
+
+```python
+from medcat.utils.legacy import legacy_converter
+from medcat.storage.serialisers import AvailableSerialisers
+old_model = '<path to old v1 model>'
+new_model_dir = '<dir to place new model in>'
+legacy_converter.do_conversion(old_model_path, new_model_dir, AvailableSerialisers.dill)
+```
+OR
+```bash
+model_path = "models/medcat1_model_pack.zip"
+new_model_folder = "models"  # file in this folder
+! python -m  medcat.utils.legacy.legacy_converter $model_path $new_model_folder --verbose
+```
 
 ## News
 - **MedCAT 2.0.0**  was released 18. August 2025.
