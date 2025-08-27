@@ -10,7 +10,7 @@ Details on breaking are outlined [here](docs/breaking_changes.md).
 <!-- [![pypi Version](https://img.shields.io/pypi/v/medcat.svg?style=flat-square&logo=pypi&logoColor=white)](https://pypi.org/project/medcat/) -->
 
 MedCAT can be used to extract information from Electronic Health Records (EHRs) and link it to biomedical ontologies like SNOMED-CT, UMLS, or HPO (and potentially other ontologies).
-Original paper for v1 on [arXiv](https://arxiv.org/abs/2010.01165). 
+Original paper for v1 on [arXiv](https://arxiv.org/abs/2010.01165).
 
 **Official Docs [here](https://cogstack-nlp.readthedocs.io/)**
 
@@ -18,13 +18,14 @@ Original paper for v1 on [arXiv](https://arxiv.org/abs/2010.01165).
 
 ## Available Models
 
-As MedCAT v2 is still in Beta, we do not currently have any models publically available.
+As MedCAT v2 is still in early release, we do not currently have any models publically available.
 You can still use models for v1, however (see the [README](https://github.com/CogStack/cogstack-nlp/blob/main/medcat-v2/README.md) there).
+
 If you wish you can also convert the v1 models into the v2 format (see tutorial (TODO + link)).
 
 ## News
-- **MedCAT v2 beta** \[1. April 2025\] MedCATv2 beta 0.1.5 was released 1. April 2025.
-<!-- - **Paper** van Es, B., Reteig, L.C., Tan, S.C. et al. [Negation detection in Dutch clinical texts: an evaluation of rule-based and machine learning methods](https://doi.org/10.1186/s12859-022-05130-x). BMC Bioinformatics 24, 10 (2023). 
+- **MedCAT 2.0.0**  was released 18. August 2025.
+<!-- - **Paper** van Es, B., Reteig, L.C., Tan, S.C. et al. [Negation detection in Dutch clinical texts: an evaluation of rule-based and machine learning methods](https://doi.org/10.1186/s12859-022-05130-x). BMC Bioinformatics 24, 10 (2023).
 - **New tool in the Cogstack ecosystem \[19. December 2022\]** [Foresight -- Deep Generative Modelling of Patient Timelines using Electronic Health Records](https://arxiv.org/abs/2212.08072)
 - **New Paper using MedCAT \[21. October 2022\]**: [A New Public Corpus for Clinical Section Identification: MedSecId.](https://aclanthology.org/2022.coling-1.326.pdf)
 - **Major Change to the Permissions of Use \[4. August 2022\]** MedCAT now uses the [Elastic License 2.0](https://github.com/CogStack/MedCAT/pull/271/commits/c9f4e86116ec751a97c618c97dadaa23e1feb6bc). For further information please click [here.](https://www.elastic.co/licensing/elastic-license)
@@ -42,26 +43,20 @@ If you wish you can also convert the v1 models into the v2 format (see tutorial 
 
 ## Installation
 
-Currently MedCAT v2 is in Beta.
-As such, you need to explicitly specify the beta release.
+MedCAT v2 has its first full release
 ```
-pip install medcat~=2.0.0b
+pip install medcat~=2.0.0
 ```
 Do note that **this installs only the core MedCAT v2**.
 **It does not necessary dependencies for `spacy`-based tokenizing or MetaCATs or DeID**.
 However, all of those are supported as well.
 You can install them as follows:
 ```
-pip install medcat[spacy]~=2.0.0b # for spacy-based tokenizer
-pip install medcat[meta-cat]~=2.0.0b  # for MetaCAT
-pip install medcat[deid]~=2.0.0b  # for DeID models
-pip install medcat[spacy,meta-cat,deid,rel-cat,dict-ner]~=2.0.0b  # for all of the above
+pip install "medcat[spacy]~=2.0.0" # for spacy-based tokenizer
+pip install "medcat[meta-cat]~=2.0.0"  # for MetaCAT
+pip install "medcat[deid]~=2.0.0"  # for DeID models
+pip install "medcat[spacy,meta-cat,deid,rel-cat,dict-ner]~=2.0.0"  # for all of the above
 ```
-
-PS:
-For in the above example, we're installing the MedCAT v2 BETA version of `v0.8.0`.
-The README is unlikely to change after every new release.
-If another version is available / required, substitute the version tag as appropriate.
 
 ## Demo
 
