@@ -1,9 +1,9 @@
 from medcat.cdb import CDB
 from medcat.config.config import Config, ComponentConfig, EmbeddingLinking
 from medcat.components.types import CoreComponentType, AbstractCoreComponent
-from medcat.tokenizing.tokens import MutableEntity, MutableDocument, MutableToken
+from medcat.tokenizing.tokens import MutableEntity, MutableDocument
 from medcat.tokenizing.tokenizers import BaseTokenizer
-from typing import Optional, Iterator, cast, Iterable
+from typing import Optional, Iterator
 from medcat.vocab import Vocab
 from torch import Tensor
 from transformers import AutoTokenizer, AutoModel
@@ -13,7 +13,12 @@ from collections import defaultdict
 import torch.nn.functional as F
 import torch
 import logging
-import math 
+import math
+import re
+import string
+import re
+from nltk.corpus import stopwords
+stop_words = set(stopwords.words('english'))
 logger = logging.getLogger(__name__)
 
 class Linker(AbstractCoreComponent):
@@ -35,7 +40,6 @@ class Linker(AbstractCoreComponent):
             raise TypeError("Linking config must be an EmbeddingLinking instance")
         self.cnf_l: EmbeddingLinking = config.components.linking
         self.max_length =  self.cnf_l.max_token_length
-        self.embedding_model_name = self.cnf_l.embedding_model_name
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         self._name_keys = list(self.cdb.name2info)
@@ -51,6 +55,12 @@ class Linker(AbstractCoreComponent):
         self._allowed_mask = None
         self._name_has_allowed_cui = None
 
+        # checking for config settings that aren't used in this linker
+        if self.cnf_l.prefer_frequent_concepts:
+            logger.warning(f"linker_config.prefer_frequent_concepts is not used in the embedding linker. But it is currently set to {self.cnf_l.prefer_frequent_concepts}.")
+        if self.cnf_l.prefer_primary_name:
+            logger.warning(f"linker_config.prefer_primary_name is not used in the embedding linker. But it is currently set to {self.cnf_l.prefer_primary_name}.")
+
         self._cui_to_idx = {cui: idx for idx, cui in enumerate(self._cui_keys)}
         self._name_to_idx = {name: idx for idx, name in enumerate(self._name_keys)}
         self._name_to_cui_idxs = [
@@ -60,7 +70,17 @@ class Linker(AbstractCoreComponent):
             for name in self._name_keys
         ]
 
-    def embed_cui_names(self, 
+    def create_embeddings(self,
+                          embedding_model_name: str = None):
+        """"Create embeddings for names and cuis longest names in the CDB."""
+        if embedding_model_name == self.cnf_l.embedding_model_name and "cui_embeddings" in self.cdb.addl_info:
+            logger.warning("Using the same model for embedding names.")
+        else:
+            self.cnf_l.embedding_model_name = embedding_model_name
+        self._load_transformers(embedding_model_name)
+
+
+    def _embed_cui_names(self, 
                         embedding_model_name: str, 
                         ) -> None:
         """Obtain embeddings for all prefered_names in the CDB using the specified
@@ -69,11 +89,11 @@ class Linker(AbstractCoreComponent):
             embedding_model_name (str): The name of the embedding model to use.
             batch_size (int): The size of the batches to use when embedding names. Default 4096
         """
-        if embedding_model_name == self.embedding_model_name and "cui_embeddings" in self.cdb.addl_info:
-            logger.warning("Using the same model for embedding names.")
+        if embedding_model_name == self.cnf_l.embedding_model_name and "cui_embeddings" in self.cdb.addl_info and "name_embeddings" in self.cdb.addl_info:
+            logger.warning("Using the same model for embedding.")
         else:
-            self.embedding_model_name = embedding_model_name
-        self._load_transformers(embedding_model_name)
+            self.cnf_l.embedding_model_name = embedding_model_name
+        
         # Use the longest name
         cui_names = [max(self.cdb.cui2info[cui]["names"], key=len) for cui in self._cui_keys]
         # embed each name in batches. Because there can be 3+ million names
@@ -82,7 +102,7 @@ class Linker(AbstractCoreComponent):
         for names in tqdm(self._batch_data(cui_names, self.cnf_l.embedding_batch_size), total=total_batches, desc="Embedding cuis' preferred names"):
             with torch.no_grad():
                 # removing ~ from names, as it is used to indicate a space in the CDB
-                names_to_embed = [name.replace("~", " ") for name in names]
+                names_to_embed = [name.replace(self.config.general.separator, " ") for name in names]
                 embeddings= self._embed(names_to_embed, self.device)
                 all_embeddings.append(embeddings.cpu())
         # cat all batches into one tensor
@@ -90,7 +110,7 @@ class Linker(AbstractCoreComponent):
         self.cdb.addl_info["cui_embeddings"] = all_embeddings
         logger.debug("Embedding cui names done, total: %d", len(names))
 
-    def embed_names(self, 
+    def _embed_names(self, 
                     embedding_model_name: str) -> None:
         """Obtain embeddings for all names in the CDB using the specified
         embedding model and store them in the name2info.context_vectors
@@ -98,11 +118,10 @@ class Linker(AbstractCoreComponent):
             embedding_model_name (str): The name of the embedding model to use.
             batch_size (int): The size of the batches to use when embedding names. Default 4096
         """
-        if embedding_model_name == self.embedding_model_name:
+        if embedding_model_name == self.cnf_l.embedding_model_name:
             logger.debug("Using the same model for embedding names.")
         else:
-            self.embedding_model_name = embedding_model_name
-        self._load_transformers(embedding_model_name)
+            self.cnf_l.embedding_model_name = embedding_model_name
         names = list(self.cdb.name2info.keys())
         # embed each name in batches. Because there can be 3+ million names
         total_batches = math.ceil(len(names) / self.cnf_l.embedding_batch_size)
@@ -154,10 +173,10 @@ class Linker(AbstractCoreComponent):
         return outputs.half()
 
     def _get_context(self, 
-                            entity: MutableEntity, 
-                            doc: MutableDocument,
-                            size: int
-                           ) -> str:
+                     entity: MutableEntity, 
+                     doc: MutableDocument,
+                     size: int
+                     ) -> str:
         """Get context tokens for an entity
 
         Args:
@@ -177,10 +196,10 @@ class Linker(AbstractCoreComponent):
 
         right_most_token = doc[min(len(doc) - 1, end_ind + size)]
         right_index = right_most_token.base.char_index + len(right_most_token.base.text)
-
+        
         snippet = doc.base.text[left_index:right_index]
         return snippet
-
+    
     def _get_context_vectors(self,
                              doc: MutableDocument,
                              entities: list[MutableEntity],
@@ -404,13 +423,7 @@ class Linker(AbstractCoreComponent):
         for entity in all_ents:
             if len(entity.link_candidates) == 1:
                 # if the include filter exists and the only cui is in it
-                if self.cnf_l.filters.cuis and entity.link_candidates[0] in self.cnf_l.filters.cuis:
-                    entity.cui = entity.link_candidates[0]
-                    entity.context_similarity = 1
-                    le.append(entity)
-                    continue
-                # if only the exclude filter exists and the only cui is NOT in it
-                elif self.cnf_l.filters.cuis_exclude and entity.link_candidates[0] not in self.cnf_l.filters.cuis_exclude:
+                if self.cnf_l.filters.check_filters(entity.link_candidates[0]):
                     entity.cui = entity.link_candidates[0]
                     entity.context_similarity = 1
                     le.append(entity)
@@ -423,8 +436,12 @@ class Linker(AbstractCoreComponent):
     def __call__(self, doc: MutableDocument) -> MutableDocument:
         # Reset main entities, will be recreated later
         doc.linked_ents.clear()
+
+        if self.cdb.is_dirty:
+            logging.warning("CDB has been modified since last save/load. This might significantly affect linking performance.")
+            logging.warning("If you have added new concepts or changes, please re-embed the CDB names and cuis before linking.")
         
-        self._load_transformers(self.embedding_model_name)
+        self._load_transformers(self.cnf_l.embedding_model_name)
         if self.cnf_l.train:
             logger.warning("Attemping to train an embedding linker. This is not required.")
         if self.cnf_l.filters.cuis and self.cnf_l.filters.cuis_exclude:

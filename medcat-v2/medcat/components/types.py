@@ -135,7 +135,10 @@ _DEFAULT_LINKING: dict[str, tuple[str, str]] = {
                   "NoActionLinker.create_new_component"),
     "medcat2_two_step_linker": (
         "medcat.components.linking.two_step_context_based_linker",
-        "TwoStepLinker.create_new_component")
+        "TwoStepLinker.create_new_component"),
+    "medcat2_embedding_linker": (
+        "medcat.components.linking.embedding_linker",
+        "Linker.create_new_component"),
 }
 
 

@@ -377,7 +377,6 @@ class Linking(ComponentConfig):
         extra = 'allow'
 
 class EmbeddingLinking(Linking):
-    
     """The embedding linker never needs to be trained in its 
     current implementation."""
     train: bool = False
@@ -398,11 +397,10 @@ class EmbeddingLinking(Linking):
     then an appropriate GPU device that is available will be chosen"""
     gpu_device: Optional[Any] = None
     """Choose the window size to get context vectors."""
-    context_window_size: int = 11
+    context_window_size: int = 14
     """Link candidates are provided by some NER steps. This will flag if 
     you want to trust them or not."""
     use_ner_link_candidates: bool = True
-    """"""
     """Do we have a similarity threshold we care about?"""
     use_similarity_threshold: bool = True
 
