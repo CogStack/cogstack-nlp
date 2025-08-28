@@ -23,7 +23,7 @@ ModelCard = TypedDict(
         'Description': str,
         'Source Ontology': list[str],
         'Location': str,
-        'MetaCAT models': list[str],
+        'MetaCAT models': list[dict],
         'Basic CDB Stats': CDBInfo,
         'Performance': dict[str, Any],
         ('Important Parameters '
