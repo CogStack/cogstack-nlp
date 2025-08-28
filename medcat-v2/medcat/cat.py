@@ -812,13 +812,11 @@ class CAT(AbstractSerialisable):
         Returns:
             Union[str, ModelCard]: The model card.
         """
-        meta_cat_categories = [
-            cnf.general.category_name  # type: ignore
-            for cnf in self.config.components.addons
-            if cnf.comp_name == 'meta_cat' and
-            # NOTE: not the best way to check this,
-            #       but I don't want to import the addon config
-            type(cnf).__name__ == 'ConfigMetaCAT']
+        from medcat.components.addons.meta_cat import MetaCATAddon
+        met_cat_model_cards = [
+            mc.mc.get_model_card(True) for mc in
+            self.get_addons_of_type(MetaCATAddon)
+        ]
         cdb_info = self.cdb.get_basic_info()
         model_card: ModelCard = {
             'Model ID': self.config.meta.hash,
@@ -827,7 +825,7 @@ class CAT(AbstractSerialisable):
             'Description': self.config.meta.description,
             'Source Ontology': self.config.meta.ontology,
             'Location': self.config.meta.location,
-            'MetaCAT models': meta_cat_categories,
+            'MetaCAT models': met_cat_model_cards,
             'Basic CDB Stats': cdb_info,
             'Performance': {},  # TODO
             'Important Parameters (Partial view, '
