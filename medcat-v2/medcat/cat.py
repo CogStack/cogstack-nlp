@@ -22,7 +22,7 @@ from medcat.storage.serialisables import AbstractSerialisable
 from medcat.storage.mp_ents_save import BatchAnnotationSaver
 from medcat.utils.fileutils import ensure_folder_if_parent
 from medcat.utils.hasher import Hasher
-from medcat.pipeline.pipeline import Pipeline
+from medcat.pipeline import Pipeline
 from medcat.tokenizing.tokens import MutableDocument, MutableEntity
 from medcat.tokenizing.tokenizers import SaveableTokenizer, TOKENIZER_PREFIX
 from medcat.data.entities import Entity, Entities, OnlyCUIEntities
