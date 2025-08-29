@@ -51,7 +51,7 @@ class CogStack:
         -------
             CogStack: An instance of the CogStack class.
         """
-        elastic = CogStack.use_basic_auth(hosts, username, password)
+        elastic = CogStack.get_es_basic_auth(hosts, username, password)
         return cls(elastic)
 
     @classmethod
@@ -87,11 +87,11 @@ class CogStack:
         -------
             CogStack: An instance of the CogStack class.
         """
-        elastic = CogStack.use_api_key_auth(hosts, api_key)
+        elastic = CogStack.get_es_with_api_key(hosts, api_key)
         return cls(elastic)
 
     @staticmethod
-    def use_basic_auth(
+    def get_es_basic_auth(
         hosts: list[str], username: Optional[str] = None,
         password: Optional[str] = None
     ) -> elasticsearch.Elasticsearch:
@@ -126,9 +126,9 @@ class CogStack:
         )
 
     @staticmethod
-    def use_api_key_auth(hosts: list[str],
-                         api_key: Optional[dict] = None
-                         ) -> elasticsearch.Elasticsearch:
+    def get_es_with_api_key(hosts: list[str],
+                            api_key: Optional[dict] = None
+                            ) -> elasticsearch.Elasticsearch:
         """
         Create an instance of CogStack using API key authentication.
 
