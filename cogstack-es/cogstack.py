@@ -876,4 +876,4 @@ def list_chunker(user_list: list[Any], n: int) -> list[list[Any]]:
             the input list.
     """
     n = max(1, n)
-    return [user_list[i : i + n] for i in range(0, len(user_list), n)]
+    return [user_list[i: i + n] for i in range(0, len(user_list), n)]
