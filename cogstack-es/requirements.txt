@@ -1,2 +1,3 @@
 elasticsearch>=9.0.0,<10.0
 ipython
+tqdm>=4.64,<5.0
