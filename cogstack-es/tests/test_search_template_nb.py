@@ -3,6 +3,11 @@ from nbconvert import PythonExporter
 from unittest.mock import Mock, patch, MagicMock
 from contextlib import contextmanager
 import tempfile
+import os
+import pytest
+
+
+EXPECTED_TEMP_FILE_PATH = "data/cogstack_search_results\\file_name.csv"
 
 
 @contextmanager
@@ -48,7 +53,14 @@ def setup_mocks(mock_es: MagicMock, mock_scan: MagicMock, mock_tqdm: MagicMock):
     mock_tqdm.total = 1
 
 
-def test_notebook_execution():
+@pytest.fixture
+def temp_file_remover():
+    yield
+    if os.path.exists(EXPECTED_TEMP_FILE_PATH):
+        os.remove(EXPECTED_TEMP_FILE_PATH)
+
+
+def test_notebook_execution(temp_file_remover):
     """Execute the notebook with mocked dependencies"""
 
     # Read the notebook
@@ -70,3 +82,4 @@ def test_notebook_execution():
             '__file__': temp_code_path,
             '__name__': '__main__'
         })
+    assert os.path.exists(EXPECTED_TEMP_FILE_PATH)
