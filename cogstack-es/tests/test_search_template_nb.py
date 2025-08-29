@@ -1,0 +1,82 @@
+import nbformat
+from nbconvert import PythonExporter
+from unittest.mock import Mock, patch, MagicMock
+from contextlib import contextmanager
+import tempfile
+
+
+@contextmanager
+def all_mocked(python_code: str):
+    with tempfile.NamedTemporaryFile('w', suffix='.py') as temp_file:
+        temp_file.write(python_code)
+        with patch('elasticsearch.Elasticsearch') as mock_es:
+            with patch('credentials.hosts', ['http://localhost:9200']):
+                with patch('credentials.api_key', {"encoded": "test_api_key"}):
+                    with patch('elasticsearch.helpers.scan') as mock_scan:
+                        with patch('tqdm.tqdm') as mock_tqdm:
+                            yield (temp_file.name, mock_es,
+                                   mock_scan, mock_tqdm)
+
+
+def setup_mocks(mock_es: MagicMock, mock_scan: MagicMock, mock_tqdm: MagicMock):
+    # Setup mocks
+    mock_client = Mock()
+    mock_es.return_value = mock_client
+    mock_client.ping.return_value = True
+
+    mock_aliases = Mock()
+    mock_aliases.body = {
+        'index1': {'aliases': {'alias1': {}}}
+    }
+    mock_mapping = Mock()
+    mock_mapping.body = {
+        'index1': {'mappings': {'properties': {}}}
+    }
+    # Mock Elasticsearch responses
+    mock_client.indices.get_alias.return_value = mock_aliases
+    mock_client.indices.get_mapping.return_value = mock_mapping
+    mock_client.count.return_value = {'count': 10}
+
+    # Mock scan results
+    mock_hits = MagicMock()
+    mock_hits.__iter__.return_value = [{
+        '_index': 'test', '_id': '1', '_score': 1.0,
+        'fields': {'test_field': ['value']}
+    }]
+    mock_scan.return_value = mock_hits
+    mock_tqdm.return_value = mock_hits
+    mock_tqdm.total = 1
+
+
+def test_notebook_execution():
+    """Execute the notebook with mocked dependencies"""
+
+    # Read the notebook
+    notebook_path = 'search_template.ipynb'
+    with open(notebook_path, 'r') as f:
+        notebook = nbformat.read(f, as_version=4)
+
+    # Convert to Python code
+    exporter = PythonExporter()
+    python_code, _ = exporter.from_notebook_node(notebook)
+
+    # Mock all the dependencies
+    with all_mocked(python_code) as (temp_code_path, mock_es,
+                                     mock_scan, mock_tqdm):
+        setup_mocks(mock_es, mock_scan, mock_tqdm)
+
+        print("TEMP FILE PATH", temp_code_path)
+        import os
+        print("EXISTS?", os.path.exists(temp_code_path))
+        if os.path.exists(temp_code_path):
+            with open(temp_code_path) as f:
+                lines = f.readlines()
+            print("Lines", len(lines))
+        try:
+            # Execute the notebook code
+            exec(python_code, {
+                '__file__': temp_code_path,
+                '__name__': '__main__'
+            })
+        except Exception as err:
+            raise ValueError() from err
