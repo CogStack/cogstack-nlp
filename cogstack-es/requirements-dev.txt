@@ -3,3 +3,4 @@ pandas-stubs
 types-tqdm
 pytest
 ruff
+nbconvert
