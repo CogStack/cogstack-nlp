@@ -51,7 +51,7 @@ class CogStack:
         -------
             CogStack: An instance of the CogStack class.
         """
-        elastic = CogStack.get_es_basic_auth(hosts, username, password)
+        elastic = CogStack.get_es_with_basic_auth(hosts, username, password)
         return cls(elastic)
 
     @classmethod
@@ -91,7 +91,7 @@ class CogStack:
         return cls(elastic)
 
     @staticmethod
-    def get_es_basic_auth(
+    def get_es_with_basic_auth(
         hosts: list[str], username: Optional[str] = None,
         password: Optional[str] = None
     ) -> elasticsearch.Elasticsearch:
