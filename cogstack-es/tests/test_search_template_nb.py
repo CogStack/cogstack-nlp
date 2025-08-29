@@ -72,11 +72,8 @@ def test_notebook_execution():
             with open(temp_code_path) as f:
                 lines = f.readlines()
             print("Lines", len(lines))
-        try:
-            # Execute the notebook code
-            exec(python_code, {
-                '__file__': temp_code_path,
-                '__name__': '__main__'
-            })
-        except Exception as err:
-            raise ValueError() from err
+        # Execute the notebook code
+        exec(python_code, {
+            '__file__': temp_code_path,
+            '__name__': '__main__'
+        })
