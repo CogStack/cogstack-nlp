@@ -323,7 +323,8 @@ class CogStack:
                     )
                     index_mappings_coll.append(index_mapping)
         except Exception as err:
-            raise Exception(f"Unexpected {err=}, {type(err)=}")
+            raise Exception(
+                "Unexpected issue while getting index fields") from err
         with pd.option_context(
                 "display.max_rows", len(index_mappings_coll) + 1):
             return display(pd.DataFrame(
