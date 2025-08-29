@@ -10,7 +10,7 @@ on:
 
 defaults:
   run:
-    working-directory: ./medcat-demo-app
+    working-directory: ./cogstack-es
 
 jobs:
   types-lint-tests:
