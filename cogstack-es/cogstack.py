@@ -1,7 +1,7 @@
 from collections.abc import Mapping
 import getpass
 import traceback
-from typing import Dict, List, Any, Optional, Iterable, Sequence, Union
+from typing import Any, Optional, Iterable, Sequence, Union
 import warnings
 import elasticsearch
 import elasticsearch.helpers as es_helpers
@@ -18,20 +18,20 @@ class CogStack:
 
     Parameters
     ------------
-        hosts : List[str]
+        hosts : list[str]
             A list of Elasticsearch host URLs.
     """
 
     ES_TIMEOUT = 300
 
-    def __init__(self, hosts: List[str]):
+    def __init__(self, hosts: list[str]):
         self.hosts = hosts
         self.elastic: elasticsearch.Elasticsearch
 
     @classmethod
     def with_basic_auth(
         cls,
-        hosts: List[str],
+        hosts: list[str],
         username: Optional[str] = None,
         password: Optional[str] = None,
     ) -> "CogStack":
@@ -40,7 +40,7 @@ class CogStack:
 
         Parameters
         ----------
-        hosts : List[str]
+        hosts : list[str]
             A list of Elasticsearch host URLs.
         username : str, optional
             The username to use when connecting to Elasticsearch.
@@ -58,16 +58,16 @@ class CogStack:
 
     @classmethod
     def with_api_key_auth(
-        cls, hosts: List[str], api_key: Optional[Dict] = None
+        cls, hosts: list[str], api_key: Optional[dict] = None
     ) -> "CogStack":
         """
         Create an instance of CogStack using API key authentication.
 
         Parameters
         ----------
-        hosts : List[str]
+        hosts : list[str]
             A list of Elasticsearch host URLs.
-        apiKey : Dict, optional
+        apiKey : dict, optional
 
             API key object with "id" and "api_key" or "encoded" strings as fields.
             Generated in Elasticsearch or Kibana and provided by your CogStack administrator.
@@ -119,7 +119,7 @@ class CogStack:
             basic_auth=(username, password) if username and password else None
         )
 
-    def use_api_key_auth(self, api_key: Optional[Dict] = None) -> "CogStack":
+    def use_api_key_auth(self, api_key: Optional[dict] = None) -> "CogStack":
         """
         Create an instance of CogStack using API key authentication.
 
@@ -155,7 +155,7 @@ class CogStack:
                 # If api_key is a string, it is assumed to be the encoded API key
                 encoded = api_key
                 has_encoded_value = True
-            elif isinstance(api_key, Dict):
+            elif isinstance(api_key, dict):
                 # If api_key is a dictionary, check for "encoded", "id" and "api_key" keys
                 if (
                     "id" in api_key.keys()
@@ -272,7 +272,7 @@ class CogStack:
                 index=index, allow_no_indices=False
             ).body
             columns = ["Field", "Type"]
-            if isinstance(index, List):
+            if isinstance(index, list):
                 columns.insert(0, "Index")
             index_mappings_coll = []
             for index_name in all_mappings:
@@ -796,20 +796,20 @@ def print_dataframe(df: pd.DataFrame, separator: str = "\\n"):
     return display(HTML(df.to_html().replace(separator, "<br/>")))
 
 
-def list_chunker(user_list: List[Any], n: int) -> List[List[Any]]:
+def list_chunker(user_list: list[Any], n: int) -> list[list[Any]]:
     """
     Divide a list into sublists of a specified size.
 
     Parameters:
     ----------
-        user_list : List[Any]
+        user_list : list[Any]
             The list to be divided.
         n : int
             The size of the sublists.
 
     Returns:
     --------
-        List[List[Any]]: A list of sublists containing the elements of the input list.
+        list[list[Any]]: A list of sublists containing the elements of the input list.
     """
     n = max(1, n)
     return [user_list[i : i + n] for i in range(0, len(user_list), n)]
