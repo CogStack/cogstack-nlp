@@ -69,10 +69,14 @@ class CogStack:
             A list of Elasticsearch host URLs.
         apiKey : dict, optional
 
-            API key object with "id" and "api_key" or "encoded" strings as fields.
-            Generated in Elasticsearch or Kibana and provided by your CogStack administrator.
+            API key object with string fields either:
+            - A: "id" and "api_key"
+            - B: "encoded"
+            Generated in Elasticsearch or Kibana and provided by your
+            CogStack administrator.
 
-            If not provided, the user will be prompted to enter API key "encoded" value.
+            If not provided, the user will be prompted to enter API
+            key "encoded" value.
 
             Example:
                 .. code-block:: json
@@ -127,10 +131,17 @@ class CogStack:
         ----------
         apiKey : Dict, optional
 
-            API key object with "id" and "api_key" or "encoded" strings as fields.
-            Generated in Elasticsearch or Kibana and provided by your CogStack administrator.
+            API key object with string fields either:
+            - A: "id" and "api_key"
+            - B: "encoded"
+            Generated in Elasticsearch or Kibana and provided by your
+            CogStack administrator.
 
-            If not provided, the user will be prompted to enter API key "encoded" value.
+            If not provided, the user will be prompted to enter API
+            key "encoded" value.
+
+            If not provided, the user will be prompted to enter API
+            key "encoded" value.
 
             Example:
              .. code-block:: json
@@ -152,11 +163,13 @@ class CogStack:
             api_key = {"encoded": input("Encoded API key: ")}
         else:
             if isinstance(api_key, str):
-                # If api_key is a string, it is assumed to be the encoded API key
+                # If api_key is a string, it is assumed to be
+                # the encoded API key
                 encoded = api_key
                 has_encoded_value = True
             elif isinstance(api_key, dict):
-                # If api_key is a dictionary, check for "encoded", "id" and "api_key" keys
+                # If api_key is a dictionary, check for "encoded",
+                # "id" and "api_key" keys
                 if (
                     "id" in api_key.keys()
                     and api_key["id"] != ""
@@ -169,7 +182,7 @@ class CogStack:
                     # If "encoded" is present, use it; otherwise prompt for it
                     encoded = (
                         api_key["encoded"]
-                        if "encoded" in api_key.keys() and api_key["encoded"] != ""
+                        if "encoded" in api_key.keys() and api_key["encoded"]
                         else input("Encoded API key: ")
                     )
                     has_encoded_value = encoded is not None and encoded != ""
@@ -187,7 +200,8 @@ class CogStack:
                 )
 
         return self.__connect(
-            api_key=encoded if has_encoded_value else (api_id_value, api_key_value)
+            api_key=encoded if has_encoded_value else
+            (api_id_value, api_key_value)
         )
 
     def __connect(
@@ -199,7 +213,8 @@ class CogStack:
         Parameters
         ----------
             basic_auth : Tuple[str, str], optional
-                A tuple containing the username and password for basic authentication.
+                A tuple containing the username and password for
+                basic authentication.
             api_key : str or Tuple[str, str], optional
                 The API key or a tuple containing the API key ID and API key
                 for API key authentication.
@@ -244,7 +259,8 @@ class CogStack:
             index_aliases["Aliases"] = ", ".join(aliases)
             index_aliases_coll.append(index_aliases)
         with pd.option_context("display.max_colwidth", None):
-            return pd.DataFrame(index_aliases_coll, columns=["Index", "Aliases"])
+            return pd.DataFrame(
+                index_aliases_coll, columns=["Index", "Aliases"])
 
     def get_index_fields(self, index: Union[str, Sequence[str]]):
         """
@@ -253,12 +269,14 @@ class CogStack:
         Parameters
         ----------
          index: str | Sequence[str]
-            Name(s) of indices or aliases for which the list of fields is retrieved
+            Name(s) of indices or aliases for which the list of fields
+            is retrieved
 
         Returns
         ----------
             pandas.DataFrame
-                A DataFrame containing index names and their fields with data types
+                A DataFrame containing index names and their fields with
+                data types
 
         Raises
         ------
@@ -267,7 +285,8 @@ class CogStack:
         """
         try:
             if len(index) == 0:
-                raise ValueError("Provide at least one index or index alias name")
+                raise ValueError(
+                    "Provide at least one index or index alias name")
             all_mappings = self.elastic.indices.get_mapping(
                 index=index, allow_no_indices=False
             ).body
@@ -276,7 +295,8 @@ class CogStack:
                 columns.insert(0, "Index")
             index_mappings_coll = []
             for index_name in all_mappings:
-                for property_name in all_mappings[index_name]["mappings"]["properties"]:
+                for property_name in all_mappings[
+                        index_name]["mappings"]["properties"]:
                     index_mapping = {}
                     index_mapping["Index"] = index_name
                     index_mapping["Field"] = property_name
@@ -293,17 +313,21 @@ class CogStack:
                     index_mappings_coll.append(index_mapping)
         except Exception as err:
             raise Exception(f"Unexpected {err=}, {type(err)=}")
-        with pd.option_context("display.max_rows", len(index_mappings_coll) + 1):
-            return display(pd.DataFrame(data=index_mappings_coll, columns=columns))
+        with pd.option_context(
+                "display.max_rows", len(index_mappings_coll) + 1):
+            return display(pd.DataFrame(
+                data=index_mappings_coll, columns=columns))
 
-    def count_search_results(self, index: Union[str, Sequence[str]], query: dict):
+    def count_search_results(self, index: Union[str, Sequence[str]],
+                             query: dict):
         """
         Count number of documents returned by the query
 
         Parameters
         ----------
              index : str or Sequence[str]
-                     The name(s) of the Elasticsearch indices or their aliases to search.
+                     The name(s) of the Elasticsearch indices or their
+                     aliases to search.
 
              query : dict
                      A dictionary containing the search query parameters.
@@ -319,9 +343,8 @@ class CogStack:
         if len(index) == 0:
             raise ValueError("Provide at least one index or index alias name")
         query = self.__extract_query(query=query)
-        count = self.elastic.count(index=index, query=query, allow_no_indices=False)[
-            "count"
-        ]
+        count = self.elastic.count(index=index, query=query,
+                                   allow_no_indices=False)["count"]
         return f"Number of documents: {format(count, ',')}"
 
     def read_data_with_scan(
@@ -342,7 +365,8 @@ class CogStack:
         Parameters
         ----------
             index : str or Sequence[str]
-                    The name(s) of the Elasticsearch indices or their aliases to search.
+                    The name(s) of the Elasticsearch indices or their
+                    aliases to search.
             query : dict
                     A dictionary containing the search query parameters.
                     Query can start with `query` key and contain other
@@ -359,11 +383,13 @@ class CogStack:
             include_fields : list[str], optional
                     A list of fields to be included in search results
                     and presented as columns in the DataFrame.
-                    If not provided, only _index, _id and _score fields will be included.
-                    Columns <strong>_index, _id, _score</strong> are present in all search results
+                    If not provided, only _index, _id and _score fields will
+                    be included. Columns <strong>_index, _id, _score</strong>
+                    are present in all search results
             size : int, optional, default = 1000
-                    The number of documents to be returned by the query or scroll
-                    API during each iteration. <strong>MAX: 10,000</strong>.
+                    The number of documents to be returned by the query or
+                    scroll API during each iteration.
+                    <strong>MAX: 10,000</strong>.
             request_timeout : int, optional, default=300
                     The time in seconds to wait for a response
                     from Elasticsearch before timing out.
@@ -381,14 +407,16 @@ class CogStack:
         """
         try:
             if len(index) == 0:
-                raise ValueError("Provide at least one index or index alias name")
+                raise ValueError(
+                    "Provide at least one index or index alias name")
             self.__validate_size(size=size)
             if "query" not in query.keys():
                 temp_query = query.copy()
                 query.clear()
                 query["query"] = temp_query
             pr_bar = tqdm.tqdm(
-                desc="CogStack retrieved...", disable=not show_progress, colour="green"
+                desc="CogStack retrieved...",
+                disable=not show_progress, colour="green"
             )
 
             scan_results = es_helpers.scan(
@@ -403,9 +431,8 @@ class CogStack:
             )
             all_mapped_results = []
             pr_bar.iterable = scan_results
-            pr_bar.total = self.elastic.count(index=index, query=query["query"])[
-                "count"
-            ]
+            pr_bar.total = self.elastic.count(
+                index=index, query=query["query"])["count"]
             all_mapped_results = self.__map_search_results(hits=pr_bar)
         except BaseException as err:
             if isinstance(err, KeyboardInterrupt):
@@ -417,7 +444,8 @@ class CogStack:
                 pr_bar.set_description(
                     "CogStack read cancelled! Processed", refresh=True
                 )
-                print("Request cancelled and current search_scroll_id deleted...")
+                print("Request cancelled and current "
+                      "search_scroll_id deleted...")
             else:
                 if pr_bar is not None:
                     pr_bar.bar_format = "%s{l_bar}%s{bar}%s{r_bar}" % (
@@ -430,8 +458,8 @@ class CogStack:
                     )
                 print(
                     Exception(
-                        f"Unexpected {err=},\n {traceback.format_exc()}, {type(err)=}"
-                    )
+                        f"Unexpected {err=},\n {traceback.format_exc()}, "
+                        f"{type(err)=}")
                 )
         return self.__create_dataframe(all_mapped_results, include_fields)
 
@@ -446,14 +474,15 @@ class CogStack:
         show_progress: Optional[bool] = True,
     ):
         """
-        Retrieves documents from an Elasticsearch index using search query and scroll API.
-        Default scroll timeout is set to 10 minutes.
+        Retrieves documents from an Elasticsearch index using search query
+        and scroll API. Default scroll timeout is set to 10 minutes.
         The function converts search results to a Pandas DataFrame.
 
         Parameters
         ----------
             index : str or Sequence[str]
-                    The name(s) of the Elasticsearch indices or their aliases to search.
+                    The name(s) of the Elasticsearch indices or their
+                    aliases to search.
             query : dict
                     A dictionary containing the search query parameters.
                     Query can start with `query` key
@@ -468,8 +497,10 @@ class CogStack:
             include_fields : list[str], optional
                     A list of fields to be included in search results
                     and presented as columns in the DataFrame.
-                    If not provided, only _index, _id and _score fields will be included.
-                    Columns <strong>_index, _id, _score</strong> are present in all search results
+                    If not provided, only _index, _id and _score fields
+                    will be included.
+                    Columns <strong>_index, _id, _score</strong> are present
+                    in all search results
             size : int, optional, default = 1000
                     The number of documents to be returned by the query
                     or scroll API during each iteration.
@@ -481,13 +512,16 @@ class CogStack:
                     The value of <strong>scroll_id</strong>
                     times out after <strong>10 minutes</strong>.
                     After which the search will have to be restarted.
-                    <strong>Note:</strong> Absence of this parameter indicates a new search.
+                    <strong>Note:</strong> Absence of this parameter indicates
+                    a new search.
             request_timeout : int, optional, default=300
-                    The time in seconds to wait for a response from Elasticsearch before timing out.
+                    The time in seconds to wait for a response from
+                    Elasticsearch before timing out.
             show_progress : bool, optional, default=True
                     Whether to show the progress in console.
-                    <strong>IMPORTANT:</strong> The progress bar displays the total hits
-                    for the query even if continuing the search using `search_scroll_id`.
+                    <strong>IMPORTANT:</strong> The progress bar displays
+                    the total hits for the query even if continuing the
+                    search using `search_scroll_id`.
         Returns
         ------
         pandas.DataFrame
@@ -497,15 +531,17 @@ class CogStack:
         ------
         Exception
             If the search fails or cancelled by the user.
-            If the search fails, error message includes the value of current `search_scroll_id`
-            which can be used as a function parameter to continue the search.
-            <strong>IMPORTANT:</strong> If the function fails after `scroll` request,
-            the subsequent request will skip results of the failed scroll by the
-            value of `size` parameter.
+            If the search fails, error message includes the value of
+            current `search_scroll_id` which can be used as a function
+            parameter to continue the search. <strong>IMPORTANT:</strong>
+            If the function fails after `scroll` request, the subsequent
+            request will skip results of the failed scroll by the value
+            of `size` parameter.
         """
         try:
             if len(index) == 0:
-                raise ValueError("Provide at least one index or index alias name")
+                raise ValueError(
+                    "Provide at least one index or index alias name")
             self.__validate_size(size=size)
             query = self.__extract_query(query=query)
             result_count = size
@@ -518,8 +554,8 @@ class CogStack:
             )
 
             pr_bar = tqdm.tqdm(
-                desc="CogStack retrieved...", disable=not show_progress, colour="green"
-            )
+                desc="CogStack retrieved...",
+                disable=not show_progress, colour="green")
 
             if search_scroll_id is None:
                 search_result = self.elastic.search(
@@ -572,7 +608,8 @@ class CogStack:
                     "CogStack read cancelled! Processed", refresh=True
                 )
                 self.elastic.clear_scroll(scroll_id=search_scroll_id)
-                print("Request cancelled and current search_scroll_id deleted...")
+                print("Request cancelled and current "
+                      "search_scroll_id deleted...")
             else:
                 if pr_bar is not None:
                     pr_bar.bar_format = "%s{l_bar}%s{bar}%s{r_bar}" % (
@@ -585,8 +622,8 @@ class CogStack:
                     )
                 print(
                     Exception(
-                        f"Unexpected {err=},\n {traceback.format_exc()}, {type(err)=}"
-                    ),
+                        f"Unexpected {err=},\n {traceback.format_exc()}, "
+                        f"{type(err)=}"),
                     f"{search_scroll_id=}",
                     sep="\n",
                 )
@@ -605,15 +642,18 @@ class CogStack:
         show_progress: Optional[bool] = True,
     ):
         """
-        Retrieve documents from an Elasticsearch index using search query and convert them to a Pandas DataFrame.
+        Retrieve documents from an Elasticsearch index using search query
+        and convert them to a Pandas DataFrame.
 
         Parameters
         ----------
             index : str or Sequence[str]
-                    The name(s) of the Elasticsearch indices or their aliases to search.
+                    The name(s) of the Elasticsearch indices or their
+                    aliases to search.
             query : dict
                     A dictionary containing the search query parameters.
-                    Query can start with `query` key and contain other query options which will be ignored
+                    Query can start with `query` key and contain other
+                    query options which will be ignored
 
                         .. code-block:: json
                             {"query": {"match": {"title": "python"}}}}
@@ -621,25 +661,33 @@ class CogStack:
                         .. code-block:: json
                             {"match": {"title": "python"}}}
             include_fields : list[str], optional
-                    A list of fields to be included in search results and presented as columns in the DataFrame.
-                    If not provided, only _index, _id and _score fields will be included.
-                    Columns <strong>_index, _id, _score</strong> are present in all search results
+                    A list of fields to be included in search results
+                    and presented as columns in the DataFrame.
+                    If not provided, only _index, _id and _score
+                    fields will be included.
+                    Columns <strong>_index, _id, _score</strong> are
+                    present in all search results
             size : int, optional, default = 1000
-                    The number of documents to be returned by the query or scroll API during each iteration.
+                    The number of documents to be returned by the query
+                    or scroll API during each iteration.
                     <strong>MAX: 10,000</strong>.
             sort : dict|list[str], optional, default = {"id": "asc"}
-                    Sort field name(s) and order (`asc` or `desc`) in dictionary format or list of field names without order.
-                    `{"id":"asc"}` or `id` is added if not provided as a tiebreaker field.
-                    Default sorting order is `asc`
-                    ><strong>Example:</strong>
+                    Sort field name(s) and order (`asc` or `desc`)
+                    in dictionary format or list of field names without order.
+                    `{"id":"asc"}` or `id` is added if not provided as a
+                    tiebreaker field. Default sorting order is `asc`
+                    <strong>Example:</strong>
                     - `dict : {"filed_Name" : "desc", "id" : "asc"}`
                     - `list : ["filed_Name", "id"]`
             search_after : list[str|int|float|Any|None], optional
                     The sort value of the last record in search results.
-                    Can be provided if the a search fails and needs to be restarted from the last successful search.
-                    Use the value of `search_after_value` from the error message
+                    Can be provided if the a search fails and needs to
+                    be restarted from the last successful search.
+                    Use the value of `search_after_value` from the
+                    error message
             request_timeout : int, optional, default = 300
-                    The time in seconds to wait for a response from Elasticsearch before timing out.
+                    The time in seconds to wait for a response from
+                    Elasticsearch before timing out.
             show_progress : bool, optional
                     Whether to show the progress in console. Defaults to true.
 
@@ -652,12 +700,14 @@ class CogStack:
         ------
             Exception
                 If the search fails or cancelled by the user.
-                Error message includes the value of current `search_after_value`
-                which can be used as a function parameter to continue the search.
+                Error message includes the value of current
+                `search_after_value` which can be used as a function
+                parameter to continue the search.
         """
         try:
             if len(index) == 0:
-                raise ValueError("Provide at least one index or index alias name")
+                raise ValueError(
+                    "Provide at least one index or index alias name")
             result_count = size
             all_mapped_results = []
             if sort is None:
@@ -680,8 +730,8 @@ class CogStack:
                 else:
                     sort.append("id")
             pr_bar = tqdm.tqdm(
-                desc="CogStack retrieved...", disable=not show_progress, colour="green"
-            )
+                desc="CogStack retrieved...",
+                disable=not show_progress, colour="green")
 
             while result_count == size:
                 search_result = self.elastic.search(
@@ -731,7 +781,8 @@ class CogStack:
                     pr_bar.set_description(
                         "CogStack read failed! Processed", refresh=True
                     )
-                print(f"Unexpected {err=},\n {traceback.format_exc()}, {type(err)=}")
+                print(f"Unexpected {err=},\n {traceback.format_exc()}, "
+                      f"{type(err)=}")
             print(f"The last {search_after_value=}")
 
         return self.__create_dataframe(all_mapped_results, include_fields)
@@ -754,7 +805,8 @@ class CogStack:
             row["_score"] = hit["_score"]
             if "fields" in hit.keys():
                 row.update(
-                    {k: ", ".join(map(str, v)) for k, v in dict(hit["fields"]).items()}
+                    {k: ", ".join(map(str, v)) for
+                     k, v in dict(hit["fields"]).items()}
                 )
             yield row
 
@@ -783,8 +835,8 @@ class CogStack:
 
 def print_dataframe(df: pd.DataFrame, separator: str = "\\n"):
     """
-    Replace <strong>separator</strong> string with HTML <strong>&lt;br/&gt;</strong>
-    tag for printing in Notebook
+    Replace <strong>separator</strong> string with HTML
+    <strong>&lt;br/&gt;</strong> tag for printing in Notebook
 
     Parameters:
     -----------
@@ -809,7 +861,8 @@ def list_chunker(user_list: list[Any], n: int) -> list[list[Any]]:
 
     Returns:
     --------
-        list[list[Any]]: A list of sublists containing the elements of the input list.
+        list[list[Any]]: A list of sublists containing the elements of
+            the input list.
     """
     n = max(1, n)
     return [user_list[i : i + n] for i in range(0, len(user_list), n)]
