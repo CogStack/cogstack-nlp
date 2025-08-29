@@ -65,13 +65,6 @@ def test_notebook_execution():
                                      mock_scan, mock_tqdm):
         setup_mocks(mock_es, mock_scan, mock_tqdm)
 
-        print("TEMP FILE PATH", temp_code_path)
-        import os
-        print("EXISTS?", os.path.exists(temp_code_path))
-        if os.path.exists(temp_code_path):
-            with open(temp_code_path) as f:
-                lines = f.readlines()
-            print("Lines", len(lines))
         # Execute the notebook code
         exec(python_code, {
             '__file__': temp_code_path,
