@@ -18,15 +18,14 @@ class CogStack:
 
     Parameters
     ------------
-        hosts : list[str]
-            A list of Elasticsearch host URLs.
+        elastic : elasticsearch.Elasticsearch
+            The ElasticSearch instance.
     """
 
     ES_TIMEOUT = 300
 
-    def __init__(self, hosts: list[str]):
-        self.hosts = hosts
-        self.elastic: elasticsearch.Elasticsearch
+    def __init__(self, elastic: elasticsearch.Elasticsearch) -> None:
+        self.elastic = elastic
 
     @classmethod
     def with_basic_auth(
@@ -52,9 +51,8 @@ class CogStack:
         -------
             CogStack: An instance of the CogStack class.
         """
-        cs = cls(hosts)
-        cs.use_basic_auth(username, password)
-        return cs
+        elastic = CogStack.use_basic_auth(hosts, username, password)
+        return cls(elastic)
 
     @classmethod
     def with_api_key_auth(
@@ -89,13 +87,14 @@ class CogStack:
         -------
             CogStack: An instance of the CogStack class.
         """
-        cs = cls(hosts)
-        cs.use_api_key_auth(api_key)
-        return cs
+        elastic = CogStack.use_api_key_auth(hosts, api_key)
+        return cls(elastic)
 
+    @staticmethod
     def use_basic_auth(
-        self, username: Optional[str] = None, password: Optional[str] = None
-    ) -> "CogStack":
+        hosts: list[str], username: Optional[str] = None,
+        password: Optional[str] = None
+    ) -> elasticsearch.Elasticsearch:
         """
         Create an instance of CogStack using basic authentication.
         If the `username` or `password` parameters are not provided,
@@ -103,6 +102,8 @@ class CogStack:
 
         Parameters
         ----------
+        hosts : list[str]
+            A list of Elasticsearch host URLs.
         username : str, optional
             The username to use when connecting to Elasticsearch.
             If not provided, the user will be prompted to enter a username.
@@ -112,23 +113,29 @@ class CogStack:
 
         Returns
         -------
-            CogStack: An instance of the CogStack class.
+            elasticsearch.Elasticsearch: An instance of the Elasticsearch.
         """
         if username is None:
             username = input("Username: ")
         if password is None:
             password = getpass.getpass("Password: ")
 
-        return self.__connect(
+        return CogStack.__connect(
+            hosts,
             basic_auth=(username, password) if username and password else None
         )
 
-    def use_api_key_auth(self, api_key: Optional[dict] = None) -> "CogStack":
+    @staticmethod
+    def use_api_key_auth(hosts: list[str],
+                         api_key: Optional[dict] = None
+                         ) -> elasticsearch.Elasticsearch:
         """
         Create an instance of CogStack using API key authentication.
 
         Parameters
         ----------
+        hosts : list[str]
+            A list of Elasticsearch host URLs.
         apiKey : Dict, optional
 
             API key object with string fields either:
@@ -153,7 +160,7 @@ class CogStack:
 
         Returns
         -------
-            CogStack: An instance of the CogStack class.
+            elasticsearch.Elasticsearch: An instance of the Elasticsearch.
         """
         has_encoded_value = False
         api_id_value: str
@@ -199,19 +206,23 @@ class CogStack:
                     else getpass.getpass("API Key: ")
                 )
 
-        return self.__connect(
+        return CogStack.__connect(
+            hosts,
             api_key=encoded if has_encoded_value else
             (api_id_value, api_key_value)
         )
 
+    @staticmethod
     def __connect(
-        self,
+        hosts: list[str],
         basic_auth: Optional[tuple[str, str]] = None,
         api_key: Optional[Union[str, tuple[str, str]]] = None,
-    ) -> "CogStack":
+    ) -> elasticsearch.Elasticsearch:
         """Connect to Elasticsearch using the provided credentials.
         Parameters
         ----------
+            hosts : list[str]
+                A list of Elasticsearch host URLs.
             basic_auth : Tuple[str, str], optional
                 A tuple containing the username and password for
                 basic authentication.
@@ -220,25 +231,25 @@ class CogStack:
                 for API key authentication.
         Returns
         -------
-            CogStack: An instance of the CogStack class.
+            elasticsearch.Elasticsearch: An instance of the Elasticsearch.
         Raises
         ------
             Exception: If the connection to Elasticsearch fails.
         """
-        self.elastic = elasticsearch.Elasticsearch(
-            hosts=self.hosts,
+        elastic = elasticsearch.Elasticsearch(
+            hosts=hosts,
             api_key=api_key,
             basic_auth=basic_auth,
             verify_certs=False,
-            request_timeout=self.ES_TIMEOUT,
+            request_timeout=CogStack.ES_TIMEOUT,
         )
-        if not self.elastic.ping():
+        if not elastic.ping():
             raise ConnectionError(
                 "CogStack connection failed. "
                 "Please check your host list and credentials and try again."
             )
         print("CogStack connection established successfully.")
-        return self
+        return elastic
 
     def get_indices_and_aliases(self):
         """
