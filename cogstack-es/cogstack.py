@@ -417,6 +417,7 @@ class CogStack:
         Exception
             If the search fails or cancelled by the user.
         """
+        pr_bar: Optional[tqdm.tqdm] = None
         try:
             if len(index) == 0:
                 raise ValueError(
@@ -448,14 +449,15 @@ class CogStack:
             all_mapped_results = self.__map_search_results(hits=pr_bar)
         except BaseException as err:
             if isinstance(err, KeyboardInterrupt):
-                pr_bar.bar_format = "%s{l_bar}%s{bar}%s{r_bar}" % (
-                    "\033[0;33m",
-                    "\033[0;33m",
-                    "\033[0;33m",
-                )
-                pr_bar.set_description(
-                    "CogStack read cancelled! Processed", refresh=True
-                )
+                if pr_bar is not None:
+                    pr_bar.bar_format = "%s{l_bar}%s{bar}%s{r_bar}" % (
+                        "\033[0;33m",
+                        "\033[0;33m",
+                        "\033[0;33m",
+                    )
+                    pr_bar.set_description(
+                        "CogStack read cancelled! Processed", refresh=True
+                    )
                 print("Request cancelled and current "
                       "search_scroll_id deleted...")
             else:
