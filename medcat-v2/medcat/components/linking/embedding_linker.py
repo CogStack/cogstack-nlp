@@ -50,8 +50,8 @@ class Linker(AbstractCoreComponent):
         self._cui_context_matrix = None
 
         # used for filters and name embedding, and if the name contains a valid cui see: _set_filters
-        self._last_include_set = None
-        self._last_exclude_set = None
+        self._last_include_set: set[str] = set()
+        self._last_exclude_set: set[str] = set()
         self._allowed_mask = None
         self._name_has_allowed_cui = None
 
@@ -71,13 +71,17 @@ class Linker(AbstractCoreComponent):
         ]
 
     def create_embeddings(self,
-                          embedding_model_name: str = None):
+                          embedding_model_name: Optional[str] = None):
+        if embedding_model_name is None:
+            embedding_model_name = self.cnf_l.embedding_model_name  # fallback
         """"Create embeddings for names and cuis longest names in the CDB."""
         if embedding_model_name == self.cnf_l.embedding_model_name and "cui_embeddings" in self.cdb.addl_info:
             logger.warning("Using the same model for embedding names.")
         else:
             self.cnf_l.embedding_model_name = embedding_model_name
         self._load_transformers(embedding_model_name)
+        self._embed_cui_names(embedding_model_name)
+        self._embed_names(embedding_model_name)
 
 
     def _embed_cui_names(self, 
@@ -106,8 +110,8 @@ class Linker(AbstractCoreComponent):
                 embeddings= self._embed(names_to_embed, self.device)
                 all_embeddings.append(embeddings.cpu())
         # cat all batches into one tensor
-        all_embeddings = torch.cat(all_embeddings, dim=0)
-        self.cdb.addl_info["cui_embeddings"] = all_embeddings
+        all_embeddings_matrix = torch.cat(all_embeddings, dim=0)
+        self.cdb.addl_info["cui_embeddings"] = all_embeddings_matrix
         logger.debug("Embedding cui names done, total: %d", len(names))
 
     def _embed_names(self, 
@@ -132,8 +136,8 @@ class Linker(AbstractCoreComponent):
                 names_to_embed = [name.replace(self.config.general.separator, " ") for name in names]
                 embeddings = self._embed(names_to_embed, self.device)
                 all_embeddings.append(embeddings.cpu())
-        all_embeddings = torch.cat(all_embeddings, dim=0)
-        self.cdb.addl_info["name_embeddings"] = all_embeddings
+        all_embeddings_matrix = torch.cat(all_embeddings, dim=0)
+        self.cdb.addl_info["name_embeddings"] = all_embeddings_matrix
         logger.debug("Embedding names done, total: %d", len(names))
     
 
@@ -259,7 +263,7 @@ class Linker(AbstractCoreComponent):
 
     def _disambiguate_by_cui(self,
                              cui_candidates: list[str],
-                             scores: Tensor):
+                             scores: Tensor) -> tuple[str, float]:
         """Disambiguate a detected concept by a list of potential cuis
         Args:
             cuis (list[str]): Potential cuis
@@ -267,16 +271,16 @@ class Linker(AbstractCoreComponent):
             scores (Tensor): Scores for the detected cui2info concepts similarity
             cui_keys (list[str]): idx_to_cui inverse
         Returns:
-            tuple[str, int]:
+            tuple[str, float]:
                 The CUI and its similarity
         """
         cui_idxs = [self._cui_to_idx[cui] for cui in cui_candidates]
         candidate_scores = scores[cui_idxs]
-        candidate_idx = torch.argmax(candidate_scores).item()
+        candidate_idx = int(torch.argmax(candidate_scores).item())
         best_idx = cui_idxs[candidate_idx]
 
         predicted_cui = self._cui_keys[best_idx]
-        similarity = candidate_scores[candidate_idx].item()
+        similarity = float(candidate_scores[candidate_idx].item())
         return predicted_cui, similarity
 
     def _inference(
@@ -314,7 +318,7 @@ class Linker(AbstractCoreComponent):
                 name_idxs = [self._name_to_idx[name] for name in name_to_cuis]
                 indexed_scores = names_scores[i, name_idxs]
 
-                best_local_pos = torch.argmax(indexed_scores).item()
+                best_local_pos = int(torch.argmax(indexed_scores).item())
                 best_global_idx = name_idxs[best_local_pos]
                 similarity = names_scores[i, best_global_idx].item()
                 best_name = self._name_keys[best_global_idx]
@@ -330,10 +334,10 @@ class Linker(AbstractCoreComponent):
                 row_sorted = sorted_indices[i]  # sorted candidate indices for entity i
 
                 # Find the first candidate in this row with CUIs
-                first_true_pos = torch.nonzero(self._valid_names[row_sorted], as_tuple=True)[0][0].item()
+                first_true_pos = int(torch.nonzero(self._valid_names[row_sorted], as_tuple=True)[0][0].item())
 
                 # Get global index + name
-                top_name_idx = row_sorted[first_true_pos].item()
+                top_name_idx = int(row_sorted[first_true_pos].item())
                 similarity = names_scores[i, top_name_idx].item()
                 detected_name = self._name_keys[top_name_idx]
                 cuis = list(self.cdb.name2info[detected_name]["per_cui_status"].keys())
@@ -392,9 +396,9 @@ class Linker(AbstractCoreComponent):
             # for now just choose the highest scoring name
             valid_positions = torch.nonzero(valid_mask, as_tuple=True)[0][:1]
 
-            cuis = set()
+            cuis: set[str] = set()
             for pos in valid_positions.tolist():
-                top_name_idx = row_sorted[pos].item()
+                top_name_idx = int(row_sorted[pos].item())
                 detected_name = self._name_keys[top_name_idx]
                 cuis.update(self.cdb.name2info[detected_name]["per_cui_status"].keys())
 
