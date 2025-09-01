@@ -2,9 +2,15 @@
 
 DOCKER_COMPOSE_FILE_V1="docker-compose.example.v1.yml"
 DOCKER_COMPOSE_FILE_V2="docker-compose.example.yml"
+DOCKER_COMPOSE_FILE_DEID="docker-compose.example.deid.yml"
+
+EXAMPLE_TO_RUN=$1
+
 # choose between file based on CLI argument
-if [ "$1" = "v1" ]; then
+if [ "$EXAMPLE_TO_RUN" = "v1" ]; then
   DOCKER_COMPOSE_FILE="$DOCKER_COMPOSE_FILE_V1"
+elif [ "$EXAMPLE_TO_RUN" = "DeID" ]; then
+  DOCKER_COMPOSE_FILE="$DOCKER_COMPOSE_FILE_DEID"
 else
   DOCKER_COMPOSE_FILE="$DOCKER_COMPOSE_FILE_V2"
 fi
@@ -24,7 +30,12 @@ if [ $? -ne 0 ]; then
 fi
 
 # Test the deployment
-integration_test_medcat_service $LOCALHOST_NAME
+if [ $EXAMPLE_TO_RUN = "DeID" ]; then
+  EXPECTED_ANNOTATION="PATIENT"
+else
+  EXPECTED_ANNOTATION="Kidney Failure"
+fi
+integration_test_medcat_service $LOCALHOST_NAME 5555 "$EXPECTED_ANNOTATION"
 if [ $? -ne 0 ]; then
     echo "Failed integration test"
     exit 1

@@ -1,0 +1,61 @@
+# Dev compose yml file for building, running and mounting local git cloned repo.
+
+services:
+  medcattrainer:
+    build:
+      network: host
+      context: ./webapp
+      args:
+        SPACY_MODELS: ${SPACY_MODELS:-en_core_web_md}
+    restart: always
+    volumes:
+      - api-media:/home/api/media
+      - api-static:/home/api/static
+      - api-db:/home/api/db
+      - api-db-backup:/home/api/db-backup
+      - ./webapp/api/core:/home/api/core
+      - ./webapp/api/api:/home/api/api
+      - ./webapp/scripts:/home/scripts
+      - ./configs:/home/configs
+      - ./supervisord.conf:/etc/supervisord.conf
+    env_file:
+      - ./envs/env
+    environment:
+      - MCT_VERSION=latest
+    command: /usr/bin/supervisord -c /etc/supervisord.conf
+
+  nginx:
+    image: nginx
+    restart: always
+    volumes:
+      - api-media:/home/api/media
+      - api-static:/home/api/static
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/sites-enabled/:/etc/nginx/sites-enabled
+    env_file:
+      - ./envs/env
+    ports:
+      - ${MCTRAINER_PORT:-8001}:8000
+    depends_on:
+      - medcattrainer
+      - solr
+
+  solr:
+    container_name: mct_solr
+    image: solr:8
+    restart: always
+    env_file:
+      - ./envs/env
+    ports:
+      - ${SOLR_PORT:-8983}:8983
+    volumes:
+      - solr-data:/var/solr
+    command:
+      - -cloud
+
+volumes:
+  api-media:
+  api-static:
+  api-db:
+  api-db-backup:
+  solr-data:

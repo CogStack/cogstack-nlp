@@ -5,6 +5,7 @@ import numpy
 from multiprocessing import Lock
 from datetime import datetime
 from typing import Iterable, Optional, cast, Union, Any, TypedDict, Callable
+from typing import overload, Literal
 
 from medcat.utils.hasher import Hasher
 
@@ -125,7 +126,7 @@ class MetaCATAddon(AddonComponent):
     def load(self, folder_path: str) -> 'MetaCAT':
         mc_path, tokenizer_folder = self._get_meta_cat_and_tokenizer_paths(
             folder_path)
-        mc = cast(MetaCAT, deserialise(mc_path))
+        mc = cast(MetaCAT, deserialise(mc_path, save_dir_path=folder_path))
         mc.tokenizer = self._load_tokenizer(self.config, tokenizer_folder)
         return mc
 
@@ -150,6 +151,11 @@ class MetaCATAddon(AddonComponent):
             raise MisconfiguredMetaCATException(
                 "Unable to save MetaCAT without a tokenizer")
         self.mc.tokenizer.save(tokenizer_folder)
+        if self.config.model.model_name == 'bert':
+            model_config_save_path = os.path.join(
+                folder_path, 'bert_config.json')
+            self._mc.model.bert_config.to_json_file(  # type: ignore
+                model_config_save_path)
 
     def _init_data_paths(self, base_tokenizer: BaseTokenizer):
         # a dictionary like {category_name: value, ...}
@@ -293,7 +299,7 @@ class MetaCAT(AbstractSerialisable):
 
     @classmethod
     def ignore_attrs(cls) -> list[str]:
-        return ['model']
+        return ['model', 'save_dir_path']
 
     @classmethod
     def include_properties(cls) -> list[str]:
@@ -308,10 +314,12 @@ class MetaCAT(AbstractSerialisable):
                  tokenizer: Optional[TokenizerWrapperBase] = None,
                  embeddings: Optional[Union[Tensor, numpy.ndarray]] = None,
                  config: Optional[ConfigMetaCAT] = None,
-                 _model_state_dict: Optional[dict[str, Any]] = None) -> None:
+                 _model_state_dict: Optional[dict[str, Any]] = None,
+                 save_dir_path: Optional[str] = None) -> None:
         if config is None:
             config = ConfigMetaCAT()
         self.config = config
+        self.save_dir_path = save_dir_path
         set_all_seeds(config.general.seed)
 
         self.tokenizer = tokenizer
@@ -355,7 +363,7 @@ class MetaCAT(AbstractSerialisable):
         elif config.model.model_name == 'bert':
             from medcat.components.addons.meta_cat.models import (
                 BertForMetaAnnotation)
-            model = BertForMetaAnnotation(config)
+            model = BertForMetaAnnotation(config, self.save_dir_path)
 
             if not config.model.model_freeze_layers:
                 peft_config = LoraConfig(
@@ -853,6 +861,14 @@ class MetaCAT(AbstractSerialisable):
             v: k for k, v in self.config.general.category_value2id.items()}
         self._set_meta_anns(doc, id2category_value)
         return doc
+
+    @overload
+    def get_model_card(self, as_dict: Literal[True]) -> dict:
+        pass
+
+    @overload
+    def get_model_card(self, as_dict: Literal[False]) -> str:
+        pass
 
     def get_model_card(self, as_dict: bool = False) -> Union[str, dict]:
         """A minimal model card.

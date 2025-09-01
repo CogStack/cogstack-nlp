@@ -8,6 +8,7 @@ import itertools
 from contextlib import contextmanager
 
 import shutil
+import zipfile
 import logging
 
 from medcat.utils.defaults import DEFAULT_PACK_NAME, COMPONENTS_FOLDER
@@ -21,7 +22,7 @@ from medcat.storage.serialisables import AbstractSerialisable
 from medcat.storage.mp_ents_save import BatchAnnotationSaver
 from medcat.utils.fileutils import ensure_folder_if_parent
 from medcat.utils.hasher import Hasher
-from medcat.pipeline.pipeline import Pipeline
+from medcat.pipeline import Pipeline
 from medcat.tokenizing.tokens import MutableDocument, MutableEntity
 from medcat.tokenizing.tokenizers import SaveableTokenizer, TOKENIZER_PREFIX
 from medcat.data.entities import Entity, Entities, OnlyCUIEntities
@@ -83,6 +84,10 @@ class CAT(AbstractSerialisable):
         self._pipeline = Pipeline(self.cdb, self.vocab, model_load_path,
                                   old_pipe=old_pipe,
                                   addon_config_dict=addon_config_dict)
+        return self._pipeline
+
+    @property
+    def pipe(self) -> Pipeline:
         return self._pipeline
 
     @classmethod
@@ -807,13 +812,11 @@ class CAT(AbstractSerialisable):
         Returns:
             Union[str, ModelCard]: The model card.
         """
-        meta_cat_categories = [
-            cnf.general.category_name  # type: ignore
-            for cnf in self.config.components.addons
-            if cnf.comp_name == 'meta_cat' and
-            # NOTE: not the best way to check this,
-            #       but I don't want to import the addon config
-            type(cnf).__name__ == 'ConfigMetaCAT']
+        from medcat.components.addons.meta_cat import MetaCATAddon
+        met_cat_model_cards = [
+            mc.mc.get_model_card(True) for mc in
+            self.get_addons_of_type(MetaCATAddon)
+        ]
         cdb_info = self.cdb.get_basic_info()
         model_card: ModelCard = {
             'Model ID': self.config.meta.hash,
@@ -822,7 +825,7 @@ class CAT(AbstractSerialisable):
             'Description': self.config.meta.description,
             'Source Ontology': self.config.meta.ontology,
             'Location': self.config.meta.location,
-            'MetaCAT models': meta_cat_categories,
+            'MetaCAT models': met_cat_model_cards,
             'Basic CDB Stats': cdb_info,
             'Performance': {},  # TODO
             'Important Parameters (Partial view, '
@@ -830,6 +833,59 @@ class CAT(AbstractSerialisable):
                 self.config),
             'MedCAT Version': self.config.meta.medcat_version,
         }
+        if as_dict:
+            return model_card
+        return json.dumps(model_card, indent=2, sort_keys=False)
+
+    @overload
+    @classmethod
+    def load_model_card_off_disk(cls, model_pack_path: str,
+                                 as_dict: Literal[True],
+                                 avoid_unpack: bool = False) -> ModelCard:
+        pass
+
+    @overload
+    @classmethod
+    def load_model_card_off_disk(cls, model_pack_path: str,
+                                 as_dict: Literal[False],
+                                 avoid_unpack: bool = False) -> str:
+        pass
+
+    @classmethod
+    def load_model_card_off_disk(cls, model_pack_path: str,
+                                 as_dict: bool = False,
+                                 avoid_unpack: bool = False,
+                                 ) -> Union[str, ModelCard]:
+        """Load the model card off disk as a (nested) `dict` or a json string.
+
+        Args:
+            model_pack_path (str): The path to the model pack (zip or folder).
+            as_dict (bool): Whether to return as dict. Defaults to False.
+            avoid_unpack (bool): Whether to avoid unpacking the model pack if
+                no previous unpacked path exists. Defaults to False.
+
+        Returns:
+            Union[str, ModelCard]: The model card.
+        """
+        model_card: Optional[ModelCard] = None
+        # unpack if needed
+        if model_pack_path.endswith(".zip"):
+            if (avoid_unpack and
+                    not os.path.exists(model_pack_path.removesuffix(".zip"))):
+                # stream the model card directly from the zip
+                with zipfile.ZipFile(model_pack_path) as zf:
+                    with zf.open("model_card.json") as src:
+                        model_card = json.load(src)
+            else:
+                # if allowed to unpack or already unpacked anyway
+                model_pack_path = cls.attempt_unpack(model_pack_path)
+        if model_card is None:
+            # i.e not loaded directly off disk
+            # load model card
+            model_card_path = os.path.join(model_pack_path, "model_card.json")
+            with open(model_card_path) as f:
+                model_card = json.load(f)
+        # return as dict or json
         if as_dict:
             return model_card
         return json.dumps(model_card, indent=2, sort_keys=False)

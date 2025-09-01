@@ -5,6 +5,7 @@ import os
 import time
 from datetime import datetime, timezone
 
+import numpy as np
 import simplejson as json
 from medcat.cat import CAT
 from medcat.cdb import CDB
@@ -14,16 +15,17 @@ from medcat.config import Config
 from medcat.config.config_meta_cat import ConfigMetaCAT
 from medcat.vocab import Vocab
 
+from medcat_service.config import Settings
 from medcat_service.types import HealthCheckResponse, ModelCardInfo, ProcessErrorsResult, ProcessResult, ServiceInfo
 
 
-class MedCatProcessor():
+class MedCatProcessor:
     """"
     MedCAT Processor class is wrapper over MedCAT that implements annotations extractions functionality
     (both single and bulk processing) that can be easily exposed for an API.
     """
 
-    def __init__(self):
+    def __init__(self, settings: Settings):
         app_log_level = os.getenv("APP_LOG_LEVEL", logging.INFO)
         medcat_log_level = os.getenv("LOG_LEVEL", logging.INFO)
 
@@ -45,8 +47,8 @@ class MedCatProcessor():
 
         self.bulk_nproc = int(os.getenv("APP_BULK_NPROC", 8))
         self.torch_threads = int(os.getenv("APP_TORCH_THREADS", -1))
-        self.DEID_MODE = eval(os.getenv("DEID_MODE", "False"))
-        self.DEID_REDACT = eval(os.getenv("DEID_REDACT", "True"))
+        self.DEID_MODE = settings.deid_mode
+        self.DEID_REDACT = settings.deid_redact
         self.model_card_info = ModelCardInfo(
             ontologies=None, meta_cat_model_names=[], model_last_modified_on=None)
 
@@ -121,6 +123,8 @@ class MedCatProcessor():
             if "entities" in entities.keys():
                 entities = entities["entities"]
 
+            self._fix_floats(entities)
+
             if self.entity_output_mode == "list":
                 entities = list(entities.values())
 
@@ -160,7 +164,7 @@ class MedCatProcessor():
         start_time_ns = time.time_ns()
 
         if self.DEID_MODE:
-            entities = self.cat.get_entities(text)["entities"]
+            entities = self.cat.get_entities(text)
             text = self.cat.deid_text(text, redact=self.DEID_REDACT)
         else:
             if text is not None and len(text.strip()) > 0:
@@ -206,13 +210,13 @@ class MedCatProcessor():
         start_time_ns = time.time_ns()
 
         try:
+            text_input = MedCatProcessor._generate_input_doc(content, invalid_doc_ids)
             if self.DEID_MODE:
-                # TODO 2025-07-21: deid_multi_texts doesnt exist in medcat 2?
-                ann_res = self.cat.deid_multi_texts(MedCatProcessor._generate_input_doc(content, invalid_doc_ids),
-                                                    redact=self.DEID_REDACT)
+                text_to_deid_from_tuple = (x[1] for x in text_input)
+
+                ann_res = self.cat.deid_multi_text(list(text_to_deid_from_tuple),
+                                                   redact=self.DEID_REDACT, n_process=self.bulk_nproc)
             else:
-                text_input = MedCatProcessor._generate_input_doc(
-                    content, invalid_doc_ids)
                 ann_res = {
                     ann_id: res for ann_id, res in
                     self.cat.get_entities_multi_texts(
@@ -423,9 +427,11 @@ class MedCatProcessor():
                     footer=in_ct.get("footer"),
                 )
             elif self.DEID_MODE:
-
                 out_res = ProcessResult(
-                    text=str(in_ct["text"]),
+                    # TODO: DEID mode is passing the resulting text in the annotations field here but shouldnt.
+                    text=str(annotations[i]),
+                    # TODO: DEID bulk mode should also be able to return the list of annotations found,
+                    #  to match the features of the singular api. CU-869a6wc6z
                     annotations=[],
                     success=True,
                     timestamp=self._get_timestamp(),
@@ -638,3 +644,14 @@ class MedCatProcessor():
             return True
         else:
             return False
+
+    # NOTE: numpy uses np.float32 and those are not json serialisable
+    #       so we need to fix that
+
+    def _fix_floats(self, in_dict: dict) -> dict:
+        for k, v in in_dict.items():
+            if isinstance(v, np.floating):
+                in_dict[k] = float(v)
+            elif isinstance(v, dict):
+                self._fix_floats(v)
+        return in_dict

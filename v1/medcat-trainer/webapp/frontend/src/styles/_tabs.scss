@@ -1,0 +1,67 @@
+// FROM: https://github.com/spatie/vue-tabs-component/blob/master/docs/resources/tabs-component.css
+// For the installed Vue.js Component: https://github.com/spatie/vue-tabs-component
+.tabs-component {
+}
+
+.tabs-component-tabs {
+  margin-bottom: 5px;
+  padding-inline-start: 15px;
+  box-shadow: 0 5px 5px -5px rgba(0,0,0,0.2);
+}
+
+@media (min-width: 700px) {
+  .tabs-component-tabs {
+    border: 0;
+    align-items: stretch;
+    display: flex;
+    justify-content: flex-start;
+    margin-bottom: -1px;
+  }
+}
+
+.tabs-component-tab {
+  font-size: 14px;
+  margin-right: 0;
+  list-style: none;
+}
+
+.tabs-component-tab.is-active {
+  border-bottom: 4px solid rgba(0, 114, 206, .2);;
+}
+
+@media (min-width: 700px) {
+  .tabs-component-tab {
+    background-color: #fff;
+    transition: transform .3s ease;
+  }
+
+  .tabs-component-tab.is-active {
+    z-index: 2;
+    transform: translateY(0);
+  }
+}
+
+.tabs-component-tab-a {
+  align-items: center;
+  color: inherit;
+  display: flex;
+  padding: .75em 1em;
+  text-decoration: none;
+  &:hover {
+    color: inherit;
+    text-decoration: none;
+  }
+}
+
+.tabs-component-panels {
+  border-radius: 5px;
+  margin-top: 15px;
+}
+
+@media (min-width: 700px) {
+  .tabs-component-panels {
+    border-top-left-radius: 0;
+    background-color: #fff;
+  }
+}
+

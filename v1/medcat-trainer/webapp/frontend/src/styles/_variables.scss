@@ -1,0 +1,68 @@
+// NHS Brand Colours
+// https://digital.nhs.uk/about-nhs-digital/corporate-information-and-documents/nhs-digital-style-guidelines/how-we-look/colour-palette
+
+// functions required before bootstrap import to avoid deprecation warning issue described in functions.scss
+@import './functions.scss';
+@import 'bootstrap/scss/bootstrap';
+
+//$body-font-family: Montserrat;
+//
+//.v-application {
+//  .display-1,
+//  .display-2,
+//  .display-3,
+//  .display-4,
+//  .headline,
+//  .title,
+//  .subtitle-1,
+//  .subtitle-2,
+//  .body-1,
+//  .body-2,
+//  .caption,
+//  .overline {
+//    font-family: $body-font-family !important;
+//  }
+//}
+
+$theme-colors: (
+    "primary": #0072CE, //NHS Bright Blue
+    "danger": #DA291C, //NHS Emergency Services Red
+    "warning": #768692, // NHS Mid Grey
+    "info": #E8EDEE, // NHS Pale Grey
+    "success": #009639, // NHS Green
+    "light-success": #32ab60 // slightly lighter than NHS Green
+);
+
+$primary-alt: #005EB8;  //NHS Blue
+
+$navbar-bg: #0072CE; // NHS Bright Blue
+
+// colour palette - for backgrounds, borders, text-color etc.
+$color-1: #45503B;
+$color-2: #E5EBEA;
+$color-3: #B098A4;
+$color-4: #45503B;
+$color-5: #747572;
+
+$background: inherit; //$color-2;
+$text: #212B32; // primary text: NHS Dark Grey
+$text-highlight: #212B32;
+$borders: $color-1;
+
+$task-color-0: #0072CE;  // NHS Bright Blue
+$task-color-1: #dc3545;  // NHS Emergency Services Red
+$task-color-2: #8A1538;  // NHS Dark Red
+$task-color-3: #41B6E6;  // NHS Light Blue
+$task-color-4: #AE2573;  // NHS Pink
+
+$task-colors: (
+    "0": $task-color-0,
+    "1": $task-color-1,
+    "2": $task-color-2,
+    "3": $task-color-3,
+    "4": $task-color-4,
+);
+
+$loading-background-color: rgba(108, 117, 125, 0.3);
+
+$title-height: 41px;

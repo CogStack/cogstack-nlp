@@ -1,0 +1,33 @@
+name: medcat-trainer-v1 ci-build
+
+on:
+  pull_request:
+    paths:
+      - 'v1/medcat-trainer/**'
+      - '.github/workflows/medcat-trainer-v1**'
+
+defaults:
+  run:
+    working-directory: ./v1/medcat-trainer
+
+jobs:
+  # Build and test webapp container
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Build
+        env:
+          IMAGE_TAG: ${{ env.RELEASE_VERSION }}
+        run: |
+          docker build -t cogstacksystems/medcat-trainer:dev-latest webapp/.
+      - name: Run Django Tests
+        env:
+          IMAGE_TAG: ${{ env.RELEASE_VERSION }}
+        run: |
+          # run tests
+          docker run --rm cogstacksystems/medcat-trainer:dev-latest python manage.py test

@@ -1,0 +1,35 @@
+version: '3.4'
+
+# Compose file yml for MedCAT v0.x models. This is a legacy compose services config for older MedCAT models.
+
+services:
+  medcattrainer:
+    container_name: medcattrainer
+    hostname: medcat
+    restart: always
+    image: cogstacksystems/medcat-trainer:mc-v0.x-latest
+    volumes:
+      - api-media:/home/api/media
+      - api-static:/home/api/static
+      - api-db:/home/api/db
+    expose:
+      - "8000"
+    env_file:
+      - ./envs/env-mc0x
+    command: /home/run.sh
+  nginx:
+    image: nginx
+    restart: always
+    volumes:
+      - api-media:/home/api/media
+      - api-static:/home/api/static
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/sites-enabled/:/etc/nginx/sites-enabled
+    ports:
+      - "${MCTRAINER_PORT:-8001}:8000"
+    depends_on:
+      - medcattrainer
+volumes:
+  api-media:
+  api-static:
+  api-db:

@@ -1,9 +1,14 @@
+import gradio as gr
 import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from medcat_service.demo.gradio_demo import io
+from medcat_service.dependencies import get_settings
 from medcat_service.routers import admin, health, legacy, process
 from medcat_service.types import HealthCheckFailedException
+
+settings = get_settings()
 
 app = FastAPI(
     title="MedCAT Service",
@@ -17,12 +22,15 @@ app = FastAPI(
         "name": "Apache 2.0",
         "identifier": "Apache-2.0",
     },
+    root_path=settings.app_root_path,
 )
 
 app.include_router(admin.router)
 app.include_router(health.router)
 app.include_router(process.router)
 app.include_router(legacy.router)
+
+gr.mount_gradio_app(app, io, path="/demo")
 
 
 @app.exception_handler(HealthCheckFailedException)

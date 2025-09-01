@@ -57,7 +57,12 @@ RELEASE_BRANCH="medcat/v$VERSION_MAJOR_MINOR"
 
 # some prerequisites
 if [[ "$VERSION_PATCH" == "$VERSION_PATCH_AND_PRERELEASE" ]]; then
-    [[ "$VERSION_PATCH" == "0" ]] && error_exit "Patch version must not be 0."
+    if [[ "$VERSION_PATCH" == "0" ]]; then
+        # look for any prerelease tags on this major.minor
+        if ! git tag -l "medcat/v${VERSION_MAJOR_MINOR}.0[a-z]*" | grep -q .; then
+            error_exit "Patch version must not be 0 unless a prerelease (alpha/beta/rc) already exists."
+        fi
+    fi
 fi
 
 run_or_echo git fetch origin

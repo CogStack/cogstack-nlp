@@ -1,0 +1,23 @@
+[
+  {
+    "model": "annoapp.textclassvalue",
+    "pk": 1,
+    "fields": {
+      "name": "true"
+    }
+  },
+  {
+    "model": "annoapp.textclassvalue",
+    "pk": 2,
+    "fields": {
+      "name": "false"
+    }
+  },
+  {
+    "model": "annoapp.textclassvalue",
+    "pk": 3,
+    "fields": {
+      "name": "skip"
+    }
+  }
+]

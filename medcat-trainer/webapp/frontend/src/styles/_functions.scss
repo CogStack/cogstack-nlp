@@ -1,0 +1,8 @@
+@use 'sass:math';
+
+@function abs($value) {
+  @return math.abs($value);
+}
+
+// solution described here: https://github.com/twbs/bootstrap/issues/39028
+// for deprecated warnings for older version of bootstrap 4.x

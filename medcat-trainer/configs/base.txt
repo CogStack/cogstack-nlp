@@ -1,0 +1,14 @@
+cat.linking.optim = {'type': 'standard', 'lr': 0.1}
+cat.linking.filter_before_disamb = True
+# 20 - INFO; 10 - DEBUG
+cat.general.log_level = 20
+# Recommended is to have this one negative
+cat.linking.similarity_threshold = -5
+# And this one to be used as the real th
+cat.linking.similarity_threshold_trainer = -5
+# Used for limiting the number of occ of a concept in a project
+cat.general.cui_count_limit = 100000000
+# Is unlink full
+cat.general.full_unlink = False
+# use this spacy model
+cat.general.spacy_model = 'en_core_web_md'

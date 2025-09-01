@@ -1,41 +1,43 @@
 # TODO: Fix Medcat V1 Release Actions
 # Disabled waiting for designed release process
-# Disabled waiting for PYPI_API_TOKEN
 name: medcat-v1 - production
 
 on:
   push:
     branches: [ "medcat-v1/production", "medcat-v1/v[0-9]+.[0-9]+.post" ]
   
-  # release:
-  #   types: [ published , edited ]
+  release:
+    types: [ published , edited ]
+
 defaults:
   run:
-    working-directory: ./medcat-v1
+    working-directory: ./v1/medcat
 jobs:
   build-n-publish-to-pypi:
 
     runs-on: ubuntu-24.04
     concurrency: build-n-publish-to-pypi
-    if: | 
-     github.repository == 'CogStack/cogstack-nlp' &&
-     false   
+    if: |
+      github.repository == 'CogStack/cogstack-nlp' &&
+      (github.event_name != 'release' || startsWith(github.event.release.tag_name, 'medcat/v1.'))
+
 
     steps:
       - name: Checkout production
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: ${{ github.event.release.target_commitish }}
           fetch-depth: 0
 
       - name: Set up Python 3.9
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: 3.9
 
       - name: Run UATs
         run: |
           python -m pip install --upgrade pip
+          export SETUPTOOLS_SCM_PRETEND_VERSION_FOR_MEDCAT="1.16.5"  # NOTE: This is where the project verison is set
           pip install -r requirements-dev.txt
           all_files=$(git ls-files | grep '^tests/.*\.py$' | grep -v '/__init__\.py$' | sed 's/\.py$//' | sed 's/\//./g')
           num_files=$(echo "$all_files" | wc -l)
@@ -54,6 +56,7 @@ jobs:
 
       - name: Build a binary wheel and a source tarball
         run: >-
+          SETUPTOOLS_SCM_PRETEND_VERSION_FOR_MEDCAT="1.16.5"
           python -m
           build
           --sdist
@@ -63,6 +66,8 @@ jobs:
 
       - name: Publish production distribution to PyPI
         if: startsWith(github.ref, 'refs/tags') && ! github.event.release.prerelease
-        uses: pypa/gh-action-pypi-publish@v1.4.2
+        uses: pypa/gh-action-pypi-publish@v1.12.4
         with:
+          # TODO CU-869a25n7e Use Trusted Platform Publisher based PyPI release
           password: ${{ secrets.PYPI_API_TOKEN }}
+          packages_dir: v1/medcat/dist

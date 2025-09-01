@@ -1,0 +1,51 @@
+#Directories to be ignored fully
+/books/
+/articles/
+/other/
+/output/
+/graphics/
+/webapp/models/*
+data/
+tmp/
+*_tmp/
+.idea
+
+/webapp/frontend/dist/*
+/webapp/api/media/*
+/webapp/api/static/*
+
+# Configuration
+.env
+
+# Keep folders with this
+!.keep
+
+#tmp and similar files
+.nfs*
+*.pyc
+*.out
+*.swp
+*.swn
+tmp_*
+t_*
+tmp_*
+*_tmp
+*.swo
+*.lyx.emergency
+*.lyx#
+*~
+*.log
+*hidden*
+db.sqlite3
+nohup.out
+tmp.py
+
+# docs outputs
+docs/_build
+
+# macOS system files
+.DS_Store
+*/.DS_Store
+
+# Jupyter Notebook checkpoints
+*/.ipynb_checkpoints/*

@@ -1,0 +1,8 @@
+[build-system]
+requires = ["setuptools>=42", "setuptools_scm[toml]>=6.2,<9", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+version_scheme = "guess-next-dev"
+local_scheme = "no-local-version"
+tag_regex = "^v[0-9]+\\.[0-9]+(\\.[0-9]+)?$"

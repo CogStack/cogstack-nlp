@@ -1,0 +1,76 @@
+@import "variables.scss";
+
+.full-height {
+  height: 100%;
+}
+
+// common help modal styles
+.help {
+  float: right;
+  font-size: 22px;
+}
+
+.help-modal .modal-container {
+  width: 80%;
+}
+
+.help-modal-body {
+  max-height: 500px;
+  overflow: auto;
+}
+
+.summary-modal .modal-container {
+  width: 90%;
+}
+
+$blur-radius: 10px;
+
+@each $i, $col in $task-colors {
+  .task-color-text-#{$i} {
+    color: $col;
+  }
+}
+
+@each $i, $col in $task-colors {
+  .task-btn-#{$i} {
+    border-color: $col;
+    color: $col;
+
+    &:hover {
+      background-color: $col;
+      color: white;
+    }
+  }
+}
+
+.title {
+  padding: 5px 15px;
+  font-size: 14pt;
+  box-shadow: 0 5px 5px -5px rgba(0,0,0,0.2);
+  color: black;
+  height: $title-height;
+}
+
+@each $i, $col in $task-colors {
+  .highlight-task-#{$i} {
+    background-color: $col;
+    border-radius: 3px;
+    cursor: pointer;
+    border: 1px solid $col;
+    color: white;
+  }
+}
+
+.alert-enter-active, .alert-leave-active {
+  transition: opacity .5s;
+}
+
+.alert-enter, .alert-leave-to {
+  opacity: 0;
+}
+
+.overlay-message {
+  padding-left: 10px;
+  opacity: 0.5;
+}
+

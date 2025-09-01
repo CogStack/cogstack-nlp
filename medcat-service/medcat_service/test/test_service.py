@@ -112,6 +112,28 @@ class TestMedcatService(unittest.TestCase):
         response = self.client.post(self.ENDPOINT_PROCESS_SINGLE, json=payload)
         self.assertEqual(response.status_code, 422)
 
+    def testProcessMetaAnnsFilter(self):
+        payload = {
+            "content": {
+                "text": "< some clinical text>"
+            },
+            "meta_anns_filters": [
+                ["Presence", ["True"]],
+                ["Subject", ["Patient", "Family"]],
+                ["Time", ["Recent"]]
+            ]
+        }
+
+        a_client = TestClient(app, raise_server_exceptions=False)
+        response = a_client.post(self.ENDPOINT_PROCESS_SINGLE, json=payload)
+        self.assertEqual(
+            response.status_code, 500,
+            """
+            This test currently shows that there is a bug with the meta anns filter.
+            Correct version should return 200.
+            KeyError: 'Presence' on all(e['meta_anns'][task]['vaue'] in filter_values"
+            """)
+
     def testProcessBulkBlankDocs(self):
         docs = common.get_blank_documents()
         payload = common.create_payload_content_from_doc_bulk(docs)

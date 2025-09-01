@@ -31,6 +31,7 @@ class Converter:
                  ser_type: AvailableSerialisers = AvailableSerialisers.dill):
         if medcat1_model_pack_path.endswith(".zip"):
             folder_path = medcat1_model_pack_path[:-4]
+            self.old_model_name = os.path.split(medcat1_model_pack_path)[1]
             unpack(medcat1_model_pack_path, folder_path)
             medcat1_model_pack_path = folder_path
         if not os.path.isdir(medcat1_model_pack_path):
@@ -147,6 +148,7 @@ class Converter:
             logger.info("Saving converted model to '%s'",
                         self.new_model_folder)
             cat.save_model_pack(self.new_model_folder,
+                                pack_name=self.old_model_name + 'v2',
                                 serialiser_type=self.ser_type)
         return cat
 

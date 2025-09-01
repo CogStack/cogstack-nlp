@@ -41,12 +41,12 @@ smoketest_medcat_service() {
 integration_test_medcat_service() {
   local localhost_name=$1
   local port=${2:-5555}
+  local expected_annotation=${3:-Kidney Failure}
 
   # Test /api/process
   local api="http://${localhost_name}:${port}/api/process"
-  local input_text="The patient was diagnosed with Kidney Failure"
+  local input_text="Patient J. Smith had been diagnosed with acute kidney failure the week before"
   local input_payload="{\"content\":{\"text\":\"${input_text}\"}}"
-  local expected_annotation="Kidney Failure"
 
   echo "Calling POST $api with payload '$input_payload'"
   local actual
@@ -69,20 +69,38 @@ integration_test_medcat_service() {
   fi
 
   # Test /api/process_bulk
-  local api="http://${localhost_name}:${port}/api/process_bulk"
-  local input_text="The patient was diagnosed with Kidney Failure"
-  local input_payload="{\"content\": [{\"text\":\"${input_text}\"}]}"
-  local expected_annotation="Kidney Failure"
 
+  local api="http://${localhost_name}:${port}/api/process_bulk"
+  local input_text="Patient J. Smith had been diagnosed with acute kidney failure the week before"
+  local input_payload="{\"content\": [{\"text\":\"${input_text}\"}]}"
+  local expected_annotation=${3:-Kidney Failure}
 
   echo "Calling POST $api with payload '$input_payload'"
   local actual
 
-  actual=$(curl -s -X POST $api \
+ # Capture both body and HTTP code
+  response=$(curl -s -w "\n%{http_code}" -X POST "$api" \
     -H 'Content-Type: application/json' \
     -d "$input_payload")
 
-  echo "Recieved result '$actual'"
+  # Split body and code
+  http_code=$(echo "$response" | tail -n1)
+  actual=$(echo "$response" | sed '$d')
+
+  echo "HTTP status: $http_code"
+  echo "Response body: '$actual'"
+
+  if [[ "$http_code" != "200" ]]; then
+    echo "ERROR: Expected HTTP 200, got $http_code"
+    echo -e "Actual response was:\n${actual}"
+    return 1
+  fi
+
+  if [[ "$expected_annotation" == "PATIENT" ]]; then
+     echo "CU-869a6wc6z Skipping Process_bulk annotation test for DeID Mode testing "
+     echo "Process_bulk in DeID mode has missing feature making it not return the annotations, just the deid text"
+     return 0
+  fi
 
   local actual_annotation
   actual_annotation=$(echo "$actual" | jq -r '.result[0].annotations[0]["0"].pretty_name')

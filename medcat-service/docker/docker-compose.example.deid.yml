@@ -1,0 +1,12 @@
+name: cogstack-medcat-service
+services:
+  medcat-service-deid:
+    image: cogstacksystems/medcat-service:${IMAGE_TAG-latest}
+    restart: unless-stopped
+    environment:
+      # Uses a preloaded model pack example inside the image
+      - APP_MEDCAT_MODEL_PACK=/cat/models/examples/example-deid-model-pack.zip 
+      - DEID_MODE=True
+      - DEID_REDACT=True
+    ports:
+      - "5555:5000"

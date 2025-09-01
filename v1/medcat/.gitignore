@@ -1,0 +1,60 @@
+#Directories to be ignored fully
+/books/
+/articles/
+/other/
+/output/
+/graphics/
+/models/*.dat
+/notebooks/wandb/
+/notebooks/logs/
+/notebooks/results/
+dist/
+tmp/
+*_tmp/
+medcat.egg-info/
+build/
+.idea
+venv
+db.sqlite3
+.ipynb_checkpoints
+
+# vscode 
+.vscode
+
+#tmp and similar files
+.nfs*
+*.log
+*.pyc
+*.out
+*.swp
+*.swn
+tmp_*
+t_*
+tmp_*
+*_tmp
+*.swo
+*.lyx.emergency
+*.lyx#
+*~
+*hidden*
+nohup.out
+tmp.py
+.DS_Store
+*.lock
+*.egg*
+
+# models files
+*.dat
+!examples/*.dat
+./checkpoints/
+
+# Test output
+tests/model_creator/output/*
+
+# docs outputs
+docs/auto/
+docs/_build
+
+
+models/*
+!models/README.md

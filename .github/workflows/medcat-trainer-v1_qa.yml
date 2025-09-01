@@ -1,0 +1,40 @@
+name: medcat-trainer-v1 qa-build
+
+on:
+  push:
+    branches: [ main ]
+
+defaults:
+  run:
+    working-directory: ./v1/medcat-trainer
+
+jobs:
+  # Build and test webapp container
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v5
+        with:
+          ref: 'main'
+
+      - name: Build
+        run: |
+          docker build -t cogstacksystems/medcat-trainer:v1-latest webapp/.
+
+      - name: Run Django Tests
+        env:
+          IMAGE_TAG: latest
+        run: |
+          # run tests
+          docker run --rm cogstacksystems/medcat-trainer:v1-latest python manage.py test
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - name: Push to DockerHub
+        run: |
+          docker push cogstacksystems/medcat-trainer:v1-latest

@@ -1,0 +1,48 @@
+name: medcat-trainer-v1 release-build
+
+on:
+  push:
+    tags:
+      - 'medcat-trainer/v1.*.*'
+
+defaults:
+  run:
+    working-directory: ./v1/medcat-trainer
+
+jobs:
+  # Build and test webapp container
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v5
+        with:
+          ref: "main"
+
+      - name: Release Tag
+        # If GITHUB_REF=refs/tags/medcat-trainer/v0.1.2, this returns v0.1.2. Note it's including the "v" though it probably shouldnt
+        run: echo "RELEASE_VERSION=${GITHUB_REF##refs/*/}" >> $GITHUB_ENV
+      - name: Build
+        env:
+          IMAGE_TAG: ${{ env.RELEASE_VERSION }}
+        run: |
+          docker build -t cogstacksystems/medcat-trainer:$IMAGE_TAG webapp/.
+      - name: Run Django Tests
+        env:
+          IMAGE_TAG: ${{ env.RELEASE_VERSION }}
+        run: |
+          # run tests
+          docker run --rm cogstacksystems/medcat-trainer:$IMAGE_TAG python manage.py test
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - name: Push to DockerHub
+        env:
+          IMAGE_TAG: ${{ env.RELEASE_VERSION }}
+        run: |
+          docker push cogstacksystems/medcat-trainer:$IMAGE_TAG
+
