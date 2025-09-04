@@ -5,6 +5,7 @@ import numpy
 from multiprocessing import Lock
 from datetime import datetime
 from typing import Iterable, Optional, cast, Union, Any, TypedDict, Callable
+from typing import overload, Literal
 
 from medcat.utils.hasher import Hasher
 
@@ -860,6 +861,14 @@ class MetaCAT(AbstractSerialisable):
             v: k for k, v in self.config.general.category_value2id.items()}
         self._set_meta_anns(doc, id2category_value)
         return doc
+
+    @overload
+    def get_model_card(self, as_dict: Literal[True]) -> dict:
+        pass
+
+    @overload
+    def get_model_card(self, as_dict: Literal[False]) -> str:
+        pass
 
     def get_model_card(self, as_dict: bool = False) -> Union[str, dict]:
         """A minimal model card.
