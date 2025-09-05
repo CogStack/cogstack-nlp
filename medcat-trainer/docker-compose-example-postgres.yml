@@ -54,7 +54,6 @@ services:
       - -cloud
   trainer-postgres:
     image: postgres:17.6-alpine
-
     restart: always
     environment:
       - POSTGRES_USER=admin
