@@ -126,17 +126,37 @@ WSGI_APPLICATION = 'core.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/2.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db/db.sqlite3'),
-        'OPTIONS': {
-            'timeout': 20,
-            'transaction_mode': 'IMMEDIATE'
+db_engine = os.environ.get("DB_ENGINE", "sqlite3").lower()
+if db_engine not in ("sqlite3", "postgresql"):
+    raise ValueError("DB_ENGINE must be 'sqlite3' or 'postgresql'")
+
+if db_engine == "postgresql":
+    DB_NAME = os.environ.get("DB_NAME", "postgres")
+    DB_USER = os.environ.get("DB_USER", "")
+    DB_PASSWORD = os.environ.get("DB_PASSWORD", "")
+    DB_HOST = os.environ.get("DB_HOST", "")
+    DB_PORT = os.environ.get("DB_PORT", "5432")
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': DB_NAME,
+            'USER': DB_USER,
+            'PASSWORD': DB_PASSWORD,
+            'HOST': DB_HOST,
+            'PORT': DB_PORT,
         }
     }
-}
-
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': os.path.join(BASE_DIR, 'db/db.sqlite3'),
+            'OPTIONS': {
+                'timeout': 20,
+                'transaction_mode': 'IMMEDIATE'
+            }
+        }
+    }
 
 # Password validation
 # https://docs.djangoproject.com/en/2.2/ref/settings/#auth-password-validators
