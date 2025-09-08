@@ -44,8 +44,8 @@ class Linker(AbstractCoreComponent):
 
         # used for filters and name embedding, and if the name contains a valid cui 
         # see: _set_filters
-        self._last_include_set: set[str] = set()
-        self._last_exclude_set: set[str] = set()
+        self._last_include_set: set[str] | None = None
+        self._last_exclude_set: set[str] | None = None
         self._allowed_mask = None
         self._name_has_allowed_cui = None
 
@@ -265,7 +265,9 @@ class Linker(AbstractCoreComponent):
 
         # Check if sets changed (avoid recomputation if same)
         if (
-            include_set == self._last_include_set
+            self._last_include_set is not None
+            and self._last_exclude_set is not None
+            and include_set == self._last_include_set
             and exclude_set == self._last_exclude_set
         ):
             return
@@ -405,7 +407,7 @@ class Linker(AbstractCoreComponent):
 
                 predicted_cui, _ = self._disambiguate_by_cui(cuis, cui_scores[i, :])
 
-            if self.cnf_l.use_similarity_threshold and self._check_similarity(
+            if self._check_similarity(
                 similarity
             ):
                 entity.cui = predicted_cui
@@ -413,8 +415,8 @@ class Linker(AbstractCoreComponent):
                 yield entity
 
     def _check_similarity(self, context_similarity: float) -> bool:
-        if self.cnf_l.use_similarity_threshold:
-            threshold = self.cnf_l.similarity_threshold
+        if self.cnf_l.long_similarity_threshold:
+            threshold = self.cnf_l.long_similarity_threshold
             return context_similarity >= threshold
         else:
             return True
@@ -456,15 +458,24 @@ class Linker(AbstractCoreComponent):
         sorted_indices = torch.argsort(names_scores, dim=1, descending=True)
 
         for i, entity in enumerate(entities):
-            row_sorted = sorted_indices[i]  # sorted candidate indices for entity i
-
-            valid_mask = self._valid_names[row_sorted]
-            # TODO: potentially choose multiple names that
-            # are all within a certain range of the top scoring.
-            # for now just choose the highest scoring name
-            valid_positions = torch.nonzero(valid_mask, as_tuple=True)[0][:1]
-
+            row_sorted = sorted_indices[i]
             cuis: set[str] = set()
+
+            # scores for this entity row
+            row_scores = names_scores[i, row_sorted]
+            # valid names via filtering and contain at least 1 cui
+            valid_mask = self._valid_names[row_sorted]
+
+            if self.cnf_l.short_similarity_threshold > 0:
+                # thresholded selection
+                above_thresh_mask = row_scores >= self.cnf_l.short_similarity_threshold
+                selected_mask = valid_mask & above_thresh_mask
+                valid_positions = torch.nonzero(selected_mask, as_tuple=True)[0]
+            else:
+                # just take the single best valid candidate
+                first_valid = torch.nonzero(valid_mask, as_tuple=True)[0][:1]
+                valid_positions = first_valid
+
             for pos in valid_positions.tolist():
                 top_name_idx = int(row_sorted[pos].item())
                 detected_name = self._name_keys[top_name_idx]
@@ -490,8 +501,11 @@ class Linker(AbstractCoreComponent):
         ):
             self._generate_link_candidates(doc, entities)
 
+        # filter out entities with no link candidates after thresholding
+        filtered_ents = [ent for ent in all_ents if ent.link_candidates]
+
         if self.cnf_l.always_calculate_similarity:
-            return [], all_ents
+            return [], filtered_ents
 
         le = []
         to_infer = []

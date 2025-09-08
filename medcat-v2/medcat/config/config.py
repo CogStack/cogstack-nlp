@@ -380,9 +380,17 @@ class EmbeddingLinking(Linking):
     """The embedding linker never needs to be trained in its 
     current implementation."""
     train: bool = False
-    """Similarity between context bert-like vector and names or
-    cui preferred names"""
-    similarity_threshold: float = 0.25
+    """Used in the inference step to choose the best CUI given the
+    link candidates. Testing shows a threshold of 0.7 increases precision
+    with minimal impact on recall. Default is 0.0 which assumes
+    all entities detected by the NER step are true."""
+    long_similarity_threshold: float = 0.0
+    """Used for generating cui candidates. If a threshold of 0.0
+    is selected then only the highest scoring name will provide cuis
+    to be link candidates. Use a threshold of 0.95 or higher, as this is
+    essentailly string matching and account for spelling errors. Lower 
+    thresholds will provide too many candidates and slow down the inference."""
+    short_similarity_threshold: float = 0.0
     """Name of the embedding model. It must be downloadable from 
     huggingface linked from an appropriate file directory"""
     embedding_model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
