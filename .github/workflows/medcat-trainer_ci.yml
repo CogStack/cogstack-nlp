@@ -45,7 +45,6 @@ jobs:
           cd client
           python -m build
 
-  
   test-frontend:
     runs-on: ubuntu-latest
     steps:
@@ -67,7 +66,7 @@ jobs:
           cd webapp/frontend
           npm run test:unit
 
-          
+
   # Build and test webapp container
   build-and-push:
     runs-on: ubuntu-latest
