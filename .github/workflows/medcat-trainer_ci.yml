@@ -64,6 +64,7 @@ jobs:
       - name: Run frontend tests
         run: |
           cd webapp/frontend
+          npm run test:unit
 
 
   # Build and test webapp container
