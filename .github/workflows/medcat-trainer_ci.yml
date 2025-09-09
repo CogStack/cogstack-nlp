@@ -90,4 +90,3 @@ jobs:
         run: |
           # run tests
           docker run --rm cogstacksystems/medcat-trainer:dev-latest python manage.py test
-          
