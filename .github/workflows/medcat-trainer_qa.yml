@@ -3,7 +3,6 @@ name: medcat-trainer qa-build
 on:
   push:
     branches: [ main ]
-  workflow_dispatch: #TODO Remove after testing
 
 permissions:
   id-token: write
@@ -105,7 +104,7 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-# Disabling pushing to dockerhub while testing. TODO Uncomment after testing
-#      - name: Push to DockerHub
-#        run: |
-#          docker push cogstacksystems/medcat-trainer:latest
+
+      - name: Push to DockerHub
+        run: |
+          docker push cogstacksystems/medcat-trainer:latest
