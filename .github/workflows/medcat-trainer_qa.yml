@@ -105,7 +105,7 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-
-      - name: Push to DockerHub
-        run: |
-          docker push cogstacksystems/medcat-trainer:latest
+# Disabling pushing to dockerhub while testing. TODO Uncomment after testing
+#      - name: Push to DockerHub
+#        run: |
+#          docker push cogstacksystems/medcat-trainer:latest
