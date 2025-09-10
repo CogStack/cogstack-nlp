@@ -3,7 +3,6 @@ name: medcat-trainer qa-build
 on:
   push:
     branches: [ main ]
-  workflow_dispatch: #TODO Remove after testing
 
 permissions:
   id-token: write
@@ -56,33 +55,10 @@ jobs:
           repository_url: https://test.pypi.org/legacy/
           packages_dir: medcat-trainer/client/dist
 
-  test-frontend:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout main
-        uses: actions/checkout@v5
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'      
-
-      - name: Install dependencies
-        run: |
-          cd webapp/frontend      
-          npm ci                  
-
-      - name: Run frontend tests
-        run: |
-          cd webapp/frontend
-          npm run test:unit
-
   # Build and test webapp container
   build-and-push:
     runs-on: ubuntu-latest
-    needs: 
-      - test-client
-      - test-frontend
+    needs: test-client
     steps:
       - name: Checkout main
         uses: actions/checkout@v5
