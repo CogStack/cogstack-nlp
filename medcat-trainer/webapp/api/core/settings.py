@@ -65,8 +65,9 @@ INSTALLED_APPS = [
     'django_filters',
     'background_task',
     'api',
-    'health_check',                     # core
-    'health_check.db',                  # database check
+    'health_check',
+    'health_check.contrib.db_heartbeat',
+    'health_check.contrib.migrations',
 ]
 
 MIDDLEWARE = [
@@ -163,8 +164,9 @@ else:
 # https://pypi.org/project/django-health-check/
 HEALTH_CHECK = {
     "SUBSETS": {
-        "live": [],
-        'ready': ['DatabaseBackend'],
+        'startup': ['DatabaseHeartBeatCheck', 'MigrationsHealthCheck'],
+        'live': [],
+        'ready': ['DatabaseHeartBeatCheck'],
     },
 }
 
