@@ -1,5 +1,8 @@
 # Medical  <img src="https://github.com/CogStack/cogstack-nlp/blob/main/media/cat-logo.png?raw=true" width=45> oncept Annotation Tool (version 2)
 
+MedCAT can be used to extract information from Electronic Health Records (EHRs) and link it to biomedical ontologies like SNOMED-CT, UMLS, or HPO (and potentially other ontologies).
+Original paper for v1 on [arXiv](https://arxiv.org/abs/2010.01165). 
+
 **There's a number of breaking changes in MedCAT v2 compared to v1.**
 When moving from v1 to v2, please refer to the [migration guide](docs/migration_guide_v2.md).
 Details on breaking are outlined [here](docs/breaking_changes.md).
@@ -8,9 +11,6 @@ Details on breaking are outlined [here](docs/breaking_changes.md).
 [![Documentation Status](https://readthedocs.org/projects/cogstack-nlp/badge/?version=latest)](https://readthedocs.org/projects/cogstack-nlp/badge/?version=latest)
 [![Latest release](https://img.shields.io/github/v/release/CogStack/cogstack-nlp?filter=medcat/*)](https://github.com/CogStack/cogstack-nlp/releases/latest)
 <!-- [![pypi Version](https://img.shields.io/pypi/v/medcat.svg?style=flat-square&logo=pypi&logoColor=white)](https://pypi.org/project/medcat/) -->
-
-MedCAT can be used to extract information from Electronic Health Records (EHRs) and link it to biomedical ontologies like SNOMED-CT, UMLS, or HPO (and potentially other ontologies).
-Original paper for v1 on [arXiv](https://arxiv.org/abs/2010.01165).
 
 **Official Docs [here](https://cogstack-nlp.readthedocs.io/)**
 

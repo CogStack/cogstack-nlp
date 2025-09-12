@@ -675,8 +675,9 @@ def concept_search_index_available(request):
     try:
         return collections_available(cdb_ids)
     except Exception as e:
+        logger.error("Failed to search for concept_search_index. Solr Search Service not available", exc_info=e)
         return HttpResponseServerError("Solr Search Service not available check the service is up, running "
-                                       "and configured correctly. %s", e)
+                                       "and configured correctly", e)
 
 
 @api_view(http_method_names=['GET'])
