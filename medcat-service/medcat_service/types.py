@@ -50,8 +50,8 @@ class ProcessAPIInputContent(BaseModel):
     footer: Optional[Union[str, Dict[str, Any]]] = None
 
     class Config:
-        extra = "forbid" # Forbid extra fields not defined in the model
-    
+        extra = "forbid"
+
 
 class ProcessAPIInput(BaseModel):
     content: ProcessAPIInputContent
