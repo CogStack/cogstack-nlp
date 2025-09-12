@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import logging
-import os
 import time
 from datetime import datetime, timezone
 
@@ -176,9 +175,13 @@ class MedCatProcessor:
         meta_anns_filters = kwargs.get("meta_anns_filters")
         if meta_anns_filters:
             if isinstance(entities, dict):
-                entities = [ e for e in entities['entities'].values()
-                    if isinstance(e, dict) and all(
-                        task in e.get('meta_anns', {}) and e['meta_anns'][task]['value'] in filter_values
+                entities = [
+                    e
+                    for e in entities["entities"].values()
+                    if isinstance(e, dict)
+                    and all(
+                        task in e.get("meta_anns", {})
+                        and e["meta_anns"][task]["value"] in filter_values
                         for task, filter_values in meta_anns_filters
                     )
                 ]
@@ -218,9 +221,11 @@ class MedCatProcessor:
             if self.service_settings.deid_mode and isinstance(self.cat, DeIdModel):
                 text_to_deid_from_tuple = (x[1] for x in text_input)
 
-                ann_res = self.cat.deid_multi_texts(list(text_to_deid_from_tuple),
-                                                   redact=self.service_settings.deid_redact,
-                                                   n_process=self.service_settings.bulk_nproc)
+                ann_res = self.cat.deid_multi_texts(
+                    list(text_to_deid_from_tuple),
+                    redact=self.service_settings.deid_redact,
+                    n_process=self.service_settings.bulk_nproc,
+                )
             elif isinstance(self.cat, CAT):
                 ann_res = {
                     ann_id: res for ann_id, res in
@@ -260,11 +265,13 @@ class MedCatProcessor:
             ValueError: If required environment variables are not set.
             Exception: If concept database path is not specified.
         """
-        cat, cdb, vocab, config = None, None, None, None
+
+        cdb, vocab = None, None
+        cat: DeIdModel | CAT
 
         # ---- CUI filter ----
         cuis_to_keep: list[str] = []
-    
+
         if self.service_settings.model_cui_filter_path:
             self.log.debug("Loading CUI filter ...")
             with open(self.service_settings.model_cui_filter_path) as cui_file:
@@ -281,11 +288,13 @@ class MedCatProcessor:
             if cuis_to_keep:
                 self.log.debug("Applying CUI filter ...")
                 cat.cdb.filter_by_cui(cuis_to_keep)
-            
+
             cat.config.general.log_level = self.service_settings.medcat_log_level
 
             if not self.service_settings.app_model_name and cat.config.meta.hash:
-                self.service_settings.app_model_name = cat.config.meta.hash
+                self.service_settings = self.service_settings.model_copy(
+                    update={"app_model_name": cat.config.meta.hash}
+                )
 
             self._populate_model_card_info(cat.config)
             return cat
@@ -318,7 +327,7 @@ class MedCatProcessor:
                 "CDB has no spaCy model configured"
             )
         else:
-            self.log.warning(   
+            self.log.warning(
                 f"{Settings.env_name('spacy_model')} not set, using spaCy model from CDB: "
                 f"{cdb.config.general.nlp.modelname}"
             )
@@ -340,7 +349,9 @@ class MedCatProcessor:
             cat.add_addon(RelCATAddon.deserialise_from(rel_model_path))
 
         if not self.service_settings.app_model_name and cat.config.meta.hash:
-            self.service_settings.app_model_name = cat.config.meta.hash
+            self.service_settings = self.service_settings.model_copy(
+                update={"app_model_name": cat.config.meta.hash}
+            )
 
         self._populate_model_card_info(cat.config)
         return cat
@@ -394,12 +405,12 @@ class MedCatProcessor:
                     elapsed_time=elapsed_time,
                     footer=in_ct.get("footer"),
                 )
-            elif  self.service_settings.deid_mode:
+            elif self.service_settings.deid_mode:
                 out_res = ProcessResult(
                     # TODO: DEID mode is passing the resulting text in the annotations field here but shouldnt.
                     text=str(annotations[i]),
                     # TODO: DEID bulk mode should also be able to return the list of annotations found,
-                    #  to match the features of the singular api. CU-869a6wc6z
+                    #  to match the features of the singular api, this needs to be matched by MedCAT. CU-869a6wc6z
                     annotations=[],
                     success=True,
                     timestamp=self._get_timestamp(),

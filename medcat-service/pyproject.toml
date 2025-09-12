@@ -1,8 +1,9 @@
+[tool.ruff]
 line-length = 120
 indent-width = 4
 
-[lint]
-# 1. Enable flake8-bugbear (`B`) rules, in addition to the defaults.
+[tool.ruff.lint]
+# Enable flake8-bugbear (`B`) rules, in addition to the defaults.
 select = [
     # pycodestyle
     "E",
@@ -17,3 +18,8 @@ select = [
     # isort
     "I",
 ]
+
+[tool.mypy]
+plugins = ["pydantic.mypy"]
+ignore_missing_imports = true
+strict = false

@@ -1,8 +1,10 @@
+import logging
 from typing import Any, Optional, Tuple, Union
+
+import torch
 from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-import logging
-import torch
+
 
 def _coerce_loglevel(v: Any) -> int:
     """
@@ -21,7 +23,7 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(
         frozen=True,
-        env_prefix="", # no prefix; we specify full env names via alias
+        env_prefix="",  # no prefix; we specify full env names via alias
         case_sensitive=False,
         populate_by_name=True
     )
@@ -52,8 +54,8 @@ class Settings(BaseSettings):
     spacy_model: str = Field("", alias="MEDCAT_SPACY_MODEL")
 
     # ---- App logging & MedCAT logging ----
-    app_log_level: int = Field(default="INFO", alias="APP_LOG_LEVEL")
-    medcat_log_level: int = Field(default="INFO", alias="MEDCAT_LOG_LEVEL")
+    app_log_level: int = Field(default=logging.INFO, alias="APP_LOG_LEVEL")
+    medcat_log_level: int = Field(default=logging.INFO, alias="MEDCAT_LOG_LEVEL")
 
     # ---- App identity / model basics ----
     app_name: str = Field(default="MedCAT", alias="APP_NAME")
@@ -73,7 +75,7 @@ class Settings(BaseSettings):
     @classmethod
     def _val_log_levels(cls, v: Any) -> int:
         return _coerce_loglevel(v)
-    
+
     @field_validator("annotations_entity_output_mode", mode="after")
     @classmethod
     def _lower_mode(cls, v: str) -> str:
