@@ -31,7 +31,11 @@ class MedCatProcessor:
         self.service_settings = settings
 
         self.log = logging.getLogger(self.__class__.__name__)
-        self.log.setLevel(level=self.service_settings.app_log_level)
+        if not self.log.handlers:
+            handler = logging.StreamHandler()
+            handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
+            self.log.addHandler(handler)
+        self.log.setLevel(self.service_settings.app_log_level)
 
         self.log.debug("APP log level set to : " + str(self.service_settings.app_log_level))
         self.log.debug("MedCAT log level set to : " + str(self.service_settings.medcat_log_level))
@@ -58,7 +62,7 @@ class MedCatProcessor:
         # Not sure what happens if torch is using a cuda device
         if self.service_settings.torch_threads > 0:
             torch.set_num_threads(self.service_settings.torch_threads)
-            self.log.info("Torch threads set to " + str(self.service_settings.torch_threads))
+        self.log.info("Torch threads set to " + str(self.service_settings.torch_threads))
 
         self.cat: DeIdModel | CAT = self._create_cat()
 
@@ -406,9 +410,10 @@ class MedCatProcessor:
                     footer=in_ct.get("footer"),
                 )
             elif self.service_settings.deid_mode:
+                out_text = str(annotations[i]) if i < len(annotations) else str(in_ct["text"])
                 out_res = ProcessResult(
                     # TODO: DEID mode is passing the resulting text in the annotations field here but shouldnt.
-                    text=str(annotations[i]),
+                    text=out_text,
                     # TODO: DEID bulk mode should also be able to return the list of annotations found,
                     #  to match the features of the singular api, this needs to be matched by MedCAT. CU-869a6wc6z
                     annotations=[],

@@ -1,5 +1,4 @@
 import gradio as gr
-import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
@@ -38,4 +37,7 @@ async def healthcheck_failed_exception_handler(request: Request, exc: HealthChec
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    # Only run this when directly executing `python main.py` for local dev.
+    import os
+    import uvicorn
+    uvicorn.run("medcat_service.main:app", host="0.0.0.0", port=int(os.environ.get("SERVER_PORT", 8000)))

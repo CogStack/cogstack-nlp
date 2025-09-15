@@ -38,7 +38,7 @@ To build the Docker image manually:
 
 To run the container using the built image:
 
-```
+```bash
   docker run -it -p 5000:5000 \
     --env-file=envs/env_app --env-file=envs/env_medcat \
     -v <models-local-dir>:/cat/models:ro \
@@ -51,39 +51,37 @@ By default the MedCAT service will be running on port `5000`. MedCAT models will
 
 If you have a gpu and wish to use it, please change the `docker/docker-compose.yml` file, use the `cogstacksystems/medcat-service-gpu:latest` image or change the `build:` directive to build `../Dockerfile_gpu`.
 
-### <span style="color:red">IMPORTANT !</span>
+### IMPORTANT
 
 If you wish to run this docker service manually, use the docker/docker-compose.yml file, execute `docker compose up -d` whilst in the `docker` folder.
 
-Alternatively, an example script `./docker/run_example_medmen.sh` was provided to run the Docker container with MedCAT service. The script will download an example model (using the `./scripts/download_medmen.sh` script),it will use an example environment configuration, then it will build and start the service using the provided Docker Compose file, the service <b><span style="color:red">WONT WORK</span></b> without the model being present.
+Alternatively, an example script `./docker/run_example_medmen.sh` was provided to run the Docker container with MedCAT service. The script will download an example model (using the `./scripts/download_medmen.sh` script),it will use an example environment configuration, then it will build and start the service using the provided Docker Compose file, the service ***WONT WORK*** without the model being present.
 
 All models should be mounted from the `models/` folder.
 
-<br>
-
 ### Manual docker start-up steps
 
-```
+```bash
   1. cd ./models/
   2. bash ./download_medmen.sh
   3. cd ../docker/
   4. docker compose up -d
-  DONE!
+  5. echo "DONE!"
 ```
 
 Or, if you wish to use the above mentioned script ( the sample model is downloaded via script, you don't need to do anything):
 
-```
+```bash
   1. cd ./docker/
   2. bash ./run_example_medmen.sh
   DONE!
 ```
 
-# API Example use
+## API Example use
 
 Assuming that the application is running on the `localhost` with the API exposed on port `5000`, one can run:
 
-```
+```bash
 curl -XPOST http://localhost:5000/api/process \
   -H 'Content-Type: application/json' \
   -d '{"content":{"text":"The patient was diagnosed with leukemia."}}'
@@ -91,7 +89,7 @@ curl -XPOST http://localhost:5000/api/process \
 
 and the received result:
 
-```
+```json
 {
  "result": {"text": "The patient was diagnosed with leukemia.",
  
@@ -106,15 +104,17 @@ and the received result:
 
 Additional DE-ID query sample (make sure you have a de-id model loaded):
 
+```bash
 curl -XPOST <http://localhost:5555/api/process> \
   -H 'Content-Type: application/json' \
   -d '{"content":{"text":"Patient Information: Full Name: John Michael Doe \n Gender: Male \n Date of Birth: January 15, 1975 (Age: 49) \n Patient ID: 567890123 \n Address: 1234 Elm Street, Springfield, IL 62701 \n Phone Number: (555) 123-4567 \n Email: <johnmdoe@example.com> \n Emergency Contact: Jane Doe (Wife) \n Phone: (555) 987-6543 \n Relationship: Spouse"}}'
+```
 
-Make sure you have the following option enabled in `envs/env_medcat` , `DEID_MODE=True`.
+Make sure you have the following option enabled in `envs/(medcat|medcat_deid).env` , `DEID_MODE=True`.
 
 process_bulk example :
 
-```
+```bash
 curl -XPOST http://localhost:5000/api/process_bulk \
  -H 'Content-Type: application/json' \
  -d '{"content": [{"text":"The patient was diagnosed with leukemia."}, {"text": "The patient was diagnosed with cancer."}] }'
@@ -122,7 +122,7 @@ curl -XPOST http://localhost:5000/api/process_bulk \
 
 example bulk result :
 
-```
+```json
 {
   "result": [
     {
@@ -270,36 +270,35 @@ example bulk result :
 
 ```
 
-<strong>IMPORTANT info regarding annotation output style</strong><br>
+<strong>IMPORTANT info regarding annotation output style</strong>
 As the changes from MedCAT intoduced dictionary annotation/entity output.
 
 The mode in which annotation entities should be outputted in the JSON response,
    by default this was outputted as a "list" of dicts in older versions, so the output would be :
 
-   ```
+   ```json
     {"annotations": [{"id": "0", "cui" : "C1X..", ..}, {"id":"1", "cui": "...."}]}
    ```
 
    newer versions of MedCAT (1.2+) output entities as a dict, where the id of the entity is a key and the rest of the data is a value, so for "dict",
    the output is
 
-   ```
+   ```json
     {"annotations": [{"0": {"cui": "C0027361", "id": 0,.....}, "1": {"cui": "C001111", "id": 1......}}]}
    ```
 
-This setting can be configured in the ```./env/env_medcat``` file, using the ```ANNOTATIONS_ENTITY_OUTPUT_MODE``` variable.
+This setting can be configured in the ```./env/medcat.env``` file, using the ```MEDCAT_ANNOTATIONS_ENTITY_OUTPUT_MODE``` variable.
 By default, the output of these entities is set to respect the output of the MedCAT package, hence the latter will be used. Please change the above mentioned env variable and make sure your CogStack-Nifi annotation script is adapted accordingly.
-<br>
+
 Please note that the returned NLP annotations will depend on the underlying model used. For evaluation, we can only provide a very basic model trained on [MedMentions](https://github.com/chanzuckerberg/MedMentions). Models utilising [SNOMED CT](https://www.england.nhs.uk/digitaltechnology/digital-primary-care/snomed-ct/) or [UMLS](https://www.nlm.nih.gov/research/umls/index.html) may require applying for licenses from the copyright holders.
-<br>
-<br>
 
 ## Configuration
 
-In the current implementation, configuration for both MedCAT Service application and MedCAT NLP library is based on environment variables. These will be provided usually in two files in `env` directory:
+In the current implementation, configuration for both MedCAT Service application and MedCAT NLP library is based on environment variables. These will be provided usually in the files in the `env` directory:
 
-- `env_app` - configuration of MedCAT Service app,
-- `env_medcat` - configuration of MedCAT library.
+- `env/(app|app_deid).env` - configuration of MedCAT Service app,
+- `env/(medcat|medcat_deid).env` - configuration of MedCAT library.
+- `env/general.env` - configuration of general DOCKER related variables, CPU architecture, shared memory size etc, this is part of all of the major services services across CogStack, also set in the master repo in NiFi.
 
 Both files allow tailoring MedCAT for specific use-cases. When running MedCAT Service, these variables need to be loaded into the current working environment.
 
@@ -309,7 +308,7 @@ When using MedCAT for a different language than English, it can be useful to use
 
 ## Service Environment vars
 
-MedCAT Service application are defined in `envs/env_app` file.
+MedCAT Service application are defined in `envs/(app|app_deid).env` file.
 
 The following environment variables are available for tailoring the MedCAT Service `gunicorn` server:
 
@@ -326,6 +325,23 @@ The following environment variables are available for tailoring the MedCAT Servi
 - `APP_MODEL_META_PATH_LIST` - the list of paths to meta-annotation models, each separated by `:` character (optional),
 - `APP_BULK_NPROC` - the number of threads used in bulk processing (default: `8`),
 - `APP_MEDCAT_MODEL_PACK` -  MedCAT Model Pack path, if this parameter has a value IT WILL BE LOADED FIRST OVER EVERYTHING ELSE (CDB, Vocab, MetaCATs, etc.) declared above.
+
+### Shared Memory (`DOCKER_SHM_SIZE`)
+
+The MedCAT service uses PyTorch multiprocessing and memory-mapped models, which rely on Linux shared memory (`/dev/shm`).  
+By default, Docker limits this to **64 MB**, which is insufficient for NLP models.
+
+Use the environment variable `DOCKER_SHM_SIZE` to control the size of shared memory inside the container. 
+You can set this variable in the `env/general.env` file.
+
+- **Recommended**: `8g` for bulk inference (`APP_BULK_NPROC > 1`)  
+- **Minimum**: `1g` for single-process inference (`APP_BULK_NPROC=1`)  
+
+Example:
+
+```env
+DOCKER_SHM_SIZE=8g
+```
 
 ## Performance Tuning
 
