@@ -43,7 +43,7 @@ class MakeWithDashes(CDBMakerBaseTests):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.maker.prepare_csvs([cls.cui_df, ])
+        cls.maker.prepare_csvs([cls.cui_df, ], full_build=True)
 
     def test_has_cui(self):
         self.assertIn(self.cui, self.cdb.cui2info)
