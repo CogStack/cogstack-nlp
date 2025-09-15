@@ -356,6 +356,7 @@ class RegexTokenizer(BaseTokenizer):
             if t_text and self.PUNCT_REGEX.match(t_text[0]):
                 before = re.match(r"((.))", t_text[0])
                 if before is None:
+                    # NOTE: explicitly cannot happen since anything goes
                     raise ValueError(
                         "Got an unmatched character somehow (before): "
                         f"'{t_text[0]}'")
@@ -363,6 +364,7 @@ class RegexTokenizer(BaseTokenizer):
                 if len(t_text.strip()) > 1:
                     after = re.match(self.REGEX, t_text[1:])
                     if after is None:
+                        # NOTE: explicitly cannot happen since there's a check
                         raise ValueError(
                             "Got an unmatched character somehow (after): "
                             f"'{t_text[1:]}'")
