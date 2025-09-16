@@ -22,9 +22,9 @@ There are many ways of contributing to the project
 - Suggesting new features
 - Contributing to code
 
-The following subsections will go into a little more detail regarding each of the above.
+The following subsections will go into a little more detail regarding each of the above:
 
-## Reporting Issues
+### Reporting Issues
 
 Some things to remember when reporting an issue:
 - Describe the issue clearly
@@ -38,10 +38,23 @@ Some things to remember when reporting an issue:
   - Database(s) used
   - Deployment environment
 
-## Suggesting New Features
+### Suggesting New Features
 
 CogStack is always looking to grow and provide new features.
 
 Some things to remember when suggesting a new feature:
 - Describe the new feature in detail
 - Describe the benefits of this new feature
+
+### Contributing to Code
+Thank you for taking the time to contribute! We appreciate your efforts to improve this project and make it better for everyone.
+
+Before submitting a pull request, try to make sure that it's likely to pass checks and be up to date
+
+Each project in this repository may have its own specific commands or tools used, so be sure to check the readme or documentation for each part for details.
+
+Here are a few guidelines to follow:
+- The changes are based on the `main` branch (i.e., merge the `main` branch into your feature branch before submitting a PR).
+- There are no issues with static type checks (e.g., run `mypy` ).
+- The code passes linting and style checks (e.g., `flake8` or `ruff`).
+- All tests pass successfully (run your project's test suite as documented, eg run `python -m unittest discover`).
