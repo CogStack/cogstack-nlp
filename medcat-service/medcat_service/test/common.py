@@ -84,7 +84,5 @@ def setup_medcat_processor():
             "OS ENV: APP_BULK_NPROC: not set -- setting to default: 8")
         os.environ["APP_BULK_NPROC"] = "8"
 
-    os.environ["APP_TRAINING_MODE"] = "False"
-
-    os.environ["DEID_MODE"] = "False"
-    os.environ["DEID_REDACT"] = "False"
+    os.environ["MEDCAT_DEID_MODE"] = "False"
+    os.environ["MEDCAT_DEID_REDACT"] = "False"

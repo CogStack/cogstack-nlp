@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 # NOTE: this should be used for changing the CDB, both for training and for
 #       unlinking concept/names.
 class Trainer:
+    strict_train: bool = False
 
     def __init__(self, cdb: CDB, caller: Callable[[str], MutableDocument],
                  pipeline: Pipeline):
@@ -453,11 +454,17 @@ class Trainer:
                         context = "[...]" + context
                     if context_end < len(cur_text) - 1:
                         context += "[...]"
-                    raise ValueError(
-                        f"Failed to identify '{cui}' ({ann['value']}) "
-                        f"([{ann['start']}:{ann['end']}]) "
-                        f"in '{context}' {mut_entity} within document "
-                        f"{doc['id']} | {doc['name']}") from ve
+                    msg_template = (
+                        "Failed to identify '%s' (%s) ([%d:%d]) "
+                        "in '%s' %s within document %s | %s, "
+                        "skipping training for this example")
+                    msg_context = (
+                        cui, ann['value'], ann['start'], ann['end'],
+                        context, mut_entity, doc['id'], doc['name'])
+                    if self.strict_train:
+                        raise ValueError(msg_template % msg_context) from ve
+                    else:
+                        logger.warning(msg_template, *msg_context, exc_info=ve)
             if train_from_false_positives:
                 fps: list[MutableEntity] = get_false_positives(doc, mut_doc)
 

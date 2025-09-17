@@ -31,9 +31,12 @@ class Converter:
                  ser_type: AvailableSerialisers = AvailableSerialisers.dill):
         if medcat1_model_pack_path.endswith(".zip"):
             folder_path = medcat1_model_pack_path[:-4]
-            self.old_model_name = os.path.split(medcat1_model_pack_path)[1]
+            self.old_model_name = os.path.split(
+                medcat1_model_pack_path)[1].rsplit(".zip", 1)[0]
             unpack(medcat1_model_pack_path, folder_path)
             medcat1_model_pack_path = folder_path
+        else:
+            self.old_model_name = os.path.split(medcat1_model_pack_path)[1]
         if not os.path.isdir(medcat1_model_pack_path):
             raise ValueError(
                 "Provided model path is not a directory: "

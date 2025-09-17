@@ -31,6 +31,7 @@ def _cache_solr_collection_schema_types(collection):
 
 def collections_available(cdbs: List[int]):
     url = f'http://{SOLR_HOST}:{SOLR_PORT}/solr/admin/collections?action=LIST'
+    logger.info(f'Retrieving all SOLR collections: {url}')
     resp = requests.get(url)
     if resp.status_code == 200:
         collections = json.loads(resp.text)['collections']

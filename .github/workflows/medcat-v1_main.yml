@@ -22,7 +22,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
@@ -59,7 +59,7 @@ jobs:
         run: source tests/resources/model_compatibility/check_backwards_compatibility.sh
       - name: Get the latest release version
         id: get_latest_release
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const latestRelease = await github.rest.repos.getLatestRelease({
@@ -94,7 +94,7 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Python 3.9
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: 3.9
 
@@ -122,7 +122,7 @@ jobs:
           .
 
       - name: Publish dev distribution to Test PyPI
-        uses: pypa/gh-action-pypi-publish@v1.12.4
+        uses: pypa/gh-action-pypi-publish@v1.13.0
         with:
           password: ${{ secrets.TEST_PYPI_API_TOKEN }}
           repository_url: https://test.pypi.org/legacy/
