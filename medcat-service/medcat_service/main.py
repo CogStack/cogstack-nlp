@@ -2,10 +2,8 @@ import gradio as gr
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from medcat_service.config import Settings
 from medcat_service.demo.gradio_demo import io
 from medcat_service.dependencies import get_settings
-from medcat_service.nlp_processor.medcat_processor import MedCatProcessor
 from medcat_service.routers import admin, health, process
 from medcat_service.types import HealthCheckFailedException
 
