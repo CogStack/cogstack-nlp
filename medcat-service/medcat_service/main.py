@@ -30,16 +30,6 @@ app.include_router(admin.router)
 app.include_router(health.router)
 app.include_router(process.router)
 
-
-@app.on_event("startup")
-def load_medcat():
-    app.state.settings = Settings()
-    app.state.medcat = MedCatProcessor(app.state.settings)
-
-@app.on_event("shutdown")
-def unload_medcat():
-    app.state.medcat.close()
-
 gr.mount_gradio_app(app, io, path="/demo")
 
 
