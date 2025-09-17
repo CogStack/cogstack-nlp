@@ -10,14 +10,14 @@ from medcat_service.nlp_processor.medcat_processor import MedCatProcessor
 log = logging.getLogger(__name__)
 
 
-@lru_cache
+@lru_cache(maxsize=1)
 def get_settings() -> Settings:
     settings = Settings()
     log.debug("Using settings: %s", settings)
     return settings
 
 
-@lru_cache
+@lru_cache(maxsize=1)
 def get_medcat_processor(settings: Annotated[Settings, Depends(get_settings)]) -> MedCatProcessor:
     log.debug("Creating new Medcat Processsor using settings: %s", settings)
     return MedCatProcessor(settings)
