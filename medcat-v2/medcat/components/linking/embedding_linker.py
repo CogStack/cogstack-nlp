@@ -3,7 +3,7 @@ from medcat.config.config import Config, ComponentConfig, EmbeddingLinking
 from medcat.components.types import CoreComponentType, AbstractCoreComponent
 from medcat.tokenizing.tokens import MutableEntity, MutableDocument
 from medcat.tokenizing.tokenizers import BaseTokenizer
-from typing import Optional, Iterator
+from typing import Optional, Iterator, Set
 from medcat.vocab import Vocab
 from torch import Tensor
 from transformers import AutoTokenizer, AutoModel
@@ -44,8 +44,8 @@ class Linker(AbstractCoreComponent):
 
         # used for filters and name embedding, and if the name contains a valid cui 
         # see: _set_filters
-        self._last_include_set: set[str] | None = None
-        self._last_exclude_set: set[str] | None = None
+        self._last_include_set: Optional[Set[str]] = None
+        self._last_exclude_set: Optional[Set[str]] = None
         self._allowed_mask = None
         self._name_has_allowed_cui = None
 
