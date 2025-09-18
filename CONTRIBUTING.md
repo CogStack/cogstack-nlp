@@ -122,10 +122,8 @@ An example PR title could be
 feat(medcat-service): Create API for healthchecks for container monitoring
 ```
 
-#### Pull Request Bodies
-We haven't put a formal template in for pull requests yet.
-
-Though the structure isn’t enforced, a good PR description helps reviewers and future maintainers.
+#### Pull Request Description
+A good PR description helps reviewers and future maintainers.
 
 Consider including things such as:
 
