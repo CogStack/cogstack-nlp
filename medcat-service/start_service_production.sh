@@ -33,6 +33,15 @@ if [ -z ${SERVER_WORKER_TIMEOUT+x} ]; then
   echo "SERVER_WORKER_TIMEOUT is unset -- setting to default (sec): $SERVER_WORKER_TIMEOUT";
 fi
 
+if [ -z ${SERVER_GUNICORN_MAX_REQUESTS+x} ]; then
+  SERVER_WORKER_TIMSERVER_GUNICORN_MAX_REQUESTSEOUT=3600;
+  echo "SERVER_GUNICORN_MAX_REQUESTS is unset -- setting to default (sec): $SERVER_GUNICORN_MAX_REQUESTS";
+fi
+
+if [ -z ${SERVER_GUNICORN_MAX_REQUESTS_JITTER+x} ]; then
+  SERVER_GUNICORN_MAX_REQUESTS_JITTER=50;
+  echo "SERVER_GUNICORN_MAX_REQUESTS_JITTER is unset -- setting to default (sec): $SERVER_GUNICORN_MAX_REQUESTS_JITTER";
+fi
 
 SERVER_ACCESS_LOG_FORMAT="%(t)s [ACCESS] %(h)s \"%(r)s\" %(s)s \"%(f)s\" \"%(a)s\""
 
@@ -50,5 +59,7 @@ exec gunicorn \
   --error-logfile=- \
   --log-level info \
   --config /cat/config.py \
+  --max-requests="$SERVER_GUNICORN_MAX_REQUESTS" \
+  --max-requests-jitter="$SERVER_GUNICORN_MAX_REQUESTS_JITTER" \
   --worker-class uvicorn.workers.UvicornWorker \
   medcat_service.main:app
