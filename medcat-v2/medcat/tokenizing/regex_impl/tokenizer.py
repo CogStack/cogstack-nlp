@@ -348,7 +348,7 @@ class RegexTokenizer(BaseTokenizer):
         end_index = doc._tokens.index(tokens[-1])
         return _entity_from_tokens(doc, tokens, start_index, end_index)
 
-    def __call__(self, text: str) -> MutableDocument:
+    def _get_tokens_matches(self, text: str) -> list[re.Match[str]]:
         _tokens = self.REGEX.finditer(text)
         tokens: list[re.Match[str]] = []
         for tkn in _tokens:
@@ -371,6 +371,10 @@ class RegexTokenizer(BaseTokenizer):
                     tokens.append(after)
             else:
                 tokens.append(tkn)
+        return tokens
+
+    def __call__(self, text: str) -> MutableDocument:
+        tokens = self._get_tokens_matches(text)
         doc = Document(text)
         for tkn_index, match in enumerate(tokens):
             start_index = match.start()
