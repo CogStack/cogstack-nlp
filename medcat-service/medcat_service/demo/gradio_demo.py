@@ -2,8 +2,9 @@ from typing import Dict, List
 
 import gradio as gr
 from pydantic import BaseModel
+import logging
 
-from medcat_service.dependencies import get_medcat_processor, get_settings
+from medcat_service.dependencies import get_global_processor
 from medcat_service.types import ProcessAPIInputContent
 from medcat_service.types_entities import Entity
 
@@ -96,7 +97,7 @@ def convert_display_model_to_list_of_lists(entity_display_model: list[EntityAnno
 
 
 def process_input(input_text: str):
-    processor = get_medcat_processor(get_settings())
+    processor = get_global_processor()
     input = ProcessAPIInputContent(text=input_text)
 
     result = processor.process_content(input.model_dump())
