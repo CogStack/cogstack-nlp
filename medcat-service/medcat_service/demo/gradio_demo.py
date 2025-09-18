@@ -2,7 +2,6 @@ from typing import Dict, List
 
 import gradio as gr
 from pydantic import BaseModel
-import logging
 
 from medcat_service.dependencies import get_global_processor
 from medcat_service.types import ProcessAPIInputContent
