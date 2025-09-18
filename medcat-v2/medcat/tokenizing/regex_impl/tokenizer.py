@@ -354,7 +354,9 @@ class RegexTokenizer(BaseTokenizer):
         tokens: list[re.Match[str]] = []
         for tkn in _tokens:
             t_text = tkn.group()
+            # checking if first character is punctuation
             if t_text and self.PUNCT_REGEX.match(t_text[0]):
+                # if it is, then separate it to a separate Match object
                 before = re.match(r"((.))", t_text[0])
                 if before is None:
                     # NOTE: explicitly cannot happen since anything goes
@@ -363,6 +365,9 @@ class RegexTokenizer(BaseTokenizer):
                         f"'{t_text[0]}'")
                 tokens.append(before)
                 if len(t_text.strip()) > 1:
+                    # if there's something other than the first element
+                    # i.e more than just the punctuation
+                    # use the rest as a separate match
                     after = re.match(self.REGEX, t_text[1:])
                     if after is None:
                         # NOTE: explicitly cannot happen since there's a check
