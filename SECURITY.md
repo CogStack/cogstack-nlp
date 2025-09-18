@@ -1,6 +1,6 @@
 # Security Policy
 
-## Supported Versions
+## Supported Projects
 
 There are multiple projects in this repo. Versions are released as tags with a prefix to denote which project is targeted.
 
@@ -34,13 +34,16 @@ We actively support security updates for the following versions:
 
 
 ## Unsupported Projects
+Unless a project is explicitly stated in the previous section, all other projects in this monorepo are provided as-is for demonstration, testing, or experimentation purposes.
 
-The following projects are provided as-is for demonstration and experimentation purposes.  
-They are not intended for production use and do not come with active support.  
+In terms of secuirty the unlisted projects are not intended for use with production data or in a live environment. 
 
-- [Deidentify app](anoncat-demo-app/README.md)
-- [MedCAT Demo App](medcat-demo-app/README.md)
-- [MedCAT Tutorials](medcat-v2-tutorials/README.md)
+By using them, you acknowledge that:
+
+- They are provided without warranties of any kind, express or implied, including but not limited to security, reliability, or suitability for a particular purpose.
+- They may contain incomplete features, insecure defaults, or other issues that could compromise data or operations.
+- The maintainers do not guarantee active support, monitoring, or security updates for these projects.
+- You are solely responsible for reviewing, testing, and securing any code before use with sensitive or production data.
 
 ## Reporting a Vulnerability
 
