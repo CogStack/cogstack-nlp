@@ -324,8 +324,7 @@ def _entity_from_tokens(doc: Document, tokens: list[MutableToken],
 
 
 class RegexTokenizer(BaseTokenizer):
-    PUNCT_REGEX = re.compile(r'[^a-zA-Z0-9]+')
-    REGEX = re.compile(r'((\b\w+\b|\S+)\s?)')
+    REGEX = re.compile(r'(([^a-zA-Z0-9\s]+|\b\w+\b|\S+)\s?)')
     # group 1: text with whitespace (if present)
     # group 2: text with no whitespace
 
@@ -348,40 +347,9 @@ class RegexTokenizer(BaseTokenizer):
         end_index = doc._tokens.index(tokens[-1])
         return _entity_from_tokens(doc, tokens, start_index, end_index)
 
-    def _split_punctuation_into_separate_matches(
-            self, _tokens: Iterator[re.Match[str]]
-            ) -> list[re.Match[str]]:
-        tokens: list[re.Match[str]] = []
-        for tkn in _tokens:
-            t_text = tkn.group()
-            # checking if first character is punctuation
-            if t_text and self.PUNCT_REGEX.match(t_text[0]):
-                # if it is, then separate it to a separate Match object
-                before = re.match(r"((.))", t_text[0])
-                if before is None:
-                    # NOTE: explicitly cannot happen since anything goes
-                    raise ValueError(
-                        "Got an unmatched character somehow (before): "
-                        f"'{t_text[0]}'")
-                tokens.append(before)
-                if len(t_text.strip()) > 1:
-                    # if there's something other than the first element
-                    # i.e more than just the punctuation
-                    # use the rest as a separate match
-                    after = re.match(self.REGEX, t_text[1:])
-                    if after is None:
-                        # NOTE: explicitly cannot happen since there's a check
-                        raise ValueError(
-                            "Got an unmatched character somehow (after): "
-                            f"'{t_text[1:]}'")
-                    tokens.append(after)
-            else:
-                tokens.append(tkn)
-        return tokens
-
     def _get_tokens_matches(self, text: str) -> list[re.Match[str]]:
         tokens = self.REGEX.finditer(text)
-        return self._split_punctuation_into_separate_matches(tokens)
+        return list(tokens)
 
     def __call__(self, text: str) -> MutableDocument:
         tokens = self._get_tokens_matches(text)
