@@ -6,6 +6,7 @@ from datetime import date
 from concurrent.futures import ProcessPoolExecutor, as_completed, Future
 import itertools
 from contextlib import contextmanager
+from collections import deque
 
 import shutil
 import zipfile
@@ -327,6 +328,9 @@ class CAT(AbstractSerialisable):
             batch_size_chars: int = 1_000_000,
             save_dir_path: Optional[str] = None,
             batches_per_save: int = 20,
+            entity_consume_mode_on_save: Union[
+                Literal["save"], Literal["save_and_return"],
+                Literal["lazy"]] = "save",
             ) -> Iterator[tuple[str, Union[dict, Entities, OnlyCUIEntities]]]:
         """Get entities from multiple texts (potentially in parallel).
 
@@ -363,6 +367,24 @@ class CAT(AbstractSerialisable):
             batches_per_save (int):
                 The number of patches to save (if `save_dir_path` is specified)
                 at once. Defaults to 20.
+            entity_consume_mode_on_save (Union[
+                    Literal["save"], Literal["save_and_return"],
+                    Literal["lazy"]]):
+                Controls how results are handled when `save_dir_path` is
+                provided:
+                - "save":
+                    Iterate through results internally, writing them to disk.
+                    Nothing is yielded/returned. This avoids storing all
+                    results in memory and is suitable for large data sets.
+                - "save_and_return":
+                    As above, but also return a fully materialised list of all
+                    results. **Warning**: this may require large amounts of
+                    memory and is not safe for large amounts of data.
+                - "lazy":
+                    Do not consume results internally. Results are both
+                    yielded and written to disk as the caller iterates over
+                    them. This preserves lazy evaluation but requires the
+                    caller to drive the iteration.
 
         Yields:
             Iterator[tuple[str, Union[dict, Entities, OnlyCUIEntities]]]:
@@ -376,6 +398,28 @@ class CAT(AbstractSerialisable):
             saver = BatchAnnotationSaver(save_dir_path, batches_per_save)
         else:
             saver = None
+        out_iter = self._get_entities_multi_texts(
+            n_process=n_process, batch_iter=batch_iter, saver=saver)
+        if saver:
+            if entity_consume_mode_on_save == "save":
+                # this materialises the iterator and forces the
+                # output to be saved on disk, nothing is yielded
+                deque(out_iter, maxlen=0)
+            elif entity_consume_mode_on_save == "lazy":
+                # do the lazy iteration - force the user to drive iteration
+                yield from out_iter
+            else:
+                # force materialising of output to save on disk
+                out_list = list(out_iter)
+                # but yield from the list as well
+                yield from out_list
+
+    def _get_entities_multi_texts(
+            self,
+            n_process: int,
+            batch_iter: Iterator[list[tuple[str, str, bool]]],
+            saver: Optional[BatchAnnotationSaver],
+            ) -> Iterator[tuple[str, Union[dict, Entities, OnlyCUIEntities]]]:
         if n_process == 1:
             # just do in series
             for batch in batch_iter:
