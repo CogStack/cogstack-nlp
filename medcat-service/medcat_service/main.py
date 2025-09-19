@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 
 from medcat_service.config import Settings
 from medcat_service.demo.gradio_demo import io
-from medcat_service.dependencies import set_global_processor
+from medcat_service.dependencies import set_global_processor, set_global_settings
 from medcat_service.nlp_processor.medcat_processor import MedCatProcessor
 from medcat_service.routers import admin, health, process
 from medcat_service.types import HealthCheckFailedException
@@ -30,8 +30,6 @@ async def lifespan(app: FastAPI):
         medcat = MedCatProcessor(settings)
         app.state.medcat = medcat
 
-    app.state.settings = settings
-    app.state.medcat = medcat
     app.state.title = "MedCAT Service",
     app.state.summary = "MedCAT Service",
     app.state.contact = {
@@ -45,6 +43,7 @@ async def lifespan(app: FastAPI):
     },
     app.state.root_path = settings.app_root_path
 
+    set_global_settings(settings)
     set_global_processor(medcat)
     log.debug("MedCAT Service lifespan setup complete")
 
