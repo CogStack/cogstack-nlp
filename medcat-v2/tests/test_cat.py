@@ -534,13 +534,13 @@ class CATWithDictNERSupTrainingTests(CATSupTrainingTests):
             for name in self.cdb.name2info
             for negname in self.cdb.name2info if name != negname
         ]
-        out_data = list(self.cat.get_entities_multi_texts(
+        out_data = self.cat.get_entities_multi_texts(
             in_data,
             save_dir_path=save_to,
             batch_size_chars=chars_per_batch,
             batches_per_save=batches_per_save,
             n_process=n_process,
-            ))
+            )
         out_dict_all = {
             key: cdata for key, cdata in out_data
         }
