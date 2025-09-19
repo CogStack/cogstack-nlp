@@ -38,6 +38,15 @@ class MakeWithDashes(CDBMakerBaseTests):
     namelist = ["Korsakoff's psychosis",
                 'Wernicke-Korsakoff syndrome',
                 'Korsakov syndrome - alcoholic']
+    expected_names = [
+        # NOTE: whitespace and punctuation (e.g spaces, dashes)
+        #       are replaced with separator (~) here
+        #       and names are lower case
+        #       notably, only 1 separator at a time is shown
+        "korsakoff~s~psychosis",
+        "wernicke~korsakoff~syndrome",
+        "korsakov~syndrome~alcoholic",
+    ]
     cui_df = pd.DataFrame({'cui': cui, 'name': namelist})
 
     @classmethod
@@ -49,16 +58,8 @@ class MakeWithDashes(CDBMakerBaseTests):
         self.assertIn(self.cui, self.cdb.cui2info)
 
     def test_has_full_names(self):
-        sep = self.config.general.separator
-        for _name in self.namelist:
-            # lowercase and pre-condition
-            name = _name.lower()
-            name = name.replace(" ", sep)
-            name = name.replace("-", sep)
-            name = name.replace("'", sep)
-            name = name.replace(sep * 2, sep)
-            name = name.replace(sep * 2, sep)
-            with self.subTest(f"Name: {_name} ({name})"):
+        for name in self.expected_names:
+            with self.subTest(f"Name: {name}"):
                 self.assertIn(name, self.cdb.name2info.keys())
 
 
