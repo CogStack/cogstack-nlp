@@ -17,8 +17,18 @@ from medcat_service.types import HealthCheckFailedException
 async def lifespan(app: FastAPI):
 
     log = logging.getLogger(__name__)
-    settings = Settings()
-    medcat = MedCatProcessor(settings)
+    log.debug("Starting MedCAT Service lifespan setup")
+
+    # allow overriding settings and medcat processor for testing
+    settings = getattr(app.state, "settings", None)
+    if settings is None:
+        settings = Settings()
+        app.state.settings = settings
+
+    medcat = getattr(app.state, "medcat", None)
+    if medcat is None:
+        medcat = MedCatProcessor(settings)
+        app.state.medcat = medcat
 
     app.state.settings = settings
     app.state.medcat = medcat

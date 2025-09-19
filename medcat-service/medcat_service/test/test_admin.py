@@ -11,7 +11,8 @@ class TestAdminApi(unittest.TestCase):
 
     def setUp(self):
         setup_medcat_processor()
-        self.client = TestClient(app)
+        self._client_ctx = TestClient(app)
+        self.client = self._client_ctx.__enter__()
 
     def testGetInfo(self):
         response = self.client.get(self.ENDPOINT_INFO_ENDPOINT)

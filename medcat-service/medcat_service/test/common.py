@@ -3,7 +3,18 @@
 import logging
 import os
 
+from medcat_service.config import Settings
+
 log = logging.getLogger(__name__)
+
+
+def get_settings_override_deid():
+    return Settings(
+        deid_mode=True,
+        deid_redact=True,
+        APP_LOG_LEVEL=10,
+        MEDCAT_LOG_LEVEL=10
+    )  # type: ignore
 
 
 def get_example_short_document():

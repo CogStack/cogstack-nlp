@@ -6,7 +6,9 @@ import unittest
 from fastapi.testclient import TestClient
 
 import medcat_service.test.common as common
+from medcat_service.config import Settings
 from medcat_service.main import app
+from medcat_service.nlp_processor.medcat_processor import MedCatProcessor
 
 
 class TestMedcatService(unittest.TestCase):
@@ -31,13 +33,22 @@ class TestMedcatService(unittest.TestCase):
         """
         cls._setup_logging(cls)
         common.setup_medcat_processor()
-        cls.client = TestClient(app)
+        test_settings = Settings()
+        app.state.settings = test_settings
+        app.state.medcat = MedCatProcessor(test_settings)
+        cls._client_ctx = TestClient(app)
+        cls.client = cls._client_ctx.__enter__()
 
     @staticmethod
     def _setup_logging(cls):
         log_format = '[%(asctime)s] [%(levelname)s] %(name)s: %(message)s'
         logging.basicConfig(format=log_format, level=logging.INFO)
         cls.log = logging.getLogger(__name__)
+
+    @classmethod
+    def tearDownClass(cls):
+        # exit context so shutdown runs
+        cls._client_ctx.__exit__(None, None, None)
 
     # unit test helper methods
     #
