@@ -213,14 +213,15 @@ class DeIDModelWorks(unittest.TestCase):
         self.assert_deid_redact(anon_text)
 
     def test_model_works_deid_multi_text_single_threaded(self):
-        processed = self.deid_model.deid_multi_texts([input_text, input_text], n_process=1)
+        processed = self.deid_model.deid_multi_texts([input_text, input_text],
+                                                     n_process=1)
         self.assertEqual(len(processed), 2)
         for anon_text in processed:
             self.assert_deid_annotations(anon_text)
 
     def test_model_works_deid_multi_text_single_threaded_redact(self):
         processed = self.deid_model.deid_multi_texts([input_text, input_text],
-                                                    n_process=1, redact=True)
+                                                     n_process=1, redact=True)
         self.assertEqual(len(processed), 2)
         for anon_text in processed:
             self.assert_deid_redact(anon_text)
