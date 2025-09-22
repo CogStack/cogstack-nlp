@@ -542,6 +542,7 @@ class CATWithDictNERSupTrainingTests(CATSupTrainingTests):
             n_process=n_process,
             entity_consume_mode_on_save='lazy'
             )
+        out_data = list(out_data)
         out_dict_all = {
             key: cdata for key, cdata in out_data
         }
