@@ -331,7 +331,9 @@ class CAT(AbstractSerialisable):
             entity_consume_mode_on_save: Union[
                 Literal["save"], Literal["save_and_return"],
                 Literal["lazy"]] = "save",
-            ) -> Iterator[tuple[str, Union[dict, Entities, OnlyCUIEntities]]]:
+            ) -> Union[
+                Iterator[tuple[str, Union[dict, Entities, OnlyCUIEntities]]],
+                list[tuple[str, Union[dict, Entities, OnlyCUIEntities]]]]:
         """Get entities from multiple texts (potentially in parallel).
 
         If `n_process` > 1, `n_process - 1` new processes will be created
@@ -387,8 +389,10 @@ class CAT(AbstractSerialisable):
                     caller to drive the iteration.
 
         Yields:
-            Iterator[tuple[str, Union[dict, Entities, OnlyCUIEntities]]]:
-                The results in the format of (text_index, entities).
+            Union[
+                Iterator[tuple[str, Union[dict, Entities, OnlyCUIEntities]]],
+                list[tuple[str, Union[dict, Entities, OnlyCUIEntities]]]]:
+                    The results in the format of (text_index, entities).
         """
         text_iter = cast(
             Union[Iterator[str], Iterator[tuple[str, str]]], iter(texts))
@@ -405,14 +409,17 @@ class CAT(AbstractSerialisable):
                 # this materialises the iterator and forces the
                 # output to be saved on disk, nothing is yielded
                 deque(out_iter, maxlen=0)
+                return []
             elif entity_consume_mode_on_save == "lazy":
                 # do the lazy iteration - force the user to drive iteration
-                yield from out_iter
+                return out_iter
             else:
-                # force materialising of output to save on disk
+                # force materialising of output to save on dis
                 out_list = list(out_iter)
                 # but yield from the list as well
-                yield from out_list
+                return out_list
+        else:
+            return out_iter
 
     def _get_entities_multi_texts(
             self,
