@@ -658,6 +658,47 @@ class CATWithDictNERSupTrainingTests(CATSupTrainingTests):
             self.assert_correct_loaded_output(
                 in_data, out_dict_all, all_loaded_output)
 
+    def test_get_entities_multi_texts_with_save_dir_lazy(self):
+        texts = ["text1", "text2"]
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            out = self.cat.get_entities_multi_texts(
+                texts,
+                save_dir_path=tmp_dir,
+                entity_consume_mode_on_save='lazy')
+            # nothing before manual iter
+            self.assertFalse(os.listdir(tmp_dir))
+            out_list = list(out)
+            # something was saved
+            self.assertTrue(os.listdir(tmp_dir))
+            # and something was yielded
+            self.assertEqual(len(out_list), len(texts))
+
+    def test_get_entities_multi_texts_with_save_dir_save(self):
+        texts = ["text1", "text2"]
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            out = self.cat.get_entities_multi_texts(
+                texts,
+                save_dir_path=tmp_dir,
+                entity_consume_mode_on_save='save')
+            # stuff was already saved
+            self.assertTrue(os.listdir(tmp_dir))
+            out_list = list(out)
+            # nothing was yielded
+            self.assertFalse(out_list)
+
+    def test_get_entities_multi_texts_with_save_dir_save_and_return(self):
+        texts = ["text1", "text2"]
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            out = self.cat.get_entities_multi_texts(
+                texts,
+                save_dir_path=tmp_dir,
+                entity_consume_mode_on_save='save_and_return')
+            # stuff was already saved
+            self.assertTrue(os.listdir(tmp_dir))
+            out_list = list(out)
+            # and something was yielded
+            self.assertEqual(len(out_list), len(texts))
+
 
 class CATWithDocAddonTests(CATIncludingTests):
     EXAMPLE_TEXT = "Example text to tokenize"
