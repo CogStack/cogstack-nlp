@@ -1,10 +1,28 @@
 from collections.abc import Mapping
 import getpass
 import traceback
-from typing import Any, Optional, Iterable, Sequence, Union
+from typing import Any, Optional, Iterable, Sequence, Union, Protocol
+from typing import cast, TYPE_CHECKING
 import warnings
-import elasticsearch
-import elasticsearch.helpers as es_helpers
+
+
+if TYPE_CHECKING:
+    from elasticsearch import Elasticsearch as _Elasticsearch
+    # from opensearchpy import OpenSearch as _OpenSearch
+    import elasticsearch.helpers
+    # import opensearchpy.helpers
+    # ElasticClient = Union[_Elasticsearch, _OpenSearch]
+    ElasticClient = _Elasticsearch
+    es_cls = _Elasticsearch
+    es_helpers = elasticsearch.helpers
+else:
+    try:
+        from elasticsearch import Elasticsearch as ElasticClient
+        helpers = elasticsearch.helpers
+    except ImportError:
+        from opensearchpy import OpenSearch as ElasticClient
+        es_helpers = opensearchpy.helpers
+    es_cls = ElasticClient
 from IPython.display import display, HTML
 import pandas as pd
 import tqdm
@@ -12,19 +30,47 @@ import tqdm
 warnings.filterwarnings("ignore")
 
 
+class IndicesClientProto(Protocol):
+
+    def get_alias(self, *args: Any, **kwargs: Any) -> Any:
+        pass
+
+    def get_mapping(self, *args: Any, **kwargs: Any) -> Any:
+        pass
+
+
+class ESClient(Protocol):
+
+    @property
+    def indices(self) -> IndicesClientProto:
+        pass
+
+    def count(self, *args: Any, **kwargs: Any) -> Any:
+        pass
+
+    def search(self, *args: Any, **kwargs: Any) -> Any:
+        pass
+
+    def scroll(self, *args: Any, **kwargs: Any) -> Any:
+        pass
+
+    def clear_scroll(self, *args: Any, **kwargs: Any) -> Any:
+        pass
+
+
 class CogStack:
     """
-    A class for interacting with Elasticsearch.
+    A class for interacting with Elasticsearch or OpenSearch.
 
     Parameters
     ------------
-        elastic : elasticsearch.Elasticsearch
-            The ElasticSearch instance.
+        elastic : ESClient
+            The ElasticSearch or OpenSearch instance.
     """
 
     ES_TIMEOUT = 300
 
-    def __init__(self, elastic: elasticsearch.Elasticsearch) -> None:
+    def __init__(self, elastic: ESClient) -> None:
         self.elastic = elastic
 
     @classmethod
@@ -94,7 +140,7 @@ class CogStack:
     def get_es_with_basic_auth(
         hosts: list[str], username: Optional[str] = None,
         password: Optional[str] = None
-    ) -> elasticsearch.Elasticsearch:
+    ) -> ESClient:
         """
         Create an instance of CogStack using basic authentication.
         If the `username` or `password` parameters are not provided,
@@ -103,17 +149,17 @@ class CogStack:
         Parameters
         ----------
         hosts : list[str]
-            A list of Elasticsearch host URLs.
+            A list of Elasticsearch or OpenSearch host URLs.
         username : str, optional
-            The username to use when connecting to Elasticsearch.
+            The username to use when connecting to Elasticsearch or OpenSearch.
             If not provided, the user will be prompted to enter a username.
         password : str, optional
-            The password to use when connecting to Elasticsearch.
+            The password to use when connecting to Elasticsearch or OpenSearch.
             If not provided, the user will be prompted to enter a password.
 
         Returns
         -------
-            elasticsearch.Elasticsearch: An instance of the Elasticsearch.
+            ESClient: An instance of the Elasticsearch or OpenSearch.
         """
         if username is None:
             username = input("Username: ")
@@ -128,21 +174,21 @@ class CogStack:
     @staticmethod
     def get_es_with_api_key(hosts: list[str],
                             api_key: Optional[dict] = None
-                            ) -> elasticsearch.Elasticsearch:
+                            ) -> ESClient:
         """
         Create an instance of CogStack using API key authentication.
 
         Parameters
         ----------
         hosts : list[str]
-            A list of Elasticsearch host URLs.
+            A list of Elasticsearch or OpenSearch host URLs.
         apiKey : Dict, optional
 
             API key object with string fields either:
             - A: "id" and "api_key"
             - B: "encoded"
-            Generated in Elasticsearch or Kibana and provided by your
-            CogStack administrator.
+            Generated in Elasticsearch, OpenSearch, or Kibana and provided by
+            your CogStack administrator.
 
             If not provided, the user will be prompted to enter API
             key "encoded" value.
@@ -160,7 +206,7 @@ class CogStack:
 
         Returns
         -------
-            elasticsearch.Elasticsearch: An instance of the Elasticsearch.
+            ESClient: An instance of the Elasticsearch or OpenSearch.
         """
         has_encoded_value = False
         api_id_value: str
@@ -217,12 +263,12 @@ class CogStack:
         hosts: list[str],
         basic_auth: Optional[tuple[str, str]] = None,
         api_key: Optional[Union[str, tuple[str, str]]] = None,
-    ) -> elasticsearch.Elasticsearch:
-        """Connect to Elasticsearch using the provided credentials.
+    ) -> ESClient:
+        """Connect to Elasticsearch or OpenSearch using the credentials.
         Parameters
         ----------
             hosts : list[str]
-                A list of Elasticsearch host URLs.
+                A list of Elasticsearch or OpenSearch host URLs.
             basic_auth : Tuple[str, str], optional
                 A tuple containing the username and password for
                 basic authentication.
@@ -231,12 +277,12 @@ class CogStack:
                 for API key authentication.
         Returns
         -------
-            elasticsearch.Elasticsearch: An instance of the Elasticsearch.
+            ESClient: An instance of the Elasticsearch or OpenSearch.
         Raises
         ------
-            Exception: If the connection to Elasticsearch fails.
+            Exception: If the connection to Elasticsearch or OpenSearch fails.
         """
-        elastic = elasticsearch.Elasticsearch(
+        elastic = es_cls(
             hosts=hosts,
             api_key=api_key,
             basic_auth=basic_auth,
@@ -369,16 +415,16 @@ class CogStack:
         show_progress: bool = True,
     ):
         """
-        Retrieve documents from an Elasticsearch index or
-        indices using search query and elasticsearch scan helper function.
-        The function converts search results to a Pandas DataFrame and does
-        not return current scroll id if the process fails.
+        Retrieve documents from an Elasticsearch or OpenSearch index or
+        indices using search query and elasticsearch or OpenSearch scan helper
+        function. The function converts search results to a Pandas DataFrame
+        and does not return current scroll id if the process fails.
 
         Parameters
         ----------
             index : str or Sequence[str]
-                    The name(s) of the Elasticsearch indices or their
-                    aliases to search.
+                    The name(s) of the Elasticsearch or OpenSearch indices or
+                    their aliases to search.
             query : dict
                     A dictionary containing the search query parameters.
                     Query can start with `query` key and contain other
@@ -404,7 +450,7 @@ class CogStack:
                     <strong>MAX: 10,000</strong>.
             request_timeout : int, optional, default=300
                     The time in seconds to wait for a response
-                    from Elasticsearch before timing out.
+                    from Elasticsearch or OpenSearch before timing out.
             show_progress : bool, optional, default=True
                     Whether to show the progress in console.
         Returns
@@ -433,7 +479,7 @@ class CogStack:
             )
 
             scan_results = es_helpers.scan(
-                self.elastic,
+                cast(es_cls, self.elastic),
                 index=index,
                 query=query,
                 size=size,
@@ -488,15 +534,15 @@ class CogStack:
         show_progress: Optional[bool] = True,
     ):
         """
-        Retrieves documents from an Elasticsearch index using search query
-        and scroll API. Default scroll timeout is set to 10 minutes.
-        The function converts search results to a Pandas DataFrame.
+        Retrieves documents from an Elasticsearch or OpenSearch index using
+        search query and scroll API. Default scroll timeout is set to 10
+        minutes. The function converts search results to a Pandas DataFrame.
 
         Parameters
         ----------
             index : str or Sequence[str]
-                    The name(s) of the Elasticsearch indices or their
-                    aliases to search.
+                    The name(s) of the Elasticsearch or OpenSearch indices or
+                    their aliases to search.
             query : dict
                     A dictionary containing the search query parameters.
                     Query can start with `query` key
@@ -530,7 +576,7 @@ class CogStack:
                     a new search.
             request_timeout : int, optional, default=300
                     The time in seconds to wait for a response from
-                    Elasticsearch before timing out.
+                    Elasticsearch or OpenSearch before timing out.
             show_progress : bool, optional, default=True
                     Whether to show the progress in console.
                     <strong>IMPORTANT:</strong> The progress bar displays
@@ -656,14 +702,14 @@ class CogStack:
         show_progress: Optional[bool] = True,
     ):
         """
-        Retrieve documents from an Elasticsearch index using search query
-        and convert them to a Pandas DataFrame.
+        Retrieve documents from an Elasticsearch or OpenSearch index using
+        search query and convert them to a Pandas DataFrame.
 
         Parameters
         ----------
             index : str or Sequence[str]
-                    The name(s) of the Elasticsearch indices or their
-                    aliases to search.
+                    The name(s) of the Elasticsearch  or OpenSearch indices or
+                    their aliases to search.
             query : dict
                     A dictionary containing the search query parameters.
                     Query can start with `query` key and contain other
@@ -701,7 +747,7 @@ class CogStack:
                     error message
             request_timeout : int, optional, default = 300
                     The time in seconds to wait for a response from
-                    Elasticsearch before timing out.
+                    Elasticsearch or OpenSearch before timing out.
             show_progress : bool, optional
                     Whether to show the progress in console. Defaults to true.
 
