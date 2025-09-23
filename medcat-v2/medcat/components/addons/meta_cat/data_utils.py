@@ -210,7 +210,8 @@ def encode_category_values(data: list[tuple[list, list, str]],
                            existing_category_value2id: Optional[dict] = None,
                            category_undersample=None,
                            alternative_class_names: list[list[str]] = []
-                           ) -> tuple:
+                           ) -> tuple[
+                               list[tuple[list, list, str]], list, dict]:
     """Converts the category values in the data outputted by
     `prepare_from_json` into integer values.
 
@@ -228,9 +229,9 @@ def encode_category_values(data: list[tuple[list, list, str]],
             `config.general.alternative_class_names`.
 
     Returns:
-        dict:
+        list[tuple[list, list, str]]:
             New data with integers inplace of strings for category values.
-        dict:
+        list:
             New undersampled data (for 2 phase learning) with integers
             inplace of strings for category values
         dict:
