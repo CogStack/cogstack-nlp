@@ -19,7 +19,7 @@ else:
     try:
         from elasticsearch import Elasticsearch as ElasticClient
         import elasticsearch.helpers
-        helpers = elasticsearch.helpers
+        es_helpers = elasticsearch.helpers
     except ImportError:
         from opensearchpy import OpenSearch as ElasticClient
         import opensearchpy.helpers
