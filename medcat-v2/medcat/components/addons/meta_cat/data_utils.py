@@ -208,7 +208,7 @@ def prepare_for_oversampled_data(data: list,
 
 def encode_category_values(data: list[tuple[list, list, str]],
                            existing_category_value2id: Optional[dict] = None,
-                           category_undersample=None,
+                           category_undersample: Optional[str] = None,
                            alternative_class_names: list[list[str]] = []
                            ) -> tuple[
                                list[tuple[list, list, str]], list, dict]:
@@ -220,7 +220,7 @@ def encode_category_values(data: list[tuple[list, list, str]],
             Output of `prepare_from_json`.
         existing_category_value2id(Optional[dict]):
             Map from category_value to id (old/existing).
-        category_undersample:
+        category_undersample (Optional[str]):
             Name of class that should be used to undersample the data (for 2
             phase learning)
         alternative_class_names (list[list[str]]):
