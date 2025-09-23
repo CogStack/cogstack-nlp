@@ -18,9 +18,11 @@ if TYPE_CHECKING:
 else:
     try:
         from elasticsearch import Elasticsearch as ElasticClient
+        import elasticsearch.helpers
         helpers = elasticsearch.helpers
     except ImportError:
         from opensearchpy import OpenSearch as ElasticClient
+        import opensearchpy.helpers
         es_helpers = opensearchpy.helpers
     es_cls = ElasticClient
 from IPython.display import display, HTML
