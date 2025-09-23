@@ -14,6 +14,7 @@ class MedCATTrainerExportAnnotation(
         MedCATTrainerExportAnnotationRequired, total=False):
     id: Union[str, int]
     validated: Optional[bool]
+    meta_anns: dict[str, dict[str, str]]
 
 
 class MedCATTrainerExportDocument(TypedDict):
