@@ -540,7 +540,6 @@ class CATWithDictNERSupTrainingTests(CATSupTrainingTests):
             batch_size_chars=chars_per_batch,
             batches_per_save=batches_per_save,
             n_process=n_process,
-            entity_consume_mode_on_save='lazy'
             )
         out_data = list(out_data)
         out_dict_all = {
@@ -665,8 +664,7 @@ class CATWithDictNERSupTrainingTests(CATSupTrainingTests):
         with tempfile.TemporaryDirectory() as tmp_dir:
             out = self.cat.get_entities_multi_texts(
                 texts,
-                save_dir_path=tmp_dir,
-                entity_consume_mode_on_save='lazy')
+                save_dir_path=tmp_dir)
             # nothing before manual iter
             self.assertFalse(os.listdir(tmp_dir))
             out_list = list(out)
@@ -675,31 +673,14 @@ class CATWithDictNERSupTrainingTests(CATSupTrainingTests):
             # and something was yielded
             self.assertEqual(len(out_list), len(texts))
 
-    def test_get_entities_multi_texts_with_save_dir_save(self):
+    def test_save_entities_multi_texts(self):
         texts = ["text1", "text2"]
         with tempfile.TemporaryDirectory() as tmp_dir:
-            out = self.cat.get_entities_multi_texts(
+            self.cat.save_entities_multi_texts(
                 texts,
-                save_dir_path=tmp_dir,
-                entity_consume_mode_on_save='save')
+                save_dir_path=tmp_dir)
             # stuff was already saved
             self.assertTrue(os.listdir(tmp_dir))
-            out_list = list(out)
-            # nothing was yielded
-            self.assertFalse(out_list)
-
-    def test_get_entities_multi_texts_with_save_dir_save_and_return(self):
-        texts = ["text1", "text2"]
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            out = self.cat.get_entities_multi_texts(
-                texts,
-                save_dir_path=tmp_dir,
-                entity_consume_mode_on_save='save_and_return')
-            # stuff was already saved
-            self.assertTrue(os.listdir(tmp_dir))
-            out_list = list(out)
-            # and something was yielded
-            self.assertEqual(len(out_list), len(texts))
 
 
 class CATWithDocAddonTests(CATIncludingTests):
