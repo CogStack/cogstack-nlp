@@ -10,11 +10,18 @@ class MedCATTrainerExportAnnotationRequired(TypedDict):
     value: str
 
 
+class MetaAnnotation(TypedDict):
+    name: str
+    value: str
+    acc: float
+    validated: bool
+
+
 class MedCATTrainerExportAnnotation(
         MedCATTrainerExportAnnotationRequired, total=False):
     id: Union[str, int]
     validated: Optional[bool]
-    meta_anns: dict[str, dict[str, str]]
+    meta_anns: list[MetaAnnotation]
 
 
 class MedCATTrainerExportDocument(TypedDict):
