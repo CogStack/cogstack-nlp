@@ -15,7 +15,7 @@ from medcat.tokenizing.tokenizers import BaseTokenizer
 from medcat.config.config import ComponentConfig
 from medcat.config.config_meta_cat import ConfigMetaCAT
 from medcat.components.addons.meta_cat.ml_utils import (
-    predict, train_model, set_all_seeds, eval_model)
+    predict, train_model, set_all_seeds, eval_model, EvalModelResults)
 from medcat.components.addons.meta_cat.data_utils import (
     prepare_from_json, encode_category_values, prepare_for_oversampled_data)
 from medcat.components.addons.addons import AddonComponent
@@ -632,7 +632,7 @@ class MetaCAT(AbstractSerialisable):
         self.config.train.last_train_on = datetime.now().timestamp()
         return report
 
-    def eval(self, json_path: str) -> dict:
+    def eval(self, json_path: str) -> EvalModelResults:
         """Evaluate from json.
 
         Args:
@@ -640,7 +640,7 @@ class MetaCAT(AbstractSerialisable):
                 The json file ath
 
         Returns:
-            dict:
+            EvalModelResults:
                 The resulting model dict
 
         Raises:
