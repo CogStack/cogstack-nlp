@@ -1,4 +1,4 @@
-from typing import Optional, Iterator
+from typing import Optional, Iterator, cast
 import copy
 
 from medcat.components.addons.meta_cat.mctokenizers.tokenizers import (
@@ -162,7 +162,10 @@ def _prepare_from_json_loop(document: dict,
                     name = meta_ann['name']
                     value = meta_ann['value']
 
-                    sample = (tkns, cpos_new, value)
+                    # NOTE: representing as tuple so as to have better typing
+                    #       but using a list to allow assignment
+                    sample: tuple[list, list, str] = cast(
+                        tuple[list, list, str], [tkns, cpos_new, value])
                     yield name, sample
 
 
