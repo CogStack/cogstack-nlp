@@ -21,7 +21,7 @@ class MedCATTrainerExportAnnotation(
         MedCATTrainerExportAnnotationRequired, total=False):
     id: Union[str, int]
     validated: Optional[bool]
-    meta_anns: list[MetaAnnotation]
+    meta_anns: Union[list[MetaAnnotation], dict[str, MetaAnnotation]]
 
 
 class MedCATTrainerExportDocument(TypedDict):
