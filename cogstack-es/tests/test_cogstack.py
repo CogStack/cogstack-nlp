@@ -7,7 +7,7 @@ from cogstack import CogStack
 @pytest.fixture
 def mock_elasticsearch():
     """Fixture to mock Elasticsearch client"""
-    with patch('cogstack.elasticsearch.Elasticsearch') as mock_es:
+    with patch('cogstack.es_cls') as mock_es:
         mock_client = Mock()
         mock_es.return_value = mock_client
         mock_client.ping.return_value = True

@@ -14,7 +14,7 @@ EXPECTED_TEMP_FILE_PATH = "data/cogstack_search_results\\file_name.csv"
 def all_mocked(python_code: str):
     with tempfile.NamedTemporaryFile('w', suffix='.py') as temp_file:
         temp_file.write(python_code)
-        with patch('elasticsearch.Elasticsearch') as mock_es:
+        with patch('cogstack.es_cls') as mock_es:
             with patch('credentials.hosts', ['http://localhost:9200']):
                 with patch('credentials.api_key', {"encoded": "test_api_key"}):
                     with patch('elasticsearch.helpers.scan') as mock_scan:
