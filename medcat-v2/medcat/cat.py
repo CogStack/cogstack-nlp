@@ -558,7 +558,7 @@ class CAT(AbstractSerialisable):
                     continue
                 ont_map = self.cdb.addl_info[addl_info_name]
                 ont_values = ont_map.get(cui, [])
-                out_dict[ont] = ont_values
+                out_dict[ont] = ont_values  # type: ignore
         return out_dict
 
     def get_addon_output(self, ent: MutableEntity) -> dict[str, dict]:
