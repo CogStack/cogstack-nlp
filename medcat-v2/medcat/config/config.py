@@ -377,6 +377,10 @@ class Linking(ComponentConfig):
         extra = 'allow'
 
 class EmbeddingLinking(Linking):
+    """Changing compoenent name"""
+    comp_name: str = "embedding_linker"
+    """All concepts below this will always be disambiguated"""
+    filter_before_disamb: bool = True
     """The embedding linker never needs to be trained in its 
     current implementation."""
     train: bool = False

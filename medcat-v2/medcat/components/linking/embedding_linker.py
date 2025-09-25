@@ -146,7 +146,7 @@ class Linker(AbstractCoreComponent):
             logger.debug("Using the same model for embedding names.")
         else:
             self.cnf_l.embedding_model_name = embedding_model_name
-        names = list(self.cdb.name2info.keys())
+        names = self._name_keys
         # embed each name in batches. Because there can be 3+ million names
         total_batches = math.ceil(len(names) / self.cnf_l.embedding_batch_size)
         all_embeddings = []
@@ -316,8 +316,9 @@ class Linker(AbstractCoreComponent):
             device=self.device,
         )
         self._valid_names = _has_cuis_all & allowed_mask
-        self._last_include_set = include_set
-        self._last_exclude_set = exclude_set
+        self._last_include_set = set(include_set) if include_set is not None else None
+        self._last_exclude_set = set(exclude_set) if exclude_set is not None else None
+
 
     def _disambiguate_by_cui(
         self, cui_candidates: list[str], scores: Tensor
@@ -362,11 +363,13 @@ class Linker(AbstractCoreComponent):
         sorted_indices = torch.argsort(names_scores, dim=1, descending=True)
 
         for i, entity in enumerate(entities):
-            link_candidates = [
-                cui
-                for cui in entity.link_candidates
-                if self.cnf_l.filters.check_filters(cui)
-            ]
+            link_candidates = entity.link_candidates
+            if self.config.components.linking.filter_before_disamb:
+                link_candidates = [
+                    cui
+                    for cui in link_candidates
+                    if self.cnf_l.filters.check_filters(cui)
+                ]
             if len(link_candidates) == 1:
                 best_idx = self._cui_to_idx[link_candidates[0]]
                 predicted_cui = link_candidates[0]
@@ -406,7 +409,8 @@ class Linker(AbstractCoreComponent):
                 cuis = list(self.cdb.name2info[detected_name]["per_cui_status"].keys())
 
                 predicted_cui, _ = self._disambiguate_by_cui(cuis, cui_scores[i, :])
-
+            if not self.cnf_l.filters.check_filters(predicted_cui):
+                continue
             if self._check_similarity(
                 similarity
             ):

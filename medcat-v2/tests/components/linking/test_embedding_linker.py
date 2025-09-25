@@ -4,6 +4,7 @@ from medcat.config import Config
 from medcat.vocab import Vocab
 from medcat.cdb.concepts import CUIInfo, NameInfo
 from medcat.components.types import TrainableComponent
+from medcat.components.types import _DEFAULT_LINKING as DEF_LINKING
 import unittest
 from ..helper import ComponentInitTests
 
@@ -27,8 +28,9 @@ class FakeCDB:
 
 
 class EmbeddingLinkerInitTests(ComponentInitTests, unittest.TestCase):
-    expected_def_components = 4
+    expected_def_components = len(DEF_LINKING)
     comp_type = types.CoreComponentType.linking
+    default = 'medcat2_embedding_linker'
     default_cls = embedding_linker.Linker
     default_creator = embedding_linker.Linker.create_new_component
     module = embedding_linker
@@ -43,14 +45,6 @@ class EmbeddingLinkerInitTests(ComponentInitTests, unittest.TestCase):
         cls.vtokenizer = FakeTokenizer()
         cls.comp_cnf = getattr(cls.cnf.components, cls.comp_type.name)
 
-    def test_can_create_def_component(self):
-        component = types.create_core_component(
-            self.comp_type,
-            "medcat2_embedding_linker",  # explicitly request embedding linker
-            self.cnf, self.vtokenizer, self.fcdb, self.fvocab, None
-        )
-        self.assertIsInstance(component, self.default_cls)
-
     def test_has_default(self):
         avail_components = types.get_registered_components(self.comp_type)
         registered_names = [name for name, _ in avail_components]
@@ -62,5 +56,5 @@ class TrainableEmbeddingLinkerTests(unittest.TestCase):
     cnf.components.linking.comp_name = embedding_linker.Linker.name
     linker = embedding_linker.Linker(FakeCDB(cnf), cnf)
 
-    def test_linker_is_trainable(self):
+    def test_linker_is_not_trainable(self):
         self.assertNotIsInstance(self.linker, TrainableComponent)
