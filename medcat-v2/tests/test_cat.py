@@ -192,8 +192,6 @@ class InferenceIntoOntologyTests(TrainedModelTests):
                 self.assert_has_mapping(ent)
 
 
-
-
 class CATIncludingTests(unittest.TestCase):
     TOKENIZING_PROVIDER = 'regex'
     EXPECT_TRAIN = {}
