@@ -523,15 +523,7 @@ class CAT(AbstractSerialisable):
             'context_similarity': ent.context_similarity,
             'start': ent.base.start_char_index,
             'end': ent.base.end_char_index,
-            # TODO: add additional info (i.e mappings)
-            # for addl in addl_info:
-            #     tmp = self.cdb.addl_info.get(addl, {}).get(cui, [])
-            #     out_ent[addl.split("2")[-1]] = list(tmp) if type(tmp) is
-            # set else tmp
             'id': ent.id,
-            # TODO: add met annotations
-            # if hasattr(ent._, 'meta_anns') and ent._.meta_anns:
-            #     out_ent['meta_anns'] = ent._.meta_anns
             'meta_anns': {},
             'context_left': left_context,
             'context_center': center_context,
