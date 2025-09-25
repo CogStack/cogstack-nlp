@@ -159,6 +159,41 @@ class InferenceFromLoadedTests(TrainedModelTests):
                 cur_start = ent.base.start_char_index
 
 
+class InferenceIntoOntologyTests(TrainedModelTests):
+    ont_name = "FAKE_ONT"
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        # create mapping
+        cls.ont_map = {
+            cui: [f"{cls.ont_name}:{cui}"]
+            for cui in cls.model.cdb.cui2info
+        }
+        # add to addl_info
+        cls.model.cdb.addl_info[f"cui2{cls.ont_name}"] = cls.ont_map
+        # ask to be mapped
+        cls.model.config.general.map_to_other_ontologies.append(cls.ont_name)
+
+    def assert_has_mapping(self, ent: dict):
+        # has value
+        self.assertIn(self.ont_name, ent)
+        val = ent[self.ont_name]
+        # 1 value
+        self.assertEqual(len(val), 1)
+        # value in our map
+        self.assertIn(val, self.ont_map.values())
+
+    def test_gets_mappings(self):
+        ents = self.model.get_entities(
+            ConvertedFunctionalityTests.TEXT)['entities']
+        for nr, ent in enumerate(ents.values()):
+            with self.subTest(f"{nr}"):
+                self.assert_has_mapping(ent)
+
+
+
+
 class CATIncludingTests(unittest.TestCase):
     TOKENIZING_PROVIDER = 'regex'
     EXPECT_TRAIN = {}
