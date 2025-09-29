@@ -5,7 +5,7 @@ services:
     container_name: medcattrainer
     hostname: medcat
     restart: always
-    image: cogstacksystems/medcat-trainer:v2.22.1
+    image: cogstacksystems/medcat-trainer:v2.23.1
     volumes:
       - api-media:/home/api/media
       - api-static:/home/api/static
@@ -16,9 +16,9 @@ services:
     env_file:
       - ./envs/env-prod
     environment:
-      - MCT_VERSION=v2.22.1
+      - MCT_VERSION=v2.23.1
     command: /usr/bin/supervisord -c /etc/supervisord.conf
-    
+
   nginx:
     container_name: medcattrainer_nginx
     image: nginx

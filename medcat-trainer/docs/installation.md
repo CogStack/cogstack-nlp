@@ -72,3 +72,19 @@ Environment variables are used to configure the app:
 Set these and re-run the docker-compose file.
 
 You'll need to `docker stop` the running containers if you have already run the install.
+
+### (Optional) Postgres Database Support
+MedCAT trainer defaults to a local SQLite database, which is suitable for single-user or small-scale setups.  
+
+For larger deployments, or to support multiple replicas of the app for example in Kubernetes, you may want to run a postgresql database.
+
+You can optionally use a postgresql database instead by setting the following env variables. 
+
+|Parameter|Description|
+|---------|-----------|
+|DB_ENGINE|Database engine to use. Either `sqlite3` or `postgresql`. Defaults to `sqlite3` if not set.|
+|DB_NAME|Name of the database to connect to.|
+|DB_USER|Username to authenticate with the database.|
+|DB_PASSWORD|Password to authenticate with the database.|
+|DB_HOST|Hostname of the database server (for Postgres, typically the service name in Docker/Kubernetes).|
+|DB_PORT|Port the database server is listening on. Defaults to `5432` for Postgres.|

@@ -238,9 +238,18 @@ class StatsBuilder:
                 Defaults to True.
         """
         try:
-            prec = self.tp / (self.tp + self.fp)
-            rec = self.tp / (self.tp + self.fn)
-            f1 = 2 * (prec * rec) / (prec + rec)
+            if self.tp + self.fp == 0:
+                prec = 0.0
+            else:
+                prec = self.tp / (self.tp + self.fp)
+            if self.tp + self.fp == 0:
+                rec = 0.0
+            else:
+                rec = self.tp / (self.tp + self.fn)
+            if prec == 0 and rec == 0:
+                f1 = 0.0
+            else:
+                f1 = 2 * (prec * rec) / (prec + rec)
             if do_print:
                 print("Epoch: {}, Prec: {}, Rec: {}, F1: {}\n".format(
                     epoch, prec, rec, f1))

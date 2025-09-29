@@ -1,5 +1,11 @@
 #!/bin/sh
 
+DB_ENGINE="${DB_ENGINE:-sqlite3}"
+if [ "$DB_ENGINE" != "sqlite3" ]; then
+  echo "Skipping db backup script as the db type is not  set to 'sqlite3'. The DB_ENGINE env var is set to '${DB_ENGINE}' "
+  return 0
+fi
+
 if [ -n "${DB_BACKUP_DIR}" ] && [ -f "${DB_PATH}" ]; then
   echo "Found backup dir location: ${DB_BACKUP_DIR} and DB_PATH: ${DB_PATH}"
   if [ ! -d "${DB_BACKUP_DIR}" ]; then

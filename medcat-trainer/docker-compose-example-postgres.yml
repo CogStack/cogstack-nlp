@@ -1,0 +1,83 @@
+# Default compose yml file - uses latest build of MedCATtrainer services. Default passwords and example
+# projects are not used.
+services:
+  # medattrainer services
+  medcattrainer:
+    image: cogstacksystems/medcat-trainer:latest
+    restart: always
+    volumes:
+      - api-media:/home/api/media
+      - api-static:/home/api/static
+      - api-db:/home/api/db
+      - api-db-backup:/home/api/db-backup
+      - ./configs:/home/configs
+      - ./supervisord.conf:/etc/supervisord.conf
+    env_file:
+      - ./envs/env
+    environment:
+      - MCT_VERSION=latest
+      - DB_ENGINE=postgresql
+      - DB_NAME=postgres
+      - DB_USER=admin
+      - DB_PASSWORD=admin
+      - DB_HOST=trainer-postgres
+      - DB_PORT=5432
+    command: /usr/bin/supervisord -c /etc/supervisord.conf
+
+  nginx:
+    image: nginx
+    restart: always
+    volumes:
+      - api-media:/home/api/media
+      - api-static:/home/api/static
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/sites-enabled/:/etc/nginx/sites-enabled
+    env_file:
+      - ./envs/env
+    ports:
+      - ${MCTRAINER_PORT:-8001}:8000
+    depends_on:
+      - medcattrainer
+      - solr
+
+  solr:
+    container_name: mct_solr
+    image: solr:8
+    restart: always
+    env_file:
+      - ./envs/env
+    ports:
+      - ${SOLR_PORT:-8983}:8983
+    volumes:
+      - solr-data:/var/solr
+    command:
+      - -cloud
+  trainer-postgres:
+    image: postgres:17.6-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=admin
+    volumes:
+      - postgres-vol:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+  pgadmin:
+    image: dpage/pgadmin4:9.8
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_LISTEN_PORT: 80
+    ports:
+      - 15432:80
+    volumes:
+      - pgadmin:/var/lib/pgadmin
+    depends_on:
+      - trainer-postgres
+volumes:
+  api-media:
+  api-static:
+  api-db:
+  api-db-backup:
+  solr-data:
+  postgres-vol:
