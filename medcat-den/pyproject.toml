@@ -1,0 +1,59 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "medcat_den"
+version = "0.1.0"
+description = "Model storage and lifecycle management for MedCAT with support for local, remote [TODO], and cloud [TODO] backends."
+readme = "README.md"
+license = { text = "Apache-2.0" }
+authors = [
+    { name="Mart Ratas", email="mart.ratas@kcl.ac.uk" }
+]
+requires-python = ">=3.9"
+
+keywords = ["NLP", "medical", "MedCAT", "model-registry"]
+
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: Apache Software License"
+]
+
+dependencies = [
+    "medcat[spacy,deid,meta-cat,rel-cat]>=2.0.0",
+    "pydantic>=2,<3",
+    # for local data mostly
+    "platformdirs>=4.4.0,<5.0",
+    # for local cache of remote data (optional)
+    "diskcache>=5.6.3,<6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "ruff",
+    "mypy",
+    "diskcache-stubs",
+]
+
+[project.urls]
+Homepage = "https://github.com/CogStack/medcat-den"
+Repository = "https://github.com/CogStack/medcat-den"
+Issues = "https://github.com/CogStack/medcat-den/issues"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"medcat_den" = ["py.typed"]
