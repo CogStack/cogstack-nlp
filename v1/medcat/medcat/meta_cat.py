@@ -262,13 +262,13 @@ class MetaCAT(PipeRunner):
         category_value2id = g_config['category_value2id']
         if not category_value2id:
             # Encode the category values
-            full_data, data_undersampled, category_value2id = encode_category_values(data,
-                                                                                     alternative_class_names=g_config['alternative_class_names'],config=self.config)
+            full_data, data_undersampled, category_value2id = encode_category_values(data, category_undersample=self.config.model.category_undersample,
+                                                                                     alternative_class_names=g_config['alternative_class_names'])
         else:
             # We already have everything, just get the data
-            full_data, data_undersampled, category_value2id = encode_category_values(data,
+            full_data, data_undersampled, category_value2id = encode_category_values(data, category_undersample=self.config.model.category_undersample,
                                                                                      existing_category_value2id=category_value2id,
-                                                                                     alternative_class_names=g_config['alternative_class_names'],config=self.config)
+                                                                                     alternative_class_names=g_config['alternative_class_names'])
         g_config['category_value2id'] = category_value2id
         self.config.model['nclasses'] = len(category_value2id)
 
@@ -384,7 +384,8 @@ class MetaCAT(PipeRunner):
 
         if self.config.model.model_name == 'bert':
             model_config_save_path = os.path.join(save_dir_path, 'bert_config.json')
-            self.model.bert_config.to_json_file(model_config_save_path) # type: ignore
+            self.model.bert_config.to_json_file(model_config_save_path)  # type: ignore
+
         # This is everything we need to save from the class, we do not
         # save the class itself.
 
