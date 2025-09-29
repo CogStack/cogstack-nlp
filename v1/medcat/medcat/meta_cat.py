@@ -263,12 +263,12 @@ class MetaCAT(PipeRunner):
         if not category_value2id:
             # Encode the category values
             full_data, data_undersampled, category_value2id = encode_category_values(data,
-                                                                                     category_undersample=self.config.model.category_undersample,alternative_class_names=g_config['alternative_class_names'])
+                                                                                     alternative_class_names=g_config['alternative_class_names'],config=self.config)
         else:
             # We already have everything, just get the data
             full_data, data_undersampled, category_value2id = encode_category_values(data,
                                                                                      existing_category_value2id=category_value2id,
-                                                                                     category_undersample=self.config.model.category_undersample,alternative_class_names=g_config['alternative_class_names'])
+                                                                                     alternative_class_names=g_config['alternative_class_names'],config=self.config)
         g_config['category_value2id'] = category_value2id
         self.config.model['nclasses'] = len(category_value2id)
 
@@ -384,8 +384,7 @@ class MetaCAT(PipeRunner):
 
         if self.config.model.model_name == 'bert':
             model_config_save_path = os.path.join(save_dir_path, 'bert_config.json')
-            self.model.bert_config.to_json_file(model_config_save_path)  # type: ignore
-
+            self.model.bert_config.to_json_file(model_config_save_path) # type: ignore
         # This is everything we need to save from the class, we do not
         # save the class itself.
 
@@ -489,10 +488,10 @@ class MetaCAT(PipeRunner):
                 # Checking if we've reached at the start of the entity
                 if start <= pair[0] or start <= pair[1]:
                     if end <= pair[1]:
-                        ctoken_idx.append(ind) # End reached
+                        ctoken_idx.append(last_ind+ind) # End reached; adjusting the index value to the true value as we changed it on line 497
                         break
                     else:
-                        ctoken_idx.append(ind) # Keep going
+                        ctoken_idx.append(last_ind+ind) # Keep going; adjusting the index value to the true value as we changed it on line 497
 
             # Start where the last ent was found, cannot be before it as we've sorted
             last_ind += ind  # If we did not start from 0 in the for loop
