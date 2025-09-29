@@ -2,7 +2,7 @@
 
 ## Creating an Annotation Project 
 Annotation projects are used to inspect, validate and improve concepts recognised & linked by MedCAT.
-They can also be used collect annotations for defined MetaCAT models tasks, and coming soon RelCAT, or relation annotation models.
+They can also be used to collect annotations for defined MetaCAT models tasks, and coming soon RelCAT, or relation annotation models.
 
 Using the admin page, a configured admin or superuser can create, edit and delete annotation projects.
 

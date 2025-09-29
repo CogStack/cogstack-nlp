@@ -51,6 +51,8 @@ ALLOWED_HOSTS = ['*']
 
 APPEND_SLASH = True
 
+USE_OIDC = os.getenv('USE_OIDC', "false").lower() == "true"
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -185,6 +187,36 @@ REST_FRAMEWORK = {
     ]
 }
 
+log.info(f"USE_OIDC?: {USE_OIDC}")
+if USE_OIDC:
+    log.info("Using OIDC authentication")
+    REST_FRAMEWORK["DEFAULT_AUTHENTICATION_CLASSES"] = [
+        'oidc_auth.authentication.JSONWebTokenAuthentication',
+        'oidc_auth.authentication.BearerTokenAuthentication',
+    ]
+
+log.info("REST_FRAMEWORK =", REST_FRAMEWORK)
+
+OIDC_AUTH = {
+    'OIDC_ENDPOINT': 'http://keycloak:8080/realms/cogstack-realm',
+    'OIDC_CLAIMS_OPTIONS': {
+        'aud': {
+            'values': [
+                'account',
+                'cogstack-medcattrainer-frontend'
+            ],
+            'essential': True,
+        },
+        'iss': {
+            'values': [
+                       'http://keycloak.cogstack.localhost/realms/cogstack-realm'],
+            'essential': True,
+        },
+    },
+    'USERINFO_ENDPOINT': 'http://keycloak:8080/realms/cogstack-realm/protocol/openid-connect/userinfo',
+    'OIDC_CREATE_USER': True,   # auto-create missing users
+    'OIDC_RESOLVE_USER_FUNCTION': 'api.oidc_utils.get_user_by_email', # use email address as the key for retrieving users
+}
 
 # Internationalization
 # https://docs.djangoproject.com/en/2.2/topics/i18n/
