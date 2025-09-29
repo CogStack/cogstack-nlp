@@ -124,6 +124,28 @@ class MetaCATBertTest(MetaCATTests):
 class CAT_METACATTests(unittest.TestCase):
     META_CAT_JSON_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "resources",
                                       "mct_export_for_meta_cat_full_text.json")
+
+    @classmethod
+    def _get_meta_cat(cls, meta_cat_dir):
+        config = ConfigMetaCAT()
+        config.general["category_name"] = "Status"
+        config.general['category_value2id'] = {'Other': 0, 'Confirmed': 1}
+        config.model['model_name'] = 'bert'
+        config.model['model_freeze_layers'] = False
+        config.model['num_layers'] = 10
+        config.train['lr'] = 0.001
+        config.train["nepochs"] = 20
+        config.train.class_weights = [0.75,0.3]
+        config.train['metric']['base'] = 'macro avg'
+
+        meta_cat = MetaCAT(tokenizer=TokenizerWrapperBERT(AutoTokenizer.from_pretrained("bert-base-uncased")),
+                           embeddings=None,
+                           config=config)
+        os.makedirs(meta_cat_dir, exist_ok=True)
+        json_path = cls.META_CAT_JSON_PATH
+        meta_cat.train_from_json(json_path, save_dir_path=meta_cat_dir)
+        return meta_cat
+
     @classmethod
     def setUpClass(cls) -> None:
         cls.cdb = CDB.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "examples", "cdb_meta.dat"))
@@ -143,42 +165,19 @@ class CAT_METACATTests(unittest.TestCase):
         cls.cdb.config.general.usage_monitor.enabled = True
         cls.cdb.config.general.usage_monitor.log_folder = cls._temp_logs_folder.name
         cls.meta_cat_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "tmp")
-        cls.undertest = CAT(cdb=cls.cdb, config=cls.cdb.config, vocab=cls.vocab, meta_cats=[])
-        cls._linkng_filters = cls.undertest.config.linking.filters.copy_of()
+        cls.meta_cat = cls._get_meta_cat(cls.meta_cat_dir)
+        cls.cat = CAT(cdb=cls.cdb, config=cls.cdb.config, vocab=cls.vocab, meta_cats=[cls.meta_cat])
 
     @classmethod
     def tearDownClass(cls) -> None:
-        cls.undertest.destroy_pipe()
+        cls.cat.destroy_pipe()
         if os.path.exists(cls.meta_cat_dir):
             shutil.rmtree(cls.meta_cat_dir)
         cls._temp_logs_folder.cleanup()
 
-
-    def _get_meta_cat(self, meta_cat_dir):
-        config = ConfigMetaCAT()
-        config.general["category_name"] = "Status"
-        config.general['category_value2id'] = {'Other': 0, 'Confirmed': 1}
-        config.model['model_name'] = 'bert'
-        config.model['model_freeze_layers'] = False
-        config.model['num_layers'] = 10
-        config.train['lr'] = 0.001
-        config.train["nepochs"] = 20
-        config.train.class_weights = [0.75,0.3]
-        config.train['metric']['base'] = 'macro avg'
-
-        meta_cat = MetaCAT(tokenizer=TokenizerWrapperBERT(AutoTokenizer.from_pretrained("bert-base-uncased")),
-                           embeddings=None,
-                           config=config)
-        os.makedirs(meta_cat_dir, exist_ok=True)
-        json_path = self.META_CAT_JSON_PATH
-        meta_cat.train_from_json(json_path, save_dir_path=meta_cat_dir)
-        return meta_cat
-
     def test_meta_cat_through_cat(self):
-        meta_cat = self._get_meta_cat(self.meta_cat_dir)
-        cat = CAT(cdb=self.cdb, config=self.cdb.config, vocab=self.vocab, meta_cats=[meta_cat])
         text = "This information is just to add text. The patient denied history of heartburn and/or gastroesophageal reflux disorder. He recently had a stroke in the last week."
-        entities = cat.get_entities(text)
+        entities = self.cat.get_entities(text)
         meta_status_values = []
         for en in entities['entities']:
             meta_status_values.append(entities['entities'][en]['meta_anns']['Status']['value'])
