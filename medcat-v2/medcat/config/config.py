@@ -398,7 +398,10 @@ class EmbeddingLinking(Linking):
     """Name of the embedding model. It must be downloadable from 
     huggingface linked from an appropriate file directory"""
     embedding_model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
-    """Max number of tokens to be embedded from a name."""
+    """Max number of tokens to be embedded from a name.
+    If the max token length is changed then the linker will need to be created
+    with a new config.
+    """
     max_token_length: int = 64
     """How many pieces names can be embedded at once, useful when 
     embedding name2info names, cui2info names"""

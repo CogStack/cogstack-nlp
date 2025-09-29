@@ -9,6 +9,8 @@ import unittest
 from ..helper import ComponentInitTests
 
 class FakeDocument:
+    linked_ents = []
+    ner_ents = []
     def __init__(self, text):
         self.text = text
 
@@ -18,6 +20,7 @@ class FakeTokenizer:
 
 class FakeCDB:
     def __init__(self, config: Config):
+        self.is_dirty = False
         self.config = config
         self.cui2info: dict[str, CUIInfo] = dict()
         self.name2info: dict[str, NameInfo] = dict()
@@ -50,7 +53,7 @@ class EmbeddingLinkerInitTests(ComponentInitTests, unittest.TestCase):
         registered_names = [name for name, _ in avail_components]
         self.assertIn("medcat2_embedding_linker", registered_names)
 
-class TrainableEmbeddingLinkerTests(unittest.TestCase):
+class NonTrainableEmbeddingLinkerTests(unittest.TestCase):
     cnf = Config()
     cnf.components.linking = embedding_linker.EmbeddingLinking()
     cnf.components.linking.comp_name = embedding_linker.Linker.name
@@ -58,3 +61,7 @@ class TrainableEmbeddingLinkerTests(unittest.TestCase):
 
     def test_linker_is_not_trainable(self):
         self.assertNotIsInstance(self.linker, TrainableComponent)
+
+    def test_linker_processes_document(self):
+        doc = FakeDocument("Test Document")
+        self.linker(doc) 

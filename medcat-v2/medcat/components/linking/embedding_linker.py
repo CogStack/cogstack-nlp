@@ -75,10 +75,21 @@ class Linker(AbstractCoreComponent):
             for name in self._name_keys
         ]
 
-    def create_embeddings(self, embedding_model_name: Optional[str] = None):
+    def create_embeddings(self, 
+                          embedding_model_name: Optional[str] = None,
+                          max_length: Optional[int] = None,
+                          ):
+        """Create embeddings for all names and cuis longest names in the CDB 
+        using the chosen embedding model."""
         if embedding_model_name is None:
             embedding_model_name = self.cnf_l.embedding_model_name  # fallback
-        """"Create embeddings for names and cuis longest names in the CDB."""
+            
+        if max_length is not None and max_length != self.max_length:
+            logger.info(
+            "Updating max_length from %s to %s", self.max_length, max_length
+            )
+            self.max_length = max_length
+            self.cnf_l.max_token_length = max_length
         if (
             embedding_model_name == self.cnf_l.embedding_model_name
             and "cui_embeddings" in self.cdb.addl_info
@@ -94,7 +105,7 @@ class Linker(AbstractCoreComponent):
         self,
         embedding_model_name: str,
     ) -> None:
-        """Obtain embeddings for all prefered_names in the CDB using the specified
+        """Obtain embeddings for all cuis longest names in the CDB using the specified
         embedding model and store them in the name2info.context_vectors
         Args:
             embedding_model_name (str): The name of the embedding model to use.
@@ -314,6 +325,7 @@ class Linker(AbstractCoreComponent):
                 for name in self._name_keys
             ],
             device=self.device,
+            dtype=torch.bool,
         )
         self._valid_names = _has_cuis_all & allowed_mask
         self._last_include_set = set(include_set) if include_set is not None else None
