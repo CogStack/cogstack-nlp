@@ -544,7 +544,7 @@ class CAT(AbstractSerialisable):
                     continue
                 addl_info_name = f"cui2{ont}"
                 if addl_info_name not in self.cdb.addl_info:
-                    logger.debug(
+                    logger.warning(
                         "Trying to map to ontology '%s' but it is not set in "
                         "addl_info so unable to do so", ont)
                     continue
