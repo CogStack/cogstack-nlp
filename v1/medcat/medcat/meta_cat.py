@@ -262,13 +262,15 @@ class MetaCAT(PipeRunner):
         category_value2id = g_config['category_value2id']
         if not category_value2id:
             # Encode the category values
-            full_data, data_undersampled, category_value2id = encode_category_values(data, category_undersample=self.config.model.category_undersample,
-                                                                                     alternative_class_names=g_config['alternative_class_names'])
+            full_data, data_undersampled, category_value2id = encode_category_values(data,
+                                                                                     category_undersample=self.config.model.category_undersample,alternative_class_names=g_config['alternative_class_names'])
+
         else:
             # We already have everything, just get the data
-            full_data, data_undersampled, category_value2id = encode_category_values(data, category_undersample=self.config.model.category_undersample,
+            full_data, data_undersampled, category_value2id = encode_category_values(data,
                                                                                      existing_category_value2id=category_value2id,
-                                                                                     alternative_class_names=g_config['alternative_class_names'])
+                                                                                     category_undersample=self.config.model.category_undersample,alternative_class_names=g_config['alternative_class_names'])
+
         g_config['category_value2id'] = category_value2id
         self.config.model['nclasses'] = len(category_value2id)
 
