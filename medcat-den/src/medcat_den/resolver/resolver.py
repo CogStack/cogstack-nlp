@@ -6,7 +6,8 @@ import platform
 
 from platformdirs import user_data_dir, site_data_dir
 
-from medcat_den.backend import DenType, _remote_den_map as remote_dens
+from medcat_den.backend import (
+    DenType, get_registered_remote_den, has_registered_remote_den)
 from medcat_den.den import Den
 
 from medcat_den.den_impl.file_den import LocalFileDen
@@ -132,8 +133,8 @@ def resolve_from_config(config: DenConfig) -> Den:
     #         raise ValueError("Remote DEN requires a host address")
     #     # later you’d plug in MedcatteryRemoteDen, MLFlowDen, etc.
     #     return MedCATteryDen(host=host, credentials=credentials)
-    elif config.type in remote_dens:
-        den_cls = remote_dens[config.type]
+    elif has_registered_remote_den(config.type):
+        den_cls = get_registered_remote_den(config.type)
         den = den_cls(cnf=config)
         if not isinstance(den, Den):
             raise ValueError(
