@@ -728,10 +728,10 @@ class MetaCAT(AbstractSerialisable):
                 # Checking if we've reached at the start of the entity
                 if start <= pair[0] or start <= pair[1]:
                     if end <= pair[1]:
-                        ctoken_idx.append(ind)  # End reached
+                        ctoken_idx.append(last_ind + ind)  # End reached; update the index to reflect the correct position since iteration does not start from the beginning
                         break
                     else:
-                        ctoken_idx.append(ind)  # Keep going
+                        ctoken_idx.append(last_ind + ind)  # Keep going; update the index to reflect the correct position since iteration does not start from the beginning
 
             # Start where the last ent was found, cannot be before it as we've
             # sorted
