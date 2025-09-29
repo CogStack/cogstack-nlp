@@ -1,4 +1,4 @@
-from typing import Protocol, Optional
+from typing import Protocol, Optional, runtime_checkable
 
 from medcat.cat import CAT
 
@@ -7,6 +7,7 @@ from medcat_den.wrappers import CATWrapper
 from medcat_den.backend import DenType
 
 
+@runtime_checkable
 class Den(Protocol):
 
     @property
