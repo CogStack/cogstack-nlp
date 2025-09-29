@@ -55,6 +55,12 @@ def avoid_adding_extra_backends():
     _remote_den_map.update(existing)
 
 
+def test_normally_no_remote_backend():
+    with pytest.raises(ValueError):
+        resolve(DenType.MEDCATTERY, host="example.com",
+                credentials={"Hello": "World"})
+
+
 def test_can_register_backend(avoid_adding_extra_backends):
     register_remote_den(DenType.MEDCATTERY, FakeDen)
     assert DenType.MEDCATTERY in _remote_den_map
