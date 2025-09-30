@@ -524,9 +524,12 @@ class MetaAnnotation(models.Model):
 
 class ExportedProject(models.Model):
     trainer_export_file = models.FileField(help_text='Previously exported MedCATtrainer .json file')
+    cdb_id = models.ForeignKey('ConceptDB', on_delete=models.SET_NULL, blank=True, null=True, default=None, help_text='The ConceptDB to be set for this exported project')
+    vocab_id = models.ForeignKey('Vocabulary', on_delete=models.SET_NULL, blank=True, null=True, default=None, help_text='The Vocabulary to be set for this exported project')
+    modelpack_id = models.ForeignKey('ModelPack', on_delete=models.SET_NULL, blank=True, null=True, default=None, help_text='The ModelPack to be set for this exported project')
 
     def __str__(self):
-        return self.trainer_export_file.name
+        return f'{self.trainer_export_file.name} - {self.cdb_id} - {self.vocab_id} - {self.modelpack_id}'
 
 
 class ProjectMetrics(models.Model):
