@@ -1,0 +1,57 @@
+name: medcat-scripts - Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    paths:
+      - 'medcat-scripts/**'
+      - '.github/workflows/medcat-scripts**'
+
+defaults:
+  run:
+    working-directory: ./medcat-scripts
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [ '3.9', '3.10', '3.11', '3.12' ]
+      max-parallel: 4
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install uv for Python ${{ matrix.python-version }}
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          enable-cache: true
+      - name: Install the project
+        run: |
+          uv venv .venv
+          source .venv/bin/activate
+          uv run python -m ensurepip
+          uv pip install -r requirements.txt
+          uv pip install -r requirements-dev.txt
+      - name: Check types
+        run: |
+          # NOTE: Only testing against .py files in this folder
+          uv run python -m mypy `git ls-tree --full-tree --name-only -r HEAD | grep ".py$" | grep "^medcat-scripts" | grep -v "tests/" | sed 's|^medcat-scripts/||'` --explicit-package-bases --follow-imports=normal
+
+      - name: Setup for notebook tests
+        run: |
+          # NOTE: this will make sure there's something in the den to work with below
+          uv run python tests/setup_for_tests.py
+
+      - name: Install IPython kernel
+        run: |
+          uv run python -m ipykernel install --name smoketests --user
+
+      - name: Run tests
+        run: |
+          uv run pytest tests
+
+      - name: Test notebooks
+        run: |
+          uv run pytest --collect-only --nbmake **/*.ipynb
+          uv run pytest --nbmake -n=auto --nbmake-kernel=smoketests --nbmake-timeout=1800 **/*.ipynb

@@ -1,0 +1,9 @@
+mypy
+pytest
+pytest-xdist
+nbmake<1.5
+nbconvert<6
+jupyter-client
+ipykernel
+plotly-stubs; python_version >= '3.10'
+pandas-stubs
