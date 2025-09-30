@@ -4,6 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "medcat_den"
+dynamic = ["version"]
 description = "Model storage and lifecycle management for MedCAT with support for local, remote [TODO], and cloud [TODO] backends."
 readme = "README.md"
 license = { text = "Apache-2.0" }
