@@ -50,6 +50,9 @@ jobs:
     steps:
       - name: Checkout main
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0        # fetch all history
+          fetch-tags: true      # fetch tags explicitly
 
       - name: Set up Python
         uses: actions/setup-python@v6
