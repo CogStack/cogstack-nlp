@@ -76,9 +76,11 @@ class ModelPack(models.Model):
         except Exception as exc:
             raise FileNotFoundError(f'Error loading the CDB from this model pack: {self.model_pack.path}') from exc
 
-        # Load Vocab
-
-        vocab_path = os.path.join(unpacked_model_pack_path, "vocab.dat")
+        # Load Vocab, v2
+        vocab_path = os.path.join(unpacked_model_pack_path, "vocab")
+        if not os.path.exists(vocab_path):
+            # v1
+            vocab_path = os.path.join(unpacked_model_pack_path, "vocab.dat")
         if os.path.exists(vocab_path):
             Vocab.load(vocab_path)
             vocab = Vocabulary()
