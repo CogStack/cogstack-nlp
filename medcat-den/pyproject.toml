@@ -4,7 +4,6 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "medcat_den"
-version = "0.1.0"
 description = "Model storage and lifecycle management for MedCAT with support for local, remote [TODO], and cloud [TODO] backends."
 readme = "README.md"
 license = { text = "Apache-2.0" }
@@ -48,6 +47,12 @@ dev = [
 Homepage = "https://github.com/CogStack/medcat-den"
 Repository = "https://github.com/CogStack/medcat-den"
 Issues = "https://github.com/CogStack/medcat-den/issues"
+
+[tool.setuptools_scm]
+root = ".."
+tag_regex = "medcat-den/v(?P<version>[0-9]+(?:\.[0-9]+)*)"
+version_scheme = "no-guess-dev"
+local_scheme = "node-and-date"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
