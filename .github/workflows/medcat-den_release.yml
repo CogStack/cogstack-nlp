@@ -34,7 +34,7 @@ jobs:
 
       - name: Install client package in development mode
         run: |
-          pip install -e .
+          pip install -e ".[dev]"
 
       - name: Test
         run: |
