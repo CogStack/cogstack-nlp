@@ -163,8 +163,6 @@ def encode_category_values(data: Dict, existing_category_value2id: Optional[Dict
             Output of `prepare_from_json`.
         existing_category_value2id(Optional[Dict]):
             Map from category_value to id (old/existing).
-        category_undersample:
-            Name of class that should be used to undersample the data (for 2 phase learning)
         alternative_class_names:
             Map that stores the variations of possible class names for the given category (task)
         config:
