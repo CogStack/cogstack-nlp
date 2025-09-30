@@ -6,8 +6,10 @@ from datetime import date
 from concurrent.futures import ProcessPoolExecutor, as_completed, Future
 import itertools
 from contextlib import contextmanager
+from collections import deque
 
 import shutil
+import zipfile
 import logging
 
 from medcat.utils.defaults import DEFAULT_PACK_NAME, COMPONENTS_FOLDER
@@ -21,7 +23,7 @@ from medcat.storage.serialisables import AbstractSerialisable
 from medcat.storage.mp_ents_save import BatchAnnotationSaver
 from medcat.utils.fileutils import ensure_folder_if_parent
 from medcat.utils.hasher import Hasher
-from medcat.pipeline.pipeline import Pipeline
+from medcat.pipeline import Pipeline
 from medcat.tokenizing.tokens import MutableDocument, MutableEntity
 from medcat.tokenizing.tokenizers import SaveableTokenizer, TOKENIZER_PREFIX
 from medcat.data.entities import Entity, Entities, OnlyCUIEntities
@@ -83,6 +85,10 @@ class CAT(AbstractSerialisable):
         self._pipeline = Pipeline(self.cdb, self.vocab, model_load_path,
                                   old_pipe=old_pipe,
                                   addon_config_dict=addon_config_dict)
+        return self._pipeline
+
+    @property
+    def pipe(self) -> Pipeline:
         return self._pipeline
 
     @classmethod
@@ -313,6 +319,57 @@ class CAT(AbstractSerialisable):
             # Yield all results from this batch
             yield from cur_results
 
+    def save_entities_multi_texts(
+            self,
+            texts: Union[Iterable[str], Iterable[tuple[str, str]]],
+            save_dir_path: str,
+            only_cui: bool = False,
+            n_process: int = 1,
+            batch_size: int = -1,
+            batch_size_chars: int = 1_000_000,
+            batches_per_save: int = 20,
+    ) -> None:
+        """Saves the resulting entities on disk and allows multiprocessing.
+
+        This uses `get_entities_multi_texts` under the hood. But it is designed
+        to save the data on disk as it comes through.
+
+        Args:
+            texts (Union[Iterable[str], Iterable[tuple[str, str]]]):
+                The input text. Either an iterable of raw text or one
+                with in the format of `(text_index, text)`.
+            save_dir_path (str):
+                The path where the results are saved. The directory will have
+                a `annotated_ids.pickle` file containing the
+                `tuple[list[str], int]` with a list of indices already saved
+                and the number of parts already saved. In addition there will
+                be (usually multuple) files in the `part_<num>.pickle` format
+                with the partial outputs.
+            only_cui (bool):
+                Whether to only return CUIs rather than other information
+                like start/end and annotated value. Defaults to False.
+            n_process (int):
+                Number of processes to use. Defaults to 1.
+                The number of texts to batch at a time. A batch of the
+                specified size will be given to each worker process.
+                Defaults to -1 and in this case the character count will
+                be used instead.
+            batch_size_chars (int):
+                The maximum number of characters to process in a batch.
+                Each process will be given batch of texts with a total
+                number of characters not exceeding this value. Defaults
+                to 1,000,000 characters. Set to -1 to disable.
+        """
+        if save_dir_path is None:
+            raise ValueError("Need to specify a save path (`save_dir_path`), "
+                             f"got {save_dir_path}")
+        out_iter = self.get_entities_multi_texts(
+            texts, only_cui=only_cui, n_process=n_process,
+            batch_size=batch_size, batch_size_chars=batch_size_chars,
+            save_dir_path=save_dir_path, batches_per_save=batches_per_save)
+        # NOTE: not keeping anything since it'll be saved on disk
+        deque(out_iter, maxlen=0)
+
     def get_entities_multi_texts(
             self,
             texts: Union[Iterable[str], Iterable[tuple[str, str]]],
@@ -371,6 +428,15 @@ class CAT(AbstractSerialisable):
             saver = BatchAnnotationSaver(save_dir_path, batches_per_save)
         else:
             saver = None
+        yield from self._get_entities_multi_texts(
+            n_process=n_process, batch_iter=batch_iter, saver=saver)
+
+    def _get_entities_multi_texts(
+            self,
+            n_process: int,
+            batch_iter: Iterator[list[tuple[str, str, bool]]],
+            saver: Optional[BatchAnnotationSaver],
+            ) -> Iterator[tuple[str, Union[dict, Entities, OnlyCUIEntities]]]:
         if n_process == 1:
             # just do in series
             for batch in batch_iter:
@@ -457,15 +523,7 @@ class CAT(AbstractSerialisable):
             'context_similarity': ent.context_similarity,
             'start': ent.base.start_char_index,
             'end': ent.base.end_char_index,
-            # TODO: add additional info (i.e mappings)
-            # for addl in addl_info:
-            #     tmp = self.cdb.addl_info.get(addl, {}).get(cui, [])
-            #     out_ent[addl.split("2")[-1]] = list(tmp) if type(tmp) is
-            # set else tmp
             'id': ent.id,
-            # TODO: add met annotations
-            # if hasattr(ent._, 'meta_anns') and ent._.meta_anns:
-            #     out_ent['meta_anns'] = ent._.meta_anns
             'meta_anns': {},
             'context_left': left_context,
             'context_center': center_context,
@@ -473,6 +531,26 @@ class CAT(AbstractSerialisable):
         }
         # addons:
         out_dict.update(self.get_addon_output(ent))  # type: ignore
+        # other ontologies
+        if self.config.general.map_to_other_ontologies:
+            for ont in self.config.general.map_to_other_ontologies:
+                if ont in out_dict:
+                    logger.warning(
+                        "Trying to map to ontology '%s', but it already "
+                        "exists in the out dict, so unable to add it. "
+                        "If this is for an actual ontology that shares a "
+                        "name with something else, cosider renaming the "
+                        "mapping in `cdb.addl_info`")
+                    continue
+                addl_info_name = f"cui2{ont}"
+                if addl_info_name not in self.cdb.addl_info:
+                    logger.warning(
+                        "Trying to map to ontology '%s' but it is not set in "
+                        "addl_info so unable to do so", ont)
+                    continue
+                ont_map = self.cdb.addl_info[addl_info_name]
+                ont_values = ont_map.get(cui, [])
+                out_dict[ont] = ont_values  # type: ignore
         return out_dict
 
     def get_addon_output(self, ent: MutableEntity) -> dict[str, dict]:
@@ -807,13 +885,11 @@ class CAT(AbstractSerialisable):
         Returns:
             Union[str, ModelCard]: The model card.
         """
-        meta_cat_categories = [
-            cnf.general.category_name  # type: ignore
-            for cnf in self.config.components.addons
-            if cnf.comp_name == 'meta_cat' and
-            # NOTE: not the best way to check this,
-            #       but I don't want to import the addon config
-            type(cnf).__name__ == 'ConfigMetaCAT']
+        from medcat.components.addons.meta_cat import MetaCATAddon
+        met_cat_model_cards = [
+            mc.mc.get_model_card(True) for mc in
+            self.get_addons_of_type(MetaCATAddon)
+        ]
         cdb_info = self.cdb.get_basic_info()
         model_card: ModelCard = {
             'Model ID': self.config.meta.hash,
@@ -822,7 +898,7 @@ class CAT(AbstractSerialisable):
             'Description': self.config.meta.description,
             'Source Ontology': self.config.meta.ontology,
             'Location': self.config.meta.location,
-            'MetaCAT models': meta_cat_categories,
+            'MetaCAT models': met_cat_model_cards,
             'Basic CDB Stats': cdb_info,
             'Performance': {},  # TODO
             'Important Parameters (Partial view, '
@@ -830,6 +906,59 @@ class CAT(AbstractSerialisable):
                 self.config),
             'MedCAT Version': self.config.meta.medcat_version,
         }
+        if as_dict:
+            return model_card
+        return json.dumps(model_card, indent=2, sort_keys=False)
+
+    @overload
+    @classmethod
+    def load_model_card_off_disk(cls, model_pack_path: str,
+                                 as_dict: Literal[True],
+                                 avoid_unpack: bool = False) -> ModelCard:
+        pass
+
+    @overload
+    @classmethod
+    def load_model_card_off_disk(cls, model_pack_path: str,
+                                 as_dict: Literal[False],
+                                 avoid_unpack: bool = False) -> str:
+        pass
+
+    @classmethod
+    def load_model_card_off_disk(cls, model_pack_path: str,
+                                 as_dict: bool = False,
+                                 avoid_unpack: bool = False,
+                                 ) -> Union[str, ModelCard]:
+        """Load the model card off disk as a (nested) `dict` or a json string.
+
+        Args:
+            model_pack_path (str): The path to the model pack (zip or folder).
+            as_dict (bool): Whether to return as dict. Defaults to False.
+            avoid_unpack (bool): Whether to avoid unpacking the model pack if
+                no previous unpacked path exists. Defaults to False.
+
+        Returns:
+            Union[str, ModelCard]: The model card.
+        """
+        model_card: Optional[ModelCard] = None
+        # unpack if needed
+        if model_pack_path.endswith(".zip"):
+            if (avoid_unpack and
+                    not os.path.exists(model_pack_path.removesuffix(".zip"))):
+                # stream the model card directly from the zip
+                with zipfile.ZipFile(model_pack_path) as zf:
+                    with zf.open("model_card.json") as src:
+                        model_card = json.load(src)
+            else:
+                # if allowed to unpack or already unpacked anyway
+                model_pack_path = cls.attempt_unpack(model_pack_path)
+        if model_card is None:
+            # i.e not loaded directly off disk
+            # load model card
+            model_card_path = os.path.join(model_pack_path, "model_card.json")
+            with open(model_card_path) as f:
+                model_card = json.load(f)
+        # return as dict or json
         if as_dict:
             return model_card
         return json.dumps(model_card, indent=2, sort_keys=False)

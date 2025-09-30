@@ -106,12 +106,9 @@ class SpacyTokenizer(BaseTokenizer):
             folder_path, f"{TOKENIZER_PREFIX}{self._spacy_model_name}")
         if os.path.exists(subfolder):
             # NOTE: always overwrite
-            shutil.rmtree(folder_path)
+            shutil.rmtree(subfolder)
         logger.debug("Saving spacy model to '%s'", subfolder)
-        cur_path = self._nlp._path
-        if cur_path is None:
-            raise ValueError(f"Unable to save spacy: {self._nlp}")
-        shutil.copytree(cur_path, subfolder)
+        self._nlp.to_disk(subfolder)
         return subfolder
 
     def load_internals_from(self, folder_path: str) -> bool:

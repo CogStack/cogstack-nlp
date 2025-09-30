@@ -3,7 +3,7 @@ from typing import Dict, List
 import gradio as gr
 from pydantic import BaseModel
 
-from medcat_service.dependencies import get_medcat_processor
+from medcat_service.dependencies import get_medcat_processor, get_settings
 from medcat_service.types import ProcessAPIInputContent
 from medcat_service.types_entities import Entity
 
@@ -96,7 +96,7 @@ def convert_display_model_to_list_of_lists(entity_display_model: list[EntityAnno
 
 
 def process_input(input_text: str):
-    processor = get_medcat_processor()
+    processor = get_medcat_processor(get_settings())
     input = ProcessAPIInputContent(text=input_text)
 
     result = processor.process_content(input.model_dump())
@@ -110,7 +110,7 @@ def process_input(input_text: str):
     return response.model_dump(), response_datatable_format
 
 
-short_example = "Patient had been diagnosed with acute Kidney Failure the week before"
+short_example = "John had been diagnosed with acute Kidney Failure the week before"
 
 
 long_example = """

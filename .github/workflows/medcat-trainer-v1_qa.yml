@@ -12,10 +12,9 @@ jobs:
   # Build and test webapp container
   build-and-push:
     runs-on: ubuntu-latest
-    needs: test-client
     steps:
       - name: Checkout main
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: 'main'
 

@@ -127,7 +127,7 @@ class TestMedcatService(unittest.TestCase):
         a_client = TestClient(app, raise_server_exceptions=False)
         response = a_client.post(self.ENDPOINT_PROCESS_SINGLE, json=payload)
         self.assertEqual(
-            response.status_code, 500,
+            response.status_code, 200,
             """
             This test currently shows that there is a bug with the meta anns filter.
             Correct version should return 200.
