@@ -1,7 +1,9 @@
 import logging
-from typing import Annotated
+from typing import Annotated, Union
 
 from fastapi import APIRouter, Body
+from fastapi.exceptions import RequestValidationError
+from pydantic import ValidationError
 
 from medcat_service.dependencies import MedCatProcessorDep
 from medcat_service.types import BulkProcessAPIInput, BulkProcessAPIResponse, ProcessAPIInput, ProcessAPIResponse
@@ -12,9 +14,9 @@ router = APIRouter(tags=["Process"])
 
 
 @router.post("/api/process")
-def process(
+async def process(
     payload: Annotated[
-        ProcessAPIInput,
+        Union[ProcessAPIInput, dict],
         Body(
             openapi_examples={
                 "normal": {
@@ -46,9 +48,19 @@ def process(
     Returns the annotations extracted from a provided single document
     """
     try:
-        process_result = medcat_processor.process_content(
-            payload.content.model_dump(), meta_anns_filters=payload.meta_anns_filters
-        )
+        if isinstance(payload, ProcessAPIInput):
+            content = payload.content.model_dump()
+            meta_filters = payload.meta_anns_filters
+        elif isinstance(payload, dict):
+            try:
+                validated = ProcessAPIInput.model_validate(payload)
+                content = validated.content.model_dump()
+                meta_filters = validated.meta_anns_filters
+            except ValidationError as ve:
+                log.error("Invalid payload", exc_info=ve)
+                raise RequestValidationError(errors=ve.errors())
+
+        process_result = medcat_processor.process_content(content, meta_anns_filters=meta_filters)
         app_info = medcat_processor.get_app_info()
         return ProcessAPIResponse(result=process_result, medcat_info=app_info)
     except Exception as e:
@@ -57,7 +69,7 @@ def process(
 
 
 @router.post("/api/process_bulk")
-def process_bulk(payload: BulkProcessAPIInput, medcat_processor: MedCatProcessorDep) -> BulkProcessAPIResponse:
+async def process_bulk(payload: BulkProcessAPIInput, medcat_processor: MedCatProcessorDep) -> BulkProcessAPIResponse:
     """
     Returns the annotations extracted from the provided set of documents
     """

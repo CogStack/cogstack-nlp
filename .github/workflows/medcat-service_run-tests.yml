@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: checkout repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v5
 
       - name: Cache MedMen Model
         id: cache-medmen
@@ -28,7 +28,7 @@ jobs:
           key: medmen-${{ hashFiles('medcat-service/scripts/download_medmen.sh') }}
 
       - name: Install Python 3
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: 3.11
           cache: 'pip' # caching pip dependencies

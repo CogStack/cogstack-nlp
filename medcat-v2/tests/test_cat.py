@@ -62,6 +62,28 @@ class ModelLoadTests(unittest.TestCase):
         cdb = cat.CAT.load_cdb(EXAMPLE_MODEL_PACK_ZIP)
         self.assertIsInstance(cdb, CDB)
 
+    def test_can_load_model_card_off_disk_from_zip_to_json(self):
+        out = cat.CAT.load_model_card_off_disk(
+            EXAMPLE_MODEL_PACK_ZIP, as_dict=False)
+        self.assertIsInstance(out, str)
+
+    def test_can_load_model_card_off_disk_from_folder_to_dict(self):
+        # NOTE: the model gets unpacked automatically due to __init__.py
+        out = cat.CAT.load_model_card_off_disk(
+            expected_model_pack_path, as_dict=True)
+        self.assertIsInstance(out, dict)
+
+    def test_can_load_model_ard_without_unzipping(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            zip_path = os.path.join(temp_dir, "model_pazk.zip")
+            # copy to another location to avoid a previoulsy unpacked model
+            shutil.copy(EXAMPLE_MODEL_PACK_ZIP, zip_path)
+            out = cat.CAT.load_model_card_off_disk(
+                expected_model_pack_path, avoid_unpack=True)
+            # make sure the folder doesn't exist
+            self.assertFalse(os.path.exists(zip_path.removesuffix(".zip")))
+            self.assertIsInstance(out, str)
+
 
 class ModelLoadIWithHiddenFilesTests(unittest.TestCase):
 
@@ -135,6 +157,39 @@ class InferenceFromLoadedTests(TrainedModelTests):
             with self.subTest(f"Ent: {ent}"):
                 self.assertGreaterEqual(ent.base.start_char_index, cur_start)
                 cur_start = ent.base.start_char_index
+
+
+class InferenceIntoOntologyTests(TrainedModelTests):
+    ont_name = "FAKE_ONT"
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        # create mapping
+        cls.ont_map = {
+            cui: [f"{cls.ont_name}:{cui}"]
+            for cui in cls.model.cdb.cui2info
+        }
+        # add to addl_info
+        cls.model.cdb.addl_info[f"cui2{cls.ont_name}"] = cls.ont_map
+        # ask to be mapped
+        cls.model.config.general.map_to_other_ontologies.append(cls.ont_name)
+
+    def assert_has_mapping(self, ent: dict):
+        # has value
+        self.assertIn(self.ont_name, ent)
+        val = ent[self.ont_name]
+        # 1 value
+        self.assertEqual(len(val), 1)
+        # value in our map
+        self.assertIn(val, self.ont_map.values())
+
+    def test_gets_mappings(self):
+        ents = self.model.get_entities(
+            ConvertedFunctionalityTests.TEXT)['entities']
+        for nr, ent in enumerate(ents.values()):
+            with self.subTest(f"{nr}"):
+                self.assert_has_mapping(ent)
 
 
 class CATIncludingTests(unittest.TestCase):
@@ -512,13 +567,14 @@ class CATWithDictNERSupTrainingTests(CATSupTrainingTests):
             for name in self.cdb.name2info
             for negname in self.cdb.name2info if name != negname
         ]
-        out_data = list(self.cat.get_entities_multi_texts(
+        out_data = self.cat.get_entities_multi_texts(
             in_data,
             save_dir_path=save_to,
             batch_size_chars=chars_per_batch,
             batches_per_save=batches_per_save,
             n_process=n_process,
-            ))
+            )
+        out_data = list(out_data)
         out_dict_all = {
             key: cdata for key, cdata in out_data
         }
@@ -635,6 +691,29 @@ class CATWithDictNERSupTrainingTests(CATSupTrainingTests):
                  temp_dir, n_process=3)
             self.assert_correct_loaded_output(
                 in_data, out_dict_all, all_loaded_output)
+
+    def test_get_entities_multi_texts_with_save_dir_lazy(self):
+        texts = ["text1", "text2"]
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            out = self.cat.get_entities_multi_texts(
+                texts,
+                save_dir_path=tmp_dir)
+            # nothing before manual iter
+            self.assertFalse(os.listdir(tmp_dir))
+            out_list = list(out)
+            # something was saved
+            self.assertTrue(os.listdir(tmp_dir))
+            # and something was yielded
+            self.assertEqual(len(out_list), len(texts))
+
+    def test_save_entities_multi_texts(self):
+        texts = ["text1", "text2"]
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            self.cat.save_entities_multi_texts(
+                texts,
+                save_dir_path=tmp_dir)
+            # stuff was already saved
+            self.assertTrue(os.listdir(tmp_dir))
 
 
 class CATWithDocAddonTests(CATIncludingTests):

@@ -62,7 +62,7 @@ def main(port=8000,
                         f.write(vocab_file.content)
                     print("Downloading example dataset")
                     ds = requests.get(
-                        'https://raw.githubusercontent.com/CogStack/cogstack-nlp/09e32429/medcat-trainer/notebook_docs/example_data/ortho.csvv')
+                        'https://raw.githubusercontent.com/CogStack/cogstack-nlp/09e32429/medcat-trainer/notebook_docs/example_data/ortho.csv')
                     with open(dataset_tmp_file, 'w') as f:
                         f.write(ds.text)
 

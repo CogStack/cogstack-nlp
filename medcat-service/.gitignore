@@ -1,10 +1,13 @@
+# IDE envs and system folders
 .DS_Store
+**/.DS_Store
 .idea
 .vscode
+.venv
+.ruff_cache
+**__pycache__
 venv
 venv-test
-tmp_cat.log
-__pycache__
 .mypy_cache
 *.pyc
 .pyc
@@ -21,7 +24,11 @@ models/examples/example-deid-model-pack
 tmp/*
 
 # env folder
-env/*
+.env
+*.env
+**/.env
+**/*.env
 
 # log files
+tmp_cat.log
 medcat.log

@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Iterator, cast
 import copy
 
 from medcat.components.addons.meta_cat.mctokenizers.tokenizers import (
@@ -15,7 +15,8 @@ def prepare_from_json(data: dict,
                       cui_filter: Optional[set] = None,
                       replace_center: Optional[str] = None,
                       prerequisites: dict = {},
-                      lowercase: bool = True) -> dict:
+                      lowercase: bool = True
+                      ) -> dict[str, list[tuple[list, list, str]]]:
     """Convert the data from a json format into a CSV-like format for
     training. This function is not very efficient (the one working with
     documents as part of the meta_cat.pipe method is much better).
@@ -64,89 +65,108 @@ def prepare_from_json(data: dict,
 
             if len(text) > 0:
                 doc_text = tokenizer(text)
+                for name, sample in _prepare_from_json_loop(
+                        document, prerequisites, cui_filter, doc_text,
+                        cntx_left, cntx_right, lowercase, replace_center,
+                        tokenizer):
+                    if name in out_data:
+                        out_data[name].append(sample)
+                    else:
+                        out_data[name] = [sample]
 
-                for ann in document.get('annotations', document.get(
-                        # A hack to support entities and annotations
-                        'entities', {}).values()):
-                    cui = ann['cui']
-                    skip = False
-                    if 'meta_anns' in ann and prerequisites:
-                        # It is possible to require certain meta_anns to exist
-                        # and have a specific value
-                        for meta_ann in prerequisites:
-                            if (meta_ann not in ann['meta_anns'] or
-                                    ann['meta_anns'][meta_ann][
-                                        'value'] != prerequisites[meta_ann]):
-                                # Skip this annotation as the prerequisite
-                                # is not met
-                                skip = True
-                                break
-
-                    if not skip and (cui_filter is None or
-                                     not cui_filter or cui in cui_filter):
-                        if ann.get('validated', True) and (
-                                not ann.get('deleted', False) and
-                                not ann.get('killed', False)
-                                and not ann.get('irrelevant', False)):
-                            start = ann['start']
-                            end = ann['end']
-
-                            # Updated implementation to extract all the tokens
-                            # for the medical entity (rather than the one)
-                            ctoken_idx = []
-                            for ind, pair in enumerate(
-                                    doc_text['offset_mapping']):
-                                if start <= pair[0] or start <= pair[1]:
-                                    if end <= pair[1]:
-                                        ctoken_idx.append(ind)
-                                        break
-                                    else:
-                                        ctoken_idx.append(ind)
-
-                            _start = max(0, ctoken_idx[0] - cntx_left)
-                            _end = min(len(doc_text['input_ids']),
-                                       ctoken_idx[-1] + 1 + cntx_right)
-
-                            cpos = cntx_left + min(0, ind - cntx_left)
-                            cpos_new = [x - _start for x in ctoken_idx]
-                            tkns = doc_text['input_ids'][_start:_end]
-
-                            if replace_center is not None:
-                                if lowercase:
-                                    replace_center = replace_center.lower()
-                                for p_ind, pair in enumerate(
-                                        doc_text['offset_mapping']):
-                                    if start >= pair[0] and start < pair[1]:
-                                        s_ind = p_ind
-                                    if end > pair[0] and end <= pair[1]:
-                                        e_ind = p_ind
-
-                                ln = e_ind - s_ind
-                                tkns = tkns[:cpos] + tokenizer(
-                                    replace_center)['input_ids'] + tkns[
-                                        cpos + ln + 1:]
-
-                            # Backward compatibility if meta_anns is a list vs
-                            # dict in the new approach
-                            meta_anns: list[dict] = []
-                            if 'meta_anns' in ann:
-                                if isinstance(ann['meta_anns'], dict):
-                                    meta_anns.extend(ann['meta_anns'].values())
-                                else:
-                                    meta_anns.extend(ann['meta_anns'])
-
-                            # If the annotation is validated
-                            for meta_ann in meta_anns:
-                                name = meta_ann['name']
-                                value = meta_ann['value']
-
-                                sample = [tkns, cpos_new, value]
-
-                                if name in out_data:
-                                    out_data[name].append(sample)
-                                else:
-                                    out_data[name] = [sample]
     return out_data
+
+
+def _prepare_from_json_loop(document: dict,
+                            prerequisites: dict,
+                            cui_filter: Optional[set],
+                            doc_text: dict,
+                            cntx_left: int,
+                            cntx_right: int,
+                            lowercase: bool,
+                            replace_center: Optional[str],
+                            tokenizer: TokenizerWrapperBase,
+                            ) -> Iterator[tuple[str, tuple[list, list, str]]]:
+    for ann in document.get('annotations', document.get(
+            # A hack to support entities and annotations
+            'entities', {}).values()):
+        cui = ann['cui']
+        skip = False
+        if 'meta_anns' in ann and prerequisites:
+            # It is possible to require certain meta_anns to exist
+            # and have a specific value
+            for meta_ann in prerequisites:
+                if (meta_ann not in ann['meta_anns'] or
+                        ann['meta_anns'][meta_ann][
+                            'value'] != prerequisites[meta_ann]):
+                    # Skip this annotation as the prerequisite
+                    # is not met
+                    skip = True
+                    break
+
+        if not skip and (cui_filter is None or
+                         not cui_filter or cui in cui_filter):
+            if ann.get('validated', True) and (
+                    not ann.get('deleted', False) and
+                    not ann.get('killed', False)
+                    and not ann.get('irrelevant', False)):
+                start = ann['start']
+                end = ann['end']
+
+                # Updated implementation to extract all the tokens
+                # for the medical entity (rather than the one)
+                ctoken_idx = []
+                for ind, pair in enumerate(
+                        doc_text['offset_mapping']):
+                    if start <= pair[0] or start <= pair[1]:
+                        if end <= pair[1]:
+                            ctoken_idx.append(ind)
+                            break
+                        else:
+                            ctoken_idx.append(ind)
+
+                _start = max(0, ctoken_idx[0] - cntx_left)
+                _end = min(len(doc_text['input_ids']),
+                           ctoken_idx[-1] + 1 + cntx_right)
+
+                cpos = cntx_left + min(0, ind - cntx_left)
+                cpos_new = [x - _start for x in ctoken_idx]
+                tkns = doc_text['input_ids'][_start:_end]
+
+                if replace_center is not None:
+                    if lowercase:
+                        replace_center = replace_center.lower()
+                    for p_ind, pair in enumerate(
+                            doc_text['offset_mapping']):
+                        if start >= pair[0] and start < pair[1]:
+                            s_ind = p_ind
+                        if end > pair[0] and end <= pair[1]:
+                            e_ind = p_ind
+
+                    ln = e_ind - s_ind
+                    tkns = tkns[:cpos] + tokenizer(
+                        replace_center)['input_ids'] + tkns[
+                            cpos + ln + 1:]
+
+                # Backward compatibility if meta_anns is a list vs
+                # dict in the new approach
+                meta_anns: list[dict] = []
+                if 'meta_anns' in ann:
+                    if isinstance(ann['meta_anns'], dict):
+                        meta_anns.extend(ann['meta_anns'].values())
+                    else:
+                        meta_anns.extend(ann['meta_anns'])
+
+                # If the annotation is validated
+                for meta_ann in meta_anns:
+                    name = meta_ann['name']
+                    value = meta_ann['value']
+
+                    # NOTE: representing as tuple so as to have better typing
+                    #       but using a list to allow assignment
+                    sample: tuple[list, list, str] = cast(
+                        tuple[list, list, str], [tkns, cpos_new, value])
+                    yield name, sample
 
 
 def prepare_for_oversampled_data(data: list,
@@ -189,20 +209,21 @@ def prepare_for_oversampled_data(data: list,
     return data_sampled
 
 
-def encode_category_values(data: dict,
+def encode_category_values(data: list[tuple[list, list, str]],
                            existing_category_value2id: Optional[dict] = None,
-                           category_undersample=None,
+                           category_undersample: Optional[str] = None,
                            alternative_class_names: list[list[str]] = []
-                           ) -> tuple:
+                           ) -> tuple[
+                               list[tuple[list, list, str]], list, dict]:
     """Converts the category values in the data outputted by
     `prepare_from_json` into integer values.
 
     Args:
-        data (dict):
+        data (list[tuple[list, list, str]]):
             Output of `prepare_from_json`.
         existing_category_value2id(Optional[dict]):
             Map from category_value to id (old/existing).
-        category_undersample:
+        category_undersample (Optional[str]):
             Name of class that should be used to undersample the data (for 2
             phase learning)
         alternative_class_names (list[list[str]]):
@@ -211,9 +232,9 @@ def encode_category_values(data: dict,
             `config.general.alternative_class_names`.
 
     Returns:
-        dict:
+        list[tuple[list, list, str]]:
             New data with integers inplace of strings for category values.
-        dict:
+        list:
             New undersampled data (for 2 phase learning) with integers
             inplace of strings for category values
         dict:
@@ -288,7 +309,8 @@ def encode_category_values(data: dict,
 
     # Map values to numbers
     for i in range(len(data_list)):
-        data_list[i][2] = category_value2id[data_list[i][2]]
+        # NOTE: internally, it's a a list so assingment will work
+        data_list[i][2] = category_value2id[data_list[i][2]]  # type: ignore
 
     # Creating dict with labels and its number of samples
     label_data_ = {v: 0 for v in category_value2id.values()}

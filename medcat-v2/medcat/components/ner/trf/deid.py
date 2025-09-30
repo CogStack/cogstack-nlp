@@ -37,6 +37,7 @@ The wrapper also exposes some CAT parts directly:
 from typing import Union, Any, Optional, Iterable
 import re
 import logging
+import warnings
 
 from medcat.cat import CAT
 from medcat.cdb.cdb import CDB
@@ -94,6 +95,16 @@ class DeIdModel(NerModel):
 
     def deid_multi_text(self, texts: Iterable[str], redact: bool = False,
                         n_process: Optional[int] = None) -> list[str]:
+        warnings.warn(
+            "deid_multi_text() is deprecated and will be removed in a "
+            "future release. Use deid_multi_texts() instead.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        return self.deid_multi_texts(texts, redact, n_process)
+
+    def deid_multi_texts(self, texts: Iterable[str], redact: bool = False,
+                         n_process: Optional[int] = None) -> list[str]:
         if n_process is None:
             n_process = 1
 

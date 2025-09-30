@@ -252,11 +252,17 @@ class General(SerialisableBaseModel):
     map_cui_to_group: bool = False
     """If the cdb.addl_info['cui2group'] is provided and this option enabled,
     each CUI will be mapped to the group"""
-    simple_hash: bool = False
-    """Whether to use a simple hash.
+    map_to_other_ontologies: list[str] = ["opcs4", "icd10"]
+    """Which other ontologies to map to if possible.
 
-    NOTE: While using a simple hash is faster at save time, it is less
-    reliable due to not taking into account all the details of the changes."""
+    This will force medcat to include mapping for other ontologies in
+    its outputs. It will use the mappings in `cdb.addl_info["cui2<ont>"]`
+    are present.
+
+    NB!
+    This will only work if the `cdb.addl_info["cui2<ont>"]` exists.
+    Otherwise, no mapping will be done.
+    """
 
     class Config:
         extra = 'allow'
