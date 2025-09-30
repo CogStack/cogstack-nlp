@@ -65,9 +65,6 @@ jobs:
         run: |
           pip install -e .
 
-      - name: Bump version for TestPyPI
-        run: sed -i "s/^version = .*/version = \"1.0.0.dev$(date +%s)\"/" pyproject.toml
-
       - name: Build package
         run: |
           python -m build
