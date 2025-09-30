@@ -154,7 +154,7 @@ def prepare_for_oversampled_data(data: List,
 
 
 def encode_category_values(data: Dict, existing_category_value2id: Optional[Dict] = None,
-                           category_undersample=None, alternative_class_names: List[List] = []) -> Tuple:
+                           alternative_class_names: List[List] = [], config=None) -> Tuple:
     """Converts the category values in the data outputted by `prepare_from_json`
     into integer values.
 
@@ -167,6 +167,8 @@ def encode_category_values(data: Dict, existing_category_value2id: Optional[Dict
             Name of class that should be used to undersample the data (for 2 phase learning)
         alternative_class_names:
             Map that stores the variations of possible class names for the given category (task)
+        config:
+            MetaCAT config
 
     Returns:
         dict:
@@ -186,44 +188,48 @@ def encode_category_values(data: Dict, existing_category_value2id: Optional[Dict
         category_value2id = {}
 
     category_values = set([x[2] for x in data])
+    if len(category_values)!=config.model.nclasses:
+        raise Exception("The number of classes found in the data - %s does not match the number of classes defined in the config - %s (config.model.nclasses). Please update the number of classes and initialise the model again.",len(category_values),config.model.nclasses)
 
-    # If categoryvalue2id is pre-defined, then making sure it is same as the labels found in the data
-    if len(category_value2id) != 0 and set(category_value2id.keys()) != category_values:
-        # if categoryvalue2id doesn't match the labels in the data, then 'alternative_class_names' has to be defined to check for variations
-        if len(alternative_class_names) == 0:
-            # Raise an exception since the labels don't match
-            raise Exception(
-                "The classes set in the config are not the same as the one found in the data. "
-                "The classes present in the config vs the ones found in the data - "
-                f"{set(category_value2id.keys())}, {category_values}. Additionally, ensure the populate the "
-                "'alternative_class_names' attribute to accommodate for variations.")
-        updated_category_value2id = {}
-        for _class in category_value2id.keys():
-            if _class in category_values:
-                updated_category_value2id[_class] = category_value2id[_class]
-            else:
-                found_in = [sub_map for sub_map in alternative_class_names if _class in sub_map]
-                failed_to_find = False
-                if len(found_in) != 0:
-                    class_name_matched = [label for label in found_in[0] if label in category_values]
-                    if len(class_name_matched) != 0:
-                        updated_category_value2id[class_name_matched[0]] = category_value2id[_class]
-                        logger.info("Class name '%s' does not exist in the data; however a variation of it "
-                                    "'%s' is present; updating it...", _class, class_name_matched[0])
+    # If categoryvalue2id is pre-defined or if all the classes aren't mentioned
+    if len(category_value2id) != 0:
+        # making sure it is same as the labels found in the data
+        if set(category_value2id.keys()) != category_values:
+            # if categoryvalue2id doesn't match the labels in the data, then 'alternative_class_names' has to be defined to check for variations
+            if len(alternative_class_names) == 0:
+                # Raise an exception since the labels don't match
+                raise Exception(
+                    "The classes set in the config are not the same as the one found in the data. "
+                    "The classes present in the config vs the ones found in the data - "
+                    f"{set(category_value2id.keys())}, {category_values}. Additionally, ensure the populate the "
+                    "'alternative_class_names' attribute to accommodate for variations.")
+            updated_category_value2id = {}
+            for _class in category_value2id.keys():
+                if _class in category_values:
+                    updated_category_value2id[_class] = category_value2id[_class]
+                else:
+                    found_in = [sub_map for sub_map in alternative_class_names if _class in sub_map]
+                    failed_to_find = False
+                    if len(found_in) != 0:
+                        class_name_matched = [label for label in found_in[0] if label in category_values]
+                        if len(class_name_matched) != 0:
+                            updated_category_value2id[class_name_matched[0]] = category_value2id[_class]
+                            logger.info("Class name '%s' does not exist in the data; however a variation of it "
+                                        "'%s' is present; updating it...", _class, class_name_matched[0])
+                        else:
+                            failed_to_find = True
                     else:
                         failed_to_find = True
-                else:
-                    failed_to_find = True
-                if failed_to_find:
-                    raise Exception("The classes set in the config are not the same as the one found in the data. "
-                                    "The classes present in the config vs the ones found in the data - "
-                                    f"{set(category_value2id.keys())}, {category_values}. Additionally, ensure the "
-                                    "populate the 'alternative_class_names' attribute to accommodate for variations.")
-        category_value2id = copy.deepcopy(updated_category_value2id)
-        logger.info("Updated categoryvalue2id mapping - %s", category_value2id)
+                    if failed_to_find:
+                        raise Exception("The classes set in the config are not the same as the one found in the data. "
+                                        "The classes present in the config vs the ones found in the data - "
+                                        f"{set(category_value2id.keys())}, {category_values}. Additionally, ensure the "
+                                        "populate the 'alternative_class_names' attribute to accommodate for variations.")
+            category_value2id = copy.deepcopy(updated_category_value2id)
+            logger.info("Updated categoryvalue2id mapping - %s", category_value2id)
 
     # Else create the mapping from the labels found in the data
-    else:
+    if len(category_value2id) != len(category_values):
         for c in category_values:
             if c not in category_value2id:
                 category_value2id[c] = len(category_value2id)
@@ -239,30 +245,33 @@ def encode_category_values(data: Dict, existing_category_value2id: Optional[Dict
         if data[i][2] in category_value2id.values():
             label_data_[data[i][2]] = label_data_[data[i][2]] + 1
 
-    logger.info("Original number of samples per label: %s",label_data_)
-    # Undersampling data
-    if category_undersample is None or category_undersample == '':
-        min_label = min(label_data_.values())
-
-    else:
-        if category_undersample not in label_data_.keys() and category_undersample in category_value2id.keys():
-            min_label = label_data_[category_value2id[category_undersample]]
-        else:
-            min_label = label_data_[category_undersample]
+    logger.info("Original number of samples per label: %s", label_data_)
 
     data_undersampled = []
-    label_data_counter = {v: 0 for v in category_value2id.values()}
+    if config and config.model.phase_number != 0:
+        # Undersampling data
+        category_undersample = config.model.category_undersample
+        if category_undersample is None or category_undersample == '':
+            min_label = min(label_data_.values())
 
-    for sample in data:
-        if label_data_counter[sample[-1]] < min_label:
-            data_undersampled.append(sample)
-            label_data_counter[sample[-1]] += 1
+        else:
+            if category_undersample not in label_data_.keys() and category_undersample in category_value2id.keys():
+                min_label = label_data_[category_value2id[category_undersample]]
+            else:
+                min_label = label_data_[category_undersample]
 
-    label_data = {v: 0 for v in category_value2id.values()}
-    for i in range(len(data_undersampled)):
-        if data_undersampled[i][2] in category_value2id.values():
-            label_data[data_undersampled[i][2]] = label_data[data_undersampled[i][2]] + 1
-    logger.info("Updated number of samples per label (for 2-phase learning): %s",label_data)
+        label_data_counter = {v: 0 for v in category_value2id.values()}
+
+        for sample in data:
+            if label_data_counter[sample[-1]] < min_label:
+                data_undersampled.append(sample)
+                label_data_counter[sample[-1]] += 1
+
+        label_data = {v: 0 for v in category_value2id.values()}
+        for i in range(len(data_undersampled)):
+            if data_undersampled[i][2] in category_value2id.values():
+                label_data[data_undersampled[i][2]] = label_data[data_undersampled[i][2]] + 1
+        logger.info("Updated number of samples per label (for 2-phase learning): %s", label_data)
 
     return data, data_undersampled, category_value2id
 
