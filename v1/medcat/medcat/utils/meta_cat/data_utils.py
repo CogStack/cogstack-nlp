@@ -186,8 +186,10 @@ def encode_category_values(data: Dict, existing_category_value2id: Optional[Dict
         category_value2id = {}
 
     category_values = set([x[2] for x in data])
-    if len(category_values)!=config.model.nclasses:
-        raise Exception("The number of classes found in the data - %s does not match the number of classes defined in the config - %s (config.model.nclasses). Please update the number of classes and initialise the model again.",len(category_values),config.model.nclasses)
+
+    if config:
+        if len(category_values)!=config.model.nclasses:
+            raise Exception("The number of classes found in the data - %s does not match the number of classes defined in the config - %s (config.model.nclasses). Please update the number of classes and initialise the model again.",len(category_values),config.model.nclasses)
 
     # If categoryvalue2id is pre-defined or if all the classes aren't mentioned
     if len(category_value2id) != 0:
