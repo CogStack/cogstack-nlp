@@ -8,6 +8,9 @@ on:
       - 'medcat-den/**'
       - '.github/workflows/medcat-den**'
 
+permissions:
+  id-token: write
+
 defaults:
   run:
     working-directory: ./medcat-den
