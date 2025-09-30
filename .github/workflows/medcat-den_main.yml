@@ -65,7 +65,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install --upgrade build
+          python -m pip install --upgrade build setuptools_scm
 
       - name: Install package in development mode
         run: |
