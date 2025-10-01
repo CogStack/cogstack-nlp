@@ -9,7 +9,7 @@ services:
         SPACY_MODELS: ${SPACY_MODELS:-en_core_web_md}
     restart: always
     networks:
-      - gateway-auth_gateway-net
+      - "${USE_OIDC:+gateway-auth_gateway-net}"
     volumes:
       - api-media:/home/api/media
       - api-static:/home/api/static
@@ -44,10 +44,10 @@ services:
       - medcattrainer
       - solr
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.mct-nginx.rule=Host(`medcattrainer.cogstack.localhost`)"
-      - "traefik.http.routers.mct-nginx.entrypoints=web"
-      - "traefik.http.services.mct-nginx.loadbalancer.server.port=8001"
+      - "${USE_OIDC:+traefik.enable=true}"
+      - "${USE_OIDC:+traefik.http.routers.nginx.rule=Host(`${NGINX_HOST:-medcattrainer.cogstack.localhost}`)}"
+      - "${USE_OIDC:+traefik.http.routers.nginx.entrypoints=web}"
+      - "${USE_OIDC:+traefik.http.services.nginx.loadbalancer.server.port=8000}"
 
   solr:
     container_name: mct_solr
@@ -60,7 +60,7 @@ services:
     volumes:
       - solr-data:/var/solr
     networks:
-      - gateway-auth_gateway-net
+      - "${USE_OIDC:+gateway-auth_gateway-net}"
     command:
       - -cloud
 
