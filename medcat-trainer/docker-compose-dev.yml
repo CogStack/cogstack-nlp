@@ -44,7 +44,6 @@ services:
       - medcattrainer
       - solr
     labels:
-      # Routes to http://medcattrainer.cogstack.localhost/
       - "traefik.enable=true"
       - "traefik.http.routers.mct-nginx.rule=Host(`medcattrainer.cogstack.localhost`)"
       - "traefik.http.routers.mct-nginx.entrypoints=web"
