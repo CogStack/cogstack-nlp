@@ -133,6 +133,16 @@ class ConfigMergeTests(unittest.TestCase):
             model.config.general.nlp.modelname, self.spacy_model_name)
 
 
+class OntologiesMapTests(TrainedModelTests):
+
+    def test_does_not_have_auto(self):
+        self.assertNotEqual(self.model.config.general.map_to_other_ontologies,
+                            "auto")
+
+    def test_is_empty(self):
+        self.assertFalse(self.model.config.general.map_to_other_ontologies)
+
+
 class InferenceFromLoadedTests(TrainedModelTests):
 
     def test_can_load_model(self):
