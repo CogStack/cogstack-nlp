@@ -170,10 +170,9 @@ def find_alternate_classname(category_value2id, category_values, alternative_cla
                 Updated category_value2id with keys corresponding to alternative class names
 
        Raises:
-           Exception:
-                If no alternatives are found for labels in category_value2id that don't match any of the labels in the data
-                If the alternatives defined for labels in category_value2id that don't match any of the labels in the data
-                """
+           Exception: If no alternatives are found for labels in category_value2id that don't match any of the labels in the data
+           Exception: If the alternatives defined for labels in category_value2id that don't match any of the labels in the data
+    """
 
     updated_category_value2id = {}
     for _class in category_value2id.keys():
@@ -219,7 +218,6 @@ def undersample_data(data,category_value2id,label_data_,config,):
             dict:
                 Undersampled data (for 2 phase learning) with integers inplace of strings for category values
     """
-
 
     data_undersampled = []
     category_undersample = config.model.category_undersample
@@ -271,10 +269,10 @@ def encode_category_values(data: Dict, existing_category_value2id: Optional[Dict
             Map from category value to ID for all categories in the data.
 
     Raises:
-        Exception:
-            If the number of classes in config do not match the number of classes found in the data
-            If category_value2id is pre-defined, its labels do not match the labels found in the data and alternative_class_names is empty
+        Exception: If the number of classes in config do not match the number of classes found in the data
+        Exception: If category_value2id is pre-defined, its labels do not match the labels found in the data and alternative_class_names is empty
     """
+
     data = list(data)
     if existing_category_value2id is not None:
         category_value2id = existing_category_value2id
