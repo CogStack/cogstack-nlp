@@ -1,5 +1,5 @@
 medcat[spacy,deid,meta-cat,rel-cat]~=2.1.0
-../medcat-den
+medcat-den
 ipython
 plotly
 openpyxl
