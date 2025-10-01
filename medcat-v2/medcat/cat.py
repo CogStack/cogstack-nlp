@@ -535,15 +535,8 @@ class CAT(AbstractSerialisable):
         other_onts = self.config.general.map_to_other_ontologies
         if other_onts:
             if other_onts == "auto":
-                self.config.general.map_to_other_ontologies = other_onts = [
-                    key.removeprefix("cui2")
-                    for key in self.cdb.addl_info
-                    if key.startswith("cui2")
-                ]
-                logger.info(
-                    "Automatically finding ontologies to map to: %s",
-                    other_onts)
-            for ont in self.config.general.map_to_other_ontologies:
+                other_onts = self._set_and_get_mapped_ontologies()
+            for ont in other_onts:
                 if ont in out_dict:
                     logger.warning(
                         "Trying to map to ontology '%s', but it already "
@@ -562,6 +555,18 @@ class CAT(AbstractSerialisable):
                 ont_values = ont_map.get(cui, [])
                 out_dict[ont] = ont_values  # type: ignore
         return out_dict
+
+    def _set_and_get_mapped_ontologies(self) -> list[str]:
+        other_onts = self.config.general.map_to_other_ontologies
+        if other_onts == "auto":
+            self.config.general.map_to_other_ontologies = other_onts = [
+                key.removeprefix("cui2")
+                for key in self.cdb.addl_info
+                if key.startswith("cui2")
+            ]
+            logger.info(
+                "Automatically finding ontologies to map to: %s", other_onts)
+        return other_onts
 
     def get_addon_output(self, ent: MutableEntity) -> dict[str, dict]:
         """Get the addon output for the entity.
