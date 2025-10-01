@@ -205,7 +205,7 @@ def undersample_data(data: List, category_value2id: Dict, label_data_,config) ->
     """Undersamples the data for 2 phase learning
 
         Args:
-            data (Dict):
+            data (List):
                 Output of `prepare_from_json`.
             category_value2id(Dict):
                 Map from category_value to id.
