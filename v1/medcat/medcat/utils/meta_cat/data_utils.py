@@ -246,6 +246,7 @@ def undersample_data(data,category_value2id,label_data_,config,):
     logger.info("Updated number of samples per label (for 2-phase learning): %s", label_data)
     return data_undersampled
 
+
 def encode_category_values(data: Dict, existing_category_value2id: Optional[Dict] = None,
                            alternative_class_names: List[List] = [], config=None) -> Tuple:
     """Converts the category values in the data outputted by `prepare_from_json`
@@ -301,7 +302,7 @@ def encode_category_values(data: Dict, existing_category_value2id: Optional[Dict
                     f"{set(category_value2id.keys())}, {category_values}. Additionally, ensure the populate the "
                     "'alternative_class_names' attribute to accommodate for variations.")
 
-            category_value2id = alternative_class_names(category_value2id, category_values, alternative_class_names)
+            category_value2id = find_alternate_classname(category_value2id, category_values, alternative_class_names)
 
     # Else create the mapping from the labels found in the data
     if len(category_value2id) != len(category_values):
