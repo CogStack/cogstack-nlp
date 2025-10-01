@@ -143,6 +143,31 @@ class OntologiesMapTests(TrainedModelTests):
         self.assertFalse(self.model.config.general.map_to_other_ontologies)
 
 
+class OntologiesMapWithOntologiesTests(TrainedModelTests):
+    MY_ONT_NAME = "My_Ontology"
+    MY_ONT_MAPPING = {
+        # mapping doens't matter here, really
+        "ABC": "BBC"
+    }
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        # add "mapping"
+        cls.model.cdb.addl_info[f"cui2{cls.MY_ONT_NAME}"] = cls.MY_ONT_MAPPING
+        # set to auto
+        cls.model.config.general.map_to_other_ontologies = "auto"
+        # redo process
+        cls.model._set_and_get_mapped_ontologies()
+
+    def test_has_my_ontology(self):
+        self.assertEqual(
+            len(self.model.config.general.map_to_other_ontologies), 1)
+        self.assertEqual(
+            self.model.config.general.map_to_other_ontologies,
+            [self.MY_ONT_NAME])
+
+
 class InferenceFromLoadedTests(TrainedModelTests):
 
     def test_can_load_model(self):
