@@ -54,8 +54,6 @@ jobs:
           fetch-depth: 0        # fetch all history
           fetch-tags: true      # fetch tags explicitly
 
-      - run: git tag --list
-
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
