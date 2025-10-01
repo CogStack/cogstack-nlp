@@ -824,6 +824,8 @@ class CAT(AbstractSerialisable):
         #       will be dealt with upon pipeline creation automatically
         if not isinstance(cat, CAT):
             raise ValueError(f"Unable to load CAT. Got: {cat}")
+        # reset mapped ontologies at load time but after CDB load
+        cat._set_and_get_mapped_ontologies()
         return cat
 
     @classmethod
