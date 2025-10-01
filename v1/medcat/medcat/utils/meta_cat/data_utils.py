@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Tuple, Iterable, List, Union
+from typing import Any, Dict, Optional, Tuple, Iterable, List, Union, Set
 from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBase
 import copy
 import logging
@@ -153,7 +153,7 @@ def prepare_for_oversampled_data(data: List,
     return data_sampled
 
 
-def find_alternate_classname(category_value2id, category_values, alternative_class_names):
+def find_alternate_classname(category_value2id: Dict, category_values: Set, alternative_class_names: List[List]) -> Dict:
     """Helper function to find and map to alternative class names for the given category.
         Example: For Temporality category, 'Recent' is an alternative to 'Present'.
 
@@ -201,7 +201,7 @@ def find_alternate_classname(category_value2id, category_values, alternative_cla
     return category_value2id
 
 
-def undersample_data(data,category_value2id,label_data_,config,):
+def undersample_data(data: List, category_value2id: Dict, label_data_,config) -> List:
     """Undersamples the data for 2 phase learning
 
         Args:
@@ -215,8 +215,8 @@ def undersample_data(data,category_value2id,label_data_,config,):
                 MetaCAT config
 
         Returns:
-            dict:
-                Undersampled data (for 2 phase learning) with integers inplace of strings for category values
+            data_undersampled (list):
+                Return the data created for 2 phase learning) with integers inplace of strings for category values
     """
 
     data_undersampled = []
@@ -261,11 +261,11 @@ def encode_category_values(data: Dict, existing_category_value2id: Optional[Dict
             MetaCAT config
 
     Returns:
-        dict:
+        data (list):
             New data with integers inplace of strings for category values.
-        dict:
+        data_undersampled (list):
             New undersampled data (for 2 phase learning) with integers inplace of strings for category values
-        dict:
+        category_value2id (dict):
             Map from category value to ID for all categories in the data.
 
     Raises:
