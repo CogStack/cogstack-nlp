@@ -686,13 +686,17 @@ def upload_deployment(request):
     cdb_id = deployment_export.get('cdb_id', None)
     vocab_id = deployment_export.get('vocab_id', None)
     modelpack_id = deployment_export.get('modelpack_id', None)
+    project_name_suffix = deployment_export.get('project_name_suffix', ' IMPORTED')
 
     if all(x is None for x in [cdb_id, vocab_id, modelpack_id]):
         return Response("No cdb, vocab, or modelpack provided", 400)
 
-    upload_projects_export(deployment_upload, cdb_id, vocab_id, modelpack_id)
-    # logger.info(f'Errors encountered during previous deployment upload\n{errs}')
-    return Response("successfully uploaded", 200)
+    try:
+        upload_projects_export(deployment_upload, cdb_id, vocab_id, modelpack_id,
+                               project_name_suffix)
+        return Response("successfully uploaded", 200)
+    except Exception as e:
+        return Response(f"Failed to upload projects export: {str(e)}", 500)
 
 
 @api_view(http_method_names=['GET', 'DELETE'])

@@ -3,7 +3,7 @@ import logging
 import re
 from collections import defaultdict
 from datetime import datetime
-from typing import Dict
+from typing import Dict, List
 
 from django.contrib.auth.models import User
 from django.db import transaction
@@ -66,10 +66,14 @@ def delete_orphan_docs(dataset: Dataset):
     Document.objects.filter(dataset__id=dataset.id).delete()
 
 
-def upload_projects_export(medcat_export: Dict, cdb_id: str, vocab_id: str, modelpack_id: str):
+def upload_projects_export(medcat_export: Dict, cdb_id: str, vocab_id: str, modelpack_id: str,
+                            project_name_suffix: str=' IMPORTED'):
     for proj in medcat_export['projects']:
+        if len(proj['documents']) == 0:
+            # don't add projects with no documents
+            continue
         p = ProjectAnnotateEntities()
-        p.name = proj['name'] + ' IMPORTED'
+        p.name = f"{proj['name']}{project_name_suffix}"
         if len(proj['cuis']) > 1000:
             # store large CUI lists in a json file.
             cuis_file_name = MEDIA_ROOT + '/' + re.sub('/|\.', '_', p.name + '_cuis_file') + '.json'

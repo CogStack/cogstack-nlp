@@ -595,7 +595,8 @@ class MedCATTrainerSession:
     def upload_projects_export(self, projects: Dict[str, Any],
                                cdb: Union[MCTConceptDB, str]=None,
                                vocab: Union[MCTVocab, str]=None,
-                               modelpack: Union[MCTModelPack, str]=None):
+                               modelpack: Union[MCTModelPack, str]=None,
+                               import_project_name_suffix: str=' IMPORTED'):
         """Upload Trainer export as a list of projects to a MedCATTrainer instance.
 
         Args:
@@ -612,7 +613,8 @@ class MedCATTrainerSession:
             modelpack = [m for m in self.get_model_packs() if m.name == modelpack].pop()
 
         payload = {
-            'exported_projects': projects
+            'exported_projects': projects,
+            'project_name_suffix': import_project_name_suffix
         }
 
         if cdb and vocab:
