@@ -156,6 +156,7 @@ class TestMCTClient(unittest.TestCase):
             headers=session.headers,
             json={
                 'exported_projects': projects,
+                'project_name_suffix': ' IMPORTED',
                 'cdb_id': '20',
                 'vocab_id': '30'
             }
@@ -210,6 +211,7 @@ class TestMCTClient(unittest.TestCase):
             headers=session.headers,
             json={
                 'exported_projects': projects,
+                'project_name_suffix': ' IMPORTED',
                 'cdb_id': '20',
                 'vocab_id': '30'
             }
@@ -249,6 +251,7 @@ class TestMCTClient(unittest.TestCase):
             headers=session.headers,
             json={
                 'exported_projects': projects,
+                'project_name_suffix': ' IMPORTED',
                 'modelpack_id': '40'
             }
         )
@@ -297,6 +300,7 @@ class TestMCTClient(unittest.TestCase):
             headers=session.headers,
             json={
                 'exported_projects': projects,
+                'project_name_suffix': ' IMPORTED',
                 'modelpack_id': '40'
             }
         )
