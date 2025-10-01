@@ -55,6 +55,7 @@ jobs:
           fetch-tags: true      # fetch tags explicitly
 
       - run: git tag --list
+      - run: python -m setuptools_scm
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -65,8 +66,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install --upgrade build setuptools_scm
-
-      - run: python -m setuptools_scm
 
       - name: Install package in development mode
         run: |
