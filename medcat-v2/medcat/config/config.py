@@ -1,6 +1,6 @@
 import os
 from typing import (Optional, Iterator, Iterable, TypeVar, cast, Type, Any,
-                    Literal)
+                    Literal, Union)
 from typing import Protocol, runtime_checkable
 from typing_extensions import Self
 import logging
@@ -252,12 +252,16 @@ class General(SerialisableBaseModel):
     map_cui_to_group: bool = False
     """If the cdb.addl_info['cui2group'] is provided and this option enabled,
     each CUI will be mapped to the group"""
-    map_to_other_ontologies: list[str] = ["opcs4", "icd10"]
+    map_to_other_ontologies: Union[Literal["auto"], list[str]] = "auto"
     """Which other ontologies to map to if possible.
 
     This will force medcat to include mapping for other ontologies in
     its outputs. It will use the mappings in `cdb.addl_info["cui2<ont>"]`
     are present.
+
+    If set to "auto" (or missign), the value will be inferred from available
+    data at first init time. That is to say, it'll map to all ontologies
+    available.
 
     NB!
     This will only work if the `cdb.addl_info["cui2<ont>"]` exists.

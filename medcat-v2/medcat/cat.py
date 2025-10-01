@@ -532,7 +532,17 @@ class CAT(AbstractSerialisable):
         # addons:
         out_dict.update(self.get_addon_output(ent))  # type: ignore
         # other ontologies
-        if self.config.general.map_to_other_ontologies:
+        other_onts = self.config.general.map_to_other_ontologies
+        if other_onts:
+            if other_onts == "auto":
+                self.config.general.map_to_other_ontologies = other_onts = [
+                    key.removeprefix("cui2")
+                    for key in self.cdb.addl_info
+                    if key.startswith("cui2")
+                ]
+                logger.info(
+                    "Automatically finding ontologies to map to: %s",
+                    other_onts)
             for ont in self.config.general.map_to_other_ontologies:
                 if ont in out_dict:
                     logger.warning(
