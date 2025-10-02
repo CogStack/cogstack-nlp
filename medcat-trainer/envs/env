@@ -46,7 +46,7 @@ EMAIL_HOST=mail.cogstack.org
 EMAIL_PORT=465
 
 # Backend auth
-USE_OIDC=1
+USE_OIDC=
 
 # Traefik
 NGINX_HOST=medcattrainer.cogstack.localhost
