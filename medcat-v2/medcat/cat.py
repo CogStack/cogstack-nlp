@@ -556,8 +556,8 @@ class CAT(AbstractSerialisable):
 
     def _set_and_get_mapped_ontologies(
             self,
-            ignore_list: list[str] = ["ontologies", "original_names",
-                                      "description", "group"],
+            ignore_set: set[str] = {"ontologies", "original_names",
+                                    "description", "group"},
             ignore_empty: bool = True) -> list[str]:
         other_onts = self.config.general.map_to_other_ontologies
         if other_onts == "auto":
@@ -570,7 +570,7 @@ class CAT(AbstractSerialisable):
                 # these are things that get auto-populated in addl_info
                 # but don't generally contain ontology mapping information
                 # directly
-                (npkey := key.removeprefix("cui2")) not in ignore_list
+                (npkey := key.removeprefix("cui2")) not in ignore_set
             ]
             logger.info(
                 "Automatically finding ontologies to map to: %s", other_onts)
