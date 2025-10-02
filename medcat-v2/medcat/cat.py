@@ -532,10 +532,8 @@ class CAT(AbstractSerialisable):
         # addons:
         out_dict.update(self.get_addon_output(ent))  # type: ignore
         # other ontologies
-        other_onts = self.config.general.map_to_other_ontologies
+        other_onts = self._set_and_get_mapped_ontologies()
         if other_onts:
-            if other_onts == "auto":
-                other_onts = self._set_and_get_mapped_ontologies()
             for ont in other_onts:
                 if ont in out_dict:
                     logger.warning(
