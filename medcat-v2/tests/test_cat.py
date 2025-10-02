@@ -145,6 +145,7 @@ class OntologiesMapTests(TrainedModelTests):
 
 class OntologiesMapWithOntologiesTests(TrainedModelTests):
     MY_ONT_NAME = "My_Ontology"
+    EXP_GET = [MY_ONT_NAME]
     MY_ONT_MAPPING = {
         # mapping doens't matter here, really
         "ABC": "BBC"
@@ -164,12 +165,13 @@ class OntologiesMapWithOntologiesTests(TrainedModelTests):
         cls.model.cdb.addl_info[f"cui2{cls.MY_ONT_NAME}"] = cls.MY_ONT_MAPPING
         cls.reset_mappings()
 
-    def test_has_my_ontology(self):
+    def test_has_correct_results(self):
         self.assertEqual(
-            len(self.model.config.general.map_to_other_ontologies), 1)
+            len(self.model.config.general.map_to_other_ontologies),
+            len(self.EXP_GET))
         self.assertEqual(
             self.model.config.general.map_to_other_ontologies,
-            [self.MY_ONT_NAME])
+            self.EXP_GET)
 
 
 class InferenceFromLoadedTests(TrainedModelTests):
