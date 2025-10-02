@@ -171,6 +171,40 @@ class OntologiesMapWithOntologiesTests(TrainedModelTests):
         self.assertEqual(got, self.EXP_GET)
 
 
+class OntologiesMapWithOntologiesAndNoIgnoresTests(
+        OntologiesMapWithOntologiesTests):
+    EXTRA_ONTS = ["original_names"]
+
+    @classmethod
+    def reset_mappings(cls):
+        # set to auto
+        cls.model.config.general.map_to_other_ontologies = "auto"
+        # redo process
+        cls.model._set_and_get_mapped_ontologies(ignore_set=set())
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        # I need to redefine for specific class
+        # instead of changing instance in base class
+        cls.EXP_GET = OntologiesMapWithOntologiesTests.EXP_GET.copy()
+        cls.EXP_GET.extend(cls.EXTRA_ONTS)
+        cls.EXP_GET.sort()
+        cls.reset_mappings()
+
+
+class OntologiesMapWithOntologiesAndAllowEmpty(
+        OntologiesMapWithOntologiesAndNoIgnoresTests):
+    EXTRA_ONTS = ["icd10", "opcs4"]
+
+    @classmethod
+    def reset_mappings(cls):
+        # set to auto
+        cls.model.config.general.map_to_other_ontologies = "auto"
+        # redo process
+        cls.model._set_and_get_mapped_ontologies(ignore_empty=False)
+
+
 class InferenceFromLoadedTests(TrainedModelTests):
 
     def test_can_load_model(self):
