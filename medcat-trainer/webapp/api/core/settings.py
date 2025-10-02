@@ -51,7 +51,7 @@ ALLOWED_HOSTS = ['*']
 
 APPEND_SLASH = True
 
-USE_OIDC = os.getenv('USE_OIDC', "false").lower() == "true"
+USE_OIDC = os.getenv('USE_OIDC', '').lower() == '1'
 
 # Application definition
 
@@ -187,15 +187,12 @@ REST_FRAMEWORK = {
     ]
 }
 
-log.info(f"USE_OIDC?: {USE_OIDC}")
 if USE_OIDC:
     log.info("Using OIDC authentication")
     REST_FRAMEWORK["DEFAULT_AUTHENTICATION_CLASSES"] = [
         'oidc_auth.authentication.JSONWebTokenAuthentication',
         'oidc_auth.authentication.BearerTokenAuthentication',
     ]
-
-log.info("REST_FRAMEWORK =", REST_FRAMEWORK)
 
 OIDC_AUTH = {
     'OIDC_ENDPOINT': 'http://keycloak:8080/realms/cogstack-realm',

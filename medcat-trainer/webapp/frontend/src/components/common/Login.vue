@@ -51,7 +51,7 @@ export default {
       failed: false,
       failedAdminStatusCheck: false,
       reset_pw: import.meta.env.VITE_APP_EMAIL === '1',
-      useOidc: import.meta.env.VITE_USE_OIDC === 'true'
+      useOidc: import.meta.env.VITE_USE_OIDC === '1'
     }
   },
   methods: {

@@ -9,7 +9,7 @@ services:
         SPACY_MODELS: ${SPACY_MODELS:-en_core_web_md}
     restart: always
     networks:
-      - "${USE_OIDC:+gateway-auth_gateway-net}"
+      - ${USE_OIDC:+gateway-auth_gateway-net}
     volumes:
       - api-media:/home/api/media
       - api-static:/home/api/static
@@ -35,7 +35,7 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
       - ./nginx/sites-enabled/:/etc/nginx/sites-enabled
     networks:
-      - gateway-auth_gateway-net
+      - ${USE_OIDC:+gateway-auth_gateway-net}
     env_file:
       - ./envs/env
     ports:
@@ -60,7 +60,7 @@ services:
     volumes:
       - solr-data:/var/solr
     networks:
-      - "${USE_OIDC:+gateway-auth_gateway-net}"
+      - ${USE_OIDC:+gateway-auth_gateway-net}
     command:
       - -cloud
 

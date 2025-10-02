@@ -29,6 +29,8 @@
 import Login from '@/components/common/Login.vue'
 import EventBus from '@/event-bus'
 
+const USE_OIDC = import.meta.env.VITE_USE_OIDC === '1'
+
 export default {
   name: 'App',
   components: { Login },
@@ -37,7 +39,7 @@ export default {
       loginModal: false,
       uname: null,
       version: '',
-      useOidc: import.meta.env.VITE_USE_OIDC === "true"
+      useOidc: USE_OIDC,
     }
   },
   methods: {
@@ -65,23 +67,25 @@ export default {
     updateOidcUser () {
       if (this.$keycloak && this.$keycloak.tokenParsed) {
         this.uname = this.$keycloak.tokenParsed.preferred_username || null
-        // Ensure Authorization header is set
         this.$http.defaults.headers.common['Authorization'] = `Bearer ${this.$keycloak.token}`
       }
     },
     logout () {
-      if (!this.useOidc) {
-        this.$cookies.remove('username')
-        this.$cookies.remove('api-token')
-        this.$cookies.remove('admin')
-      } else {
-        if (this.$keycloak) this.$keycloak.logout({ redirectUri: window.location.origin })
-      }
       this.uname = null
-      if (this.$route.name !== 'home') {
-        this.$router.push({ name: 'home' })
+      this.$cookies.remove('username')
+      this.$cookies.remove('api-token')
+      this.$cookies.remove('admin')
+
+      if (this.useOidc && this.$keycloak && this.$keycloak.authenticated) {
+        this.$keycloak.logout({
+          redirectUri: import.meta.env.VITE_LOGOUT_REDIRECT_URI || 'http://home.cogstack.localhost/'
+        })
       } else {
-        this.$router.go()
+        if (this.$route.name !== 'home') {
+          this.$router.push({name: 'home'})
+        } else {
+          this.$router.go()
+        }
       }
     }
   },
@@ -91,9 +95,9 @@ export default {
     if (!this.useOidc) {
       this.uname = this.$cookies.get('username') || null
     } else {
-      this.updateOidcUser()
-      // Watch for token refresh events
-      if (this.$keycloak) {
+      if (this.$keycloak && this.$keycloak.authenticated) {
+        this.updateOidcUser()
+        // Watch for token refresh events
         this.$keycloak.onAuthRefreshSuccess = () => this.updateOidcUser()
         this.$keycloak.onAuthSuccess = () => this.updateOidcUser()
       }

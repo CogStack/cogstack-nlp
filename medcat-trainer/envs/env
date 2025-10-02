@@ -45,12 +45,8 @@ EMAIL_PASS="to be changed"
 EMAIL_HOST=mail.cogstack.org
 EMAIL_PORT=465
 
-USE_OIDC=true
-# in vite.config.ts: target: process.env.VITE_API_URL || 'http://127.0.0.1:8001',
-VITE_API_URL=http://localhost:8000
-VITE_USE_OIDC=true
-VITE_KEYCLOAK_URL=http://keycloak.cogstack.localhost/
-VITE_KEYCLOAK_REALM=cogstack-realm
-VITE_KEYCLOAK_CLIENT_ID=cogstack-medcattrainer-frontend
-VITE_KEYCLOAK_TOKEN_REFRESH_INTERVAL_MS=10000
-VITE_KEYCLOAK_TOKEN_MIN_VALIDITY_SECS=30
+# Backend auth
+USE_OIDC=1
+
+# Traefik
+NGINX_HOST=medcattrainer.cogstack.localhost

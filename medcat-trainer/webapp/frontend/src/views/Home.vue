@@ -73,7 +73,7 @@ export default {
       isAdmin: false,
       selectedProjectGroup: null,
       cdbSearchIndexStatus: {},
-      useOidc: import.meta.env.VITE_USE_OIDC === "true"
+      useOidc: import.meta.env.VITE_USE_OIDC === '1'
     }
   },
   created () {

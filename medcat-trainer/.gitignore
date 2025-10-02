@@ -15,7 +15,7 @@ tmp/
 /webapp/api/static/*
 
 # Configuration
-.env
+webapp/frontend/.env.local
 
 # Keep folders with this
 !.keep

@@ -46,7 +46,7 @@ const vuetify = createVuetify({
   }
 })
 
-const USE_OIDC = import.meta.env.VITE_USE_OIDC === 'true'
+const USE_OIDC = import.meta.env.VITE_USE_OIDC === '1'
 
 async function bootstrap() {
   const app = createApp(App)
