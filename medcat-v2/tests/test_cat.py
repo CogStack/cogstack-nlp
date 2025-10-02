@@ -151,14 +151,18 @@ class OntologiesMapWithOntologiesTests(TrainedModelTests):
     }
 
     @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        # add "mapping"
-        cls.model.cdb.addl_info[f"cui2{cls.MY_ONT_NAME}"] = cls.MY_ONT_MAPPING
+    def reset_mappings(cls):
         # set to auto
         cls.model.config.general.map_to_other_ontologies = "auto"
         # redo process
         cls.model._set_and_get_mapped_ontologies()
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        # add "mapping"
+        cls.model.cdb.addl_info[f"cui2{cls.MY_ONT_NAME}"] = cls.MY_ONT_MAPPING
+        cls.reset_mappings()
 
     def test_has_my_ontology(self):
         self.assertEqual(
