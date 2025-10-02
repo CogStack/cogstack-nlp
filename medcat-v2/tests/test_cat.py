@@ -166,12 +166,9 @@ class OntologiesMapWithOntologiesTests(TrainedModelTests):
         cls.reset_mappings()
 
     def test_has_correct_results(self):
-        self.assertEqual(
-            len(self.model.config.general.map_to_other_ontologies),
-            len(self.EXP_GET))
-        self.assertEqual(
-            self.model.config.general.map_to_other_ontologies,
-            self.EXP_GET)
+        got = sorted(self.model.config.general.map_to_other_ontologies)
+        self.assertEqual(len(got), len(self.EXP_GET))
+        self.assertEqual(got, self.EXP_GET)
 
 
 class InferenceFromLoadedTests(TrainedModelTests):
