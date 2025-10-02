@@ -259,7 +259,7 @@ class General(SerialisableBaseModel):
     its outputs. It will use the mappings in `cdb.addl_info["cui2<ont>"]`
     are present.
 
-    If set to "auto" (or missign), the value will be inferred from available
+    If set to "auto" (or missing), the value will be inferred from available
     data at first init time. That is to say, it'll map to all ontologies
     available.
 
