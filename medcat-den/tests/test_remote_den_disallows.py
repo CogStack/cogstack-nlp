@@ -3,6 +3,7 @@ from medcat_den.config import RemoteDenConfig
 from medcat_den.backend import DenType
 from medcat_den.injection import injected_den
 from medcat_den.wrappers import CATWrapper, CannotSendToRemoteException
+from medcat_den.wrappers import NotAllowedToFineTuneLocallyException
 from medcat_den.den import Den
 from medcat_den.den_impl.file_den import LocalFileDen
 from medcat_den.base import ModelInfo
@@ -109,7 +110,7 @@ def test_can_disallow_push_all(def_model_pack: CAT, den_disallow_all: LocalFileD
             model_pack.save_model_pack("Did some fine-tuning")
 
 
-def test_can_disallow_push_only(def_model_pack: CAT, den_allow_finetune_only: LocalFileDen):  # noqa
+def test_can_disallow_save_finetune_only(def_model_pack: CAT, den_allow_finetune_only: LocalFileDen):  # noqa
     model_pack = get_wrapped_model_pack(
         def_model_pack, den_allow_finetune_only._cnf)
     with injected_den(lambda: den_allow_finetune_only, inject_save=True):
@@ -117,4 +118,32 @@ def test_can_disallow_push_only(def_model_pack: CAT, den_allow_finetune_only: Lo
         model_pack.trainer.train_unsupervised(UNSUP_TRAIN_EXAMPLE)
         # attempt to save to den
         with pytest.raises(CannotSendToRemoteException):
+            model_pack.save_model_pack("Did some fine-tuning")
+
+
+
+def test_can_normally_fine_tune(def_model_pack: CAT, den: LocalFileDen):  # noqa
+    model_pack = get_wrapped_model_pack(
+        def_model_pack, den._cnf)
+    with injected_den(lambda: den, inject_save=True):
+        # should be able to just do some supervised training
+        model_pack.trainer.train_supervised_raw({"projects": []})
+
+
+def test_can_disallow_fine_tune_all(def_model_pack: CAT, den_disallow_all: LocalFileDen):  # noqa
+    model_pack = get_wrapped_model_pack(
+        def_model_pack, den_disallow_all._cnf)
+    with injected_den(lambda: den_disallow_all, inject_save=True):
+        # attempt to save do supervised training
+        with pytest.raises(NotAllowedToFineTuneLocallyException):
+            model_pack.trainer.train_supervised_raw({"projects": []})
+
+
+def test_can_disallow_fine_tune_push_only(def_model_pack: CAT, den_allow_push_only: LocalFileDen):  # noqa
+    model_pack = get_wrapped_model_pack(
+        def_model_pack, den_allow_push_only._cnf)
+    with injected_den(lambda: den_allow_push_only, inject_save=True):
+        # attempt to save do supervised training
+        with pytest.raises(NotAllowedToFineTuneLocallyException):
+            model_pack.trainer.train_supervised_raw({"projects": []})
             model_pack.save_model_pack("Did some fine-tuning")
