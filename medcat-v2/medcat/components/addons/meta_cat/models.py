@@ -146,7 +146,7 @@ class BertForMetaAnnotation(nn.Module):
         self._config = config
         self.bert = bert
         # NOTE: potentially used downstream
-        self.config = _bertconfig
+        self.config = self.bert_config = _bertconfig
         self.num_labels = config.model.nclasses
         for param in self.bert.parameters():
             param.requires_grad = not config.model.model_freeze_layers
