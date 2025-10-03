@@ -1,6 +1,7 @@
-from typing import Protocol, Optional, runtime_checkable
+from typing import Protocol, Optional, runtime_checkable, Union
 
 from medcat.cat import CAT
+from medcat.data.mctexport import MedCATTrainerExport
 
 from medcat_den.base import ModelInfo
 from medcat_den.wrappers import CATWrapper
@@ -101,6 +102,31 @@ class Den(Protocol):
                 be deleted. Defaults to False.
         """
         pass
+
+    def finetune_model(self, model_info: ModelInfo,
+                       data: Union[list[str], MedCATTrainerExport]
+                       ) -> ModelInfo:
+        """Finetune the model on the remote den.
+
+        This is an optional API that is (generally) only available
+        for remote dens. The idea is that the data is sent to the remote
+        den and the finetuning is done on the remote.
+
+        Args:
+            model_info (ModelInfo): The model info
+            data (Union[list[str], MedCATTrainerExport]): The list of project
+                ids (already on remote) or the trainer export to train on.
+
+        Returns:
+            ModelInfo: The resulting model.
+
+        Raises:
+            UnsupportedAPIException: If the den does not support this API.
+        """
+
+
+class UnsupportedAPIException(ValueError):
+    pass
 
 
 def get_default_den(
