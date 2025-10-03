@@ -5,6 +5,7 @@ from medcat.utils.defaults import DEFAULT_PACK_NAME
 from medcat.storage.serialisers import AvailableSerialisers
 
 from medcat_den.base import ModelInfo
+from medcat_den.config import DenConfig
 
 
 class CATWrapper(CAT):
@@ -20,6 +21,7 @@ class CATWrapper(CAT):
     """
 
     _model_info: ModelInfo
+    _den_cnf: DenConfig
 
     def save_model_pack(
             self, target_folder: str, pack_name: str = DEFAULT_PACK_NAME,
@@ -63,10 +65,11 @@ class CATWrapper(CAT):
                         config_dict: Optional[dict] = None,
                         addon_config_dict: Optional[dict[str, dict]] = None,
                         model_info: Optional[ModelInfo] = None,
+                        den_cnf: Optional[DenConfig] = None,
                         ) -> 'CAT':
         """Load the model pack from file.
 
-        This also
+        This may also disallow model load from disk in certain secnarios.
 
         Args:
             model_pack_path (str): The model pack path.
@@ -80,6 +83,9 @@ class CATWrapper(CAT):
             model_inof (Optional[ModelInfo]): The base model info based on
                 which the model was originally fetched. Should not be
                 left None.
+            den_cnf: (Optional[DenConfig]): The config for the den being
+                used. Should not be left None.
+
 
         Raises:
             ValueError: If the saved data does not represent a model pack.
@@ -95,7 +101,10 @@ class CATWrapper(CAT):
             cat.__class__ = CATWrapper
         if model_info is None:
             raise CannotWrapModel("Model info must be provided")
+        if den_cnf is None:
+            raise CannotWrapModel("den_cnf must be provided")
         cat._model_info = model_info
+        cat._den_cnf = den_cnf
         return cat
 
 

@@ -164,7 +164,8 @@ class LocalFileDen(Den):
         model_path = self._get_model_zip_path(model_info)
         return cast(
             CATWrapper,
-            CATWrapper.load_model_pack(model_path, model_info=model_info))
+            CATWrapper.load_model_pack(model_path, model_info=model_info,
+                                       den_cnf=self._cnf))
 
     def push_model(self, cat: CAT, description: str) -> None:
         if isinstance(cat, CATWrapper):
