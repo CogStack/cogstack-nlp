@@ -87,6 +87,17 @@ def den_allow_finetune_only(den: LocalFileDen, cnf_allow_finetune_only: RemoteDe
     return den
 
 
+def test_can_normally_push(def_model_pack: CAT, den: LocalFileDen):  # noqa
+    model_pack = get_wrapped_model_pack(
+        def_model_pack, den._cnf)
+    with injected_den(lambda: den, inject_save=True):
+        # do some training
+        model_pack.trainer.train_unsupervised(UNSUP_TRAIN_EXAMPLE)
+        # should be able to just send to den
+        model_pack.save_model_pack("Did some fine-tuning")
+
+
+
 def test_can_disallow_push_all(def_model_pack: CAT, den_disallow_all: LocalFileDen):  # noqa
     model_pack = get_wrapped_model_pack(
         def_model_pack, den_disallow_all._cnf)
