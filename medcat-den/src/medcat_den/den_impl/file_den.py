@@ -229,3 +229,10 @@ class LocalFileDen(Den):
             "Local den does not support finetuning on the den. "
             "Use a remote den instead or perform training locally."
         )
+
+    def evaluate_model(self, model_info: ModelInfo,
+                       data: Union[list[str], MedCATTrainerExport]) -> dict:
+        raise UnsupportedAPIException(
+            "Local den does not support evaluation on the den. "
+            "Use a remote den instead or perform evaluation locally."
+        )

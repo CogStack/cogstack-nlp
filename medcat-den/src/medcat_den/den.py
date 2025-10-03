@@ -112,6 +112,9 @@ class Den(Protocol):
         for remote dens. The idea is that the data is sent to the remote
         den and the finetuning is done on the remote.
 
+        If raw data is given, unless already present remotely, it will be
+        uploaded to the remote den.
+
         Args:
             model_info (ModelInfo): The model info
             data (Union[list[str], MedCATTrainerExport]): The list of project
@@ -123,6 +126,27 @@ class Den(Protocol):
         Raises:
             UnsupportedAPIException: If the den does not support this API.
         """
+
+    def evaluate_model(self, model_info: ModelInfo,
+                       data: Union[list[str], MedCATTrainerExport]) -> dict:
+        """Evaluate model on remote den.
+
+        This is an optional API that is (generally) only available
+        for remote dens. The idea is that the data is sent to the remote
+        den and the metrics are gathered on the remote.
+
+        If raw data is given, unless already present remotely, it will be
+        uploaded to the remote den.
+
+        Args:
+            model_info (ModelInfo): The model info.
+            data (Union[list[str], MedCATTrainerExport]): The list of project
+                ids (already on remote) or the trainer export to train on.
+
+        Returns:
+            dict: The resulting metrics.
+        """
+        pass
 
 
 class UnsupportedAPIException(ValueError):
