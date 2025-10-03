@@ -96,6 +96,8 @@ def _init_den_cnf(
             raise ValueError("Need to specify a host for remote den")
         if not credentials:
             raise ValueError("Need to specify credentials for remote den")
+        # NOTE: these will default to False when nothing is specified
+        #       because "None" is not in ALLOW_OPTION_LOWERCASE
         allow_local_fine_tune = str(
             remote_allow_local_fine_tune or
             os.getenv(MEDCAT_DEN_REMOTE_ALLOW_LOCAL_FINE_TUNE)
