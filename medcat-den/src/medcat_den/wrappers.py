@@ -61,6 +61,7 @@ class CATWrapper(CAT):
         if (is_injected_for_save() and isinstance(
                 self._den_cnf, RemoteDenConfig) and
                 not self._den_cnf.allow_push_fine_tuned):
+            # NOTE: should there be a check whether this is a base model?
             raise CannotSendToRemoteException(
                 "Cannot save fine-tuned model onto a remote den."
                 "In order to make full use of the remote den capabilities, "
