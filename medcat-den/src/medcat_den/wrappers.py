@@ -3,6 +3,8 @@ from typing import Union, Optional, cast
 from medcat.cat import CAT
 from medcat.utils.defaults import DEFAULT_PACK_NAME
 from medcat.storage.serialisers import AvailableSerialisers
+from medcat.trainer import Trainer
+from medcat.data.mctexport import MedCATTrainerExport
 
 from medcat_den.base import ModelInfo
 from medcat_den.config import DenConfig, RemoteDenConfig
@@ -70,6 +72,11 @@ class CATWrapper(CAT):
             target_folder, pack_name, serialiser_type, make_archive,
             only_archive, add_hash_to_pack_name, change_description)
 
+    @property
+    def trainer(self) -> Trainer:
+        tr = super().trainer
+        return WrappedTrainer(self._den_cnf, tr)
+
     @classmethod
     def load_model_pack(cls, model_pack_path: str,
                         config_dict: Optional[dict] = None,
@@ -118,6 +125,38 @@ class CATWrapper(CAT):
         return cat
 
 
+class WrappedTrainer(Trainer):
+
+    def __init__(self, den_cnf: DenConfig, delegate: Trainer):
+        super().__init__(delegate.cdb, delegate.caller, delegate._pipeline)
+        self._den_cnf = den_cnf
+
+    def train_supervised_raw(
+            self, data: MedCATTrainerExport, reset_cui_count: bool = False,
+            nepochs: int = 1, print_stats: int = 0, use_filters: bool = False,
+            terminate_last: bool = False, use_overlaps: bool = False,
+            use_cui_doc_limit: bool = False, test_size: float = 0,
+            devalue_others: bool = False, use_groups: bool = False,
+            never_terminate: bool = False,
+            train_from_false_positives: bool = False,
+            extra_cui_filter: Optional[set[str]] = None,
+            disable_progress: bool = False, train_addons: bool = False):
+        if (isinstance(self._den_cnf, RemoteDenConfig) and
+                not self._den_cnf.allow_local_fine_tune):
+            raise NotAllowedToFineTuneLocallyException(
+                "You are not allowed to fine-tune remote models locally. "
+                "Please use the `Den.finetune_model` method directly to "
+                "fine tune on the remote den, or if required, set the "
+                "`allow_local_fine_tune` config value to `True`."
+            )
+        return super().train_supervised_raw(
+            data, reset_cui_count, nepochs, print_stats, use_filters,
+            terminate_last, use_overlaps, use_cui_doc_limit, test_size,
+            devalue_others, use_groups, never_terminate,
+            train_from_false_positives, extra_cui_filter, disable_progress,
+            train_addons)
+
+
 class CannotWrapModel(ValueError):
 
     def __init__(self, *args):
@@ -131,6 +170,12 @@ class CannotSaveOnDiskException(ValueError):
 
 
 class CannotSendToRemoteException(ValueError):
+
+    def __call__(self, *args):
+        return super().__call__(*args)
+
+
+class NotAllowedToFineTuneLocallyException(ValueError):
 
     def __call__(self, *args):
         return super().__call__(*args)
