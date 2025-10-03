@@ -210,8 +210,8 @@ def prepare_for_oversampled_data(data: list,
     return data_sampled
 
 
-def find_alternate_classname(category_value2id: dict, category_values: set,
-                             alternative_class_names: list[list]) -> dict:
+def find_alternate_classname(category_value2id: dict, category_values: set[str],
+                             alternative_class_names: list[list[str]]) -> dict:
     """Find and map to alternative class names for the given category.
 
         Example:
@@ -220,9 +220,9 @@ def find_alternate_classname(category_value2id: dict, category_values: set,
         Args:
             category_value2id (dict):
                 The pre-defined category_value2id
-            category_values (set):
+            category_values (set[str]):
                 Contains the classes (labels) found in the data
-            alternative_class_names (list[list]):
+            alternative_class_names (list[list[str]]):
                 Contains the mapping of alternative class names
 
         Returns:
