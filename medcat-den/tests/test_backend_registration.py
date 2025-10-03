@@ -3,9 +3,13 @@ from unittest.mock import MagicMock
 
 from medcat_den.backend import DenType, _remote_den_map, register_remote_den
 from medcat_den.resolver import resolve
+from medcat_den.den import Den
 
 
-FakeDen = MagicMock
+class FakeDen(MagicMock):
+
+    def __init__(self, *args, **kw):
+        super().__init__(*args, **kw, spec=Den)
 
 
 @pytest.fixture()
