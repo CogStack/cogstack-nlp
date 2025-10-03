@@ -5,7 +5,7 @@ from medcat.utils.defaults import DEFAULT_PACK_NAME
 from medcat.storage.serialisers import AvailableSerialisers
 
 from medcat_den.base import ModelInfo
-from medcat_den.config import DenConfig
+from medcat_den.config import DenConfig, RemoteDenConfig
 
 
 class CATWrapper(CAT):
@@ -56,6 +56,16 @@ class CATWrapper(CAT):
         if not force_save_local and not is_injected_for_save():
             raise CannotSaveOnDiskException(
                 f"Cannot save model on disk: {CATWrapper.__doc__}")
+        if (is_injected_for_save() and isinstance(
+                self._den_cnf, RemoteDenConfig) and
+                not self._den_cnf.allow_push_fine_tuned):
+            raise CannotSaveOnDiskException(
+                "Cannot save fine-tuned model onto a remote den."
+                "In order to make full use of the remote den capabilities, "
+                "use the den API to fine tune a model directly on the den. "
+                "See `Den.finetune_model` for details or set the config "
+                "option of `allow_push_fine_tuned` to True"
+            )
         return super().save_model_pack(
             target_folder, pack_name, serialiser_type, make_archive,
             only_archive, add_hash_to_pack_name, change_description)
