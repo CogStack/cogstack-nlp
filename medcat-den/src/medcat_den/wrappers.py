@@ -59,7 +59,7 @@ class CATWrapper(CAT):
         if (is_injected_for_save() and isinstance(
                 self._den_cnf, RemoteDenConfig) and
                 not self._den_cnf.allow_push_fine_tuned):
-            raise CannotSaveOnDiskException(
+            raise CannotSendToRemoteException(
                 "Cannot save fine-tuned model onto a remote den."
                 "In order to make full use of the remote den capabilities, "
                 "use the den API to fine tune a model directly on the den. "
@@ -128,3 +128,9 @@ class CannotSaveOnDiskException(ValueError):
 
     def __init__(self, *args):
         super().__init__(*args)
+
+
+class CannotSendToRemoteException(ValueError):
+
+    def __call__(self, *args):
+        return super().__call__(*args)
