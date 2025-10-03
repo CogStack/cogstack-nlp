@@ -2,7 +2,7 @@ import torch
 from collections import OrderedDict
 from typing import Optional, Any, Iterable
 from torch import nn, Tensor
-from transformers import BertModel, AutoConfig, PretrainedConfig
+from transformers import BertModel, AutoConfig
 from medcat.config.config_meta_cat import ConfigMetaCAT
 import logging
 logger = logging.getLogger(__name__)
@@ -95,17 +95,6 @@ class LSTM(nn.Module):
         return x6
 
 
-class MetaCATHFConfig(PretrainedConfig):
-    """This class provides a gap between ConfigMetaCAT and the HF config.
-
-    Some parts expects a HG config that has dict-like capabilities.
-    But the local ones we use here are just pydantic models now.
-    So this class just wraps the values into a HF-specific config.
-    """
-    def __init__(self, meta_config: ConfigMetaCAT):
-        super().__init__(**meta_config.model_dump())
-
-
 class BertForMetaAnnotation(nn.Module):
     _keys_to_ignore_on_load_unexpected: list[str] = [r"pooler"]  # type: ignore
 
@@ -155,9 +144,9 @@ class BertForMetaAnnotation(nn.Module):
                     exc_info=e)
 
         self._config = config
-        self.config = MetaCATHFConfig(config)
         self.bert = bert
-        self.bert_config = _bertconfig
+        # NOTE: potentially used downstream
+        self.config = _bertconfig
         self.num_labels = config.model.nclasses
         for param in self.bert.parameters():
             param.requires_grad = not config.model.model_freeze_layers
