@@ -158,7 +158,8 @@ def resolve_from_config(config: DenConfig) -> Den:
         den = den_cls(cnf=config)
         if not isinstance(den, Den):
             raise ValueError(
-                f"Registered den class for {config.type} is not a Den")
+                f"Registered den class for {config.type} is not a Den. "
+                f"Got {type(den)}: {den}")
         return den
     else:
         raise ValueError(
