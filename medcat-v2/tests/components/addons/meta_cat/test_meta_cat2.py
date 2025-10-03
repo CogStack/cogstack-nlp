@@ -153,6 +153,7 @@ class MetaCATInCATTests(unittest.TestCase):
         cls.vocab.init_cumsums()
         cls._temp_logs_folder = tempfile.TemporaryDirectory()
         cls.temp_dir = tempfile.TemporaryDirectory()
+        cls.cdb.config.general.nlp.provider = "spacy"
         cls.cdb.config.general.nlp.modelname = "en_core_web_md"
         cls.cdb.config.components.ner.min_name_len = 2
         cls.cdb.config.components.ner.upper_case_limit_len = 3
