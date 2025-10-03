@@ -162,6 +162,8 @@ def get_default_den(
         expiration_time: Optional[int] = None,
         max_size: Optional[int] = None,
         eviction_policy: Optional[str] = None,
+        remote_allow_local_fine_tune: Optional[str] = None,
+        remote_allow_push_fine_tuned: Optional[str] = None,
         ) -> Den:
     """Get the default den.
 
@@ -187,6 +189,10 @@ def get_default_den(
             Policies avialable: LRU (`least-recently-used`),
                 LRS (`least-recently-stored`), LFU (`least-frequently-used`),
                 and `none` (disables evictions).
+        remote_allow_local_fine_tune (Optional[str]): Whether to allow local
+            fine tuning of remote models.
+        remote_allow_push_fine_tuned (Optional[str]): Whether to allow pushing
+            of locally fine-tuned models to the remote
 
     Returns:
         Den: The resolved den.
@@ -194,7 +200,8 @@ def get_default_den(
     # NOTE: doing dynamic import to avoid circular imports
     from medcat_den.resolver import resolve
     return resolve(type_, location, host, credentials, local_cache_path,
-                   expiration_time, max_size, eviction_policy)
+                   expiration_time, max_size, eviction_policy,
+                   remote_allow_local_fine_tune, remote_allow_push_fine_tuned)
 
 
 def get_default_user_local_den(
