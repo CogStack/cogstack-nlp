@@ -194,25 +194,30 @@ if USE_OIDC:
         'oidc_auth.authentication.BearerTokenAuthentication',
     ]
 
+OIDC_HOST = os.environ.get("OIDC_HOST", "")
+OIDC_REALM = os.environ.get("OIDC_REALM", "")
+OIDC_FRONTEND_CLIENT_ID = os.environ.get("OIDC_FRONTEND_CLIENT_ID", "")
+
 OIDC_AUTH = {
-    'OIDC_ENDPOINT': 'http://keycloak:8080/realms/cogstack-realm',
+    'OIDC_ENDPOINT': f"{OIDC_HOST}/realms/{OIDC_REALM}",
     'OIDC_CLAIMS_OPTIONS': {
         'aud': {
             'values': [
                 'account',
-                'cogstack-medcattrainer-frontend'
+                OIDC_FRONTEND_CLIENT_ID
             ],
             'essential': True,
         },
         'iss': {
             'values': [
-                       'http://keycloak.cogstack.localhost/realms/cogstack-realm'],
+                f"{OIDC_HOST}/realms/{OIDC_REALM}"
+            ],
             'essential': True,
         },
     },
-    'USERINFO_ENDPOINT': 'http://keycloak:8080/realms/cogstack-realm/protocol/openid-connect/userinfo',
-    'OIDC_CREATE_USER': True,   # auto-create missing users
-    'OIDC_RESOLVE_USER_FUNCTION': 'api.oidc_utils.get_user_by_email', # use email address as the key for retrieving users
+    'USERINFO_ENDPOINT': f"{OIDC_HOST}/realms/{OIDC_REALM}/protocol/openid-connect/userinfo",
+    'OIDC_CREATE_USER': True,
+    'OIDC_RESOLVE_USER_FUNCTION': 'api.oidc_utils.get_user_by_email',
 }
 
 # Internationalization

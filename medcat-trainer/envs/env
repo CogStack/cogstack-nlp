@@ -50,3 +50,8 @@ USE_OIDC=
 
 # Traefik
 NGINX_HOST=medcattrainer.cogstack.localhost
+
+# OIDC settings
+OIDC_HOST=http://keycloak:8080
+OIDC_REALM=cogstack-realm
+OIDC_FRONTEND_CLIENT_ID=cogstack-medcattrainer-frontend
