@@ -1,4 +1,5 @@
 from medcat.components.linking import context_based_linker
+from medcat.components.types import _DEFAULT_LINKING as DEF_LINKING
 from medcat.components import types
 from medcat.config import Config
 from medcat.vocab import Vocab
@@ -35,7 +36,7 @@ class FakeCDB:
 
 
 class LinkingInitTests(ComponentInitTests, unittest.TestCase):
-    expected_def_components = 3
+    expected_def_components = len(DEF_LINKING)
     comp_type = types.CoreComponentType.linking
     default_cls = context_based_linker.Linker
     default_creator = context_based_linker.Linker.create_new_component

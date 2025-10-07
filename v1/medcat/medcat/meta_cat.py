@@ -252,7 +252,7 @@ class MetaCAT(PipeRunner):
                 "The category name does not exist in this json file. You've provided '{}', "
                 "while the possible options are: {}. Additionally, ensure the populate the "
                 "'alternative_category_names' attribute to accommodate for variations.".format(
-                    category_name, " | ".join(list(data.keys()))))
+                    g_config['category_name'], " | ".join(list(data.keys()))))
 
         data = data[category_name]
         if data_oversampled:
@@ -263,12 +263,12 @@ class MetaCAT(PipeRunner):
         if not category_value2id:
             # Encode the category values
             full_data, data_undersampled, category_value2id = encode_category_values(data,
-                                                                                     category_undersample=self.config.model.category_undersample,alternative_class_names=g_config['alternative_class_names'])
+                                                                                     alternative_class_names=g_config['alternative_class_names'],config=self.config)
         else:
             # We already have everything, just get the data
             full_data, data_undersampled, category_value2id = encode_category_values(data,
                                                                                      existing_category_value2id=category_value2id,
-                                                                                     category_undersample=self.config.model.category_undersample,alternative_class_names=g_config['alternative_class_names'])
+                                                                                     alternative_class_names=g_config['alternative_class_names'],config=self.config)
         g_config['category_value2id'] = category_value2id
         self.config.model['nclasses'] = len(category_value2id)
 
@@ -489,10 +489,10 @@ class MetaCAT(PipeRunner):
                 # Checking if we've reached at the start of the entity
                 if start <= pair[0] or start <= pair[1]:
                     if end <= pair[1]:
-                        ctoken_idx.append(ind) # End reached
+                        ctoken_idx.append(last_ind+ind) # End reached; update the index to reflect the correct position since iteration does not start from the beginning
                         break
                     else:
-                        ctoken_idx.append(ind) # Keep going
+                        ctoken_idx.append(last_ind+ind) # Keep going; update the index to reflect the correct position since iteration does not start from the beginning
 
             # Start where the last ent was found, cannot be before it as we've sorted
             last_ind += ind  # If we did not start from 0 in the for loop

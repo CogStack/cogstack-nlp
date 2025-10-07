@@ -324,7 +324,7 @@ def _entity_from_tokens(doc: Document, tokens: list[MutableToken],
 
 
 class RegexTokenizer(BaseTokenizer):
-    REGEX = r'((\b\w+\b|\S+)\s?)'
+    REGEX = re.compile(r'(([^a-zA-Z0-9\s]+|\b\w+\b|\S+)\s?)')
     # group 1: text with whitespace (if present)
     # group 2: text with no whitespace
 
@@ -347,8 +347,12 @@ class RegexTokenizer(BaseTokenizer):
         end_index = doc._tokens.index(tokens[-1])
         return _entity_from_tokens(doc, tokens, start_index, end_index)
 
+    def _get_tokens_matches(self, text: str) -> list[re.Match[str]]:
+        tokens = self.REGEX.finditer(text)
+        return list(tokens)
+
     def __call__(self, text: str) -> MutableDocument:
-        tokens = re.finditer(self.REGEX, text)
+        tokens = self._get_tokens_matches(text)
         doc = Document(text)
         for tkn_index, match in enumerate(tokens):
             start_index = match.start()

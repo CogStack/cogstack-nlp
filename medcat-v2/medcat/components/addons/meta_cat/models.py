@@ -143,9 +143,10 @@ class BertForMetaAnnotation(nn.Module):
                     "DO NOT use this model without loading the model state!",
                     exc_info=e)
 
-        self.config = config
+        self._config = config
         self.bert = bert
-        self.bert_config = _bertconfig
+        # NOTE: potentially used downstream
+        self.config = self.bert_config = _bertconfig
         self.num_labels = config.model.nclasses
         for param in self.bert.parameters():
             param.requires_grad = not config.model.model_freeze_layers
@@ -252,14 +253,14 @@ class BertForMetaAnnotation(nn.Module):
         x = self.fc1(x)
         x = self.relu(x)
 
-        if self.config.model.model_architecture_config is not None:
-            if self.config.model.model_architecture_config['fc2'] is True:
+        if self._config.model.model_architecture_config is not None:
+            if self._config.model.model_architecture_config['fc2'] is True:
                 # fc2
                 x = self.fc2(x)
                 x = self.relu(x)
                 x = self.dropout(x)
 
-                if self.config.model.model_architecture_config['fc3'] is True:
+                if self._config.model.model_architecture_config['fc3'] is True:
                     # fc3
                     x = self.fc3(x)
                     x = self.relu(x)

@@ -67,6 +67,9 @@ INSTALLED_APPS = [
     'django_filters',
     'background_task',
     'api',
+    'health_check',
+    'health_check.contrib.db_heartbeat',
+    'health_check.contrib.migrations',
 ]
 
 MIDDLEWARE = [
@@ -87,7 +90,7 @@ TEMPLATES = [
         'DIRS': [
             os.path.join(BASE_DIR, "..", "frontend", "dist"),
             os.path.join(BASE_DIR, "..", "templates", "registration")
-            ],
+        ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -159,6 +162,15 @@ else:
             }
         }
     }
+
+# https://pypi.org/project/django-health-check/
+HEALTH_CHECK = {
+    "SUBSETS": {
+        'startup': ['DatabaseHeartBeatCheck', 'MigrationsHealthCheck'],
+        'live': [],
+        'ready': ['DatabaseHeartBeatCheck'],
+    },
+}
 
 # Password validation
 # https://docs.djangoproject.com/en/2.2/ref/settings/#auth-password-validators

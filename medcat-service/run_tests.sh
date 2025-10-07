@@ -10,15 +10,15 @@ python3 -m spacy download en_core_web_lg
 
 # download the test MedCAT model
 bash ./scripts/download_medmen.sh
-export APP_CDB_MODEL="$PWD/models/medmen/cdb.dat"
-export APP_VOCAB_MODEL="$PWD/models/medmen/vocab.dat"
+export APP_MODEL_CDB_PATH="$PWD/models/medmen/cdb.dat"
+export APP_MODEL_VOCAB_PATH="$PWD/models/medmen/vocab.dat"
 
 # proceed with the tests
 #
 echo "Starting the tests ..."
 
 # run the python tests
-python -m unittest discover -s medcat_service/test
+python3 -m unittest discover -s medcat_service/test
 if [ "$?" -ne "0" ]; then
     echo "Error: one or more tests failed"
     exit 1

@@ -133,6 +133,78 @@ class ConfigMergeTests(unittest.TestCase):
             model.config.general.nlp.modelname, self.spacy_model_name)
 
 
+class OntologiesMapTests(TrainedModelTests):
+
+    def test_does_not_have_auto(self):
+        self.assertNotEqual(self.model.config.general.map_to_other_ontologies,
+                            "auto")
+
+    def test_is_empty(self):
+        self.assertFalse(self.model.config.general.map_to_other_ontologies)
+
+
+class OntologiesMapWithOntologiesTests(TrainedModelTests):
+    MY_ONT_NAME = "My_Ontology"
+    EXP_GET = [MY_ONT_NAME]
+    MY_ONT_MAPPING = {
+        # mapping doens't matter here, really
+        "ABC": "BBC"
+    }
+
+    @classmethod
+    def reset_mappings(cls):
+        # set to auto
+        cls.model.config.general.map_to_other_ontologies = "auto"
+        # redo process
+        cls.model._set_and_get_mapped_ontologies()
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        # add "mapping"
+        cls.model.cdb.addl_info[f"cui2{cls.MY_ONT_NAME}"] = cls.MY_ONT_MAPPING
+        cls.reset_mappings()
+
+    def test_has_correct_results(self):
+        got = sorted(self.model.config.general.map_to_other_ontologies)
+        self.assertEqual(len(got), len(self.EXP_GET))
+        self.assertEqual(got, self.EXP_GET)
+
+
+class OntologiesMapWithOntologiesAndNoIgnoresTests(
+        OntologiesMapWithOntologiesTests):
+    EXTRA_ONTS = ["original_names"]
+
+    @classmethod
+    def reset_mappings(cls):
+        # set to auto
+        cls.model.config.general.map_to_other_ontologies = "auto"
+        # redo process
+        cls.model._set_and_get_mapped_ontologies(ignore_set=set())
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        # I need to redefine for specific class
+        # instead of changing instance in base class
+        cls.EXP_GET = OntologiesMapWithOntologiesTests.EXP_GET.copy()
+        cls.EXP_GET.extend(cls.EXTRA_ONTS)
+        cls.EXP_GET.sort()
+        cls.reset_mappings()
+
+
+class OntologiesMapWithOntologiesAndAllowEmpty(
+        OntologiesMapWithOntologiesAndNoIgnoresTests):
+    EXTRA_ONTS = ["icd10", "opcs4"]
+
+    @classmethod
+    def reset_mappings(cls):
+        # set to auto
+        cls.model.config.general.map_to_other_ontologies = "auto"
+        # redo process
+        cls.model._set_and_get_mapped_ontologies(ignore_empty=False)
+
+
 class InferenceFromLoadedTests(TrainedModelTests):
 
     def test_can_load_model(self):
@@ -157,6 +229,39 @@ class InferenceFromLoadedTests(TrainedModelTests):
             with self.subTest(f"Ent: {ent}"):
                 self.assertGreaterEqual(ent.base.start_char_index, cur_start)
                 cur_start = ent.base.start_char_index
+
+
+class InferenceIntoOntologyTests(TrainedModelTests):
+    ont_name = "FAKE_ONT"
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        # create mapping
+        cls.ont_map = {
+            cui: [f"{cls.ont_name}:{cui}"]
+            for cui in cls.model.cdb.cui2info
+        }
+        # add to addl_info
+        cls.model.cdb.addl_info[f"cui2{cls.ont_name}"] = cls.ont_map
+        # ask to be mapped
+        cls.model.config.general.map_to_other_ontologies.append(cls.ont_name)
+
+    def assert_has_mapping(self, ent: dict):
+        # has value
+        self.assertIn(self.ont_name, ent)
+        val = ent[self.ont_name]
+        # 1 value
+        self.assertEqual(len(val), 1)
+        # value in our map
+        self.assertIn(val, self.ont_map.values())
+
+    def test_gets_mappings(self):
+        ents = self.model.get_entities(
+            ConvertedFunctionalityTests.TEXT)['entities']
+        for nr, ent in enumerate(ents.values()):
+            with self.subTest(f"{nr}"):
+                self.assert_has_mapping(ent)
 
 
 class CATIncludingTests(unittest.TestCase):
@@ -534,13 +639,14 @@ class CATWithDictNERSupTrainingTests(CATSupTrainingTests):
             for name in self.cdb.name2info
             for negname in self.cdb.name2info if name != negname
         ]
-        out_data = list(self.cat.get_entities_multi_texts(
+        out_data = self.cat.get_entities_multi_texts(
             in_data,
             save_dir_path=save_to,
             batch_size_chars=chars_per_batch,
             batches_per_save=batches_per_save,
             n_process=n_process,
-            ))
+            )
+        out_data = list(out_data)
         out_dict_all = {
             key: cdata for key, cdata in out_data
         }
@@ -657,6 +763,29 @@ class CATWithDictNERSupTrainingTests(CATSupTrainingTests):
                  temp_dir, n_process=3)
             self.assert_correct_loaded_output(
                 in_data, out_dict_all, all_loaded_output)
+
+    def test_get_entities_multi_texts_with_save_dir_lazy(self):
+        texts = ["text1", "text2"]
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            out = self.cat.get_entities_multi_texts(
+                texts,
+                save_dir_path=tmp_dir)
+            # nothing before manual iter
+            self.assertFalse(os.listdir(tmp_dir))
+            out_list = list(out)
+            # something was saved
+            self.assertTrue(os.listdir(tmp_dir))
+            # and something was yielded
+            self.assertEqual(len(out_list), len(texts))
+
+    def test_save_entities_multi_texts(self):
+        texts = ["text1", "text2"]
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            self.cat.save_entities_multi_texts(
+                texts,
+                save_dir_path=tmp_dir)
+            # stuff was already saved
+            self.assertTrue(os.listdir(tmp_dir))
 
 
 class CATWithDocAddonTests(CATIncludingTests):

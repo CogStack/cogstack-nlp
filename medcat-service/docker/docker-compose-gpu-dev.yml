@@ -18,6 +18,7 @@ services:
     env_file:
       - ../env/app.env
       - ../env/medcat.env
+    shm_size: "${DOCKER_SHM_SIZE:-1g}"
     volumes:
     - ../models:/cat/models/:rw
     ports:
@@ -53,6 +54,7 @@ services:
     env_file:
       - ../env/app_deid.env
       - ../env/medcat_deid.env
+    shm_size: "${DOCKER_SHM_SIZE:-1g}"
     volumes:
     - ../models:/cat/models/:rw
     ports:

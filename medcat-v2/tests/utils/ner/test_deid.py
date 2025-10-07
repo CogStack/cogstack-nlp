@@ -213,14 +213,15 @@ class DeIDModelWorks(unittest.TestCase):
         self.assert_deid_redact(anon_text)
 
     def test_model_works_deid_multi_text_single_threaded(self):
-        processed = self.deid_model.deid_multi_text([input_text, input_text], n_process=1)
+        processed = self.deid_model.deid_multi_texts([input_text, input_text],
+                                                     n_process=1)
         self.assertEqual(len(processed), 2)
         for anon_text in processed:
             self.assert_deid_annotations(anon_text)
 
     def test_model_works_deid_multi_text_single_threaded_redact(self):
-        processed = self.deid_model.deid_multi_text([input_text, input_text],
-                                                    n_process=1, redact=True)
+        processed = self.deid_model.deid_multi_texts([input_text, input_text],
+                                                     n_process=1, redact=True)
         self.assertEqual(len(processed), 2)
         for anon_text in processed:
             self.assert_deid_redact(anon_text)
@@ -229,7 +230,7 @@ class DeIDModelWorks(unittest.TestCase):
     @unittest.skip("Deid Multiprocess is broken. Exits the process, no errors shown")
     def test_model_can_multiprocess_no_redact(self):
 
-        processed = self.deid_model.deid_multi_text(
+        processed = self.deid_model.deid_multi_texts(
             [input_text, input_text], n_process=2)
         self.assertEqual(len(processed), 2)
         for tid, new_text in enumerate(processed):
@@ -245,7 +246,7 @@ class DeIDModelWorks(unittest.TestCase):
          """
         try:
             print("Calling test_model_can_multiprocess_redact")
-            processed = self.deid_model.deid_multi_text(
+            processed = self.deid_model.deid_multi_texts(
                 [input_text, input_text], n_process=2, redact=True
             )
             print("Finished processing")

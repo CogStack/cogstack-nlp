@@ -1,18 +1,19 @@
 #!/usr/bin/env python
 
 import logging
-import os
 import time
 from datetime import datetime, timezone
 
 import numpy as np
-import simplejson as json
+import torch
 from medcat.cat import CAT
 from medcat.cdb import CDB
 from medcat.components.addons.meta_cat import MetaCATAddon
+from medcat.components.addons.relation_extraction.rel_cat import RelCATAddon
 from medcat.components.ner.trf.deid import DeIdModel
 from medcat.config import Config
 from medcat.config.config_meta_cat import ConfigMetaCAT
+from medcat.config.config_rel_cat import ConfigRelCAT
 from medcat.vocab import Vocab
 
 from medcat_service.config import Settings
@@ -26,48 +27,49 @@ class MedCatProcessor:
     """
 
     def __init__(self, settings: Settings):
-        app_log_level = os.getenv("APP_LOG_LEVEL", logging.INFO)
-        medcat_log_level = os.getenv("LOG_LEVEL", logging.INFO)
+
+        self.service_settings = settings
 
         self.log = logging.getLogger(self.__class__.__name__)
-        self.log.setLevel(level=app_log_level)
+        if not self.log.handlers:
+            handler = logging.StreamHandler()
+            handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
+            self.log.addHandler(handler)
+        self.log.setLevel(self.service_settings.app_log_level)
 
-        self.log.debug("APP log level set to : " + str(app_log_level))
-        self.log.debug("MedCAT log level set to : " + str(medcat_log_level))
+        self.log.debug("APP log level set to : " + str(self.service_settings.app_log_level))
+        self.log.debug("MedCAT log level set to : " + str(self.service_settings.medcat_log_level))
 
         self.log.info("Initializing MedCAT processor ...")
         self._is_ready_flag = False
 
-        self.app_name = os.getenv("APP_NAME", "MedCAT")
-        self.app_lang = os.getenv("APP_MODEL_LANGUAGE", "en")
         self.app_version = MedCatProcessor._get_medcat_version()
-        self.app_model = os.getenv("APP_MODEL_NAME", "unknown")
-        self.entity_output_mode = os.getenv(
-            "ANNOTATIONS_ENTITY_OUTPUT_MODE", "dict").lower()
 
-        self.bulk_nproc = int(os.getenv("APP_BULK_NPROC", 8))
-        self.torch_threads = int(os.getenv("APP_TORCH_THREADS", -1))
-        self.DEID_MODE = settings.deid_mode
-        self.DEID_REDACT = settings.deid_redact
         self.model_card_info = ModelCardInfo(
-            ontologies=None, meta_cat_model_names=[], model_last_modified_on=None)
+            ontologies=None,
+            meta_cat_model_names=[],
+            rel_cat_model_names=[],
+            model_last_modified_on=None)
+
+        # disale torch gradients, we don't need them for inference
+        # this should also reduce memory consumption
+        torch.set_grad_enabled(False)
+        self.log.info("Torch autograd disabled (inference mode only)")
 
         # this is available to constrain torch threads when there
         # isn't a GPU
         # You probably want to set to 1
         # Not sure what happens if torch is using a cuda device
-        if self.torch_threads > 0:
-            import torch
-            torch.set_num_threads(self.torch_threads)
-            self.log.info("Torch threads set to " + str(self.torch_threads))
+        if self.service_settings.torch_threads > 0:
+            torch.set_num_threads(self.service_settings.torch_threads)
+        self.log.info("Torch threads set to " + str(self.service_settings.torch_threads))
 
-        self.cat = self._create_cat()
-        self.cat.train = os.getenv("APP_TRAINING_MODE", False)
+        self.cat: DeIdModel | CAT = self._create_cat()
 
         self._is_ready_flag = self._check_medcat_readiness()
 
     @staticmethod
-    def _get_timestamp():
+    def _get_timestamp() -> str:
         """
         Returns the current timestamp in ISO 8601 format. Formatted as "yyyy-MM-dd"T"HH:mm:ss.SSSXXX".
         :return: timestamp string
@@ -109,10 +111,10 @@ class MedCatProcessor:
         Returns:
             dict: Application information stored as KVPs.
         """
-        return ServiceInfo(service_app_name=self.app_name,
-                           service_language=self.app_lang,
+        return ServiceInfo(service_app_name=self.service_settings.app_name,
+                           service_language=self.service_settings.app_model_language,
                            service_version=self.app_version,
-                           service_model=self.app_model,
+                           service_model=self.service_settings.app_model_name,
                            model_card_info=self.model_card_info
                            )
 
@@ -125,7 +127,7 @@ class MedCatProcessor:
 
             self._fix_floats(entities)
 
-            if self.entity_output_mode == "list":
+            if self.service_settings.annotations_entity_output_mode == "list":
                 entities = list(entities.values())
 
         yield entities
@@ -163,9 +165,9 @@ class MedCatProcessor:
 
         start_time_ns = time.time_ns()
 
-        if self.DEID_MODE:
+        if self.service_settings.deid_mode and isinstance(self.cat, DeIdModel):
             entities = self.cat.get_entities(text)
-            text = self.cat.deid_text(text, redact=self.DEID_REDACT)
+            text = self.cat.deid_text(text, redact=self.service_settings.deid_redact)
         else:
             if text is not None and len(text.strip()) > 0:
                 entities = self.cat.get_entities(text)
@@ -174,11 +176,19 @@ class MedCatProcessor:
 
         elapsed_time = (time.time_ns() - start_time_ns) / 10e8  # nanoseconds to seconds
 
-        if kwargs.get("meta_anns_filters"):
-            meta_anns_filters = kwargs.get("meta_anns_filters")
-            entities = [e for e in entities['entities'].values() if
-                        all(e['meta_anns'][task]['value'] in filter_values
-                            for task, filter_values in meta_anns_filters)]
+        meta_anns_filters = kwargs.get("meta_anns_filters")
+        if meta_anns_filters:
+            if isinstance(entities, dict):
+                entities = [
+                    e
+                    for e in entities["entities"].values()
+                    if isinstance(e, dict)
+                    and all(
+                        task in e.get("meta_anns", {})
+                        and e["meta_anns"][task]["value"] in filter_values
+                        for task, filter_values in meta_anns_filters
+                    )
+                ]
 
         entities = list(self.process_entities(entities, **kwargs))
 
@@ -210,17 +220,21 @@ class MedCatProcessor:
         start_time_ns = time.time_ns()
 
         try:
+
             text_input = MedCatProcessor._generate_input_doc(content, invalid_doc_ids)
-            if self.DEID_MODE:
+            if self.service_settings.deid_mode and isinstance(self.cat, DeIdModel):
                 text_to_deid_from_tuple = (x[1] for x in text_input)
 
-                ann_res = self.cat.deid_multi_text(list(text_to_deid_from_tuple),
-                                                   redact=self.DEID_REDACT, n_process=self.bulk_nproc)
-            else:
+                ann_res = self.cat.deid_multi_texts(
+                    list(text_to_deid_from_tuple),
+                    redact=self.service_settings.deid_redact,
+                    n_process=self.service_settings.bulk_nproc,
+                )
+            elif isinstance(self.cat, CAT):
                 ann_res = {
                     ann_id: res for ann_id, res in
                     self.cat.get_entities_multi_texts(
-                        text_input, n_process=self.bulk_nproc)
+                        text_input, n_process=self.service_settings.bulk_nproc)
                 }
         except Exception as e:
             self.log.error("Unable to process data", exc_info=e)
@@ -229,34 +243,7 @@ class MedCatProcessor:
 
         return self._generate_result(content, ann_res, elapsed_time)
 
-    def retrain_medcat(self, content, replace_cdb):
-        """Retrains Medcat and redeploys model.
-
-        Args:
-            content: Training data for retraining.
-            replace_cdb: Whether to replace the existing CDB.
-
-        Returns:
-            dict: Results containing precision, recall, F1 scores and error dictionaries.
-        """
-
-        with open("/cat/models/data.json", "w") as f:
-            json.dump(content, f)
-
-        DATA_PATH = "/cat/models/data.json"
-        CDB_PATH = "/cat/models/cdb.dat"
-        VOCAB_PATH = "/cat/models/vocab.dat"
-
-        self.log.info("Retraining Medcat Started...")
-
-        p, r, f1, tp_dict, fp_dict, fn_dict = MedCatProcessor._retrain_supervised(
-            self, CDB_PATH, DATA_PATH, VOCAB_PATH)
-
-        self.log.info("Retraining Medcat Completed...")
-
-        return {"results": [p, r, f1, tp_dict, fp_dict, fn_dict]}
-
-    def _populate_model_card_info(self, config: Config):
+    def _populate_model_card_info(self, config: Config) -> None:
         """Populates model card information from config.
 
         Args:
@@ -267,114 +254,110 @@ class MedCatProcessor:
         self.model_card_info.meta_cat_model_names = [
             cnf.general.category_name or "None" for cnf in config.components.addons
             if (isinstance(cnf, ConfigMetaCAT))]
+        self.model_card_info.rel_cat_model_names = [
+            str(cnf.general.labels2idx.values()) or "None" for cnf in config.components.addons
+            if (isinstance(cnf, ConfigRelCAT))]
         self.model_card_info.model_last_modified_on = config.meta.last_saved
 
-    # helper MedCAT methods
-    #
-    def _create_cat(self):
+    def _create_cat(self) -> DeIdModel | CAT:
         """Loads MedCAT resources and creates CAT instance.
 
         Returns:
-            CAT: Initialized MedCAT instance.
+            DeIdModel | CAT: Initialized MedCAT instance.
 
         Raises:
             ValueError: If required environment variables are not set.
             Exception: If concept database path is not specified.
         """
-        cat, cdb, vocab, config = None, None, None, None
 
-        # Load CUIs to keep if provided
-        if os.getenv("APP_MODEL_CUI_FILTER_PATH", None) is not None:
+        cdb, vocab = None, None
+        cat: DeIdModel | CAT
+
+        # ---- CUI filter ----
+        cuis_to_keep: list[str] = []
+
+        if self.service_settings.model_cui_filter_path:
             self.log.debug("Loading CUI filter ...")
-            with open(os.getenv("APP_MODEL_CUI_FILTER_PATH")) as cui_file:
-                all_lines = (line.rstrip() for line in cui_file)
-                # filter blank lines
-                cuis_to_keep = [line for line in all_lines if line]
+            with open(self.service_settings.model_cui_filter_path) as cui_file:
+                cuis_to_keep = [line.strip() for line in cui_file if line.strip()]
 
-        model_pack_path = os.getenv("APP_MEDCAT_MODEL_PACK", "").strip()
-
-        if model_pack_path != "":
+        # ---- Path 1: model pack ----
+        if self.service_settings.medcat_model_pack:
             self.log.info("Loading model pack...")
-            cat = CAT.load_model_pack(model_pack_path)
+            if self.service_settings.deid_mode:
+                cat = DeIdModel.load_model_pack(self.service_settings.medcat_model_pack)
+            else:
+                cat = CAT.load_model_pack(self.service_settings.medcat_model_pack)
 
-            if self.DEID_MODE:
-                cat = DeIdModel.load_model_pack(model_pack_path)
-
-            # Apply CUI filter if provided
-            if os.getenv("APP_MODEL_CUI_FILTER_PATH", None) is not None:
+            if cuis_to_keep:
                 self.log.debug("Applying CUI filter ...")
                 cat.cdb.filter_by_cui(cuis_to_keep)
 
-            if self.app_model.lower() in ["", "unknown", "medmen"] and cat.config.meta.hash is not None:
-                self.app_model = cat.config.meta.hash
+            cat.config.general.log_level = self.service_settings.medcat_log_level
+
+            if not self.service_settings.app_model_name and cat.config.meta.hash:
+                self.service_settings = self.service_settings.model_copy(
+                    update={"app_model_name": cat.config.meta.hash}
+                )
 
             self._populate_model_card_info(cat.config)
-
             return cat
-        else:
-            self.log.info("APP_MEDCAT_MODEL_PACK not set, skipping....")
 
-        # Vocabulary and Concept Database are mandatory
-        if os.getenv("APP_MODEL_VOCAB_PATH", None) is None and cat is None:
+        self.log.info(f"{Settings.env_name('medcat_model_pack')} not set, skipping...")
+
+        # ---- Path 2: vocab + cdb ----
+        if not self.service_settings.model_vocab_path:
             raise ValueError(
-                "Vocabulary (env: APP_MODEL_VOCAB_PATH) not specified")
+                f"Vocabulary (env {Settings.env_name('model_vocab_path')}) not specified"
+            )
+        self.log.debug("Loading VOCAB ...")
+        vocab = Vocab.load(self.service_settings.model_vocab_path)
+
+        if not self.service_settings.model_cdb_path:
+            raise ValueError(
+                f"Concept database (env {Settings.env_name('model_cdb_path')}) not specified"
+            )
+        self.log.debug("Loading CDB ...")
+        cdb = CDB.load(self.service_settings.model_cdb_path)
+
+        # ---- SpaCy model ----
+        if self.service_settings.spacy_model:
+            cdb.config.general.nlp.provider = "spacy"
+            cdb.config.general.nlp.modelname = self.service_settings.spacy_model
+
+        elif not cdb.config.general.nlp.modelname:
+            raise ValueError(
+                f"No {Settings.env_name('spacy_model')} env var declared and "
+                "CDB has no spaCy model configured"
+            )
         else:
-            self.log.debug("Loading VOCAB ...")
-            vocab = Vocab.load(os.getenv("APP_MODEL_VOCAB_PATH"))
+            self.log.warning(
+                f"{Settings.env_name('spacy_model')} not set, using spaCy model from CDB: "
+                f"{cdb.config.general.nlp.modelname}"
+            )
 
-        if os.getenv("APP_MODEL_CDB_PATH", None) is None and cat is None:
-            raise Exception(
-                "Concept database (env: APP_MODEL_CDB_PATH) not specified")
-        else:
-            self.log.debug("Loading CDB ...")
-            cdb = CDB.load(os.getenv("APP_MODEL_CDB_PATH"))
-
-        spacy_model = os.getenv("SPACY_MODEL", "")
-
-        if spacy_model != "":
-            cdb.config.general.nlp.modelname = spacy_model
-        else:
-            logging.warning("SPACY_MODEL environment var not set" +
-                            ", attempting to load the spacy model found within the CDB : "
-                            + cdb.config.general.nlp.modelname)
-
-            if cdb.config.general.nlp.modelname == "":
-                raise ValueError("No SPACY_MODEL env var declared, the CDB loaded does not have a\
-                     spacy_model set in the config variable! \
-                 To solve this declare the SPACY_MODEL in the env_medcat file.")
-
-        if cat is None:
-            # this is redundant as the config is already in the CDB
-            config = cdb.config
-
-        # Apply CUI filter if provided
-        if os.getenv("APP_MODEL_CUI_FILTER_PATH", None) is not None:
+        if cuis_to_keep:
             self.log.debug("Applying CUI filter ...")
             cdb.filter_by_cui(cuis_to_keep)
 
-        # Meta-annotation models are optional
-        meta_models = []
-        if os.getenv("APP_MODEL_META_PATH_LIST", None) is not None:
-            self.log.debug("Loading META annotations ...")
-            for model_path in os.getenv("APP_MODEL_META_PATH_LIST").split(":"):
-                m = MetaCATAddon.deserialise_from(model_path)
-                meta_models.append(m)
+        cat = CAT(cdb=cdb, config=cdb.config, vocab=vocab)
+        cat.config.general.log_level = self.service_settings.medcat_log_level
 
-        # if cat:
-        #     meta_models.extend(cat._meta_cats)
+        # ---- CAT add-ons ----
+        for meta_model_path in self.service_settings.model_meta_path_list:
+            self.log.debug("Loading META annotations from %s", meta_model_path)
+            cat.add_addon(MetaCATAddon.deserialise_from(meta_model_path))
 
-        if self.app_model.lower() in [None, "unknown"] and cdb.config.meta.hash is not None:
-            self.app_model = cdb.config.meta.hash
+        for rel_model_path in self.service_settings.model_rel_path_list:
+            self.log.debug("Loading RELATION annotations from %s", rel_model_path)
+            cat.add_addon(RelCATAddon.deserialise_from(rel_model_path))
 
-        config.general.log_level = os.getenv("LOG_LEVEL", logging.INFO)
-
-        cat = CAT(cdb=cdb, config=config, vocab=vocab)
-        # add MetaCATs
-        for mc in meta_models:
-            cat.add_addon(mc)
+        if not self.service_settings.app_model_name and cat.config.meta.hash:
+            self.service_settings = self.service_settings.model_copy(
+                update={"app_model_name": cat.config.meta.hash}
+            )
 
         self._populate_model_card_info(cat.config)
-
         return cat
 
     # helper generator functions to avoid multiple copies of data
@@ -413,7 +396,7 @@ class MedCatProcessor:
 
         for i in range(len(in_documents)):
             in_ct = in_documents[i]
-            if not self.DEID_MODE and i in annotations.keys():
+            if not self.service_settings.deid_mode and i in annotations.keys():
                 # generate output for valid annotations
 
                 entities = list(self.process_entities(annotations.get(i)))
@@ -426,12 +409,13 @@ class MedCatProcessor:
                     elapsed_time=elapsed_time,
                     footer=in_ct.get("footer"),
                 )
-            elif self.DEID_MODE:
+            elif self.service_settings.deid_mode:
+                out_text = str(annotations[i]) if i < len(annotations) else str(in_ct["text"])
                 out_res = ProcessResult(
                     # TODO: DEID mode is passing the resulting text in the annotations field here but shouldnt.
-                    text=str(annotations[i]),
+                    text=out_text,
                     # TODO: DEID bulk mode should also be able to return the list of annotations found,
-                    #  to match the features of the singular api. CU-869a6wc6z
+                    #  to match the features of the singular api, this needs to be matched by MedCAT. CU-869a6wc6z
                     annotations=[],
                     success=True,
                     timestamp=self._get_timestamp(),
@@ -453,7 +437,7 @@ class MedCatProcessor:
             yield out_res
 
     @staticmethod
-    def _get_medcat_version():
+    def _get_medcat_version() -> str:
         """Returns the version string of the MedCAT module as reported by pip.
 
         Returns:
@@ -468,182 +452,6 @@ class MedCatProcessor:
             return str(version)
         except Exception:
             raise Exception("Cannot read the MedCAT library version")
-
-    def _retrain_supervised(self, cdb_path, data_path, vocab_path, cv=1, nepochs=1,
-                            test_size=0.1, lr=1, groups=None, **kwargs):
-        """Retrains MedCAT model using supervised learning.
-
-        Args:
-            cdb_path (str): Path to concept database.
-            data_path (str): Path to training data.
-            vocab_path (str): Path to vocabulary.
-            cv (int, optional): Number of cross-validation folds. Defaults to 1.
-            nepochs (int, optional): Number of training epochs. Defaults to 1.
-            test_size (float, optional): Size of test set. Defaults to 0.1.
-            lr (float, optional): Learning rate. Defaults to 1.
-            groups (list, optional): Training groups. Defaults to None.
-            **kwargs: Additional keyword arguments.
-
-        Returns:
-            tuple: Precision, recall, F1 score, and error dictionaries.
-        """
-
-        data = json.load(open(data_path))
-        correct_ids = MedCatProcessor._prepareDocumentsForPeformanceAnalysis(
-            data)
-
-        cat = MedCatProcessor._create_cat(self)
-
-        f1_base = MedCatProcessor._computeF1forDocuments(
-            self, data, self.cat, correct_ids)[2]
-        self.log.info("Base model F1: " + str(f1_base))
-
-        cat.train = True
-        cat.spacy_cat.MIN_ACC = os.getenv("MIN_ACC", 0.20)
-        cat.spacy_cat.MIN_ACC_TH = os.getenv("MIN_ACC_TH", 0.20)
-
-        self.log.info("Starting supervised training...")
-
-        try:
-            cat.train_supervised(data_path=data_path, lr=1,
-                                 test_size=0.1, use_groups=None, nepochs=3)
-        except Exception:
-            self.log.info("Did not complete all supervised training")
-
-        p, r, f1, tp_dict, fp_dict, fn_dict = MedCatProcessor._computeF1forDocuments(
-            self, data, cat, correct_ids)
-
-        self.log.info("Trained model F1: " + str(f1))
-
-        if MedCatProcessor._checkmodelimproved(f1, f1_base):
-            self.log.info("Model will be saved...")
-
-            cat.cdb.save_dict("/cat/models/cdb_new.dat")
-
-        self.log.info("Completed Retraining Medcat...")
-        return p, r, f1, tp_dict, fp_dict, fn_dict
-
-    def _computeF1forDocuments(self, data, cat, correct_ids):
-        """Computes F1 score and related metrics for documents.
-
-        Args:
-            data (dict): Input data containing projects and documents.
-            cat (CAT): MedCAT instance.
-            correct_ids (dict): Dictionary of correct annotations.
-
-        Returns:
-            tuple: Precision, recall, F1 score, and error dictionaries.
-        """
-
-        true_positives_dict, false_positives_dict, false_negatives_dict = {}, {}, {}
-        true_positive_no, false_positive_no, false_negative_no = 0, 0, 0
-
-        for project in data["projects"]:
-
-            predictions = {}
-            documents = project["documents"]
-            true_positives_dict[project["id"]] = {}
-            false_positives_dict[project["id"]] = {}
-            false_negatives_dict[project["id"]] = {}
-
-            for document in documents:
-                true_positives_dict[project["id"]][document["id"]] = {}
-                false_positives_dict[project["id"]][document["id"]] = {}
-                false_negatives_dict[project["id"]][document["id"]] = {}
-
-                results = cat.get_entities(document["text"])
-                predictions[document["id"]] = [
-                    [a["start"], a["end"], a["cui"]] for a in results]
-
-                tps, fps, fns = MedCatProcessor._getAccuraciesforDocument(
-                    predictions[document["id"]],
-                    correct_ids[project["id"]][document["id"]]
-                )
-                true_positive_no += len(tps)
-                false_positive_no += len(fps)
-                false_negative_no += len(fns)
-
-                true_positives_dict[project["id"]][document["id"]] = tps
-                false_positives_dict[project["id"]][document["id"]] = fps
-                false_negatives_dict[project["id"]][document["id"]] = fns
-
-        if (true_positive_no + false_positive_no) == 0:
-            precision = 0
-        else:
-            precision = true_positive_no / \
-                (true_positive_no + false_positive_no)
-        if (true_positive_no + false_negative_no) == 0:
-            recall = 0
-        else:
-            recall = true_positive_no / (true_positive_no + false_negative_no)
-        if (precision + recall) == 0:
-            f1 = 0
-        else:
-            f1 = 2*((precision*recall) / (precision + recall))
-
-        return precision, recall, f1, true_positives_dict, false_positives_dict, false_negatives_dict
-
-    @staticmethod
-    def _prepareDocumentsForPeformanceAnalysis(data):
-        """Prepares documents for performance analysis.
-
-        Args:
-            data (dict): Input data containing projects and documents.
-
-        Returns:
-            dict: Dictionary of correct annotations by project and document.
-        """
-        correct_ids = {}
-        for project in data["projects"]:
-            correct_ids[project["id"]] = {}
-
-            for document in project["documents"]:
-                for entry in document["annotations"]:
-                    if entry["correct"]:
-                        if document["id"] not in correct_ids[project["id"]]:
-                            correct_ids[project["id"]][document["id"]] = []
-                        correct_ids[project["id"]][document["id"]].append(
-                            [entry["start"], entry["end"], entry["cui"]])
-
-        return correct_ids
-
-    @staticmethod
-    def _getAccuraciesforDocument(prediction, correct_ids):
-        """Computes accuracy metrics for a single document.
-
-        Args:
-            prediction (list): List of predicted annotations.
-            correct_ids (list): List of correct annotations.
-
-        Returns:
-            tuple: True positives, false positives, and false negatives.
-        """
-
-        tup1 = list(map(tuple, correct_ids))
-        tup2 = list(map(tuple, prediction))
-
-        true_positives = list(map(list, set(tup1).intersection(tup2)))
-        false_positives = list(map(list, set(tup1).difference(tup2)))
-        false_negatives = list(map(list, set(tup2).difference(tup1)))
-
-        return true_positives, false_positives, false_negatives
-
-    @staticmethod
-    def _checkmodelimproved(f1_model_a, f1_model_b):
-        """Checks if model performance has improved.
-
-        Args:
-            f1_model_a (float): F1 score of first model.
-            f1_model_b (float): F1 score of second model.
-
-        Returns:
-            bool: True if first model has better F1 score, False otherwise.
-        """
-
-        if f1_model_a > f1_model_b:
-            return True
-        else:
-            return False
 
     # NOTE: numpy uses np.float32 and those are not json serialisable
     #       so we need to fix that

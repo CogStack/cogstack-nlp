@@ -3,7 +3,7 @@ from datetime import datetime
 import json
 import os
 from abc import ABC
-from typing import List, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union
 
 import requests
 
@@ -495,6 +495,24 @@ class MedCATTrainerSession:
         mct_vocabs = [MCTVocab(id=v['id'], name=v['name'], vocab_file=v['vocab_file']) for v in vocabs]
         return mct_cdbs, mct_vocabs
 
+    def get_concept_dbs(self) -> List[MCTConceptDB]:
+        """Get all concept databases in the MedCATTrainer instance.
+
+        Returns:
+            List[MCTConceptDB]: A list of all concept databases in the MedCATTrainer instance
+        """
+        cdbs = json.loads(requests.get(f'{self.server}/api/concept-dbs/', headers=self.headers).text)['results']
+        return [MCTConceptDB(id=cdb['id'], name=cdb['name'], conceptdb_file=cdb['cdb_file']) for cdb in cdbs]
+
+    def get_vocabs(self) -> List[MCTVocab]:
+        """Get all vocabularies in the MedCATTrainer instance.
+
+        Returns:
+            List[MCTVocab]: A list of all vocabularies in the MedCATTrainer instance
+        """
+        vocabs = json.loads(requests.get(f'{self.server}/api/vocabs/', headers=self.headers).text)['results']
+        return [MCTVocab(id=v['id'], name=v['name'], vocab_file=v['vocab_file']) for v in vocabs]
+
     def get_model_packs(self) -> List[MCTModelPack]:
         """Get all MedCAT model packs in the MedCATTrainer instance.
 
@@ -559,7 +577,7 @@ class MedCATTrainerSession:
         return mct_datasets
 
     def get_project_annos(self, projects: List[MCTProject]):
-        """Get the annotations for a list of projects. Schema is documented here: https://github.com/medcat/MedCATtrainer/blob/main/docs/api.md#download-annotations
+        """Get the annotations for a list of projects.
 
         Args:
             projects (List[MCTProject]): A list of projects to get annotations for
@@ -573,6 +591,44 @@ class MedCATTrainerSession:
         resp = json.loads(requests.get(f'{self.server}/api/download-annos/?project_ids={",".join([str(p.id) for p in projects])}&with_text=1',
                                        headers=self.headers).text)
         return resp
+
+    def upload_projects_export(self, projects: Dict[str, Any],
+                               cdb: Union[MCTConceptDB, str]=None,
+                               vocab: Union[MCTVocab, str]=None,
+                               modelpack: Union[MCTModelPack, str]=None):
+        """Upload Trainer export as a list of projects to a MedCATTrainer instance.
+
+        Args:
+            projects (List[MCTProject]): A list of projects to upload
+            cdb (Union[MCTConceptDB, str]): The concept database to be used in the project - CDB name or the MCTCDB Object
+            vocab (Union[MCTVocab, str]): The vocabulary to be used in the project - Vocab name or the MCTVocab Object
+            modelpack (Union[MCTModelPack, str]): The model pack to be used in the project - ModelPack name or the MCTModelPack Object
+        """
+        if isinstance(cdb, str):
+            cdb = [c for c in self.get_concept_dbs() if c.name == cdb].pop()
+        if isinstance(vocab, str):
+            vocab = [v for v in self.get_vocabs() if v.name == vocab].pop()
+        if isinstance(modelpack, str):
+            modelpack = [m for m in self.get_model_packs() if m.name == modelpack].pop()
+
+        payload = {
+            'exported_projects': projects
+        }
+
+        if cdb and vocab:
+            payload['cdb_id'] = cdb.id
+            payload['vocab_id'] = vocab.id
+        elif modelpack:
+            payload['modelpack_id'] = modelpack.id
+        else:
+            raise MCTUtilsException('No cdb, vocab, or modelpack provided, use a ')
+
+        resp = requests.post(f'{self.server}/api/upload-deployment/', headers=self.headers,
+                             json=payload)
+        if 200 <= resp.status_code < 300:
+            return resp.json()
+        else:
+            raise MCTUtilsException(f'Failed to upload projects export: {resp.text}')
 
     def __str__(self) -> str:
         return f'{self.server} \t {self.username} \t {self.password}'

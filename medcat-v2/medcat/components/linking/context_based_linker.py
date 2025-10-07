@@ -208,7 +208,7 @@ class Linker(AbstractCoreComponent):
 
         doc.ner_ents.clear()
         doc.ner_ents.extend(le)
-        create_main_ann(doc)
+        create_main_ann(doc, self.config.general.show_nested_entities)
 
         # TODO - reintroduce pretty labels? and apply here?
 

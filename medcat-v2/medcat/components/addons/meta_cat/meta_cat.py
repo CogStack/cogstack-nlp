@@ -15,7 +15,7 @@ from medcat.tokenizing.tokenizers import BaseTokenizer
 from medcat.config.config import ComponentConfig
 from medcat.config.config_meta_cat import ConfigMetaCAT
 from medcat.components.addons.meta_cat.ml_utils import (
-    predict, train_model, set_all_seeds, eval_model)
+    predict, train_model, set_all_seeds, eval_model, EvalModelResults)
 from medcat.components.addons.meta_cat.data_utils import (
     prepare_from_json, encode_category_values, prepare_for_oversampled_data)
 from medcat.components.addons.addons import AddonComponent
@@ -556,15 +556,14 @@ class MetaCAT(AbstractSerialisable):
             # Encode the category values
             (full_data, data_undersampled,
              category_value2id) = encode_category_values(
-                 data,
-                 category_undersample=self.config.model.category_undersample,
+                 data, config=self.config,
                  alternative_class_names=g_config.alternative_class_names)
         else:
             # We already have everything, just get the data
             (full_data, data_undersampled,
              category_value2id) = encode_category_values(
                  data, existing_category_value2id=category_value2id,
-                 category_undersample=self.config.model.category_undersample,
+                 config=self.config,
                  alternative_class_names=g_config.alternative_class_names)
             g_config.category_value2id = category_value2id
             self.config.model.nclasses = len(category_value2id)
@@ -632,7 +631,7 @@ class MetaCAT(AbstractSerialisable):
         self.config.train.last_train_on = datetime.now().timestamp()
         return report
 
-    def eval(self, json_path: str) -> dict:
+    def eval(self, json_path: str) -> EvalModelResults:
         """Evaluate from json.
 
         Args:
@@ -640,7 +639,7 @@ class MetaCAT(AbstractSerialisable):
                 The json file ath
 
         Returns:
-            dict:
+            EvalModelResults:
                 The resulting model dict
 
         Raises:
@@ -728,10 +727,12 @@ class MetaCAT(AbstractSerialisable):
                 # Checking if we've reached at the start of the entity
                 if start <= pair[0] or start <= pair[1]:
                     if end <= pair[1]:
-                        ctoken_idx.append(ind)  # End reached
+                        # End reached; update for correct index
+                        ctoken_idx.append(last_ind + ind)
                         break
                     else:
-                        ctoken_idx.append(ind)  # Keep going
+                        # Keep going; update for correct index
+                        ctoken_idx.append(last_ind + ind)
 
             # Start where the last ent was found, cannot be before it as we've
             # sorted

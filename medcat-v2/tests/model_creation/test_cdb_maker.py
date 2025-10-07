@@ -2,6 +2,7 @@ import unittest
 import logging
 import os
 import numpy as np
+import pandas as pd
 from medcat.model_creation.cdb_maker import CDBMaker
 from medcat.cdb import CDB
 from medcat.config import Config
@@ -15,18 +16,55 @@ MODEL_CREATION_RES_PATH = os.path.join(RESOURCES_PATH, "model_creation")
 
 
 class CDBMakerBaseTests(unittest.TestCase):
+    use_spacy = False
 
     @classmethod
     def setUpClass(cls):
         cls.config = Config()
         cls.config.general.log_level = logging.DEBUG
-        cls.config.general.nlp.modelname = "en_core_web_md"
+        if cls.use_spacy:
+            cls.config.general.nlp.provider = 'spacy'
+            cls.config.general.nlp.modelname = "en_core_web_md"
         cls.maker = CDBMaker(cls.config)
         csvs = [
             os.path.join(MODEL_CREATION_RES_PATH, 'cdb.csv'),
             os.path.join(MODEL_CREATION_RES_PATH, 'cdb_2.csv'),
         ]
         cls.cdb = cls.maker.prepare_csvs(csvs, full_build=True)
+
+
+class MakeWithDashes(CDBMakerBaseTests):
+    cui = '69482004'
+    namelist = ["Korsakoff's psychosis",
+                'Wernicke-Korsakoff syndrome',
+                'Korsakov syndrome - alcoholic']
+    expected_names = [
+        # NOTE: whitespace and punctuation (e.g spaces, dashes)
+        #       are replaced with separator (~) here
+        #       and names are lower case
+        #       notably, only 1 separator at a time is shown
+        "korsakoff~s~psychosis",
+        "wernicke~korsakoff~syndrome",
+        "korsakov~syndrome~alcoholic",
+    ]
+    cui_df = pd.DataFrame({'cui': cui, 'name': namelist})
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.maker.prepare_csvs([cls.cui_df, ], full_build=True)
+
+    def test_has_cui(self):
+        self.assertIn(self.cui, self.cdb.cui2info)
+
+    def test_has_full_names(self):
+        for name in self.expected_names:
+            with self.subTest(f"Name: {name}"):
+                self.assertIn(name, self.cdb.name2info.keys())
+
+
+class MakeWithDashesSpacy(MakeWithDashes):
+    use_spacy = True
 
 
 class CDBMakerLoadTests(CDBMakerBaseTests):
