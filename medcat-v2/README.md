@@ -18,10 +18,23 @@ Details on breaking are outlined [here](docs/breaking_changes.md).
 
 ## Available Models
 
-As MedCAT v2 is still in early release, we do not currently have any models publically available.
-You can still use models for v1, however (see the [README](https://github.com/CogStack/cogstack-nlp/blob/main/medcat-v2/README.md) there).
+We have 2 public v2 models available:
+1) SnomedCT UK Clinical edition 39.0 (Oct 2024) and UK Drug Extension 39.0 (July 2024) based model enriched with UMLS 2024AA; trained only on MIMIC-IV
+2) SnomedCT UK Clinical edition 40.2 (June 2025) and UK Drug Extension 40.3 (July 2024) based model enriched with UMLS 2024AA; trained only on MIMIC-IV
 
-If you wish you can also convert the v1 models into the v2 format (see [tutorial](https://github.com/CogStack/cogstack-nlp/blob/main/medcat-v2-tutorials/notebooks/introductory/migration/1._Migrate_v1_model_to_v2.ipynb)).
+We also have a number of MedCAT v1 models available:
+1) UMLS Small (A modelpack containing a subset of UMLS (disorders, symptoms, medications...). Trained on MIMIC-III)
+2) SNOMED International (Full SNOMED modelpack trained on MIMIC-III)
+3) UMLS Dutch v1.10 (a modelpack provided by UMC Utrecht containing [UMLS entities with Dutch names](https://github.com/umcu/dutch-umls) trained on Dutch medical wikipedia articles and a negation detection model [repository](https://github.com/umcu/negation-detection/)/[paper](https://doi.org/10.48550/arxiv.2209.00470) trained on EMC Dutch Clinical Corpus).
+4) UMLS Full. >4MM concepts trained self-supervised on MIMIC-III. v2022AA of UMLS.
+5) The same 2024 based model as above in v1 format
+6) The same 2025 based model as above in v1 format
+
+To download any of these models, please [follow this link](https://uts.nlm.nih.gov/uts/login?service=https://medcat.sites.er.kcl.ac.uk/auth-callback) (or [this link for API key based download](https://medcat.sites.er.kcl.ac.uk/auth-callback-api)) and sign into your NIH profile / UMLS license. You will then be redirected to the MedCAT model download form. Please complete this form and you will be provided a download link.
+
+While we encourage you use MedCAT v2 and the models in that native format, if you download an older version MedCAT v2 will be able to load it and covnert it to the format it knows. However, the loading process will be considerably longerin those cases.
+
+If you wish you can also convert the v1 models into the v2 format (see [tutorial](medcat-v2-tutorials/notebooks/introductory/migration/1._Migrate_v1_model_to_v2.ipynb)).
 
 ```python
 from medcat.utils.legacy import legacy_converter
