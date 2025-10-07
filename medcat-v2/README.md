@@ -51,6 +51,7 @@ new_model_folder = "models"  # file in this folder
 ```
 
 ## News
+- **New public 2024 and 2025** Snomed models were uploaded and made available 7. October 2025.
 - **MedCAT 2.0.0**  was released 18. August 2025.
 <!-- - **Paper** van Es, B., Reteig, L.C., Tan, S.C. et al. [Negation detection in Dutch clinical texts: an evaluation of rule-based and machine learning methods](https://doi.org/10.1186/s12859-022-05130-x). BMC Bioinformatics 24, 10 (2023).
 - **New tool in the Cogstack ecosystem \[19. December 2022\]** [Foresight -- Deep Generative Modelling of Patient Timelines using Electronic Health Records](https://arxiv.org/abs/2212.08072)
