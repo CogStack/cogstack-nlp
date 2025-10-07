@@ -90,7 +90,7 @@ pip install "medcat[spacy,meta-cat,deid,rel-cat,dict-ner]~=2.0.0"  # for all of 
 The MedCAT v2 demo web app is available [here](https://medcat.sites.er.kcl.ac.uk/).
 
 ## Tutorials
-A guide on how to use MedCAT v2 is available at [MedCATv2 Tutorials](https://github.com/CogStack/cogstack-nlp/tree/main/medcat-v2-tutorials).
+A guide on how to use MedCAT v2 is available at [MedCATv2 Tutorials](medcat-v2-tutorials).
 However, the tutorials are a bit of a work in progress at this point in time.
 
 
