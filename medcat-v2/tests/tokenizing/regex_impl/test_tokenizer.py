@@ -8,7 +8,8 @@ class TokenizerTests(TestCase):
     TEXT_SIMPLE = ("This is - some simple test and 32 numbers 2-tokenize! "
                    "And then some!")
     EXP_TOKENS = ["This", "is", "-", "some", "simple", "test", "and", "32",
-                  "numbers", "2", "-tokenize!", "And", "then", "some", "!"]
+                  "numbers", "2", "-", "tokenize", "!", "And", "then", "some",
+                  "!"]
     BIG_NUMBER = 10_000_000
 
     @classmethod

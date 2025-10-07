@@ -25,6 +25,7 @@ router.register(r'datasets', api.views.DatasetViewSet)
 
 urlpatterns = [
     path('api/', include(router.urls)),
+    path('api/health/', include('health_check.urls')),
     path('api/anno-conf/', api.views.get_anno_tool_conf),
     path('api/search-concepts/', api.views.search_solr),
     path('api/prepare-documents/', api.views.prepare_documents),

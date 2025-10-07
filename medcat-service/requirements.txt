@@ -2,7 +2,7 @@ gunicorn==23.0.0
 setuptools==78.1.1
 simplejson==3.19.3
 setuptools-rust==1.11.0
-medcat[meta-cat,spacy,deid]~=2.0.0b
+medcat[meta-cat,spacy,deid]~=2.1.0
 # pinned because of issues with de-id models and past models (it will not do any de-id)
 transformers>=4.34.0,<5.0.0
 requests==2.32.4

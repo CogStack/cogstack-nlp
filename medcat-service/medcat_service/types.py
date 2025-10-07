@@ -33,6 +33,7 @@ class NoProtectedBaseModel(BaseModel, protected_namespaces=()):
 class ModelCardInfo(NoProtectedBaseModel):
     ontologies: Union[str, List[str], None]
     meta_cat_model_names: list[str]
+    rel_cat_model_names: list[str]
     model_last_modified_on: Optional[datetime]
 
 
@@ -46,7 +47,10 @@ class ServiceInfo(NoProtectedBaseModel):
 
 class ProcessAPIInputContent(BaseModel):
     text: str = Field(examples=["Patient had been diagnosed with acute Kidney Failure the week before"])
-    footer: Optional[str] = None
+    footer: Optional[Union[str, Dict[str, Any]]] = None
+
+    class Config:
+        extra = "forbid"
 
 
 class ProcessAPIInput(BaseModel):
@@ -79,7 +83,7 @@ class ProcessResult(BaseModel):
     success: bool
     timestamp: str
     elapsed_time: float
-    footer: Optional[str] = None
+    footer: Optional[Union[str, Dict[str, Any]]] = None
 
 
 class ProcessErrorsResult(BaseModel):

@@ -164,7 +164,7 @@ class VocabularyAdmin(admin.ModelAdmin):
     model = Vocabulary
     list_display = ('name', 'create_time', 'last_modified', 'last_modified_by')
     fields = ('name', 'vocab_file', 'create_time', 'last_modified', 'last_modified_by')
-    
+
     def save_model(self, request, obj, form, change):
         obj.last_modified_by = request.user
         super().save_model(request, obj, form, change)

@@ -4,7 +4,7 @@ services:
     ### Multiple images available:
     ## default image, only CPU support: cogstacksystems/medcat-service:latest 
     ## GPU support: cogstacksystems/medcat-service-gpu:latest
-    image: cogstacksystems/medcat-service-gpu:latest
+    image: ${MEDCAT_SERVICE_DOCKER_IMAGE:-cogstacksystems/medcat-service-gpu:${MEDCAT_SERVICE_VERSION:-latest}}
     restart: always
     environment:
       - http_proxy=$HTTP_PROXY
@@ -13,6 +13,7 @@ services:
     env_file:
       - ../env/app.env
       - ../env/medcat.env
+    shm_size: "${DOCKER_SHM_SIZE:-1g}"
     volumes:
     - ../models:/cat/models/:rw
     ports:
@@ -34,7 +35,7 @@ services:
     ### Multiple images available:
     ## default image, only CPU support: cogstacksystems/medcat-service:latest 
     ## GPU support: cogstacksystems/medcat-service-gpu:latest
-    image: cogstacksystems/medcat-service-gpu:latest
+    image: ${MEDCAT_SERVICE_DOCKER_IMAGE:-cogstacksystems/medcat-service-gpu:${MEDCAT_SERVICE_VERSION:-latest}}
     restart: always
     environment:
       - http_proxy=$HTTP_PROXY
@@ -43,6 +44,7 @@ services:
     env_file:
       - ../env/app_deid.env
       - ../env/medcat_deid.env
+    shm_size: "${DOCKER_SHM_SIZE:-1g}"
     volumes:
     - ../models:/cat/models/:rw
     ports:

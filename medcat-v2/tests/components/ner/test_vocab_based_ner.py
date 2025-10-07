@@ -26,7 +26,7 @@ class FakeCDB:
 
 
 class NerInitTests(ComponentInitTests, unittest.TestCase):
-    expected_def_components = 3
+    expected_def_components = len(types._DEFAULT_NER)
     comp_type = types.CoreComponentType.ner
     default_cls = vocab_based_ner.NER
     default_creator = vocab_based_ner.NER.create_new_component

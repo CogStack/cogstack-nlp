@@ -4,17 +4,17 @@ A REST API wrapper for [MedCAT](https://github.com/CogStack/cogstack-nlp/blob/ma
 
 Feel free to ask questions on the github issue tracker or on our [discourse website](https://discourse.cogstack.org) which is frequently used by our development team!
 
-# API specification
+## API specification
 
 The API definition follows the one defined in [CogStack GATE NLP Service](https://github.com/CogStack/gate-nlp-service/). Currently, there are 3 endpoints defined, that consume and return data in JSON format:
+
 - *GET* `/api/info` - displays general information about the MedCAT application,
 - *POST* `/api/process` - processes the provided documents and returns back the annotations,
 - *POST* `/api/process_bulk` - processes the provided list of documents and returns back the annotations.
 
 The full specification is available is [OpenAPI](https://github.com/CogStack/gate-nlp-service/tree/devel/api-specs) specification.
 
-
-# Running the application
+## Running the application
 
 The application can be run either as a standalone Python application or as running inside the Docker container (recommended).
 
@@ -23,12 +23,13 @@ The application can be run either as a standalone Python application or as runni
 Please note that prior running the application a number of requirements need to installed (see: `requirements.txt`).
 
 There are two scripts provided implementing starting the application:
+
 - `start_service_debug.sh` - starts the application in the development mode
 - `start_service_production.sh` - starts the application in 'production' mode and using `gunicorn` server.
 
 ## Running in a Docker container
 
-The recommended way to run the application is to use the provided Docker image. The Docker image can be either downloaded from the Docker Hub (`cogstacksystems/medcat-service:latest`) or build manually using the provided `Dockerfile`. 
+The recommended way to run the application is to use the provided Docker image. The Docker image can be either downloaded from the Docker Hub (`cogstacksystems/medcat-service:latest`) or build manually using the provided `Dockerfile`.
 Please note that by default the built docker image will run the Flask application in 'production' mode running `start_service_production.sh` script.
 
 To build the Docker image manually:
@@ -37,47 +38,50 @@ To build the Docker image manually:
 
 To run the container using the built image:
 
-```
-docker run -it -p 5000:5000 \
-  --env-file=envs/env_app --env-file=envs/env_medcat \
-  -v <models-local-dir>:/cat/models:ro \
-  cogstacksystems/medcat-service:latest
+```bash
+  docker run -it -p 5000:5000 \
+    --env-file=envs/env_app --env-file=envs/env_medcat \
+    -v <models-local-dir>:/cat/models:ro \
+    cogstacksystems/medcat-service:latest
 ```
 
-By default the MedCAT service will be running on port `5000`. MedCAT models will be mounted from local directory `<models-local-dir>` into the container at `/cat/models`. 
+By default the MedCAT service will be running on port `5000`. MedCAT models will be mounted from local directory `<models-local-dir>` into the container at `/cat/models`.
 
 ### GPU support
 
 If you have a gpu and wish to use it, please change the `docker/docker-compose.yml` file, use the `cogstacksystems/medcat-service-gpu:latest` image or change the `build:` directive to build `../Dockerfile_gpu`.
 
-### <span style="color:red">IMPORTANT !</span>
-If you wish to run this docker service manually, use the docker/docker-compose.yml file, execute `docker compose up -d` whilst in the `docker` folder. 
+### IMPORTANT
 
-Alternatively, an example script `./docker/run_example_medmen.sh` was provided to run the Docker container with MedCAT service. The script will download an example model (using the `./scripts/download_medmen.sh` script),it will use an example environment configuration, then it will build and start the service using the provided Docker Compose file, the service <b><span style="color:red">WONT WORK</span></b> without the model being present.
+If you wish to run this docker service manually, use the docker/docker-compose.yml file, execute `docker compose up -d` whilst in the `docker` folder.
+
+Alternatively, an example script `./docker/run_example_medmen.sh` was provided to run the Docker container with MedCAT service. The script will download an example model (using the `./scripts/download_medmen.sh` script),it will use an example environment configuration, then it will build and start the service using the provided Docker Compose file, the service ***WONT WORK*** without the model being present.
 
 All models should be mounted from the `models/` folder.
 
-<br>
+### Manual docker start-up steps
 
-### Manual docker start-up steps:
-```
+```bash
   1. cd ./models/
   2. bash ./download_medmen.sh
   3. cd ../docker/
   4. docker compose up -d
-  DONE!
+  5. echo "DONE!"
 ```
+
 Or, if you wish to use the above mentioned script ( the sample model is downloaded via script, you don't need to do anything):
-```
+
+```bash
   1. cd ./docker/
   2. bash ./run_example_medmen.sh
   DONE!
 ```
 
-# API Example use
+## API Example use
 
 Assuming that the application is running on the `localhost` with the API exposed on port `5000`, one can run:
-```
+
+```bash
 curl -XPOST http://localhost:5000/api/process \
   -H 'Content-Type: application/json' \
   -d '{"content":{"text":"The patient was diagnosed with leukemia."}}'
@@ -85,7 +89,7 @@ curl -XPOST http://localhost:5000/api/process \
 
 and the received result:
 
-```
+```json
 {
  "result": {"text": "The patient was diagnosed with leukemia.",
  
@@ -100,23 +104,25 @@ and the received result:
 
 Additional DE-ID query sample (make sure you have a de-id model loaded):
 
-curl -XPOST http://localhost:5555/api/process \
+```bash
+curl -XPOST <http://localhost:5555/api/process> \
   -H 'Content-Type: application/json' \
-  -d '{"content":{"text":"Patient Information: Full Name: John Michael Doe \n Gender: Male \n Date of Birth: January 15, 1975 (Age: 49) \n Patient ID: 567890123 \n Address: 1234 Elm Street, Springfield, IL 62701 \n Phone Number: (555) 123-4567 \n Email: johnmdoe@example.com \n Emergency Contact: Jane Doe (Wife) \n Phone: (555) 987-6543 \n Relationship: Spouse"}}'
+  -d '{"content":{"text":"Patient Information: Full Name: John Michael Doe \n Gender: Male \n Date of Birth: January 15, 1975 (Age: 49) \n Patient ID: 567890123 \n Address: 1234 Elm Street, Springfield, IL 62701 \n Phone Number: (555) 123-4567 \n Email: <johnmdoe@example.com> \n Emergency Contact: Jane Doe (Wife) \n Phone: (555) 987-6543 \n Relationship: Spouse"}}'
+```
 
-Make sure you have the following option enabled in `envs/env_medcat` , `DEID_MODE=True`.
+Make sure you have the following option enabled in `envs/(medcat|medcat_deid).env` , `DEID_MODE=True`.
 
 process_bulk example :
 
-```
+```bash
 curl -XPOST http://localhost:5000/api/process_bulk \
  -H 'Content-Type: application/json' \
  -d '{"content": [{"text":"The patient was diagnosed with leukemia."}, {"text": "The patient was diagnosed with cancer."}] }'
 ```
 
-example bulk result : 
+example bulk result :
 
-```
+```json
 {
   "result": [
     {
@@ -264,54 +270,78 @@ example bulk result :
 
 ```
 
-<strong>IMPORTANT info regarding annotation output style</strong><br>
+<strong>IMPORTANT info regarding annotation output style</strong>
 As the changes from MedCAT intoduced dictionary annotation/entity output.
 
 The mode in which annotation entities should be outputted in the JSON response,
    by default this was outputted as a "list" of dicts in older versions, so the output would be :
-   ```
+
+   ```json
     {"annotations": [{"id": "0", "cui" : "C1X..", ..}, {"id":"1", "cui": "...."}]}
    ```
+
    newer versions of MedCAT (1.2+) output entities as a dict, where the id of the entity is a key and the rest of the data is a value, so for "dict",
    the output is
-   ```
+
+   ```json
     {"annotations": [{"0": {"cui": "C0027361", "id": 0,.....}, "1": {"cui": "C001111", "id": 1......}}]}
    ```
-This setting can be configured in the ```./env/env_medcat``` file, using the ```ANNOTATIONS_ENTITY_OUTPUT_MODE``` variable.
+
+This setting can be configured in the ```./env/medcat.env``` file, using the ```MEDCAT_ANNOTATIONS_ENTITY_OUTPUT_MODE``` variable.
 By default, the output of these entities is set to respect the output of the MedCAT package, hence the latter will be used. Please change the above mentioned env variable and make sure your CogStack-Nifi annotation script is adapted accordingly.
-<br>
+
 Please note that the returned NLP annotations will depend on the underlying model used. For evaluation, we can only provide a very basic model trained on [MedMentions](https://github.com/chanzuckerberg/MedMentions). Models utilising [SNOMED CT](https://www.england.nhs.uk/digitaltechnology/digital-primary-care/snomed-ct/) or [UMLS](https://www.nlm.nih.gov/research/umls/index.html) may require applying for licenses from the copyright holders.
-<br>
-<br>
 
-# Configuration
+## Configuration
 
-In the current implementation, configuration for both MedCAT Service application and MedCAT NLP library is based on environment variables. These will be provided usually in two files in `env` directory:
-- `env_app` - configuration of MedCAT Service app,
-- `env_medcat` - configuration of MedCAT library.
+In the current implementation, configuration for both MedCAT Service application and MedCAT NLP library is based on environment variables. These will be provided usually in the files in the `env` directory:
+
+- `env/(app|app_deid).env` - configuration of MedCAT Service app,
+- `env/(medcat|medcat_deid).env` - configuration of MedCAT library.
+- `env/general.env` - configuration of general DOCKER related variables, CPU architecture, shared memory size etc, this is part of all of the major services services across CogStack, also set in the master repo in NiFi.
 
 Both files allow tailoring MedCAT for specific use-cases. When running MedCAT Service, these variables need to be loaded into the current working environment.
 
 ## spaCy models
+
 When using MedCAT for a different language than English, it can be useful to use a different spaCy model. A spaCy model can be included in the MedCAT model pack, but when not using this functionality, it can be useful to install models in the Docker image. This can be done by setting a build-time variable. See the `SPACY_MODELS` variable in [Dockerfile](Dockerfile) for default value and usage.
 
-## MedCAT Service
-MedCAT Service application are defined in `envs/env_app` file.
+## Service Environment vars
+
+MedCAT Service application are defined in `envs/(app|app_deid).env` file.
 
 The following environment variables are available for tailoring the MedCAT Service `gunicorn` server:
+
 - `SERVER_HOST` - specifies the host address (default: `0.0.0.0`),
 - `SERVER_PORT` - the port number used (default: `5000`),
 - `SERVER_WORKERS` - the number of workers serving the Flask app working in parallel (default: `1` ; only used in production server).
 - `SERVER_WORKER_TIMEOUT` - the max timeout (in sec) for receiving response from worker (default: `300` ; only used with production server).
 
 The following environment variables are available for tailoring the MedCAT Service wrapper:
-- `APP_MODEL_NAME` - an informative name of the model used by MedCAT (optional), 
+
+- `APP_MODEL_NAME` - an informative name of the model used by MedCAT (optional),
 - `APP_MODEL_CDB_PATH` - the path to the model's concept database,
 - `APP_MODEL_VOCAB_PATH` - the path to the model's vocabulary,
 - `APP_MODEL_META_PATH_LIST` - the list of paths to meta-annotation models, each separated by `:` character (optional),
 - `APP_BULK_NPROC` - the number of threads used in bulk processing (default: `8`),
-- `APP_TRAINING_MODE` - whether to run the application with MedCAT in training mode (default: `False`).
 - `APP_MEDCAT_MODEL_PACK` -  MedCAT Model Pack path, if this parameter has a value IT WILL BE LOADED FIRST OVER EVERYTHING ELSE (CDB, Vocab, MetaCATs, etc.) declared above.
+
+### Shared Memory (`DOCKER_SHM_SIZE`)
+
+The MedCAT service uses PyTorch multiprocessing and memory-mapped models, which rely on Linux shared memory (`/dev/shm`).  
+By default, Docker limits this to **64 MB**, which is insufficient for NLP models.
+
+Use the environment variable `DOCKER_SHM_SIZE` to control the size of shared memory inside the container. 
+You can set this variable in the `env/general.env` file.
+
+- **Recommended**: `8g` for bulk inference (`APP_BULK_NPROC > 1`)  
+- **Minimum**: `1g` for single-process inference (`APP_BULK_NPROC=1`)  
+
+Example:
+
+```env
+DOCKER_SHM_SIZE=8g
+```
 
 ## Performance Tuning
 
@@ -319,6 +349,7 @@ Theres a range of factors that might impact the performance of this service, the
 The main settings that can be used to improve the performance when querying large amounts of documents are : `SERVER_WORKERS` (number of flask web workers that chan handle parallel requests) and `APP_BULK_NPROC` (threads for annotation processing).
 
 ## MedCAT library
-MedCAT parameters are defined in selected `envs/env_medcat*`  file. 
+
+MedCAT parameters are defined in selected `envs/medcat*`  file.
 
 For details on available MedCAT parameters please refer to [the official GitHub repository](https://github.com/CogStack/cogstack-nlp/blob/main/medcat-v2/).

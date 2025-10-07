@@ -11,11 +11,10 @@ from django.http import HttpResponseBadRequest, HttpResponseServerError, HttpRes
 from django.shortcuts import render
 from django.utils import timezone
 from django_filters import rest_framework as drf
-from medcat.utils.helpers import tkns_from_doc
 from rest_framework import viewsets
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from medcat.utils.ner.deid import DeIdModel
+from medcat.components.ner.trf.deid import DeIdModel
 
 from .admin import download_projects_with_text, download_projects_without_text, \
     import_concepts_from_cdb
@@ -282,7 +281,7 @@ def prepare_documents(request):
                     logger.info('loaded medcat model for project: %s', project.id)
 
                     # Set CAT filters
-                    cat.config.linking['filters']['cuis'] = cuis
+                    cat.config.components.linking.filters.cuis = cuis
 
                     if not project.deid_model_annotation:
                         spacy_doc = cat(document.text)
@@ -304,6 +303,7 @@ def prepare_documents(request):
                 project.save()
 
     except Exception as e:
+        logger.warning('Error preparing documents for project %s', p_id, exc_info=e)
         stack = traceback.format_exc()
         return Response({'message': e.args[0] if len(e.args) > 0 else 'Internal Server Error',
                          'description': e.args[1] if len(e.args) > 1 else '',
@@ -424,9 +424,9 @@ def add_concept(request):
     if source_val in spacy_doc.text:
         start = spacy_doc.text.index(source_val)
         end = start + len(source_val)
-        spacy_entity = tkns_from_doc(spacy_doc=spacy_doc, start=start, end=end)
+        spacy_entity = [tkn for tkn in spacy_doc if tkn.idx >= start and tkn.idx <= end]
 
-    cat.add_and_train_concept(cui=cui, name=name, name_status='P', spacy_doc=spacy_doc, spacy_entity=spacy_entity)
+    cat.trainer.add_and_train_concept(cui=cui, name=name, name_status='P', mut_doc=spacy_doc, mut_entity=spacy_entity)
 
     id = create_annotation(source_val=source_val,
                            selection_occurrence_index=sel_occur_idx,
@@ -461,16 +461,8 @@ def import_cdb_concepts(request):
 
 def _submit_document(project: ProjectAnnotateEntities, document: Document):
     if project.train_model_on_submit:
-        try:
-            cat = get_medcat(project=project)
-            train_medcat(cat, project, document)
-        except Exception as e:
-            if project.vocab.id:
-                if len(VOCAB_MAP[project.vocab.id].unigram_table) == 0:
-                    return Exception('Vocab is missing the unigram table. On the vocab instance '
-                                     'use vocab.make_unigram_table() to build')
-            else:
-                raise e
+        cat = get_medcat(project=project)
+        train_medcat(cat, project, document)
 
     # Add cuis to filter if they did not exist
     cuis = []
@@ -614,23 +606,23 @@ def annotate_text(request):
     project = ProjectAnnotateEntities.objects.get(id=p_id)
 
     cat = get_medcat(project=project)
-    cat.config.linking['filters']['cuis'] = set(cuis)
+    cat.config.components.linking.filters.cuis = set(cuis)
     spacy_doc = cat(message)
 
     ents = []
     anno_tkns = []
-    for ent in spacy_doc._.ents:
-        cnt = Entity.objects.filter(label=ent._.cui).count()
+    for ent in spacy_doc.linked_ents:
+        cnt = Entity.objects.filter(label=ent.cui).count()
         inc_ent = all(tkn not in anno_tkns for tkn in ent)
         if inc_ent and cnt != 0:
             anno_tkns.extend([tkn for tkn in ent])
-            entity = Entity.objects.get(label=ent._.cui)
+            entity = Entity.objects.get(label=ent.cui)
             ents.append({
                 'entity': entity.id,
-                'value': ent.text,
-                'start_ind': ent.start_char,
-                'end_ind': ent.end_char,
-                'acc': ent._.context_similarity
+                'value': ent.base.text,
+                'start_ind': ent.base.start_char_index,
+                'end_ind': ent.base.end_char_index,
+                'acc': ent.context_similarity
             })
 
     ents.sort(key=lambda e: e['start_ind'])
@@ -675,8 +667,9 @@ def concept_search_index_available(request):
     try:
         return collections_available(cdb_ids)
     except Exception as e:
+        logger.error("Failed to search for concept_search_index. Solr Search Service not available", exc_info=e)
         return HttpResponseServerError("Solr Search Service not available check the service is up, running "
-                                       "and configured correctly. %s", e)
+                                       "and configured correctly", e)
 
 
 @api_view(http_method_names=['GET'])
@@ -688,8 +681,16 @@ def search_solr(request):
 
 @api_view(http_method_names=['POST'])
 def upload_deployment(request):
-    deployment_upload = request.data
-    upload_projects_export(deployment_upload)
+    deployment_export = request.data
+    deployment_upload = deployment_export['exported_projects']
+    cdb_id = deployment_export.get('cdb_id', None)
+    vocab_id = deployment_export.get('vocab_id', None)
+    modelpack_id = deployment_export.get('modelpack_id', None)
+
+    if all(x is None for x in [cdb_id, vocab_id, modelpack_id]):
+        return Response("No cdb, vocab, or modelpack provided", 400)
+
+    upload_projects_export(deployment_upload, cdb_id, vocab_id, modelpack_id)
     # logger.info(f'Errors encountered during previous deployment upload\n{errs}')
     return Response("successfully uploaded", 200)
 
