@@ -707,7 +707,8 @@ def upload_deployment(request):
                                 set_validated_docs)
         return Response("successfully uploaded", 200)
     except Exception as e:
-        return Response(f"Failed to upload projects export: {str(e)}", 500)
+        logger.error(f"Failed to upload projects export: {str(e)}", exc_info=e)
+        return Response(f"Failed to upload projects export: {e.message}", 500)
 
 
 @api_view(http_method_names=['GET', 'DELETE'])
