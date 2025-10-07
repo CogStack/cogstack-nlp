@@ -57,7 +57,7 @@ describe('App.vue', () => {
     expect(links[4].props('to')).toBe('/demo')
   })
 
-  
+
   it('calls /api/version/ when created', async () => {
     const mockGet = vi.fn().mockResolvedValue({ data: 'v1.2.3' });
     mount(App, {
@@ -92,7 +92,7 @@ describe('App.vue', () => {
       },
       data() {
         return {
-          uname: 'testuser',
+          uname: 'testUser',
           loginModal: false,
           version: 'v1.2.3'
         }
@@ -101,7 +101,7 @@ describe('App.vue', () => {
     await router.isReady()
     await flushPromises()
 
-        expect(wrapper.text()).toContain('testuser');
-        expect(wrapper.find('.logout').exists()).toBe(true);
+    expect(wrapper.text()).toContain('testUser');
+    expect(wrapper.find('.logout').exists()).toBe(true);
       });
     });
