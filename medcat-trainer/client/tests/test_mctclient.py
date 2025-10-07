@@ -156,8 +156,13 @@ class TestMCTClient(unittest.TestCase):
             headers=session.headers,
             json={
                 'exported_projects': projects,
+                'project_name_suffix': ' IMPORTED',
                 'cdb_id': '20',
-                'vocab_id': '30'
+                'vocab_id': '30',
+                'cdb_search_filter': None,
+                'members': None,
+                'import_project_name_suffix': ' IMPORTED',
+                'set_validated_docs': False
             }
         )
         self.assertEqual(result, mock_upload_response)
@@ -210,8 +215,13 @@ class TestMCTClient(unittest.TestCase):
             headers=session.headers,
             json={
                 'exported_projects': projects,
+                'project_name_suffix': ' IMPORTED',
                 'cdb_id': '20',
-                'vocab_id': '30'
+                'vocab_id': '30',
+                'cdb_search_filter': None,
+                'members': None,
+                'import_project_name_suffix': ' IMPORTED',
+                'set_validated_docs': False
             }
         )
         self.assertEqual(result, mock_upload_response)
@@ -249,7 +259,12 @@ class TestMCTClient(unittest.TestCase):
             headers=session.headers,
             json={
                 'exported_projects': projects,
-                'modelpack_id': '40'
+                'project_name_suffix': ' IMPORTED',
+                'modelpack_id': '40',
+                'cdb_search_filter': None,
+                'members': None,
+                'import_project_name_suffix': ' IMPORTED',
+                'set_validated_docs': False
             }
         )
         self.assertEqual(result, mock_upload_response)
@@ -263,7 +278,7 @@ class TestMCTClient(unittest.TestCase):
             if url.endswith('/api/modelpacks/'):
                 return MagicMock(
                     status_code=200,
-                    text=json.dumps({"results": [{"id": "40", "name": "testModelPack", "model_pack": "model.zip"}]})
+                    text=json.dumps({"results": [{"id": "40", "name": "testModelPack", "model_pack": "model.zip", "concept_db": "20", "vocab": "30", "meta_cats": ["200"]}]})
                 )
             else:
                 return MagicMock(status_code=404, text='')
@@ -297,7 +312,12 @@ class TestMCTClient(unittest.TestCase):
             headers=session.headers,
             json={
                 'exported_projects': projects,
-                'modelpack_id': '40'
+                'project_name_suffix': ' IMPORTED',
+                'modelpack_id': '40',
+                'cdb_search_filter': None,
+                'members': None,
+                'import_project_name_suffix': ' IMPORTED',
+                'set_validated_docs': False
             }
         )
         self.assertEqual(result, mock_upload_response)
@@ -348,6 +368,334 @@ class TestMCTClient(unittest.TestCase):
             session.upload_projects_export(projects, cdb=cdb, vocab=vocab)
 
         self.assertIn('Failed to upload projects export', str(context.exception))
+
+    @patch('mctclient.requests.post')
+    @patch('mctclient.requests.get')
+    def test_upload_projects_export_with_custom_suffix(self, mock_get, mock_post):
+        """Test upload_projects_export with custom import_project_name_suffix"""
+        # Mock authentication and upload responses
+        mock_upload_response = {"status": "success", "uploaded_projects": 1}
+
+        def post_side_effect(url, *args, **kwargs):
+            if url.endswith('/api/api-token-auth/'):
+                return MagicMock(status_code=200, text='{"token": "abc"}')
+            elif url.endswith('/api/upload-deployment/'):
+                return MagicMock(
+                    status_code=200,
+                    json=lambda: mock_upload_response
+                )
+            else:
+                return MagicMock(status_code=404, text='')
+
+        mock_post.side_effect = post_side_effect
+
+        session = MedCATTrainerSession(server='http://localhost', username='u', password='p')
+        cdb = MCTConceptDB(id='20', name='testCDB', conceptdb_file='cdb.dat')
+        vocab = MCTVocab(id='30', name='testVocab', vocab_file='vocab.dat')
+        projects = [{"id": 1, "name": "Project 1"}]
+
+        result = session.upload_projects_export(
+            projects,
+            cdb=cdb,
+            vocab=vocab,
+            import_project_name_suffix=' - CUSTOM SUFFIX'
+        )
+
+        # Verify the API call was made correctly
+        mock_post.assert_called_with(
+            f'{session.server}/api/upload-deployment/',
+            headers=session.headers,
+            json={
+                'exported_projects': projects,
+                'project_name_suffix': ' - CUSTOM SUFFIX',
+                'cdb_id': '20',
+                'vocab_id': '30',
+                'cdb_search_filter': None,
+                'members': None,
+                'import_project_name_suffix': ' - CUSTOM SUFFIX',
+                'set_validated_docs': False
+            }
+        )
+        self.assertEqual(result, mock_upload_response)
+
+    @patch('mctclient.requests.post')
+    @patch('mctclient.requests.get')
+    def test_upload_projects_export_with_cdb_search_filter_object(self, mock_get, mock_post):
+        """Test upload_projects_export with cdb_search_filter as MCTConceptDB object"""
+        # Mock authentication and upload responses
+        mock_upload_response = {"status": "success", "uploaded_projects": 1}
+
+        def post_side_effect(url, *args, **kwargs):
+            if url.endswith('/api/api-token-auth/'):
+                return MagicMock(status_code=200, text='{"token": "abc"}')
+            elif url.endswith('/api/upload-deployment/'):
+                return MagicMock(
+                    status_code=200,
+                    json=lambda: mock_upload_response
+                )
+            else:
+                return MagicMock(status_code=404, text='')
+
+        mock_post.side_effect = post_side_effect
+
+        session = MedCATTrainerSession(server='http://localhost', username='u', password='p')
+        cdb = MCTConceptDB(id='20', name='testCDB', conceptdb_file='cdb.dat')
+        vocab = MCTVocab(id='30', name='testVocab', vocab_file='vocab.dat')
+        cdb_search_filter = MCTConceptDB(id='25', name='searchFilterCDB', conceptdb_file='filter.dat')
+        projects = [{"id": 1, "name": "Project 1"}]
+
+        result = session.upload_projects_export(
+            projects,
+            cdb=cdb,
+            vocab=vocab,
+            cdb_search_filter=cdb_search_filter
+        )
+
+        # Verify the API call was made correctly
+        mock_post.assert_called_with(
+            f'{session.server}/api/upload-deployment/',
+            headers=session.headers,
+            json={
+                'exported_projects': projects,
+                'project_name_suffix': ' IMPORTED',
+                'cdb_id': '20',
+                'vocab_id': '30',
+                'cdb_search_filter': '25',
+                'members': None,
+                'import_project_name_suffix': ' IMPORTED',
+                'set_validated_docs': False
+            }
+        )
+        self.assertEqual(result, mock_upload_response)
+
+    @patch('mctclient.requests.post')
+    @patch('mctclient.requests.get')
+    def test_upload_projects_export_with_cdb_search_filter_string(self, mock_get, mock_post):
+        """Test upload_projects_export with cdb_search_filter as string name"""
+        # Mock get_concept_dbs response
+        def get_side_effect(url, *args, **kwargs):
+            if url.endswith('/api/concept-dbs/'):
+                return MagicMock(
+                    status_code=200,
+                    text=json.dumps({"results": [
+                        {"id": "20", "name": "testCDB", "cdb_file": "cdb.dat"},
+                        {"id": "25", "name": "searchFilterCDB", "cdb_file": "filter.dat"}
+                    ]})
+                )
+            else:
+                return MagicMock(status_code=404, text='')
+
+        mock_get.side_effect = get_side_effect
+
+        # Mock authentication and upload responses
+        mock_upload_response = {"status": "success", "uploaded_projects": 1}
+
+        def post_side_effect(url, *args, **kwargs):
+            if url.endswith('/api/api-token-auth/'):
+                return MagicMock(status_code=200, text='{"token": "abc"}')
+            elif url.endswith('/api/upload-deployment/'):
+                return MagicMock(
+                    status_code=200,
+                    json=lambda: mock_upload_response
+                )
+            else:
+                return MagicMock(status_code=404, text='')
+
+        mock_post.side_effect = post_side_effect
+
+        session = MedCATTrainerSession(server='http://localhost', username='u', password='p')
+        cdb = MCTConceptDB(id='20', name='testCDB', conceptdb_file='cdb.dat')
+        vocab = MCTVocab(id='30', name='testVocab', vocab_file='vocab.dat')
+        projects = [{"id": 1, "name": "Project 1"}]
+
+        result = session.upload_projects_export(
+            projects,
+            cdb=cdb,
+            vocab=vocab,
+            cdb_search_filter="searchFilterCDB"
+        )
+
+        # Verify the API call was made correctly
+        mock_post.assert_called_with(
+            f'{session.server}/api/upload-deployment/',
+            headers=session.headers,
+            json={
+                'exported_projects': projects,
+                'project_name_suffix': ' IMPORTED',
+                'cdb_id': '20',
+                'vocab_id': '30',
+                'cdb_search_filter': '25',
+                'members': None,
+                'import_project_name_suffix': ' IMPORTED',
+                'set_validated_docs': False
+            }
+        )
+        self.assertEqual(result, mock_upload_response)
+
+    @patch('mctclient.requests.post')
+    @patch('mctclient.requests.get')
+    def test_upload_projects_export_with_members_objects(self, mock_get, mock_post):
+        """Test upload_projects_export with members as list of MCTUser objects"""
+        # Mock authentication and upload responses
+        mock_upload_response = {"status": "success", "uploaded_projects": 1}
+
+        def post_side_effect(url, *args, **kwargs):
+            if url.endswith('/api/api-token-auth/'):
+                return MagicMock(status_code=200, text='{"token": "abc"}')
+            elif url.endswith('/api/upload-deployment/'):
+                return MagicMock(
+                    status_code=200,
+                    json=lambda: mock_upload_response
+                )
+            else:
+                return MagicMock(status_code=404, text='')
+
+        mock_post.side_effect = post_side_effect
+
+        session = MedCATTrainerSession(server='http://localhost', username='u', password='p')
+        cdb = MCTConceptDB(id='20', name='testCDB', conceptdb_file='cdb.dat')
+        vocab = MCTVocab(id='30', name='testVocab', vocab_file='vocab.dat')
+        members = [MCTUser(id='100', username='user1'), MCTUser(id='101', username='user2')]
+        projects = [{"id": 1, "name": "Project 1"}]
+
+        result = session.upload_projects_export(
+            projects,
+            cdb=cdb,
+            vocab=vocab,
+            members=members
+        )
+
+        # Verify the API call was made correctly
+        mock_post.assert_called_with(
+            f'{session.server}/api/upload-deployment/',
+            headers=session.headers,
+            json={
+                'exported_projects': projects,
+                'project_name_suffix': ' IMPORTED',
+                'cdb_id': '20',
+                'vocab_id': '30',
+                'cdb_search_filter': None,
+                'members': ['100', '101'],
+                'import_project_name_suffix': ' IMPORTED',
+                'set_validated_docs': False
+            }
+        )
+        self.assertEqual(result, mock_upload_response)
+
+    @patch('mctclient.requests.post')
+    @patch('mctclient.requests.get')
+    def test_upload_projects_export_with_members_strings(self, mock_get, mock_post):
+        """Test upload_projects_export with members as list of string usernames"""
+        # Mock get_users response
+        def get_side_effect(url, *args, **kwargs):
+            if url.endswith('/api/users/'):
+                return MagicMock(
+                    status_code=200,
+                    text=json.dumps({"results": [
+                        {"id": "100", "username": "user1"},
+                        {"id": "101", "username": "user2"}
+                    ]})
+                )
+            else:
+                return MagicMock(status_code=404, text='')
+
+        mock_get.side_effect = get_side_effect
+
+        # Mock authentication and upload responses
+        mock_upload_response = {"status": "success", "uploaded_projects": 1}
+
+        def post_side_effect(url, *args, **kwargs):
+            if url.endswith('/api/api-token-auth/'):
+                return MagicMock(status_code=200, text='{"token": "abc"}')
+            elif url.endswith('/api/upload-deployment/'):
+                return MagicMock(
+                    status_code=200,
+                    json=lambda: mock_upload_response
+                )
+            else:
+                return MagicMock(status_code=404, text='')
+
+        mock_post.side_effect = post_side_effect
+
+        session = MedCATTrainerSession(server='http://localhost', username='u', password='p')
+        cdb = MCTConceptDB(id='20', name='testCDB', conceptdb_file='cdb.dat')
+        vocab = MCTVocab(id='30', name='testVocab', vocab_file='vocab.dat')
+        projects = [{"id": 1, "name": "Project 1"}]
+
+        result = session.upload_projects_export(
+            projects,
+            cdb=cdb,
+            vocab=vocab,
+            members=["user1", "user2"]
+        )
+
+        # Verify the API call was made correctly
+        mock_post.assert_called_with(
+            f'{session.server}/api/upload-deployment/',
+            headers=session.headers,
+            json={
+                'exported_projects': projects,
+                'project_name_suffix': ' IMPORTED',
+                'cdb_id': '20',
+                'vocab_id': '30',
+                'cdb_search_filter': None,
+                'members': ['100', '101'],
+                'import_project_name_suffix': ' IMPORTED',
+                'set_validated_docs': False
+            }
+        )
+        self.assertEqual(result, mock_upload_response)
+
+    @patch('mctclient.requests.post')
+    @patch('mctclient.requests.get')
+    def test_upload_projects_export_handles_none_parameters(self, mock_get, mock_post):
+        """Test upload_projects_export handles None values for optional parameters gracefully"""
+        # Mock authentication and upload responses
+        mock_upload_response = {"status": "success", "uploaded_projects": 1}
+
+        def post_side_effect(url, *args, **kwargs):
+            if url.endswith('/api/api-token-auth/'):
+                return MagicMock(status_code=200, text='{"token": "abc"}')
+            elif url.endswith('/api/upload-deployment/'):
+                return MagicMock(
+                    status_code=200,
+                    json=lambda: mock_upload_response
+                )
+            else:
+                return MagicMock(status_code=404, text='')
+
+        mock_post.side_effect = post_side_effect
+
+        session = MedCATTrainerSession(server='http://localhost', username='u', password='p')
+        cdb = MCTConceptDB(id='20', name='testCDB', conceptdb_file='cdb.dat')
+        vocab = MCTVocab(id='30', name='testVocab', vocab_file='vocab.dat')
+        projects = [{"id": 1, "name": "Project 1"}]
+
+        # This test verifies that the implementation properly handles None values
+        result = session.upload_projects_export(
+            projects,
+            cdb=cdb,
+            vocab=vocab,
+            cdb_search_filter=None,  # This should be handled gracefully
+            members=None  # This should be handled gracefully
+        )
+
+        # Verify the API call was made correctly with None values
+        mock_post.assert_called_with(
+            f'{session.server}/api/upload-deployment/',
+            headers=session.headers,
+            json={
+                'exported_projects': projects,
+                'project_name_suffix': ' IMPORTED',
+                'cdb_id': '20',
+                'vocab_id': '30',
+                'cdb_search_filter': None,
+                'members': None,
+                'import_project_name_suffix': ' IMPORTED',
+                'set_validated_docs': False
+            }
+        )
+        self.assertEqual(result, mock_upload_response)
 
 if __name__ == '__main__':
     unittest.main()

@@ -3,7 +3,7 @@ import logging
 import re
 from collections import defaultdict
 from datetime import datetime
-from typing import Dict
+from typing import Dict, List
 
 from django.contrib.auth.models import User
 from django.db import transaction
@@ -66,10 +66,23 @@ def delete_orphan_docs(dataset: Dataset):
     Document.objects.filter(dataset__id=dataset.id).delete()
 
 
-def upload_projects_export(medcat_export: Dict, cdb_id: str, vocab_id: str, modelpack_id: str):
+def upload_projects_export(
+    medcat_export: Dict,
+    cdb_id: str,
+    vocab_id: str,
+    modelpack_id: str,
+    project_name_suffix: str = ' IMPORTED',
+    cdb_search_filter_id: str = None,
+    members: List[str] = None,
+    import_project_name_suffix: str = ' IMPORTED',
+    set_validated_docs: bool = False
+):
     for proj in medcat_export['projects']:
+        if len(proj['documents']) == 0:
+            # don't add projects with no documents
+            continue
         p = ProjectAnnotateEntities()
-        p.name = proj['name'] + ' IMPORTED'
+        p.name = f"{proj['name']}{project_name_suffix}"
         if len(proj['cuis']) > 1000:
             # store large CUI lists in a json file.
             cuis_file_name = MEDIA_ROOT + '/' + re.sub('/|\.', '_', p.name + '_cuis_file') + '.json'
@@ -115,6 +128,12 @@ def upload_projects_export(medcat_export: Dict, cdb_id: str, vocab_id: str, mode
         p.dataset = ds_mod
         p.save()
 
+        if cdb_search_filter_id is not None:
+            p.cdb_search_filter.set([ConceptDB.objects.get(id=cdb_search_filter_id)])
+
+        if members is not None:
+            p.members.set(members)
+
         # create django ORM model instances that are referenced in the upload if they don't exist.
         for u in unavailable_users:
             logger.warning(f'Username: {u} - not present in this trainer deployment.')
@@ -146,7 +165,11 @@ def upload_projects_export(medcat_export: Dict, cdb_id: str, vocab_id: str, mode
                 r.label = rel
                 r.save()
 
-        p.validated_documents.set(list(Document.objects.filter(dataset=ds_mod)))
+        if set_validated_docs:
+            p.validated_documents.set(list(Document.objects.filter(dataset=ds_mod)))
+        else:
+            p.validated_documents.clear()
+
 
         for doc in proj['documents']:
             doc_mod = Document.objects.filter(Q(dataset=ds_mod) & Q(text=doc['text'])).first()

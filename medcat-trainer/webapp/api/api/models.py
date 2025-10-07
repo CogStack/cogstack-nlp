@@ -29,7 +29,7 @@ BOOL_CHOICES = [
         ]
 
 
-cdb_name_validator = RegexValidator(r'^[a-zA-Z][a-zA-Z0-9_]*$', 'a-z for first character required. Alpahanumeric and _ thereafter are allowed for CDB names')
+cdb_name_validator = RegexValidator(r'^[a-zA-Z][a-zA-Z0-9_]*$', 'a-zA-Z for first character required. Alpahanumeric or _ thereafter are allowed for CDB names')
 
 logger = logging.getLogger(__name__)
 
@@ -112,9 +112,7 @@ class ModelPack(models.Model):
         except Exception as exc:
             raise MedCATLoadException(f'Failure loading MetaCAT models - {unpacked_model_pack_path}') from exc
 
-        # Only save if this is an update (not a new instance)
-        if not is_new:
-            super().save(*args, **kwargs)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.name
@@ -526,9 +524,17 @@ class MetaAnnotation(models.Model):
 
 class ExportedProject(models.Model):
     trainer_export_file = models.FileField(help_text='Previously exported MedCATtrainer .json file')
+    import_project_name_suffix = models.CharField(max_length=100, default=' IMPORTED', help_text='The suffix to be added to the project name')
+    members = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, default=None, help_text='The annotators for the project')
     cdb_id = models.ForeignKey('ConceptDB', on_delete=models.SET_NULL, blank=True, null=True, default=None, help_text='The ConceptDB to be set for this exported project')
     vocab_id = models.ForeignKey('Vocabulary', on_delete=models.SET_NULL, blank=True, null=True, default=None, help_text='The Vocabulary to be set for this exported project')
     modelpack_id = models.ForeignKey('ModelPack', on_delete=models.SET_NULL, blank=True, null=True, default=None, help_text='The ModelPack to be set for this exported project')
+    cdb_search_filter_id = models.ForeignKey('ConceptDB', on_delete=models.SET_NULL, blank=True, null=True, default=None, help_text='The CDB that will be used for concept lookup. '
+                                                         'This specific CDB should have been "imported" '
+                                                         'via the CDB admin screen', related_name='concept_source_exported_project')
+    set_validated_docs = models.BooleanField(default=False, help_text='Whether to set the validated documents, e.g. their annotation submit status.')
+
+
 
     def __str__(self):
         return f'{self.trainer_export_file.name} - {self.cdb_id} - {self.vocab_id} - {self.modelpack_id}'
