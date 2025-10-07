@@ -626,14 +626,14 @@ class MedCATTrainerSession:
             modelpack = [m for m in self.get_model_packs() if m.name == modelpack].pop()
         if isinstance(cdb_search_filter, str):
             cdb_search_filter = [c for c in self.get_concept_dbs() if c.name == cdb_search_filter].pop()
-        if isinstance(members, str):
-            members = [m for m in self.get_users() if m.username == members].pop()
+        if members and all(isinstance(m, str) for m in members):
+            members = [m for m in self.get_users() if m.username in members]
 
         payload = {
             'exported_projects': projects,
             'project_name_suffix': import_project_name_suffix,
-            'cdb_search_filter': cdb_search_filter.id,
-            'members': [m.id for m in members],
+            'cdb_search_filter': cdb_search_filter.id if cdb_search_filter else None,
+            'members': [m.id for m in members] if members else None,
             'import_project_name_suffix': import_project_name_suffix,
             'set_validated_docs': set_validated_docs,
         }
