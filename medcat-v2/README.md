@@ -34,7 +34,7 @@ To download any of these models, please [follow this link](https://uts.nlm.nih.g
 
 While we encourage you use MedCAT v2 and the models in that native format, if you download an older version MedCAT v2 will be able to load it and covnert it to the format it knows. However, the loading process will be considerably longerin those cases.
 
-If you wish you can also convert the v1 models into the v2 format (see [tutorial](medcat-v2-tutorials/notebooks/introductory/migration/1._Migrate_v1_model_to_v2.ipynb)).
+If you wish you can also convert the v1 models into the v2 format (see [tutorial](../medcat-v2-tutorials/notebooks/introductory/migration/1._Migrate_v1_model_to_v2.ipynb)).
 
 ```python
 from medcat.utils.legacy import legacy_converter
