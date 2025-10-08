@@ -1,3 +1,4 @@
+import os
 import traceback
 from smtplib import SMTPException
 from tempfile import NamedTemporaryFile
@@ -222,7 +223,6 @@ class ResetPasswordView(PasswordResetView):
             return HttpResponseServerError('''SMTP settings are not configured correctly. <br>
                                            Please visit https://medcattrainer.readthedocs.io for more information to resolve this. <br>
                                            You can also ask a question at: https://discourse.cogstack.org/c/medcat/5''')
-
 
 @api_view(http_method_names=['GET'])
 def get_anno_tool_conf(_):

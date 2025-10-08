@@ -5,12 +5,34 @@ import requests
 from time import sleep
 import json
 
+def get_keycloak_access_token():
+    print('Getting Keycloak access token...')
+    keycloak_url = os.environ.get("KEYCLOAK_URL", "http://keycloak.cogstack.localhost")
+    realm = os.environ.get("KEYCLOAK_REALM", "cogstack-realm")
+    client_id = os.environ.get("KEYCLOAK_CLIENT_ID", "cogstack-medcattrainer-frontend")
+    username = os.environ.get("KEYCLOAK_USERNAME", "admin")
+    password = os.environ.get("KEYCLOAK_PASSWORD", "admin")
+
+    token_url = f"{keycloak_url}/realms/{realm}/protocol/openid-connect/token"
+
+    data = {
+        "grant_type": "password",
+        "client_id": client_id,
+        "username": username,
+        "password": password,
+        "scope": "openid profile email"
+    }
+
+    resp = requests.post(token_url, data=data)
+    resp.raise_for_status()
+    return resp.json()["access_token"]
 
 def main(port=8000,
          model_pack_tmp_file='/home/model_pack.zip',
          dataset_tmp_file='/home/ds.csv',
          initial_wait=15):
 
+    print('Checking for environment variable LOAD_EXAMPLES...')
     val = os.environ.get('LOAD_EXAMPLES')
     if val is not None and val not in ('1', 'true', 't', 'y'):
         print('Found Env Var LOAD_EXAMPLES is False, not loading example data, cdb, vocab and project')
@@ -25,15 +47,26 @@ def main(port=8000,
         try:
             # check API is available
             if requests.get(URL).status_code == 200:
-                # check API default username and pass are available.
-                payload = {"username": "admin", "password": "admin"}
-                resp = requests.post(f"{URL}api-token-auth/", json=payload)
-                if resp.status_code != 200:
-                    break
 
-                headers = {
-                    'Authorization': f'Token {json.loads(resp.text)["token"]}',
-                }
+                use_oidc = os.environ.get('USE_OIDC')
+                print('Checking for environment variable USE_OIDC...')
+                if use_oidc is not None and use_oidc in ('1', 'true', 't', 'y'):
+                    print('Found environment variable USE_OIDC is set to truthy value. Will load data using JWT')
+                    token = get_keycloak_access_token()
+                    headers = {
+                        'Authorization': f'Bearer {token}',
+                    }
+                else:
+                    # check API default username and pass are available.
+                    print('Getting DRF auth token ...')
+                    payload = {"username": "admin", "password": "admin"}
+                    resp = requests.post(f"{URL}api-token-auth/", json=payload)
+                    if resp.status_code != 200:
+                        break
+
+                    headers = {
+                        'Authorization': f'Token {json.loads(resp.text)["token"]}',
+                    }
 
                 # check concepts DB, vocab, datasets and projects are empty
                 resp_model_packs = requests.get(f'{URL}modelpacks/', headers=headers)

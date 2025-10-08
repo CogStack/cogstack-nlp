@@ -8,4 +8,6 @@ django-background-tasks-updated==1.2.*
 openpyxl==3.1.2
 medcat[meta-cat,spacy,rel-cat,deid]==2.1.*
 psycopg[binary,pool]==3.2.9
+cryptography==45.0.*
+drf-oidc-auth==3.0.0
 django-health-check==3.20.0

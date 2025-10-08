@@ -46,7 +46,6 @@ import Login from '@/components/common/Login.vue'
 import EventBus from '@/event-bus'
 import ProjectList from "@/components/common/ProjectList.vue"
 
-
 export default {
   name: 'Home',
   components: {
@@ -73,7 +72,8 @@ export default {
       loadingProjects: false,
       isAdmin: false,
       selectedProjectGroup: null,
-      cdbSearchIndexStatus: {}
+      cdbSearchIndexStatus: {},
+      useOidc: import.meta.env.VITE_USE_OIDC === '1'
     }
   },
   created () {
@@ -101,11 +101,15 @@ export default {
       })
       // assume if there's an api-token we've logged in before and will try get projects
       // fallback to logging in otherwise
-      if (this.$cookies.get('api-token')) {
-        this.loginSuccessful = true
-        this.isAdmin = this.$cookies.get('admin') === 'true'
-        this.fetchProjects()
-      }
+      if (!this.useOidc && this.$cookies.get('api-token')) {
+          this.loginSuccessful = true
+          this.isAdmin = this.$cookies.get('admin') === 'true'
+          this.fetchProjects()
+      } else if (this.useOidc && this.$keycloak && this.$keycloak.authenticated) {
+          this.loginSuccessful = true
+          this.isAdmin = this.$keycloak.tokenParsed?.realm_access?.roles.includes('admin') ?? false;
+          this.fetchProjects()
+        }
     },
     fetchProjectGroups () {
       const projectGroupIds = new Set(this.projects.items.filter(p => p.group !== null).map(p => p.group))
