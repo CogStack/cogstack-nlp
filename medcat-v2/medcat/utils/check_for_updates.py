@@ -26,7 +26,7 @@ DEFAULT_CHECK_INTERVAL = 7 * 24 * 3600
 logger = logging.getLogger(__name__)
 
 
-def log_info(msg: str):
+def log_info(msg: str, *args, **kwargs):
     lvl = os.environ.get(MEDCAT_VERSION_UPDATE_LOG_LEVEL_ENVIRON,
                          DEFAULT_VERSION_INFO_LEVEL).upper()
     _level_map = {
@@ -40,7 +40,7 @@ def log_info(msg: str):
         "FATAL": logging.FATAL,
     }
     level = _level_map.get(lvl, logging.INFO)
-    logger.log(level, msg)
+    logger.log(level, msg, *args, **kwargs)
 
 
 def _get_env_int(name: str, default: int) -> int:
@@ -120,7 +120,7 @@ def check_for_updates(pkg_name: str, current_version: str):
             if files  # skip empty entries
         }
     except Exception as e:
-        logger.info("Unable to check for update", exc_info=e)
+        log_info("Unable to check for update", exc_info=e)
         return
 
     # cache update time
@@ -165,7 +165,7 @@ def _do_check(cnf: UpdateCheckConfig, releases: dict,
             reason = f.get("yanked_reason", "")
             msg = (f"⚠️  You are using a yanked version ({pkg_name} "
                    f"{current_version}). {reason}")
-            logger.warning(msg)
+            log_info(msg)
             # TODO: make this configurable?
             print(msg)
             yanked = True
@@ -176,17 +176,14 @@ def _do_check(cnf: UpdateCheckConfig, releases: dict,
         latest_patch = max(newer_patches)
         msg = (f"ℹ️  {pkg_name} {current_version} → {latest_patch} "
                f"({len(newer_patches)} newer patch releases available)")
-        logger.error(msg)
-        # print(msg)
+        log_info(msg)
     elif len(newer_minors) >= minor_thresh:
         latest_minor = max(newer_minors)
         msg = (f"⚠️  {pkg_name} {current_version} → {latest_minor} "
                f"({len(newer_minors)} newer minor releases available)")
-        logger.info(msg)
-        # print(msg)
+        log_info(msg)
 
     if yanked and not (newer_minors or newer_patches):
         msg = (f"⚠️  Your installed version {current_version} was yanked and "
                "has no newer stable releases yet.")
-        logger.info(msg)
-        # print(msg)
+        log_info(msg)
