@@ -11,9 +11,11 @@ from medcat.utils.defaults import (
     MEDCAT_DISABLE_VERSION_CHECK_ENVIRON, MEDCAT_PYPI_URL_ENVIRON,
     MEDCAT_MINOR_UPDATE_THRESHOLD_ENVIRON,
     MEDCAT_PATCH_UPDATE_THRESHOLD_ENVIRON,
+    MEDCAT_VERSION_UPDATE_LOG_LEVEL_ENVIRON
 )
 from medcat.utils.defaults import (
-    DEFAULT_PYPI_URL, DEFAULT_MINOR_FOR_INFO, DEFAULT_PATCH_FOR_INFO)
+    DEFAULT_PYPI_URL, DEFAULT_MINOR_FOR_INFO, DEFAULT_PATCH_FOR_INFO,
+    DEFAULT_VERSION_INFO_LEVEL)
 
 
 DEFAULT_CACHE_PATH = Path.home() / ".cache" / "medcat_version.json"
@@ -22,6 +24,23 @@ DEFAULT_CHECK_INTERVAL = 7 * 24 * 3600
 
 
 logger = logging.getLogger(__name__)
+
+
+def log_info(msg: str):
+    lvl = os.environ.get(MEDCAT_VERSION_UPDATE_LOG_LEVEL_ENVIRON,
+                         DEFAULT_VERSION_INFO_LEVEL).upper()
+    _level_map = {
+        "NOTSET": logging.NOTSET,
+        "DEBUG": logging.DEBUG,
+        "INFO": logging.INFO,
+        "WARN": logging.WARNING,
+        "WARNING": logging.WARNING,
+        "ERROR": logging.ERROR,
+        "CRITICAL": logging.CRITICAL,
+        "FATAL": logging.FATAL,
+    }
+    level = _level_map.get(lvl, logging.INFO)
+    logger.log(level, msg)
 
 
 def _get_env_int(name: str, default: int) -> int:
@@ -90,9 +109,7 @@ def check_for_updates(pkg_name: str, current_version: str):
         return
 
     if not _should_check(cnf["cache_path"], cnf["check_interval"]):
-        print("Ignoring check - interval")
         return
-    print("DOING CHECK")
 
     try:
         with urllib.request.urlopen(cnf["url"],
