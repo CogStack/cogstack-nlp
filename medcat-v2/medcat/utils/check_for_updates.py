@@ -11,11 +11,12 @@ from medcat.utils.defaults import (
     MEDCAT_DISABLE_VERSION_CHECK_ENVIRON, MEDCAT_PYPI_URL_ENVIRON,
     MEDCAT_MINOR_UPDATE_THRESHOLD_ENVIRON,
     MEDCAT_PATCH_UPDATE_THRESHOLD_ENVIRON,
-    MEDCAT_VERSION_UPDATE_LOG_LEVEL_ENVIRON
+    MEDCAT_VERSION_UPDATE_LOG_LEVEL_ENVIRON,
+    MEDCAT_VERSION_UPDATE_YANKED_LOG_LEVEL_ENVIRON,
 )
 from medcat.utils.defaults import (
     DEFAULT_PYPI_URL, DEFAULT_MINOR_FOR_INFO, DEFAULT_PATCH_FOR_INFO,
-    DEFAULT_VERSION_INFO_LEVEL)
+    DEFAULT_VERSION_INFO_LEVEL, DEFAULT_VERSION_INFO_YANKED_LEVEL)
 
 
 DEFAULT_CACHE_PATH = Path.home() / ".cache" / "medcat_version.json"
@@ -26,9 +27,13 @@ DEFAULT_CHECK_INTERVAL = 7 * 24 * 3600
 logger = logging.getLogger(__name__)
 
 
-def log_info(msg: str, *args, **kwargs):
-    lvl = os.environ.get(MEDCAT_VERSION_UPDATE_LOG_LEVEL_ENVIRON,
-                         DEFAULT_VERSION_INFO_LEVEL).upper()
+def log_info(msg: str, *args, yanked: bool = False, **kwargs):
+    if yanked:
+        lvl = os.environ.get(MEDCAT_VERSION_UPDATE_YANKED_LOG_LEVEL_ENVIRON,
+                             DEFAULT_VERSION_INFO_YANKED_LEVEL).upper()
+    else:
+        lvl = os.environ.get(MEDCAT_VERSION_UPDATE_LOG_LEVEL_ENVIRON,
+                             DEFAULT_VERSION_INFO_LEVEL).upper()
     _level_map = {
         "NOTSET": logging.NOTSET,
         "DEBUG": logging.DEBUG,
@@ -163,7 +168,7 @@ def _do_check(cnf: UpdateCheckConfig, releases: dict,
             reason = f.get("yanked_reason", "")
             msg = (f"⚠️  You are using a yanked version ({pkg_name} "
                    f"{current_version}). {reason}")
-            log_info(msg)
+            log_info(msg, yanked=True)
             yanked = True
             break
 
@@ -182,4 +187,4 @@ def _do_check(cnf: UpdateCheckConfig, releases: dict,
     if yanked and not (newer_minors or newer_patches):
         msg = (f"⚠️  Your installed version {current_version} was yanked and "
                "has no newer stable releases yet.")
-        log_info(msg)
+        log_info(msg, yanked=True)
