@@ -212,7 +212,7 @@ def get_class_level_docstrings(cls: Type) -> list[str]:
                         elem.value, ast.Constant):
                     # If it's an expression node containing a constant,
                     # extract the string
-                    docstrings.append(elem.value.s)
+                    docstrings.append(str(elem.value.s))
     return docstrings
 
 
