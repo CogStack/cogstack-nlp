@@ -156,8 +156,6 @@ def _do_check(cnf: UpdateCheckConfig, releases: dict,
             newer_patches.append(v)
         elif v.major == current.major and v.minor > current.minor:
             newer_minors.append(v)
-    # print("Newer patches", newer_patches)
-    # print("Newer minors", newer_minors)
 
     # detect if current version is yanked
     for f in releases.get(current_version, []):
@@ -166,8 +164,6 @@ def _do_check(cnf: UpdateCheckConfig, releases: dict,
             msg = (f"⚠️  You are using a yanked version ({pkg_name} "
                    f"{current_version}). {reason}")
             log_info(msg)
-            # TODO: make this configurable?
-            print(msg)
             yanked = True
             break
 
