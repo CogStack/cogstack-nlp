@@ -1,34 +1,37 @@
 from unittest import TestCase
 
-import warnings
-import importlib
+import sys
+import subprocess
 
-from medcat.config import config
-from medcat.config import config_meta_cat
-from medcat.config import config_rel_cat
-from medcat.config import config_transformers_ner
+
+def _import_in_subprocess(module_name: str):
+    code = f"""
+import warnings, importlib
+with warnings.catch_warnings(record=True) as w:
+    warnings.simplefilter("always")
+    importlib.import_module('{module_name}')
+    assert not w
+    """
+    res = subprocess.run([sys.executable, "-c", code],
+                         capture_output=True, text=True)
+    res.check_returncode()
+    return res.stdout
 
 
 class TestConfigImportHasNoWarnings(TestCase):
-    pkg = config
+    pkg = "medcat.config.config"
 
     def test_has_no_warnings(self):
-        # ensure import emits no warnings
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always")
-            # Trigger import or reload if needed
-            importlib.reload(self.pkg)
-        # if *any* warnings were emitted, fail with details
-        self.assertFalse(w, "Should have no warninings")
+        _import_in_subprocess(self.pkg)
 
 
 class TestConfigMetaCATImportHasNoWarnings(TestConfigImportHasNoWarnings):
-    pkg = config_meta_cat
+    pkg = "medcat.config.config_meta_cat"
 
 
 class TestConfigRelCATImportHasNoWarnings(TestConfigImportHasNoWarnings):
-    pkg = config_rel_cat
+    pkg = "medcat.config.config_rel_cat"
 
 
 class TestConfigTrfNerImportHasNoWarnings(TestConfigImportHasNoWarnings):
-    pkg = config_transformers_ner
+    pkg = "medcat.config.config_transformers_ner"
