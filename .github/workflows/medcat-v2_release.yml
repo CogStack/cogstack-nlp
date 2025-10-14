@@ -50,10 +50,10 @@ jobs:
           git pull origin $BRANCH_NAME
 
         # NOTE: building with the lowest python version supported by the package
-      - name: Set up Python 3.9
+      - name: Set up Python 3.10
         uses: actions/setup-python@v6
         with:
-          python-version: "3.9"
+          python-version: "3.10"
 
       - name: Install build dependencies
         run: pip install --upgrade build
@@ -75,7 +75,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.10", "3.11", "3.12"]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -90,25 +90,10 @@ jobs:
 
       - name: Generate requirements and download (CPU)
         run: |
-          if [[ "${{ matrix.python-version }}" == "3.9" ]]; then
-            echo "Runnoing unsafe index strategy for Python 3.9 to avoid issues with torch / numpy compatibility"
-            # NOTE: for python 3.9 it will otherwise look for `numpy>2` in torch's index
-            #       but there's (as of writing on 2025-07-02) none there that support 3.9
-            #       (though there are ones that support 3.10+) and because of that this
-            #       step would fail wihtout the unsafe index match
-            #       for some documentation on dependency confusion attacks, can reference:
-            #       https://docs.astral.sh/uv/reference/settings/#pip_index-strategy
-            uv pip compile pyproject.toml --only-binary=:all: \
-              --extra spacy --extra deid --extra meta-cat --extra rel-cat \
-              --extra-index-url https://download.pytorch.org/whl/cpu \
-              --index-strategy unsafe-best-match \
-              > req-cpu.txt
-          else
-            uv pip compile pyproject.toml --only-binary=:all: \
+          uv pip compile pyproject.toml --only-binary=:all: \
               --extra spacy --extra deid --extra meta-cat --extra rel-cat \
               --extra-index-url https://download.pytorch.org/whl/cpu \
               > req-cpu.txt
-          fi
           uv venv .venv
           .venv/bin/python -m ensurepip
           .venv/bin/python -m pip download --only-binary=:all: --dest bundle-cpu -r req-cpu.txt --extra-index-url https://download.pytorch.org/whl/cpu
