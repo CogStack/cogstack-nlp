@@ -1,5 +1,6 @@
 from collections import defaultdict
 import logging
+from medcat.cdb.concepts import NameInfo
 import numpy as np
 
 from copy import deepcopy
@@ -61,7 +62,7 @@ def merge_cdb(cdb1: CDB,
         names = {}
         for name in cui_info2['names']:
             # Create a simple NameDescriptor-like structure
-            name_info_entry: dict[str, Any] | None = cdb2.name2info.get(name)
+            name_info_entry: NameInfo | None = cdb2.name2info.get(name)
             names[name] = type('NameDescriptor', (), {
                 'snames': cui_info2['subnames'],
                 # Guard for unknown structure in name2info and avoid mismatched defaults
