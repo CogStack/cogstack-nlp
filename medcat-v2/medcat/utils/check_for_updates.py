@@ -79,8 +79,8 @@ class UpdateCheckConfig(TypedDict):
 
 
 def _get_config(pkg_name: str) -> UpdateCheckConfig:
-    if os.getenv(MEDCAT_DISABLE_VERSION_CHECK_ENVIRON
-                 ).lower() in ("true", "yes", "disable"):
+    if os.getenv(MEDCAT_DISABLE_VERSION_CHECK_ENVIRON,
+                 "False").lower() in ("true", "yes", "disable"):
         return {
             "pkg_name": pkg_name,
             "enabled": False,
