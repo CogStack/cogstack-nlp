@@ -19,7 +19,8 @@ from medcat.utils.defaults import (
     DEFAULT_VERSION_INFO_LEVEL, DEFAULT_VERSION_INFO_YANKED_LEVEL)
 
 
-DEFAULT_CACHE_PATH = Path.home() / ".cache" / "medcat_version.json"
+DEFAULT_CACHE_PATH = (
+    Path.home() / ".cache" / "cogstack" / "medcat_version.json")
 # 1 week
 DEFAULT_CHECK_INTERVAL = 7 * 24 * 3600
 
