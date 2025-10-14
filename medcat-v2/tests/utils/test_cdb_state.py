@@ -123,7 +123,8 @@ class StateSavedOnDiskTests(StateSavedTests):
 
     @classmethod
     def setUpClass(cls) -> None:
-        with mock.patch("builtins.open", side_effect=open) as cls.popen:
+        with mock.patch("medcat.utils.cdb_state.open", side_effect=open
+                        ) as cls.popen:
             with mock.patch("tempfile.NamedTemporaryFile",
                             side_effect=cls.saved_name_temp_file) as cls.pntf:
                 return super().setUpClass()
