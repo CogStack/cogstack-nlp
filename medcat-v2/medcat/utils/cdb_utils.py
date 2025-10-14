@@ -66,7 +66,8 @@ def merge_cdb(cdb1: CDB,
             names[name] = type('NameDescriptor', (), {
                 'snames': cui_info2['subnames'],
                 # Guard for unknown structure in name2info and avoid mismatched defaults
-                'is_upper': (bool(name_info_entry.get('is_upper', False)) if isinstance(name_info_entry, dict) else False),
+                'is_upper': (bool(name_info_entry.get('is_upper', False))
+                    if isinstance(name_info_entry, dict) else False),
                 'tokens': set(),  # We don't have token info in the new structure
                 'raw_name': name
             })()
