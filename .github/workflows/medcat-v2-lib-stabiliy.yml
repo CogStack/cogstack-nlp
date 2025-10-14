@@ -34,22 +34,22 @@ jobs:
 
       - name: Install with latest deps
         run: |
-          uv run python -m ensurepip
-          uv run python -m pip install --upgrade pip
-          uv run python -m pip install ".[spacy,deid,meta-cat,rel-cat,dict-ner,dev]"
+          uv run --python ${{ matrix.python-version }} python -m ensurepip
+          uv run --python ${{ matrix.python-version }} python -m pip install --upgrade pip
+          uv run --python ${{ matrix.python-version }} python -m pip install ".[spacy,deid,meta-cat,rel-cat,dict-ner,dev]"
 
       - name: Check types
         run: |
-          uv run python -m mypy --follow-imports=normal medcat
+          uv run --python ${{ matrix.python-version }} python -m mypy --follow-imports=normal medcat
 
       - name: Ruff linting
         run: |
-          uv run ruff check medcat --preview
+          uv run --python ${{ matrix.python-version }} python -m ruff check medcat --preview
 
       - name: Test
         run: |
-          timeout 30m uv run python -m unittest discover
+          timeout 30m uv run --python ${{ matrix.python-version }} python -m unittest discover
 
       - name: Model regression
         run: |
-          uv run bash tests/backwards_compatibility/run_current.sh
+          uv run --python ${{ matrix.python-version }} bash tests/backwards_compatibility/run_current.sh
