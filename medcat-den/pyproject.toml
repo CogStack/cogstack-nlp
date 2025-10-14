@@ -45,9 +45,9 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/CogStack/medcat-den"
-Repository = "https://github.com/CogStack/medcat-den"
-Issues = "https://github.com/CogStack/medcat-den/issues"
+Homepage = "https://github.com/CogStack/cogstack-nlp/tree/main/medcat-den"
+Repository = "https://github.com/CogStack/cogstack-nlp/tree/main/medcat-den"
+Issues = "https://github.com/CogStack/cogstack-nlp/issues"
 
 [tool.setuptools_scm]
 root = ".."
