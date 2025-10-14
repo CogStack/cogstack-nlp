@@ -7,7 +7,7 @@ import logging
 from datetime import datetime
 from contextlib import contextmanager
 
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field, ValidationError, ConfigDict
 
 from medcat import __version__ as medcat_version
 from medcat.utils.defaults import workers
@@ -93,7 +93,8 @@ class SerialisableBaseModel(BaseModel):
             return cast(Self, get_config_from_old_per_cls(path, cls))
         obj = deserialise(path)
         if not isinstance(obj, cls):
-            raise ValueError(f"The path '{path}' is not a {cls.__name__}!")
+            raise ValueError(f"The path '{path}' is not a {cls.__name__}!" +
+                             str(("Instead of", cls, "Got", type(obj))))
         return obj
 
 
@@ -178,9 +179,10 @@ class NLPConfig(SerialisableBaseModel):
     # NOTE: this will allow for more config entries
     #       since we don't know what other implementations may require
 
-    class Config:
-        extra = 'allow'
-        validate_assignment = True
+    model_config = ConfigDict(
+        extra='allow',
+        validate_assignment=True,
+    )
 
 
 class UsageMonitor(SerialisableBaseModel):
@@ -268,8 +270,9 @@ class General(SerialisableBaseModel):
     Otherwise, no mapping will be done.
     """
 
-    class Config:
-        extra = 'allow'
+    model_config = ConfigDict(
+        extra='allow',
+    )
 
 
 class LinkingFilters(SerialisableBaseModel):
@@ -383,8 +386,9 @@ class Linking(ComponentConfig):
     and learning rate for type contexts.
     """
 
-    class Config:
-        extra = 'allow'
+    model_config = ConfigDict(
+        extra='allow',
+    )
 
 
 class Preprocessing(SerialisableBaseModel):
@@ -455,8 +459,9 @@ class Ner(ComponentConfig):
     custom_cnf: Optional[Any] = None
     """The custom config for the component."""
 
-    class Config:
-        extra = 'allow'
+    model_config = ConfigDict(
+        extra='allow',
+    )
 
 
 class AnnotationOutput(SerialisableBaseModel):

@@ -2,6 +2,8 @@ import os
 import logging
 from typing import Any, Union, Optional
 
+from pydantic import ConfigDict
+
 from medcat.config.config import SerialisableBaseModel, ComponentConfig
 from medcat.storage.serialisers import deserialise
 
@@ -118,8 +120,9 @@ class General(SerialisableBaseModel):
             value = self.convert_keys_to_int(value)  # Ensure conversion
         super().__setattr__(key, value)
 
-    class Config:
-        protected_namespaces = ()
+    model_config = ConfigDict(
+        protected_namespaces=(),
+    )
 
 
 class Model(SerialisableBaseModel):
@@ -159,10 +162,11 @@ class Model(SerialisableBaseModel):
     """If set to True, used only in Llama model, it will add the extra tensor
     formed from selecting the max of the last hidden layer"""
 
-    class Config:
-        extra = 'allow'
-        validate_assignment = True
-        protected_namespaces = ()
+    model_config = ConfigDict(
+        extra='allow',
+        validate_assignment=True,
+        protected_namespaces=(),
+    )
 
 
 class Train(SerialisableBaseModel):
@@ -205,9 +209,10 @@ class Train(SerialisableBaseModel):
     auto_save_model: bool = True
     """Should the model be saved during training for best results"""
 
-    class Config:
-        extra = 'allow'
-        validate_assignment = True
+    model_config = ConfigDict(
+        extra='allow',
+        validate_assignment=True,
+    )
 
 
 class ConfigRelCAT(ComponentConfig):
@@ -216,9 +221,10 @@ class ConfigRelCAT(ComponentConfig):
     model: Model = Model()
     train: Train = Train()
 
-    class Config:
-        extra = 'allow'
-        validate_assignment = True
+    model_config = ConfigDict(
+        extra='allow',
+        validate_assignment=True,
+    )
 
     @classmethod
     def load(cls, load_path: str = "./") -> "ConfigRelCAT":
