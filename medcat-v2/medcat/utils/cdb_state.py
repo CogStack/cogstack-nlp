@@ -112,7 +112,8 @@ def _clear_state(cdb) -> None:
             raise ValueError(
                 "A part of the CDB state was not a dict, set, or ModelMeta "
                 f"(during clearing). Got {type(val).__name__}. The "
-                "re-setting of the sate needs to be implemented per type.")
+                "re-setting of the state needs to be implemented per type. "
+                f"Got {type(val)} instead.")
         if isinstance(val, (dict, set)):
             val.clear()
         else:

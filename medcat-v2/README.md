@@ -86,6 +86,24 @@ pip install "medcat[deid]~=2.0.0"  # for DeID models
 pip install "medcat[spacy,meta-cat,deid,rel-cat,dict-ner]~=2.0.0"  # for all of the above
 ```
 
+### Version / update checking
+
+MedCAT now has the ability to check for newer versions of itself on PyPI (or a local mirror of it).
+This is so users don't get left behind too far with older versions of our software.
+This is configurable by evnironmental variables so that sys admins (e.g for JupyterHub) can specify the settings they wish.
+Version checks are done once a week and the results are cached.
+
+Below is a table of the environmental variables that govern the version checking and their defaults.
+
+| Variable | Default | Description |
+|-----------|----------|-------------|
+| **`MEDCAT_DISABLE_VERSION_CHECK`** | *(unset)* | When set to `true`, `yes` or `disable`, disables the version update check entirely. Useful for CI environments, offline setups, or deployments where external network access is restricted. |
+| **`MEDCAT_PYPI_URL`** | `https://pypi.org/pypi` | Base URL used to query package metadata. Can be changed to a PyPI mirror or internal repository that exposes the `/pypi/{pkg}/json` API. |
+| **`MEDCAT_MINOR_UPDATE_THRESHOLD`** | `3` | Number of newer **minor** versions (e.g. `1.4.x`, `1.5.x`) that must exist before MedCAT emits a “newer version available” log message. |
+| **`MEDCAT_PATCH_UPDATE_THRESHOLD`** | `3` | Number of newer **patch** versions (e.g. `1.3.1`, `1.3.2`, `1.3.3`) on the same minor line required before emitting an informational update message. |
+| **`MEDCAT_VERSION_UPDATE_LOG_LEVEL`** | `INFO` | Logging level used when reporting available newer versions (minor/patch thresholds). Accepts any valid `logging` level string (`DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`). |
+| **`MEDCAT_VERSION_UPDATE_YANKED_LOG_LEVEL`** | `WARNING` | Logging level used when reporting that the current version has been **yanked** on PyPI. Accepts the same values as above. |
+
 ## Demo
 
 The MedCAT v2 demo web app is available [here](https://medcat.sites.er.kcl.ac.uk/).
