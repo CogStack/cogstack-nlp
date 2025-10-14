@@ -40,6 +40,10 @@ jobs:
         run: |
           uv run --python ${{ matrix.python-version }} python -m ensurepip
           uv run --python ${{ matrix.python-version }} python -m pip install --upgrade pip
+          # install cpu-only torch for MacOS
+          if [[ "$RUNNER_OS" == "macOS" ]]; then
+            uv run --python ${{ matrix.python-version }} python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+          fi
           uv run --python ${{ matrix.python-version }} python -m pip install ".[spacy,deid,meta-cat,rel-cat,dict-ner,dev]"
 
       - name: Check types
