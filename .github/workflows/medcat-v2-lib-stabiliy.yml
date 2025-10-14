@@ -2,7 +2,7 @@ name: MedCAT-nightly-stability-check
 
 on:
   schedule:
-    - cron: "0 3 * * *"  # every Monday at 3am UTC
+    - cron: "0 3 * * *"  # every day at 3am UTC
   workflow_dispatch:     # allow manual runs
   push:
     paths:
