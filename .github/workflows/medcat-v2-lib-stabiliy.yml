@@ -37,6 +37,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install with latest deps
+        shell: bash
         run: |
           uv run --python ${{ matrix.python-version }} python -m ensurepip
           uv run --python ${{ matrix.python-version }} python -m pip install --upgrade pip
