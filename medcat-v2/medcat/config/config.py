@@ -93,7 +93,8 @@ class SerialisableBaseModel(BaseModel):
             return cast(Self, get_config_from_old_per_cls(path, cls))
         obj = deserialise(path)
         if not isinstance(obj, cls):
-            raise ValueError(f"The path '{path}' is not a {cls.__name__}!")
+            raise ValueError(f"The path '{path}' is not a {cls.__name__}!" +
+                             str(("Instead of", cls, "Got", type(obj))))
         return obj
 
 
