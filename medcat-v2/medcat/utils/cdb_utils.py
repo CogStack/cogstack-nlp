@@ -3,6 +3,7 @@ import logging
 import numpy as np
 
 from copy import deepcopy
+from typing import Any, Iterable
 from medcat.cdb import CDB
 
 logger = logging.getLogger(__name__)  # separate logger from the package-level one
@@ -60,23 +61,26 @@ def merge_cdb(cdb1: CDB,
         names = {}
         for name in cui_info2['names']:
             # Create a simple NameDescriptor-like structure
+            name_info_entry: dict[str, Any] | None = cdb2.name2info.get(name)
             names[name] = type('NameDescriptor', (), {
                 'snames': cui_info2['subnames'],
-                'is_upper': cdb2.name2info.get(name, {}).get('is_upper', False),
+                # Guard for unknown structure in name2info and avoid mismatched defaults
+                'is_upper': (bool(name_info_entry.get('is_upper', False)) if isinstance(name_info_entry, dict) else False),
                 'tokens': set(),  # We don't have token info in the new structure
                 'raw_name': name
             })()
 
         # Get ontologies and description for full_build
-        ontologies = set()
-        description = cui_info2.get('description', '')
+        ontologies: set[str] = set()
+        description = cui_info2.get('description') or ''
         to_build = full_build and (
             cui_info2.get('original_names') is not None or
             cui_info2.get('description') is not None
         )
 
-        if to_build and cui_info2.get('in_other_ontology'):
-            ontologies.update(cui_info2['in_other_ontology'])
+        if to_build:
+            other: Iterable[str] = cui_info2.get('in_other_ontology') or []
+            ontologies.update(other)
 
         cdb._add_concept(
             cui=cui, names=names, ontologies=ontologies, name_status=name_status,
@@ -125,7 +129,7 @@ def merge_cdb(cdb1: CDB,
                         cui_info_merged['context_vectors'] = {}
 
                     # Get all context types from both CDBs
-                    contexts = set()
+                    contexts: set[str] = set()
                     if cui_info1['context_vectors']:
                         contexts.update(cui_info1['context_vectors'].keys())
                     if cui_info2['context_vectors']:
@@ -133,7 +137,7 @@ def merge_cdb(cdb1: CDB,
 
                     # Calculate weights
                     if overwrite_training == 2:
-                        weights = [0, 1]
+                        weights: list[float] = [0.0, 1.0]
                     else:
                         norm = cui_info_merged['count_train']
                         if norm > 0:
@@ -159,15 +163,17 @@ def merge_cdb(cdb1: CDB,
                             )
                         else:
                             vec2 = np.zeros(300)
-                        cui_info_merged['context_vectors'][context_type] = (
-                            weights[0] * vec1 + weights[1] * vec2
-                        )
+                        cv: dict[str, np.ndarray] = cui_info_merged['context_vectors']  # type: ignore[assignment]
+                        cv[context_type] = (weights[0] * vec1 + weights[1] * vec2)
 
             # Merge tags
             if cui_info1.get('tags') and cui_info2.get('tags'):
-                if cui_info_merged['tags'] is None:
+                if cui_info_merged.get('tags') is None:
                     cui_info_merged['tags'] = []
-                cui_info_merged['tags'].extend(cui_info2['tags'])
+                dest_tags: list[str] = cui_info_merged['tags']  # type: ignore[assignment]
+                src_tags = cui_info2.get('tags')
+                if src_tags:
+                    dest_tags.extend(src_tags)
 
             # Merge type_ids (already handled by _add_concept, but ensure union)
             cui_info_merged['type_ids'].update(cui_info2['type_ids'])
@@ -245,7 +251,7 @@ def ch2pt_from_pt2ch(cdb: CDB, pt2ch_key: str = 'pt2ch'):
 
 def snomed_ct_concept_path(
     cui: str, cdb: CDB, parent_node='138875005'
-) -> dict[str, list[dict]]:
+) -> dict[str, Any]:
     """Get the concept path for a given CUI to a parent node
 
     Args:
@@ -281,7 +287,7 @@ def snomed_ct_concept_path(
                         cuis2nodes[cui]['children'] = []
                     cuis2nodes[cui]['children'].append(child_node)
             return all_links
-        cuis2nodes = dict()
+        cuis2nodes: dict[str, dict[str, Any]] = {}
         all_links = find_parents(cui, cuis2nodes)
         return {
             'node_path': cuis2nodes[parent_node],
@@ -289,4 +295,4 @@ def snomed_ct_concept_path(
         }
     except KeyError as e:
         logger.warning(f'Cannot find path concept path:{e}')
-        return []
+        return {'node_path': {}, 'links': []}
