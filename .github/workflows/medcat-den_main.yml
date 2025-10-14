@@ -72,6 +72,11 @@ jobs:
         run: |
           python -m build
 
+      - name: Set timestamp-based dev version
+        run: |
+          TS=$(date -u +"%Y%m%d%H%M%S")
+          echo "SETUPTOOLS_SCM_PRETEND_VERSION_FOR_MEDCAT_DEN=0.2.2.dev${TS}" >> $GITHUB_ENV
+
       - name: Publish distribution to TestPyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
