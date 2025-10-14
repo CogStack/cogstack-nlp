@@ -1,6 +1,8 @@
 from typing import Any, Optional
 from collections.abc import Container
 
+from pydantic import ConfigDict
+
 from medcat.config.config import DirtiableBaseModel, ComponentConfig
 from medcat.storage.serialisers import AvailableSerialisers
 
@@ -116,9 +118,10 @@ class General(DirtiableBaseModel):
             return self.category_name
         return None
 
-    class Config:
-        extra = 'allow'
-        validate_assignment = True
+    model_config = ConfigDict(
+        extra='allow',
+        validate_assignment=True,
+    )
 
 
 class Model(DirtiableBaseModel):
@@ -236,10 +239,11 @@ class Model(DirtiableBaseModel):
     """If set to True center positions will be ignored when calculating
     representation"""
 
-    class Config:
-        extra = 'allow'
-        validate_assignment = True
-        protected_namespaces = ()
+    model_config = ConfigDict(
+        extra='allow',
+        validate_assignment=True,
+        protected_namespaces=(),
+    )
 
 
 class Train(DirtiableBaseModel):
@@ -277,9 +281,10 @@ class Train(DirtiableBaseModel):
     """Focal Loss hyperparameter - determines importance the loss gives to
     hard-to-classify examples"""
 
-    class Config:
-        extra = 'allow'
-        validate_assignment = True
+    model_config = ConfigDict(
+        extra='allow',
+        validate_assignment=True,
+    )
 
 
 class ConfigMetaCAT(ComponentConfig):
@@ -289,6 +294,7 @@ class ConfigMetaCAT(ComponentConfig):
     model: Model = Model()
     train: Train = Train()
 
-    class Config:
-        extra = 'allow'
-        validate_assignment = True
+    model_config = ConfigDict(
+        extra='allow',
+        validate_assignment=True,
+    )

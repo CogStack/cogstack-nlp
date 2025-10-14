@@ -7,7 +7,7 @@ description = "Medical Concept Annotation Toolkit (v2)"
 
 readme = "README.md"
 
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 
 license = "Apache-2.0"
 
@@ -42,7 +42,6 @@ classifiers = [
   # that you indicate you support Python 3. These classifiers are *not*
   # checked by "pip install". See instead "python_requires" below.
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
@@ -85,7 +84,6 @@ dev = [
 ]
 spacy = [
   "spacy",
-  "spacy<3.8.4; python_version == '3.9'"
 ]
 meta_cat = [
   "transformers>=4.41.0,<5.0", # avoid major bump
