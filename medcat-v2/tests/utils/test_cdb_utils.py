@@ -352,7 +352,7 @@ class CDBUtilsTests(unittest.TestCase):
 
         # Test with non-existent concept
         result = snomed_ct_concept_path('nonexistent', cdb)
-        self.assertEqual(result, [])
+        self.assertEqual(result, {'node_path': {}, 'links': []})
 
     def test_snomed_ct_concept_path_custom_parent(self):
         """Test snomed_ct_concept_path with custom parent node."""
