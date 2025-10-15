@@ -38,6 +38,12 @@ MEDCAT_DEN_LOCAL_CACHE_EXPIRATION_TIME = (
 MEDCAT_DEN_LOCAL_CACHE_MAX_SIZE = "MEDCAT_DEN_LOCAL_CACHE_MAX_SIZE"
 MEDCAT_DEN_LOCAL_CACHE_EVICTION_POLICY = (
     "MEDCAT_DEN_LOCAL_CACHE_EVICTION_POLICY")
+MEDCAT_DEN_REMOTE_ALLOW_LOCAL_FINE_TUNE = (
+    "MEDCAT_DEN_REMOTE_ALLOW_LOCAL_FINE_TUNE")
+MEDCAT_DEN_REMOTE_ALLOW_PUSH_FINETUNED = (
+    "MEDCAT_DEN_REMOTE_ALLOW_PUSH_FINETUNED")
+
+ALLOW_OPTION_LOWERCASE = ("true", "yes", "1", "y")
 
 
 def is_writable(path: str, propgate: bool = True) -> bool:
@@ -52,7 +58,10 @@ def _init_den_cnf(
         type_: Optional[DenType] = None,
         location: Optional[str] = None,
         host: Optional[str] = None,
-        credentials: Optional[dict] = None,) -> DenConfig:
+        credentials: Optional[dict] = None,
+        remote_allow_local_fine_tune: Optional[str] = None,
+        remote_allow_push_fine_tuned: Optional[str] = None,
+        ) -> DenConfig:
     # Priority: args > env > defaults
     type_in = (
         type_
@@ -82,13 +91,27 @@ def _init_den_cnf(
         den_cnf = LocalDenConfig(type=type_final,
                                  location=location_final)
     else:
+        host = host or os.getenv(MEDCAT_DEN_REMOTE_HOST)
         if not host:
             raise ValueError("Need to specify a host for remote den")
         if not credentials:
             raise ValueError("Need to specify credentials for remote den")
-        den_cnf = RemoteDenConfig(type=type_final,
-                                  host=host,
-                                  credentials=credentials)
+        # NOTE: these will default to False when nothing is specified
+        #       because "None" is not in ALLOW_OPTION_LOWERCASE
+        allow_local_fine_tune = str(
+            remote_allow_local_fine_tune or
+            os.getenv(MEDCAT_DEN_REMOTE_ALLOW_LOCAL_FINE_TUNE)
+        ).lower() in ALLOW_OPTION_LOWERCASE
+        allow_push_fine_tuned = str(
+            remote_allow_push_fine_tuned or
+            os.getenv(MEDCAT_DEN_REMOTE_ALLOW_PUSH_FINETUNED)
+        ).lower() in ALLOW_OPTION_LOWERCASE
+        den_cnf = RemoteDenConfig(
+            type=type_final,
+            host=host,
+            credentials=credentials,
+            allow_local_fine_tune=allow_local_fine_tune,
+            allow_push_fine_tuned=allow_push_fine_tuned)
     return den_cnf
 
 
@@ -101,8 +124,12 @@ def resolve(
     expiration_time: Optional[int] = None,
     max_size: Optional[int] = None,
     eviction_policy: Optional[str] = None,
+    remote_allow_local_fine_tune: Optional[str] = None,
+    remote_allow_push_fine_tuned: Optional[str] = None,
 ) -> Den:
-    den_cnf = _init_den_cnf(type_, location, host, credentials)
+    den_cnf = _init_den_cnf(type_, location, host, credentials,
+                            remote_allow_local_fine_tune,
+                            remote_allow_push_fine_tuned)
     den = resolve_from_config(den_cnf)
     lc_cnf = _init_lc_cnf(
         local_cache_path, expiration_time, max_size, eviction_policy)
@@ -126,19 +153,13 @@ def _resolve_local(config: LocalDenConfig) -> LocalFileDen:
 def resolve_from_config(config: DenConfig) -> Den:
     if isinstance(config, LocalDenConfig):
         return _resolve_local(config)
-    # TODO: support remote (e)
-    # elif type_final == DenType.MEDCATTERY:
-    #     host = host or os.getenv(MEDCAT_DEN_REMOTE_HOST)
-    #     if host is None:
-    #         raise ValueError("Remote DEN requires a host address")
-    #     # later you’d plug in MedcatteryRemoteDen, MLFlowDen, etc.
-    #     return MedCATteryDen(host=host, credentials=credentials)
     elif has_registered_remote_den(config.type):
         den_cls = get_registered_remote_den(config.type)
         den = den_cls(cnf=config)
         if not isinstance(den, Den):
             raise ValueError(
-                f"Registered den class for {config.type} is not a Den")
+                f"Registered den class for {config.type} is not a Den. "
+                f"Got {type(den)}: {den}")
         return den
     else:
         raise ValueError(

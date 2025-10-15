@@ -17,6 +17,8 @@ class LocalDenConfig(DenConfig):
 class RemoteDenConfig(DenConfig):
     host: str
     credentials: dict
+    allow_local_fine_tune: bool
+    allow_push_fine_tuned: bool
 
 
 class LocalCacheConfig(BaseModel):

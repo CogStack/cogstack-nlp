@@ -1,4 +1,4 @@
-from typing import Optional, cast, Any
+from typing import Optional, cast, Any, Union
 
 import json
 from datetime import datetime
@@ -7,8 +7,10 @@ import sqlite3
 import shutil
 
 from medcat.cat import CAT
+from medcat.data.mctexport import MedCATTrainerExport
 
-from medcat_den.den import Den, DuplicateModelException
+from medcat_den.den import (
+    Den, DuplicateModelException, UnsupportedAPIException)
 from medcat_den.backend import DenType
 from medcat_den.base import ModelInfo
 from medcat_den.wrappers import CATWrapper
@@ -162,7 +164,8 @@ class LocalFileDen(Den):
         model_path = self._get_model_zip_path(model_info)
         return cast(
             CATWrapper,
-            CATWrapper.load_model_pack(model_path, model_info=model_info))
+            CATWrapper.load_model_pack(model_path, model_info=model_info,
+                                       den_cnf=self._cnf))
 
     def push_model(self, cat: CAT, description: str) -> None:
         if isinstance(cat, CATWrapper):
@@ -220,3 +223,17 @@ class LocalFileDen(Den):
         folder_path = zip_path.removesuffix(".zip")
         if os.path.exists(folder_path):
             shutil.rmtree(folder_path)
+
+    def finetune_model(self, model_info: ModelInfo,
+                       data: Union[list[str], MedCATTrainerExport]):
+        raise UnsupportedAPIException(
+            "Local den does not support finetuning on the den. "
+            "Use a remote den instead or perform training locally."
+        )
+
+    def evaluate_model(self, model_info: ModelInfo,
+                       data: Union[list[str], MedCATTrainerExport]) -> dict:
+        raise UnsupportedAPIException(
+            "Local den does not support evaluation on the den. "
+            "Use a remote den instead or perform evaluation locally."
+        )

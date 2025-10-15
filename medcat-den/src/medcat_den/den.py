@@ -1,6 +1,7 @@
-from typing import Protocol, Optional, runtime_checkable
+from typing import Protocol, Optional, runtime_checkable, Union
 
 from medcat.cat import CAT
+from medcat.data.mctexport import MedCATTrainerExport
 
 from medcat_den.base import ModelInfo
 from medcat_den.wrappers import CATWrapper
@@ -102,6 +103,55 @@ class Den(Protocol):
         """
         pass
 
+    def finetune_model(self, model_info: ModelInfo,
+                       data: Union[list[str], MedCATTrainerExport]
+                       ) -> ModelInfo:
+        """Finetune the model on the remote den.
+
+        This is an optional API that is (generally) only available
+        for remote dens. The idea is that the data is sent to the remote
+        den and the finetuning is done on the remote.
+
+        If raw data is given, unless already present remotely, it will be
+        uploaded to the remote den.
+
+        Args:
+            model_info (ModelInfo): The model info
+            data (Union[list[str], MedCATTrainerExport]): The list of project
+                ids (already on remote) or the trainer export to train on.
+
+        Returns:
+            ModelInfo: The resulting model.
+
+        Raises:
+            UnsupportedAPIException: If the den does not support this API.
+        """
+
+    def evaluate_model(self, model_info: ModelInfo,
+                       data: Union[list[str], MedCATTrainerExport]) -> dict:
+        """Evaluate model on remote den.
+
+        This is an optional API that is (generally) only available
+        for remote dens. The idea is that the data is sent to the remote
+        den and the metrics are gathered on the remote.
+
+        If raw data is given, unless already present remotely, it will be
+        uploaded to the remote den.
+
+        Args:
+            model_info (ModelInfo): The model info.
+            data (Union[list[str], MedCATTrainerExport]): The list of project
+                ids (already on remote) or the trainer export to train on.
+
+        Returns:
+            dict: The resulting metrics.
+        """
+        pass
+
+
+class UnsupportedAPIException(ValueError):
+    pass
+
 
 def get_default_den(
         type_: Optional[DenType] = None,
@@ -112,6 +162,8 @@ def get_default_den(
         expiration_time: Optional[int] = None,
         max_size: Optional[int] = None,
         eviction_policy: Optional[str] = None,
+        remote_allow_local_fine_tune: Optional[str] = None,
+        remote_allow_push_fine_tuned: Optional[str] = None,
         ) -> Den:
     """Get the default den.
 
@@ -137,6 +189,10 @@ def get_default_den(
             Policies avialable: LRU (`least-recently-used`),
                 LRS (`least-recently-stored`), LFU (`least-frequently-used`),
                 and `none` (disables evictions).
+        remote_allow_local_fine_tune (Optional[str]): Whether to allow local
+            fine tuning of remote models.
+        remote_allow_push_fine_tuned (Optional[str]): Whether to allow pushing
+            of locally fine-tuned models to the remote
 
     Returns:
         Den: The resolved den.
@@ -144,7 +200,8 @@ def get_default_den(
     # NOTE: doing dynamic import to avoid circular imports
     from medcat_den.resolver import resolve
     return resolve(type_, location, host, credentials, local_cache_path,
-                   expiration_time, max_size, eviction_policy)
+                   expiration_time, max_size, eviction_policy,
+                   remote_allow_local_fine_tune, remote_allow_push_fine_tuned)
 
 
 def get_default_user_local_den(
