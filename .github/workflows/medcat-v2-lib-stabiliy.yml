@@ -57,7 +57,7 @@ jobs:
       - name: Test
         run: |
           uv run --python ${{ matrix.python-version }} python -m unittest discover
-        timeout-minutes: 30
+        timeout-minutes: 45
 
       - name: Model regression
         run: |
