@@ -45,6 +45,7 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3 :: Only",
   "Operating System :: OS Independent",
 ]
@@ -87,10 +88,14 @@ spacy = [
 ]
 meta_cat = [
   "transformers>=4.41.0,<5.0", # avoid major bump
+  # Transformers 4.57 doesn't support 3.9
+  "transformers!=4.57.0; python_version == '3.9'",
   "peft>0.8.2,<1.0",
   "torch>=2.4.0,<3.0",
   "scikit-learn>=1.1.3,<2.0",
-  "scipy",
+  # since 3.13 we need to use later version of scipy for it
+  "scipy<1.14; python_version < '3.13'",
+  "scipy>=1.14; python_version >= '3.13'",
 ]
 dict_ner = [
   "pyahocorasick>=2.1.0,<3.0"
@@ -98,12 +103,18 @@ dict_ner = [
 deid = [
   "datasets>=2.2.2,<3.0.0",
   "transformers>=4.41.0,<5.0", # avoid major bump
+  # Transformers 4.57 doesn't support 3.9
+  "transformers!=4.57.0; python_version == '3.9'",
   "scikit-learn>=1.1.3,<2.0",
   "torch>=2.4.0,<3.0",
-  "scipy",
+  # since 3.13 we need to use later version of scipy for it
+  "scipy<1.14; python_version < '3.13'",
+  "scipy>=1.14; python_version >= '3.13'",
 ]
 rel_cat = [
   "transformers>=4.41.0,<5.0", # avoid major bump
+  # Transformers 4.57 doesn't support 3.9
+  "transformers!=4.57.0; python_version == '3.9'",
   "scikit-learn>=1.1.3,<2.0",
   "torch>=2.4.0,<3.0",
 ]
