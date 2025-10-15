@@ -1,4 +1,4 @@
-from typing import Iterable, Any, Collection, Union, Literal
+from typing import Iterable, Any, Collection, Union, Literal, Sequence
 import os
 
 from medcat.storage.serialisables import AbstractSerialisable
@@ -354,16 +354,14 @@ class CDB(AbstractSerialisable):
         self._reset_subnames()
         self.is_dirty = True
 
-    def remove_cui(self, cui: str) -> None:
-        """This function takes a CUI and removes it the CDB.
+    def remove_cuis_bulk(self, cuis: Sequence[str]) -> None:
+        for cui in cuis:
+            self._remove_cui(cui)
+        # reset subnames once
+        self._reset_subnames()
 
-        It also removes the CUI from name specific per_cui_status
-        maps as well as well as removes all the names that do not
-        correspond to any CUIs after the removal of this one.
-
-        Args:
-            cui (str): The CUI to remove.
-        """
+    def _remove_cui(self, cui: str) -> None:
+        # NOTE: remove CUI without doing a subname reset
         if cui not in self.cui2info:
             logger.warning(
                 "Trying remove CUI '%s' which does not exist in CDB", cui)
@@ -375,6 +373,18 @@ class CDB(AbstractSerialisable):
             # if name name corresponds to no CUIs
             if not ni['per_cui_status']:
                 del self.name2info[name]
+
+    def remove_cui(self, cui: str) -> None:
+        """This function takes a CUI and removes it the CDB.
+
+        It also removes the CUI from name specific per_cui_status
+        maps as well as well as removes all the names that do not
+        correspond to any CUIs after the removal of this one.
+
+        Args:
+            cui (str): The CUI to remove.
+        """
+        self._remove_cui(cui)
         # need to reset subnames
         self._reset_subnames()
         self.is_dirty = True
