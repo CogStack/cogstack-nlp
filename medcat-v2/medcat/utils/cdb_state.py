@@ -3,6 +3,7 @@ import contextlib
 from typing import TypedDict, cast
 import tempfile
 import dill
+import os
 
 from copy import deepcopy
 
@@ -216,7 +217,10 @@ def on_disk_memory_capture(cdb):
     Yields:
         None
     """
-    with tempfile.NamedTemporaryFile() as tf:
-        save_cdb_state(cdb, tf.name)
+    # NOTE: using temporary directory so that it also works on Windows
+    #       otherwise you can't reopen a temporary file in Windows (apparently)
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_file_name = os.path.join(temp_dir, "cdb_state.dat")
+        save_cdb_state(cdb, temp_file_name)
         yield
-        load_and_apply_cdb_state(cdb, tf.name)
+        load_and_apply_cdb_state(cdb, temp_file_name)
