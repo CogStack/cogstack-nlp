@@ -21,6 +21,8 @@ def _fix_cui2original_names(cdb: CDB) -> None:
     logger.info(
         "Used %d out of %d CUIs in the 'cui2original_names' map",
         used_cuis, num_cuis)
+    # delete existing data in cui2original_names
+    del cdb.addl_info["cui2original_names"]
 
 
 def fix_cui2original_names_if_needed(cdb: CDB) -> bool:
