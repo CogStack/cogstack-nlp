@@ -15,7 +15,8 @@ class TestCUI2OriginalNamesFix(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.converted_cdb = CDB.load(cls.CONVERTED_CDB_PATH)
+        cls.converted_cdb = CDB.load(cls.CONVERTED_CDB_PATH,
+                                     perform_fixes=False)
 
     def test_converted_model_does_not_have_orig_names(self):
         for ci in self.converted_cdb.cui2info.values():
