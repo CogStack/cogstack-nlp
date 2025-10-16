@@ -57,7 +57,8 @@ classifiers = [
 # For an analysis of this field vs pip's requirements files see:
 # https://packaging.python.org/discussions/install-requires-vs-requirements/
 dependencies = [ # Optional
-  "numpy>2.0",
+  "numpy>=2.1; python_version >= '3.13'",
+  "numpy>=2.0; python_version < '3.13'",
   "dill",
   "pandas>=2.2,<3.0",
   "tqdm>=4.64,<5.0",
