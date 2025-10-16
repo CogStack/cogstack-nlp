@@ -121,6 +121,7 @@ def _add_cui_info(cdb: CDB, data: dict) -> CDB:
     cui2tags, cui2type_ids = data['cui2tags'], data['cui2type_ids']
     cui2prefname = data['cui2preferred_name']
     cui2av_conf = data['cui2average_confidence']
+    cui2orig_names = data["addl_info"].get("cui2original_names", {})
     for cui in all_cuis:
         names = cui2names.get(cui, set())
         snames = cui2snames.get(cui, set())
@@ -134,8 +135,14 @@ def _add_cui_info(cdb: CDB, data: dict) -> CDB:
             cui=cui, preferred_name=prefname, names=names, subnames=snames,
             type_ids=type_ids, tags=tags, count_train=count_train,
             context_vectors=vecs, average_confidence=av_conf,
+            original_names=cui2orig_names.get(cui, None),
         )
         cdb.cui2info[cui] = info
+    # remove cui2original_names from addl_info - we've already used it
+    if "cui2original_names" in data["addl_info"]:
+        logger.info("Deleting 'cui2original_names' in addl_info - "
+                    "it was used in CUIInfo already")
+        del data["addl_info"]["cui2original_names"]
     all_cui_tuis = set((ci['cui'], tui) for ci in cdb.cui2info.values()
                        for tui in ci['type_ids'])
     all_tuis = set(tui for _, tui in all_cui_tuis)
