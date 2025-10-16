@@ -281,7 +281,7 @@ class TestTransformersNER(TestCase):
         )
 
 
-@skipIf(not should_do_test_ci,
+@skipIf(not should_do_test_ci(),
         "MacOS on workflow doesn't have enough memory")
 class AdditionalTransfromersNERTests(TestCase):
     TOKENIZER = FakeTokenizer()
