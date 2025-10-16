@@ -271,7 +271,7 @@ def snomed_ct_concept_path(
             all_links = []
             if cui not in cuis2nodes:
                 # Get preferred name from the new CDB structure
-                preferred_name = cdb.cui2info.get(cui, {}).get('preferred_name', cui)
+                preferred_name = cdb.get_name(cui)
                 curr_node = {'cui': cui, 'pretty_name': preferred_name}
                 if child_node:
                     curr_node['children'] = [child_node]
@@ -296,5 +296,6 @@ def snomed_ct_concept_path(
             'links': all_links
         }
     except KeyError as e:
-        logger.warning(f'Cannot find path concept path:{e}')
+        logger.error(f'Cannot find path concept path for CUI: {cui}',
+            exc_info=True)
         return {'node_path': {}, 'links': []}

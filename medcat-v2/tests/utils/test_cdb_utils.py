@@ -116,34 +116,76 @@ class CDBUtilsTests(unittest.TestCase):
 
         return cdb
 
+    def _assert_cui_merge_results(self, merged_cdb, expected_results):
+        """Helper method to assert merge results for multiple CUIs using subTest."""
+        for cui, expected in expected_results.items():
+            with self.subTest(cui=cui):
+                self.assertIn(cui, merged_cdb.cui2info)
+                cui_info = merged_cdb.cui2info[cui]
+
+                # Test count_train
+                if 'count_train' in expected:
+                    self.assertEqual(cui_info['count_train'], expected['count_train'])
+
+                # Test names
+                for name in expected.get('names_should_contain', []):
+                    self.assertIn(name, cui_info['names'])
+
+                # Test type_ids
+                for type_id in expected.get('type_ids_should_contain', []):
+                    self.assertIn(type_id, cui_info['type_ids'])
+
+                # Test context vectors
+                if expected.get('should_have_context_vectors', True):
+                    self.assertIsNotNone(cui_info['context_vectors'])
+                    for context_type in expected.get('context_vectors_should_contain', []):
+                        self.assertIn(context_type, cui_info['context_vectors'])
+                else:
+                    self.assertIsNone(cui_info['context_vectors'])
+
+                for context_type in expected.get('context_vectors_should_not_contain', []):
+                    if cui_info['context_vectors']:
+                        self.assertNotIn(context_type, cui_info['context_vectors'])
+
     def test_merge_cdb_basic_merge(self):
         """Test basic CDB merging functionality."""
         merged_cdb = merge_cdb(
             self.cdb1, self.cdb2, overwrite_training=0, full_build=True
         )
 
+        # Expected results for each CUI after merging
+        expected_results = {
+            "CUI1": {
+                "count_train": 25,  # 10 + 15
+                "names_should_contain": ["concept one"],
+                "type_ids_should_contain": ["T003"],
+                "context_vectors_should_contain": ["medium"],
+                "context_vectors_should_not_contain": [],
+                "should_have_context_vectors": True
+            },
+            "CUI2": {
+                "count_train": 0,
+                "names_should_contain": [],
+                "type_ids_should_contain": [],
+                "context_vectors_should_contain": [],
+                "context_vectors_should_not_contain": [],
+                "should_have_context_vectors": False
+            },
+            "CUI3": {
+                "count_train": 5,
+                "names_should_contain": [],
+                "type_ids_should_contain": [],
+                "context_vectors_should_contain": [],
+                "context_vectors_should_not_contain": [],
+                "should_have_context_vectors": True
+            }
+        }
+
         # Should have 3 concepts total
         self.assertEqual(len(merged_cdb.cui2info), 3)
 
-        # CUI1 should be merged
-        self.assertIn("CUI1", merged_cdb.cui2info)
-        cui_info = merged_cdb.cui2info["CUI1"]
-        self.assertEqual(cui_info['count_train'], 25)  # 10 + 15
-        self.assertIn("concept one", cui_info['names'])
-        self.assertIn("T003", cui_info['type_ids'])
-        self.assertIsNotNone(cui_info['context_vectors'])
-        self.assertIn("medium", cui_info['context_vectors'])
-
-        # CUI3 should be added
-        self.assertIn("CUI3", merged_cdb.cui2info)
-        cui_info3 = merged_cdb.cui2info["CUI3"]
-        self.assertEqual(cui_info3['count_train'], 5)
-        self.assertIsNotNone(cui_info3['context_vectors'])
-
-        # CUI2 should be preserved
-        self.assertIn("CUI2", merged_cdb.cui2info)
-        cui_info2 = merged_cdb.cui2info["CUI2"]
-        self.assertEqual(cui_info2['count_train'], 0)
+        # Test each CUI with subTest for better error reporting
+        self._assert_cui_merge_results(merged_cdb, expected_results)
 
     def test_merge_cdb_overwrite_training_cdb1(self):
         """Test CDB merging with overwrite_training=1 (prioritize cdb1)."""
@@ -151,13 +193,27 @@ class CDBUtilsTests(unittest.TestCase):
             self.cdb1, self.cdb2, overwrite_training=1, full_build=True
         )
 
-        # CUI1 should keep cdb1's training data
-        cui_info = merged_cdb.cui2info["CUI1"]
-        self.assertEqual(cui_info['count_train'], 10)  # Only cdb1's count
-        self.assertIn("long", cui_info['context_vectors'])
-        self.assertIn("short", cui_info['context_vectors'])
-        # Should not have medium from cdb2
-        self.assertNotIn("medium", cui_info['context_vectors'])
+        # Expected results when prioritizing cdb1
+        expected_results = {
+            "CUI1": {
+                "count_train": 10,  # Only cdb1's count
+                "context_vectors_should_contain": ["long", "short"],
+                "context_vectors_should_not_contain": ["medium"]
+            },
+            "CUI2": {
+                "count_train": 0,
+                "context_vectors_should_contain": [],
+                "context_vectors_should_not_contain": [],
+                "should_have_context_vectors": False
+            },
+            "CUI3": {
+                "count_train": 5,  # From cdb2 (new concept)
+                "context_vectors_should_contain": ["short"],
+                "context_vectors_should_not_contain": []
+            }
+        }
+
+        self._assert_cui_merge_results(merged_cdb, expected_results)
 
     def test_merge_cdb_overwrite_training_cdb2(self):
         """Test CDB merging with overwrite_training=2 (prioritize cdb2)."""
@@ -165,13 +221,27 @@ class CDBUtilsTests(unittest.TestCase):
             self.cdb1, self.cdb2, overwrite_training=2, full_build=True
         )
 
-        # CUI1 should use cdb2's training data
-        cui_info = merged_cdb.cui2info["CUI1"]
-        self.assertEqual(cui_info['count_train'], 15)  # Only cdb2's count
-        self.assertIn("long", cui_info['context_vectors'])
-        self.assertIn("medium", cui_info['context_vectors'])
-        # Should not have short from cdb1
-        self.assertNotIn("short", cui_info['context_vectors'])
+        # Expected results when prioritizing cdb2
+        expected_results = {
+            "CUI1": {
+                "count_train": 15,  # Only cdb2's count
+                "context_vectors_should_contain": ["long", "medium"],
+                "context_vectors_should_not_contain": ["short"]
+            },
+            "CUI2": {
+                "count_train": 0,
+                "context_vectors_should_contain": [],
+                "context_vectors_should_not_contain": [],
+                "should_have_context_vectors": False
+            },
+            "CUI3": {
+                "count_train": 5,  # From cdb2 (new concept)
+                "context_vectors_should_contain": ["short"],
+                "context_vectors_should_not_contain": []
+            }
+        }
+
+        self._assert_cui_merge_results(merged_cdb, expected_results)
 
     def test_merge_cdb_name_info_merging(self):
         """Test that name information is properly merged."""
