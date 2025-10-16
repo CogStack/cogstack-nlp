@@ -20,7 +20,7 @@ import unittest.mock
 from ...addons.meta_cat.test_meta_cat import FakeTokenizer
 from ....pipeline.test_pipeline import FakeCDB, Config
 from .... import RESOURCES_PATH
-from ....utils.ner.test_deid import should_do_test_ci
+from ....utils.ner.test_deid import is_macos_on_ci
 
 
 class TransformersNERTests(TestCase):
@@ -281,7 +281,7 @@ class TestTransformersNER(TestCase):
         )
 
 
-@skipIf(not should_do_test_ci(),
+@skipIf(not is_macos_on_ci(),
         "MacOS on workflow doesn't have enough memory")
 class AdditionalTransfromersNERTests(TestCase):
     TOKENIZER = FakeTokenizer()

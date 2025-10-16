@@ -36,7 +36,7 @@ cnf = Config()
 cnf.general.nlp.provider = 'spacy'
 
 
-def should_do_test_ci() -> bool:
+def is_macos_on_ci() -> bool:
     return os.getenv("RUNNER_OS", "None").lower() != "macos"
 
 
@@ -116,7 +116,7 @@ def _train_model_once() -> tuple[tuple[Any, Any, Any], deid.DeIdModel]:
     return retval, model
 
 
-if should_do_test_ci():
+if is_macos_on_ci():
     _TRAINED_MODEL_AND_INFO = _train_model_once()
 
 
@@ -124,7 +124,7 @@ def train_model_once() -> tuple[tuple[Any, Any, Any], deid.DeIdModel]:
     return _TRAINED_MODEL_AND_INFO
 
 
-@unittest.skipIf(not should_do_test_ci(),
+@unittest.skipIf(not is_macos_on_ci(),
                  "MacOS on workflow doesn't have enough memory")
 class DeIDModelTests(unittest.TestCase):
     save_folder = os.path.join("results", "final_model")
@@ -178,7 +178,7 @@ Seen by Dr. M. Sully on 11/11/1996.
 '''  # noqa
 
 
-@unittest.skipIf(not should_do_test_ci(),
+@unittest.skipIf(not is_macos_on_ci(),
                  "MacOS on workflow doesn't have enough memory")
 class DeIDModelWorks(unittest.TestCase):
     save_folder = os.path.join("results", "final_model")
