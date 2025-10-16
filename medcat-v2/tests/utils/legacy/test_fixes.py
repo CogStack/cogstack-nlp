@@ -31,3 +31,11 @@ class TestCUI2OriginalNamesFix(unittest.TestCase):
             for ci in self.converted_cdb.cui2info.values():
                 with self.subTest(ci["cui"]):
                     self.assertTrue(ci["original_names"])
+
+    def test_will_not_fix_twice(self):
+        with captured_state_cdb(self.converted_cdb):
+            fixes.fix_cui2original_names_if_needed(
+                self.converted_cdb)
+            changed_twice = fixes.fix_cui2original_names_if_needed(
+                self.converted_cdb)
+            self.assertFalse(changed_twice)
