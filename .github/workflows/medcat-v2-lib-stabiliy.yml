@@ -5,9 +5,6 @@ on:
   schedule:
     - cron: "0 3 * * *"  # every day at 3am UTC
   workflow_dispatch:     # allow manual runs
-  push:
-    paths:
-      - ".github/workflows/medcat-v2-lib-stabiliy.yml"
   pull_request:
     paths:
       - ".github/workflows/medcat-v2-lib-stabiliy.yml"
