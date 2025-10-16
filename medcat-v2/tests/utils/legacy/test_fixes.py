@@ -9,13 +9,15 @@ import unittest
 from ... import UNPACKED_EXAMPLE_MODEL_PACK_PATH
 
 
+CONVERTED_CDB_PATH = os.path.join(
+    UNPACKED_EXAMPLE_MODEL_PACK_PATH, "cdb")
+
+
 class TestCUI2OriginalNamesFix(unittest.TestCase):
-    CONVERTED_CDB_PATH = os.path.join(
-        UNPACKED_EXAMPLE_MODEL_PACK_PATH, "cdb")
 
     @classmethod
     def setUpClass(cls):
-        cls.converted_cdb = CDB.load(cls.CONVERTED_CDB_PATH,
+        cls.converted_cdb = CDB.load(CONVERTED_CDB_PATH,
                                      perform_fixes=False)
 
     def test_converted_model_does_not_have_orig_names(self):
@@ -29,6 +31,9 @@ class TestCUI2OriginalNamesFix(unittest.TestCase):
             changed = fixes.fix_cui2original_names_if_needed(
                 self.converted_cdb)
             self.assertTrue(changed)
+            # has not cui2original_names
+            self.assertNotIn("cui2original_names",
+                             self.converted_cdb.addl_info)
             for ci in self.converted_cdb.cui2info.values():
                 with self.subTest(ci["cui"]):
                     self.assertTrue(ci["original_names"])
@@ -40,3 +45,19 @@ class TestCUI2OriginalNamesFix(unittest.TestCase):
             changed_twice = fixes.fix_cui2original_names_if_needed(
                 self.converted_cdb)
             self.assertFalse(changed_twice)
+
+
+class TestCUI2OriginalNamesFixAuto(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.converted_cdb = CDB.load(CONVERTED_CDB_PATH,
+                                     perform_fixes=True)
+
+    def test_cui2orig_names_fixed_automatically(self):
+        for ci in self.converted_cdb.cui2info.values():
+            with self.subTest(ci["cui"]):
+                self.assertTrue(ci["original_names"])
+
+    def test_addl_info_has_no_cui2original_names(self):
+        self.assertNotIn("cui2original_names", self.converted_cdb.addl_info)
