@@ -1,23 +1,46 @@
 <template>
   <div class="full-height">
-    <nav class="navbar">
-      <router-link class="app-name" to="/">Med<img class="icon" src="./assets/cat-logo.png" >AT</router-link>
-      <router-link class="navbar-brand" to="/">Projects</router-link>
-      <router-link class="navbar-brand" to="/metrics-reports">Metrics</router-link>
-      <router-link class="navbar-brand" to="/model-explore">Concepts</router-link>
-      <router-link class="navbar-brand" to="/demo">Try Model</router-link>
-      <span class="version-id">{{ version }}</span>
-      <a class="navbar-brand ml-auto small">
-        <span v-if="!uname" class="link" @click="openLogin">Login</span>
-        <span v-else>
-          <span class="link">
-            ({{ uname }}) <font-awesome-icon icon="user"></font-awesome-icon>
-          </span>
-          <span class="link logout" @click="logout">logout</span>
-        </span>
-      </a>
-    </nav>
-    <router-view/>
+    <header class="header-gradient">
+      <div class="header-container">
+        <div class="header-content">
+          <!-- CogStack Branding and App Name -->
+          <div class="branding-section">
+            <div class="logo-container">
+              <img src="./assets/brand-logo.png" alt="CogStack Logo" class="brand-logo" />
+            </div>
+            <div class="divider"></div>
+            <h1 class="app-title" @click="navigateToHome">
+              Med<img src="./assets/cat-logo.png" alt="MedCAT Logo" class="cat-logo" />AT
+            </h1>
+            <span class="version-id">{{ version }}</span>
+
+            <!-- Navigation Links -->
+            <div class="navigation-links">
+              <router-link class="nav-link" to="/">Projects</router-link>
+              <router-link class="nav-link" to="/metrics-reports">Metrics</router-link>
+              <router-link class="nav-link" to="/model-explore">Concepts</router-link>
+              <router-link class="nav-link" to="/demo">Try Model</router-link>
+            </div>
+          </div>
+
+
+
+          <!-- Action Buttons -->
+          <div class="action-buttons">
+            <div class="user-section">
+              <span v-if="!uname" class="login-link" @click="openLogin">Login</span>
+              <span v-else class="user-info">
+                <span class="username">({{ uname }}) <font-awesome-icon icon="user"></font-awesome-icon></span>
+                <span class="logout-link" @click="logout">logout</span>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+    <main class="main-content">
+      <router-view/>
+    </main>
     <login v-if="!useOidc && loginModal"
            @login:success="loginSuccessful"
            :closable="true"
@@ -43,6 +66,10 @@ export default {
     }
   },
   methods: {
+    navigateToHome () {
+      this.$router.push('/')
+    },
+
     openLogin () {
       if (!this.useOidc) {
         this.loginModal = true
@@ -115,6 +142,162 @@ export default {
 </script>
 
 <style scoped lang="scss">
+.full-height {
+  min-height: 100vh;
+}
+
+.header-gradient {
+  background: linear-gradient(135deg, #126cad 0%, #3d0372 50%, #8e1b73 100%);
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.header-container {
+  width: 100%;
+  padding: 0 24px;
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0;
+  min-height: 60px;
+}
+
+.main-content {
+  padding-top: 81px;
+  height: 100vh; /* Account for header height (60px + 32px padding) */
+}
+
+.branding-section {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.logo-container {
+  display: flex;
+  align-items: center;
+}
+
+.brand-logo {
+  height: 48px;
+  width: auto;
+}
+
+.divider {
+  height: 24px;
+  width: 1px;
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+.app-title {
+  font-size: 24px;
+  font-weight: bold;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  margin: 0;
+  text-decoration: none;
+
+  &:hover {
+    color: white;
+    text-decoration: none;
+  }
+}
+
+.cat-logo {
+  height: 32px;
+  width: 32px;
+}
+
+.navigation-links {
+  display: flex;
+  gap: 20px;
+}
+
+.nav-link {
+  color: white;
+  text-decoration: none;
+  padding: 8px 0;
+  border-bottom: 1px solid transparent;
+  transition: all 0.2s ease;
+
+  &:hover {
+    color: white;
+    border-bottom: 1px solid white;
+    text-decoration: none;
+  }
+
+  &:focus {
+    color: white
+  }
+
+  &.router-link-active {
+    border-bottom: 1px solid white;
+  }
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.user-section {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-left: 16px;
+}
+
+.login-link {
+  color: white;
+  cursor: pointer;
+  font-size: 14px;
+
+  &:hover {
+    opacity: 0.8;
+  }
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: white;
+  font-size: 14px;
+}
+
+.username {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.logout-link {
+  cursor: pointer;
+
+  &:hover {
+    opacity: 0.8;
+  }
+}
+
+.version-id {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.7);
+  margin-left: 16px;
+}
+
+// Legacy styles for backward compatibility
 .right {
   float: right;
 }
@@ -160,7 +343,7 @@ export default {
 }
 
 .link {
-  display:inline-block;
+  display: inline-block;
   height: 25px;
   cursor: pointer;
 
@@ -177,14 +360,6 @@ export default {
   height: 38px;
   position: relative;
   bottom: 7px;
-}
-
-.version-id {
-  display: inline-block;
-  float: right;
-  font-size: 10px;
-  padding: 0 20px;
-  color: $color-2;
 }
 
 </style>
