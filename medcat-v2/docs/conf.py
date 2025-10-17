@@ -13,6 +13,7 @@
 #
 import os
 import sys
+import re
 sys.path.insert(0, os.path.abspath('..'))
 
 
@@ -23,7 +24,14 @@ copyright = '2025, CogStack Org'
 author = 'CogStack Org'
 
 # The full version, including alpha/beta/rc tags
-release = ':latest'  # where is the version retrievable from?
+# apprently shoudl be able ot read from env
+release = os.getenv("READTHEDOCS_VERSION", ":latest")
+
+# Simplify medcat/v2.3.1rc2 → v2.3.1rc2
+m = re.match(r"^medcat/(v[\w\.\-]+)$", release)
+if m:
+    # get (e.g) v2.1.0 from medcat/v2.1.0 tag
+    release = m.group(1)
 
 
 # -- General configuration ---------------------------------------------------
