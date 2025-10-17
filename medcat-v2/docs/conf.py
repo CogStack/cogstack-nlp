@@ -13,7 +13,6 @@
 #
 import os
 import sys
-import re
 sys.path.insert(0, os.path.abspath('..'))
 
 
@@ -27,11 +26,11 @@ author = 'CogStack Org'
 # apprently shoudl be able ot read from env
 release = os.getenv("READTHEDOCS_VERSION", ":latest")
 
-# Simplify medcat/v2.3.1rc2 → v2.3.1rc2
-m = re.match(r"^medcat/(v[\w\.\-]+)$", release)
-if m:
-    # get (e.g) v2.1.0 from medcat/v2.1.0 tag
-    release = m.group(1)
+# Simplify medcat-v2.3.1rc2 → v2.3.1rc2
+# NOTE: in case of tag based releases, the environmental variable
+#       should contain the sanitised tag as the slug, so the / is
+#       replaced with the -
+release = release.removeprefix("medcat-")
 
 
 # -- General configuration ---------------------------------------------------
