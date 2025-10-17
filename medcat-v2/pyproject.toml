@@ -127,6 +127,7 @@ test = []  # TODO - list
 
 [project.urls]
 "Homepage" = "https://cogstack.org/"
+"Documentation" = "https://docs.cogstack.org/projects/nlp/en/latest/"
 "Bug Reports" = "https://discourse.cogstack.org/"
 "Source" = "https://github.com/CogStack/cogstack-nlp/"
 
