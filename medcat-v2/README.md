@@ -73,7 +73,7 @@ new_model_folder = "models"  # file in this folder
 
 MedCAT v2 has its first full release
 ```
-pip install medcat~=2.0.0
+pip install medcat~=2.2.0
 ```
 Do note that **this installs only the core MedCAT v2**.
 **It does not necessary dependencies for `spacy`-based tokenizing or MetaCATs or DeID**.
