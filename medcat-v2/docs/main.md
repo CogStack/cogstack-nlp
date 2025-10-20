@@ -46,12 +46,12 @@ Installation instructions are to follow upon a release of this version on PyPI.
 Though installation is likely to be simply `pip install "medcat>=2.0"` at that time.
 Currently the installation for the 2.0 beta release is simply:
 ```
-pip install medcat~=2.0.0b
+pip install medcat
 ```
 Though note the extras you might need (e.g `spacy`, `meta-cat`, `rel-cat`, `deid`).
 If you need them, they need to be specified in brackets, e.g:
 ```
-pip install medcat[spacy,meta-cat,rel-cat,deid]~=2.0.0b
+pip install "medcat[spacy,meta-cat,rel-cat,deid]"
 ```
 
 2. Quickstart (MedCAT v2+):
