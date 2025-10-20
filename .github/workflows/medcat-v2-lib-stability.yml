@@ -7,7 +7,7 @@ on:
   workflow_dispatch:     # allow manual runs
   pull_request:
     paths:
-      - ".github/workflows/medcat-v2-lib-stabiliy.yml"
+      - ".github/workflows/medcat-v2-lib-stability.yml"
 
 defaults:
   run:
