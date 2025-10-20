@@ -73,17 +73,17 @@ new_model_folder = "models"  # file in this folder
 
 MedCAT v2 has its first full release
 ```
-pip install medcat~=2.2.0
+pip install medcat
 ```
 Do note that **this installs only the core MedCAT v2**.
 **It does not necessary dependencies for `spacy`-based tokenizing or MetaCATs or DeID**.
 However, all of those are supported as well.
 You can install them as follows:
 ```
-pip install "medcat[spacy]~=2.0.0" # for spacy-based tokenizer
-pip install "medcat[meta-cat]~=2.0.0"  # for MetaCAT
-pip install "medcat[deid]~=2.0.0"  # for DeID models
-pip install "medcat[spacy,meta-cat,deid,rel-cat,dict-ner]~=2.0.0"  # for all of the above
+pip install "medcat[spacy]" # for spacy-based tokenizer
+pip install "medcat[meta-cat]"  # for MetaCAT
+pip install "medcat[deid]"  # for DeID models
+pip install "medcat[spacy,meta-cat,deid,rel-cat,dict-ner]"  # for all of the above
 ```
 
 ### Version / update checking
