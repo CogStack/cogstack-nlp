@@ -53,7 +53,7 @@ jobs:
           second_half_nl=$(echo "$all_files" | tail -n +$(($midpoint + 1)))
           python -m unittest ${first_half_nl[@]}
           python -m unittest ${second_half_nl[@]}
-        timeout-minutes: 45m
+        timeout-minutes: 45
       - name: Regression
         run: source tests/resources/regression/run_regression.sh
       - name: Model backwards compatibility
