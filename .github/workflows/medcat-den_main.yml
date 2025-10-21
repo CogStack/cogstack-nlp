@@ -64,14 +64,14 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install --upgrade build
 
-      - name: Install package in development mode
-        run: |
-          pip install -e .
-
       - name: Set timestamp-based dev version
         run: |
           TS=$(date -u +"%Y%m%d%H%M%S")
           echo "SETUPTOOLS_SCM_PRETEND_VERSION_FOR_MEDCAT_DEN=0.2.2.dev${TS}" >> $GITHUB_ENV
+
+      - name: Install package in development mode
+        run: |
+          pip install -e .
 
       - name: Build package
         run: |
