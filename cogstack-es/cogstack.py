@@ -16,17 +16,20 @@ if TYPE_CHECKING:
     es_cls = _Elasticsearch
     es_helpers = elasticsearch.helpers
     from elasticsearch import NotFoundError, BadRequestError
+    USING_ELASTIC = True
 else:
     try:
         from elasticsearch import Elasticsearch as ElasticClient
         import elasticsearch.helpers
         es_helpers = elasticsearch.helpers
-        from elasticsearch import NotFoundError, RequestError as BadRequestError
+        from elasticsearch import NotFoundError, BadRequestError
+        USING_ELASTIC = True
     except ImportError:
         from opensearchpy import OpenSearch as ElasticClient
         import opensearchpy.helpers
         es_helpers = opensearchpy.helpers
         from opensearchpy import NotFoundError, RequestError as BadRequestError
+        USING_ELASTIC = False
     es_cls = ElasticClient
 from IPython.display import display, HTML
 import pandas as pd
@@ -310,7 +313,9 @@ class CogStack:
         ---------
             A table of indices and aliases to use in subsequent queries
         """
-        all_aliases = self.elastic.indices.get_alias().body
+        all_aliases = self.elastic.indices.get_alias()
+        if USING_ELASTIC:
+            all_aliases = all_aliases.body
         index_aliases_coll = []
         for index in all_aliases:
             index_aliases = {}
@@ -351,7 +356,9 @@ class CogStack:
                     "Provide at least one index or index alias name")
             all_mappings = self.elastic.indices.get_mapping(
                 index=index, allow_no_indices=False
-            ).body
+            )
+            if USING_ELASTIC:
+                all_mappings = all_mappings.body
             columns = ["Field", "Type"]
             if isinstance(index, list):
                 columns.insert(0, "Index")
