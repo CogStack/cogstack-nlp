@@ -662,12 +662,13 @@ class CogStack:
                         fields=include_fields_map, source=False,
                         timeout=f"{request_timeout}s",)
                 else:
+                    query = {"query": query}
                     if include_fields_map:
                         query["fields"] = include_fields_map
                     searcher = partial(
                         self.elastic.search,
                         # NOTE: need to be nested
-                        body={"query": query},
+                        body=query,
                         _source=False,
                         timeout=request_timeout)
                 search_result = searcher(
