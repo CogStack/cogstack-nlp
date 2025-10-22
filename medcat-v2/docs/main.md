@@ -44,7 +44,7 @@ Some guides on how to use MedCAT v2 are available at [MedCAT Tutorials](https://
 ## Install using PIP (Requires Python 3.10+)
 Installation instructions are to follow upon a release of this version on PyPI.
 Though installation is likely to be simply `pip install "medcat>=2.0"` at that time.
-Currently the installation for the 2.0 beta release is simply:
+Currently the installation for the 2.0 release is simply:
 ```
 pip install medcat
 ```
