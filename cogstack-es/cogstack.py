@@ -15,18 +15,18 @@ if TYPE_CHECKING:
     ElasticClient = _Elasticsearch
     es_cls = _Elasticsearch
     es_helpers = elasticsearch.helpers
-    from elasticsearch import NotFoundError
+    from elasticsearch import NotFoundError, BadRequestError
 else:
     try:
         from elasticsearch import Elasticsearch as ElasticClient
         import elasticsearch.helpers
         es_helpers = elasticsearch.helpers
-        from elasticsearch import NotFoundError
+        from elasticsearch import NotFoundError, BadRequestError
     except ImportError:
         from opensearchpy import OpenSearch as ElasticClient
         import opensearchpy.helpers
         es_helpers = opensearchpy.helpers
-        from opensearchpy import NotFoundError
+        from opensearchpy import NotFoundError, BadRequestError
     es_cls = ElasticClient
 from IPython.display import display, HTML
 import pandas as pd
@@ -516,6 +516,8 @@ class CogStack:
                     err.args == (
                         'Provide at least one index or index alias name',)):
                 raise ValueError("Index not found") from err
+            elif isinstance(err, BadRequestError):
+                raise ValueError("Bad request") from err
             elif isinstance(err, ValueError) and err.args == (
                     'Size must not be greater than 10000',):
                 raise err
