@@ -603,6 +603,8 @@ class CogStack:
             request will skip results of the failed scroll by the value
             of `size` parameter.
         """
+        pr_bar: Optional[tqdm.tqdm] = None
+        all_mapped_results = []
         try:
             if len(index) == 0:
                 raise ValueError(
@@ -610,7 +612,6 @@ class CogStack:
             self.__validate_size(size=size)
             query = self.__extract_query(query=query)
             result_count = size
-            all_mapped_results = []
             search_result = None
             include_fields_map: Union[Sequence[Mapping[str, Any]], None] = (
                 [{"field": field} for field in include_fields]
