@@ -5,7 +5,7 @@ services:
     container_name: medcattrainer
     hostname: medcat
     restart: always
-    image: cogstacksystems/medcat-trainer:v2.23.1
+    image: cogstacksystems/medcat-trainer:v3.1.0
     volumes:
       - api-media:/home/api/media
       - api-static:/home/api/static
@@ -16,7 +16,7 @@ services:
     env_file:
       - ./envs/env-prod
     environment:
-      - MCT_VERSION=v2.23.1
+      - MCT_VERSION=v3.1.0
     command: /usr/bin/supervisord -c /etc/supervisord.conf
 
   nginx:
@@ -47,7 +47,7 @@ services:
     volumes:
       - solr-data:/var/solr
     command:
-      - -cloud  # solr cloud launches
+      - -cloud # solr cloud launches
 
 volumes:
   api-media:

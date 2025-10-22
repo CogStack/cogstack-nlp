@@ -532,8 +532,9 @@ class CAT(AbstractSerialisable):
         # addons:
         out_dict.update(self.get_addon_output(ent))  # type: ignore
         # other ontologies
-        if self.config.general.map_to_other_ontologies:
-            for ont in self.config.general.map_to_other_ontologies:
+        other_onts = self._set_and_get_mapped_ontologies()
+        if other_onts:
+            for ont in other_onts:
                 if ont in out_dict:
                     logger.warning(
                         "Trying to map to ontology '%s', but it already "
@@ -552,6 +553,28 @@ class CAT(AbstractSerialisable):
                 ont_values = ont_map.get(cui, [])
                 out_dict[ont] = ont_values  # type: ignore
         return out_dict
+
+    def _set_and_get_mapped_ontologies(
+            self,
+            ignore_set: set[str] = {"ontologies", "original_names",
+                                    "description", "group"},
+            ignore_empty: bool = True) -> list[str]:
+        other_onts = self.config.general.map_to_other_ontologies
+        if other_onts == "auto":
+            self.config.general.map_to_other_ontologies = other_onts = [
+                npkey
+                for key, val in self.cdb.addl_info.items()
+                if key.startswith("cui2") and
+                # ignore empty if required / expected
+                (not ignore_empty or val) and
+                # these are things that get auto-populated in addl_info
+                # but don't generally contain ontology mapping information
+                # directly
+                (npkey := key.removeprefix("cui2")) not in ignore_set
+            ]
+            logger.info(
+                "Automatically finding ontologies to map to: %s", other_onts)
+        return other_onts
 
     def get_addon_output(self, ent: MutableEntity) -> dict[str, dict]:
         """Get the addon output for the entity.
@@ -809,6 +832,8 @@ class CAT(AbstractSerialisable):
         #       will be dealt with upon pipeline creation automatically
         if not isinstance(cat, CAT):
             raise ValueError(f"Unable to load CAT. Got: {cat}")
+        # reset mapped ontologies at load time but after CDB load
+        cat._set_and_get_mapped_ontologies()
         return cat
 
     @classmethod

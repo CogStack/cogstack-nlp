@@ -133,5 +133,7 @@ However, there's a set of environmental variables that can be set in order to cu
 | MEDCAT_DEN_LOCAL_CACHE_EXPIRATION_TIME | int | The expriation time for local cache (in seconds) | The default is 10 days |
 | MEDCAT_DEN_LOCAL_CACHE_MAX_SIZE        | int | The maximum size of the cache in bytes | The default is 100 GB |
 | MEDCAT_DEN_LOCAL_CACHE_EVICTION_POLICY | str | The eviction policy for the local cache | The default is LRU |
+| MEDCAT_DEN_REMOTE_ALLOW_PUSH_FINETUNED | bool | Whether to allow locallly fine tuned model to be pushed to remote dens | Defaults to False |
+| MEDCAT_DEN_REMOTE_ALLOW_LOCAL_FINE_TUNE | bool | Whether to allow local fine tuning for remote dens | Defaults to False |
 
 When creating a den, the resolver will use the explicitly passed values first, and if none are provided, it will default to the ones defined in the environmental variables.

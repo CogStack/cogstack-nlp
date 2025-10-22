@@ -420,7 +420,7 @@ class ProjectMetrics(object):
             # Store results for this concept
             meta_performance[cui] = {
                 'cui': cui,
-                'concept_name': self.cat.cdb.cui2preferred_name[cui],
+                'concept_name': self.cat.cdb.cui2info[cui]['preferred_name'],
                 'meta_tasks': meta_task_results
             }
 

@@ -33,5 +33,5 @@ class TokenizerWrapperModernBERT(BaseTokenizerWrapper):
             relcat_config.general.model_name = (
                 cls.pretrained_model_name_or_path)
             tokenizer.hf_tokenizers = PreTrainedTokenizerFast.from_pretrained(
-                path=relcat_config.general.model_name)
+                relcat_config.general.model_name)
         return tokenizer

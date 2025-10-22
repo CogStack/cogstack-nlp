@@ -1,3 +1,4 @@
+import os
 import traceback
 from smtplib import SMTPException
 from tempfile import NamedTemporaryFile
@@ -10,6 +11,7 @@ from django.http import HttpResponseBadRequest, HttpResponseServerError, HttpRes
 from django.shortcuts import render
 from django.utils import timezone
 from django_filters import rest_framework as drf
+from medcat.utils.cdb_utils import ch2pt_from_pt2ch, get_all_ch, snomed_ct_concept_path
 from rest_framework import viewsets
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -18,7 +20,6 @@ from medcat.components.ner.trf.deid import DeIdModel
 from .admin import download_projects_with_text, download_projects_without_text, \
     import_concepts_from_cdb
 from .data_utils import upload_projects_export
-from .medcat_utils import ch2pt_from_pt2ch, get_all_ch, dedupe_preserve_order, snomed_ct_concept_path
 from .metrics import calculate_metrics
 from .model_cache import get_medcat, get_cached_cdb, VOCAB_MAP, clear_cached_medcat, CAT_MAP, CDB_MAP, is_model_loaded
 from .permissions import *
@@ -222,7 +223,6 @@ class ResetPasswordView(PasswordResetView):
             return HttpResponseServerError('''SMTP settings are not configured correctly. <br>
                                            Please visit https://medcattrainer.readthedocs.io for more information to resolve this. <br>
                                            You can also ask a question at: https://discourse.cogstack.org/c/medcat/5''')
-
 
 @api_view(http_method_names=['GET'])
 def get_anno_tool_conf(_):
@@ -686,13 +686,29 @@ def upload_deployment(request):
     cdb_id = deployment_export.get('cdb_id', None)
     vocab_id = deployment_export.get('vocab_id', None)
     modelpack_id = deployment_export.get('modelpack_id', None)
+    project_name_suffix = deployment_export.get('project_name_suffix', ' IMPORTED')
+    set_validated_docs = deployment_export.get('set_validated_docs', False)
+    cdb_search_filter_id = deployment_export.get('cdb_search_filter', None)
+    members = deployment_export.get('members', None)
+    import_project_name_suffix = deployment_export.get('import_project_name_suffix', ' IMPORTED')
 
     if all(x is None for x in [cdb_id, vocab_id, modelpack_id]):
         return Response("No cdb, vocab, or modelpack provided", 400)
 
-    upload_projects_export(deployment_upload, cdb_id, vocab_id, modelpack_id)
-    # logger.info(f'Errors encountered during previous deployment upload\n{errs}')
-    return Response("successfully uploaded", 200)
+    try:
+        upload_projects_export(deployment_upload,
+                                cdb_id,
+                                vocab_id,
+                                modelpack_id,
+                                project_name_suffix,
+                                cdb_search_filter_id,
+                                members,
+                                import_project_name_suffix,
+                                set_validated_docs)
+        return Response("successfully uploaded", 200)
+    except Exception as e:
+        logger.error(f"Failed to upload projects export: {str(e)}", exc_info=e)
+        return Response(f"Failed to upload projects export: {e.message}", 500)
 
 
 @api_view(http_method_names=['GET', 'DELETE'])
@@ -842,11 +858,11 @@ def cdb_cui_children(request, cdb_id):
 
     # currently assumes this is using the SNOMED CT terminology
     try:
-        root_term = {'cui': '138875005', 'pretty_name': cdb.cui2preferred_name['138875005']}
+        root_term = {'cui': '138875005', 'pretty_name': cdb.cui2info['138875005']['preferred_name']}
         if parent_cui is None:
             return Response({'results': [root_term]})
         else:
-            child_concepts = [{'cui': cui, 'pretty_name': cdb.cui2preferred_name[cui]}
+            child_concepts = [{'cui': cui, 'pretty_name': cdb.cui2info[cui]['preferred_name']}
                               for cui in cdb.addl_info.get('pt2ch')[parent_cui]]
             return Response({'results': child_concepts})
     except KeyError:
@@ -878,7 +894,7 @@ def generate_concept_filter_flat_json(request):
         for cui in cuis:
             ch_nodes = get_all_ch(cui, cdb)
             final_filter += [n for n in ch_nodes if n not in excluded_nodes]
-        final_filter = dedupe_preserve_order(final_filter)
+        final_filter = {cui:1 for cui in final_filter}.keys()
         filter_json = json.dumps(final_filter)
         response = HttpResponse(filter_json, content_type='application/json')
         response['Content-Disposition'] = 'attachment; filename=filter.json'
@@ -895,8 +911,8 @@ def generate_concept_filter(request):
         # get all children from 'parent' concepts above.
         final_filter = {}
         for cui in cuis:
-            final_filter[cui] = [{'cui': c, 'pretty_name': cdb.cui2preferred_name[c]} for c in get_all_ch(cui, cdb)
-                                 if c in cdb.cui2preferred_name and c != cui]
+            final_filter[cui] = [{'cui': c, 'pretty_name': cdb.cui2info[cui]['preferred_name']} for c in get_all_ch(cui, cdb)
+                                 if c in cdb.cui2info[cui]['preferred_name'] and c != cui]
         resp = {'filter_len': sum(len(f) for f in final_filter.values()) + len(final_filter.keys())}
         if resp['filter_len'] < 10000:
             # only send across concept filters that are small enough to render
@@ -912,12 +928,12 @@ def cuis_to_concepts(request):
     if cdb_id is not None:
         if cuis is not None:
             cdb = get_cached_cdb(cdb_id, CDB_MAP)
-            concept_list = [{'cui': cui, 'name': cdb.cui2preferred_name[cui]} for cui in cuis]
+            concept_list = [{'cui': cui, 'name': cdb.cui2info[cui]['preferred_name']} for cui in cuis]
             resp = {'concept_list': concept_list}
             return Response(resp)
         else:
             cdb = get_cached_cdb(cdb_id, CDB_MAP)
-            concept_list = [{'cui': cui, 'name': cdb.cui2preferred_name[cui]} for cui in cdb.cui2preferred_name.keys()]
+            concept_list = [{'cui': cui, 'name': cdb.cui2info[cui]['preferred_name']} for cui in cdb.cui2info.keys()]
             resp = {'concept_list': concept_list}
             return Response(resp)
     return HttpResponseBadRequest('Missing either cuis or cdb_id param. Cannot produce concept list.')

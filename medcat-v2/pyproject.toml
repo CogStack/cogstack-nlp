@@ -7,7 +7,7 @@ description = "Medical Concept Annotation Toolkit (v2)"
 
 readme = "README.md"
 
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 
 license = "Apache-2.0"
 
@@ -42,10 +42,10 @@ classifiers = [
   # that you indicate you support Python 3. These classifiers are *not*
   # checked by "pip install". See instead "python_requires" below.
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3 :: Only",
   "Operating System :: OS Independent",
 ]
@@ -57,7 +57,8 @@ classifiers = [
 # For an analysis of this field vs pip's requirements files see:
 # https://packaging.python.org/discussions/install-requires-vs-requirements/
 dependencies = [ # Optional
-  "numpy>2.0",
+  "numpy>=2.1; python_version >= '3.13'",
+  "numpy>=2.0; python_version < '3.13'",
   "dill",
   "pandas>=2.2,<3.0",
   "tqdm>=4.64,<5.0",
@@ -85,27 +86,40 @@ dev = [
 ]
 spacy = [
   "spacy",
-  "spacy<3.8.4; python_version == '3.9'"
 ]
 meta_cat = [
   "transformers>=4.41.0,<5.0", # avoid major bump
+  # Transformers 4.57 doesn't support 3.9
+  "transformers!=4.57.0; python_version == '3.9'",
   "peft>0.8.2,<1.0",
   "torch>=2.4.0,<3.0",
   "scikit-learn>=1.1.3,<2.0",
-  "scipy",
+  # since 3.13 we need to use later version of scipy for it
+  "scipy<1.14; python_version < '3.13'",
+  "scipy>=1.14; python_version >= '3.13'",
 ]
 dict_ner = [
   "pyahocorasick>=2.1.0,<3.0"
 ]
 deid = [
   "datasets>=2.2.2,<3.0.0",
+  # Transformers 4.57 doesn't support 3.9
+  "transformers!=4.57.0; python_version == '3.9'",
   "transformers>=4.41.0,<5.0", # avoid major bump
+  # Transformers 4.57 doesn't support 3.9
+  "transformers!=4.57.0; python_version == '3.9'",
   "scikit-learn>=1.1.3,<2.0",
   "torch>=2.4.0,<3.0",
-  "scipy",
+  # since 3.13 we need to use later version of scipy for it
+  "scipy<1.14; python_version < '3.13'",
+  "scipy>=1.14; python_version >= '3.13'",
 ]
 rel_cat = [
+  # Transformers 4.57 doesn't support 3.9
+  "transformers!=4.57.0; python_version == '3.9'",
   "transformers>=4.41.0,<5.0", # avoid major bump
+  # Transformers 4.57 doesn't support 3.9
+  "transformers!=4.57.0; python_version == '3.9'",
   "scikit-learn>=1.1.3,<2.0",
   "torch>=2.4.0,<3.0",
 ]
@@ -113,6 +127,7 @@ test = []  # TODO - list
 
 [project.urls]
 "Homepage" = "https://cogstack.org/"
+"Documentation" = "https://docs.cogstack.org/projects/nlp/en/latest/"
 "Bug Reports" = "https://discourse.cogstack.org/"
 "Source" = "https://github.com/CogStack/cogstack-nlp/"
 

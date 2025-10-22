@@ -1,4 +1,4 @@
-from typing import Iterable, Any, Collection, Union, Literal
+from typing import Iterable, Any, Collection, Union, Literal, Sequence
 import os
 
 from medcat.storage.serialisables import AbstractSerialisable
@@ -354,16 +354,14 @@ class CDB(AbstractSerialisable):
         self._reset_subnames()
         self.is_dirty = True
 
-    def remove_cui(self, cui: str) -> None:
-        """This function takes a CUI and removes it the CDB.
+    def remove_cuis_bulk(self, cuis: Sequence[str]) -> None:
+        for cui in cuis:
+            self._remove_cui(cui)
+        # reset subnames once
+        self._reset_subnames()
 
-        It also removes the CUI from name specific per_cui_status
-        maps as well as well as removes all the names that do not
-        correspond to any CUIs after the removal of this one.
-
-        Args:
-            cui (str): The CUI to remove.
-        """
+    def _remove_cui(self, cui: str) -> None:
+        # NOTE: remove CUI without doing a subname reset
         if cui not in self.cui2info:
             logger.warning(
                 "Trying remove CUI '%s' which does not exist in CDB", cui)
@@ -375,6 +373,18 @@ class CDB(AbstractSerialisable):
             # if name name corresponds to no CUIs
             if not ni['per_cui_status']:
                 del self.name2info[name]
+
+    def remove_cui(self, cui: str) -> None:
+        """This function takes a CUI and removes it the CDB.
+
+        It also removes the CUI from name specific per_cui_status
+        maps as well as well as removes all the names that do not
+        correspond to any CUIs after the removal of this one.
+
+        Args:
+            cui (str): The CUI to remove.
+        """
+        self._remove_cui(cui)
         # need to reset subnames
         self._reset_subnames()
         self.is_dirty = True
@@ -511,7 +521,25 @@ class CDB(AbstractSerialisable):
         serialise(serialiser, self, save_path, overwrite=overwrite)
 
     @classmethod
-    def load(cls, path: str) -> 'CDB':
+    def load(cls, path: str, perform_fixes: bool = True) -> 'CDB':
+        """Load the CDB off disk.
+
+        This can load a legacy (v1) CDB (.dat) or a v2 CDB either in its folder
+        format or the .zip format. The distinction is made automatically.
+
+        Args:
+            path (str): The path to the CDB.
+            perform_fixes (bool): Whether to perform fixes such as
+                original names issue. Defaults to True.
+
+        Raises:
+            LegacyConversionDisabledError:
+                If when a legacy model is found and conversion is not allowed.
+            ValueError: If the loaded object isn't a CDB.
+
+        Returns:
+            CDB: The loaded CDB.
+        """
         if should_serialise_as_zip(path, 'auto'):
             cdb = deserialise_from_zip(path)
         elif os.path.isfile(path) and path.endswith('.dat'):
@@ -525,4 +553,9 @@ class CDB(AbstractSerialisable):
             cdb = deserialise(path)
         if not isinstance(cdb, CDB):
             raise ValueError(f"The path '{path}' is not a CDB!")
+        if perform_fixes:
+            # perform fix(es)
+            from medcat.utils.legacy.fixes import (
+                fix_cui2original_names_if_needed)
+            fix_cui2original_names_if_needed(cdb)
         return cdb

@@ -20,12 +20,12 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [ '3.9', '3.10', '3.11', '3.12' ]
+        python-version: [ '3.10', '3.11', '3.12' ]
       max-parallel: 4
     steps:
       - uses: actions/checkout@v5
       - name: Install uv for Python ${{ matrix.python-version }}
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v7
         with:
           python-version: ${{ matrix.python-version }}
           enable-cache: true
@@ -50,23 +50,28 @@ jobs:
     steps:
       - name: Checkout main
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0        # fetch all history
+          fetch-tags: true      # fetch tags explicitly
 
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: '3.9'
+          python-version: '3.10'
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           python -m pip install --upgrade build
 
+      - name: Set timestamp-based dev version
+        run: |
+          TS=$(date -u +"%Y%m%d%H%M%S")
+          echo "SETUPTOOLS_SCM_PRETEND_VERSION_FOR_MEDCAT_DEN=0.2.2.dev${TS}" >> $GITHUB_ENV
+
       - name: Install package in development mode
         run: |
           pip install -e .
-
-      - name: Bump version for TestPyPI
-        run: sed -i "s/^version = .*/version = \"1.0.0.dev$(date +%s)\"/" pyproject.toml
 
       - name: Build package
         run: |

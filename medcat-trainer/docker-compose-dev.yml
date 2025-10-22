@@ -8,6 +8,8 @@ services:
       args:
         SPACY_MODELS: ${SPACY_MODELS:-en_core_web_md}
     restart: always
+    networks:
+      - gateway-auth_gateway-net
     volumes:
       - api-media:/home/api/media
       - api-static:/home/api/static
@@ -32,6 +34,8 @@ services:
       - api-static:/home/api/static
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
       - ./nginx/sites-enabled/:/etc/nginx/sites-enabled
+    networks:
+      - gateway-auth_gateway-net
     env_file:
       - ./envs/env
     ports:
@@ -39,6 +43,11 @@ services:
     depends_on:
       - medcattrainer
       - solr
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.nginx.rule=Host(`${NGINX_HOST:-medcattrainer.cogstack.localhost}`)"
+      - "traefik.http.routers.nginx.entrypoints=web"
+      - "traefik.http.services.nginx.loadbalancer.server.port=8000"
 
   solr:
     container_name: mct_solr
@@ -50,6 +59,8 @@ services:
       - ${SOLR_PORT:-8983}:8983
     volumes:
       - solr-data:/var/solr
+    networks:
+      - gateway-auth_gateway-net
     command:
       - -cloud
 
@@ -59,3 +70,8 @@ volumes:
   api-db:
   api-db-backup:
   solr-data:
+
+networks:
+  gateway-auth_gateway-net:
+    external: true
+

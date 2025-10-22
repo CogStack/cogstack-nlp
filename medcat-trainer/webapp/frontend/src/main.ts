@@ -22,6 +22,7 @@ import 'vuetify/styles'
 import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
+import {authPlugin} from "./auth";
 
 const theme ={
   dark: false,
@@ -45,25 +46,38 @@ const vuetify = createVuetify({
   }
 })
 
-const app = createApp(App)
-app.config.globalProperties.$http = axios
-app.component("v-select", vSelect)
-app.component('vue-simple-context-menu', VueSimpleContextMenu)
-app.component('font-awesome-icon', FontAwesomeIcon)
-app.use(router)
-app.use(VueCookies, { expires: '7d'})
-app.use(vuetify);
+const USE_OIDC = import.meta.env.VITE_USE_OIDC === '1'
 
-(function () {
-  const apiToken = document.cookie
-    .split(';')
-    .map(s => s.trim().split('='))
-    .filter(s => s[0] === 'api-token')
-  if (apiToken.length) {
-    axios.defaults.headers.common['Authorization'] = `Token ${apiToken[0][1]}`
-    axios.defaults.timeout = 6000000000
+async function bootstrap() {
+  const app = createApp(App)
+  app.config.globalProperties.$http = axios
+  app.component("v-select", vSelect)
+  app.component('vue-simple-context-menu', VueSimpleContextMenu)
+  app.component('font-awesome-icon', FontAwesomeIcon)
+  app.use(router)
+  app.use(VueCookies, { expires: '7d'})
+  app.use(vuetify);
+
+  console.log("Running in " + import.meta.env.MODE)
+
+  if (USE_OIDC) {
+    await authPlugin.install(app)
+  } else {
+    const apiToken = document.cookie
+      .split(';')
+      .map(s => s.trim().split('='))
+      .filter(s => s[0] === 'api-token')
+
+    if (apiToken.length) {
+      axios.defaults.headers.common['Authorization'] = `Token ${apiToken[0][1]}`
+      axios.defaults.timeout = 6000000000
+    }
+
+    app.config.globalProperties.$http = axios
   }
-})()
 
-app.config.compilerOptions.whitespace = 'preserve';
-app.mount('#app')
+  app.config.compilerOptions.whitespace = 'preserve'
+  app.mount('#app')
+}
+
+bootstrap()

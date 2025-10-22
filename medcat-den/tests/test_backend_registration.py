@@ -1,43 +1,15 @@
 import pytest
+from unittest.mock import MagicMock
 
-from medcat.cat import CAT
-
-from medcat_den.base import ModelInfo
-from medcat_den.wrappers import CATWrapper
 from medcat_den.backend import DenType, _remote_den_map, register_remote_den
 from medcat_den.resolver import resolve
+from medcat_den.den import Den
 
 
-class FakeDen:
-    def __init__(self, **kwargs):
-        return
+class FakeDen(MagicMock):
 
-    @property
-    def den_type(self) -> DenType:
-        return DenType.MEDCATTERY
-
-    def list_available_models(self) -> list[ModelInfo]:
-        return []
-
-    def list_available_base_models(self) -> list[ModelInfo]:
-        return []
-
-    def list_available_derivative_models(self, model: ModelInfo
-                                         ) -> list[ModelInfo]:
-        return []
-
-    def fetch_model(self, model_info: ModelInfo) -> CATWrapper:
-        return
-
-    def push_model(self, cat: CAT, description: str) -> None:
-        return
-
-    def _push_model_from_file(self, file_path: str, description: str) -> None:
-        return
-
-    def delete_model(self, model_info: ModelInfo,
-                     allow_delete_base_models: bool = False) -> None:
-        return
+    def __init__(self, *args, **kw):
+        super().__init__(*args, **kw, spec=Den)
 
 
 @pytest.fixture()

@@ -113,18 +113,19 @@ class StateSavedTests(StateTests):
 
 class StateSavedOnDiskTests(StateSavedTests):
     on_disk = True
-    _named_tempory_file = tempfile.NamedTemporaryFile
+    _named_tempory_directory = tempfile.TemporaryDirectory
 
     @classmethod
     def saved_name_temp_file(cls):
-        tf = cls._named_tempory_file()
-        cls.temp_file_name = tf.name
+        tf = cls._named_tempory_directory()
+        cls.temp_file_name = os.path.join(tf.name, "cdb_state.dat")
         return tf
 
     @classmethod
     def setUpClass(cls) -> None:
-        with mock.patch("builtins.open", side_effect=open) as cls.popen:
-            with mock.patch("tempfile.NamedTemporaryFile",
+        with mock.patch("medcat.utils.cdb_state.open", side_effect=open
+                        ) as cls.popen:
+            with mock.patch("tempfile.TemporaryDirectory",
                             side_effect=cls.saved_name_temp_file) as cls.pntf:
                 return super().setUpClass()
 

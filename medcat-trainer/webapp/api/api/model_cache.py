@@ -202,6 +202,7 @@ def clear_cached_medcat(project, cat_map: Dict[str, CAT]=CAT_MAP):
 
 
 def get_cached_cdb(cdb_id: str, cdb_map: Dict[str, CDB]=CDB_MAP) -> CDB:
+    from api.utils import clear_cdb_cnf_addons
     if cdb_id not in cdb_map:
         cdb_obj = ConceptDB.objects.get(id=cdb_id)
         cdb = CDB.load(cdb_obj.cdb_file.path)

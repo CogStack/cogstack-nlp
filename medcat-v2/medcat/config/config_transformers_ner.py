@@ -1,5 +1,7 @@
 from typing import Optional
 
+from pydantic import ConfigDict
+
 from medcat.config.config import SerialisableBaseModel
 from medcat.utils.hasher import Hasher
 
@@ -22,19 +24,21 @@ class General(SerialisableBaseModel):
     last_train_on: Optional[float] = None
     verbose_metrics: bool = False
 
-    class Config:
-        extra = 'allow'
-        validate_assignment = True
-        protected_namespaces = ()
+    model_config = ConfigDict(
+        extra='allow',
+        validate_assignment=True,
+        protected_namespaces=(),
+    )
 
 
 class ConfigTransformersNER(SerialisableBaseModel):
     """The transformer NER config"""
     general: General = General()
 
-    class Config:
-        extra = 'allow'
-        validate_assignment = True
+    model_config = ConfigDict(
+        extra='allow',
+        validate_assignment=True,
+    )
 
     def get_hash(self, hasher: Optional[Hasher] = None) -> str:
         if hasher is None:
