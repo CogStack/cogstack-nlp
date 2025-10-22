@@ -15,15 +15,18 @@ if TYPE_CHECKING:
     ElasticClient = _Elasticsearch
     es_cls = _Elasticsearch
     es_helpers = elasticsearch.helpers
+    from elasticsearch import NotFoundError
 else:
     try:
         from elasticsearch import Elasticsearch as ElasticClient
         import elasticsearch.helpers
         es_helpers = elasticsearch.helpers
+        from elasticsearch import NotFoundError
     except ImportError:
         from opensearchpy import OpenSearch as ElasticClient
         import opensearchpy.helpers
         es_helpers = opensearchpy.helpers
+        from opensearchpy import NotFoundError
     es_cls = ElasticClient
 from IPython.display import display, HTML
 import pandas as pd
@@ -508,6 +511,11 @@ class CogStack:
                     )
                 print("Request cancelled and current "
                       "search_scroll_id deleted...")
+            elif isinstance(err, NotFoundError) or (
+                    isinstance(err, ValueError) and
+                    err.args == (
+                        'Provide at least one index or index alias name',)):
+                raise ValueError("Index not found") from err
             elif isinstance(err, ValueError) and err.args == (
                     'Size must not be greater than 10000',):
                 raise err
