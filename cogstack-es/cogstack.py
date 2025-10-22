@@ -413,8 +413,17 @@ class CogStack:
         if len(index) == 0:
             raise ValueError("Provide at least one index or index alias name")
         query = self.__extract_query(query=query)
-        count = self.elastic.count(index=index, query=query,
-                                   allow_no_indices=False)["count"]
+        if USING_ELASTIC:
+            count = self.elastic.count(index=index, query=query,
+                                       allow_no_indices=False)["count"]
+        else:
+            # For OpenSearch, use search with size=0 instead
+            result = self.elastic.search(
+                index=index,
+                body={"query": query, "size": 0},
+                allow_no_indices=False
+            )
+            count = result["hits"]["total"]["value"]
         return f"Number of documents: {format(count, ',')}"
 
     def read_data_with_scan(
