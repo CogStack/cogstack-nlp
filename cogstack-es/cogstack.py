@@ -21,12 +21,12 @@ else:
         from elasticsearch import Elasticsearch as ElasticClient
         import elasticsearch.helpers
         es_helpers = elasticsearch.helpers
-        from elasticsearch import NotFoundError, BadRequestError
+        from elasticsearch import NotFoundError, RequestError as BadRequestError
     except ImportError:
         from opensearchpy import OpenSearch as ElasticClient
         import opensearchpy.helpers
         es_helpers = opensearchpy.helpers
-        from opensearchpy import NotFoundError, BadRequestError
+        from opensearchpy import NotFoundError, RequestError as BadRequestError
     es_cls = ElasticClient
 from IPython.display import display, HTML
 import pandas as pd
