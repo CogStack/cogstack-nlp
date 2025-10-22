@@ -659,27 +659,30 @@ class CogStack:
                 if USING_ELASTIC:
                     searcher = partial(
                         self.elastic.search, query=query,
-                        fields=include_fields_map,
+                        fields=include_fields_map, source=False,
                         timeout=f"{request_timeout}s",)
                 else:
                     if include_fields_map:
                         query["fields"] = include_fields_map
                     searcher = partial(
-                        self.elastic.search, body=query,
+                        self.elastic.search,
+                        # NOTE: need to be nested
+                        body={"query": query},
+                        _source=False,
                         timeout=request_timeout)
                 search_result = searcher(
                     index=index,
                     size=size,
-                    source=False,
                     scroll="10m",
                     allow_no_indices=False,
                     rest_total_hits_as_int=True,
                 )
-
-                pr_bar.total = search_result.body["hits"]["total"]
-                hits = search_result.body["hits"]["hits"]
+                if USING_ELASTIC:
+                    search_result = search_result.body
+                pr_bar.total = search_result["hits"]["total"]
+                hits = search_result["hits"]["hits"]
                 result_count = len(hits)
-                search_scroll_id = search_result.body["_scroll_id"]
+                search_scroll_id = search_result["_scroll_id"]
                 all_mapped_results.extend(self.__map_search_results(hits=hits))
                 pr_bar.update(len(hits))
                 if search_result["_shards"]["failed"] > 0:
@@ -692,14 +695,16 @@ class CogStack:
                     scroll="10m",
                     rest_total_hits_as_int=True,
                 )
-                hits = search_result.body["hits"]["hits"]
+                if USING_ELASTIC:
+                    search_result = search_result.body
+                hits = search_result["hits"]["hits"]
                 pr_bar.total = (
                     pr_bar.total
                     if pr_bar.total
-                    else search_result.body["hits"]["total"]
+                    else search_result["hits"]["total"]
                 )
                 all_mapped_results.extend(self.__map_search_results(hits=hits))
-                search_scroll_id = search_result.body["_scroll_id"]
+                search_scroll_id = search_result["_scroll_id"]
                 result_count = len(hits)
                 pr_bar.update(result_count)
             self.elastic.clear_scroll(scroll_id=search_scroll_id)
