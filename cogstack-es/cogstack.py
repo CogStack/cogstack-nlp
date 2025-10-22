@@ -4,6 +4,7 @@ import traceback
 from typing import Any, Optional, Iterable, Sequence, Union, Protocol
 from typing import cast, TYPE_CHECKING
 import warnings
+from functools import partial
 
 
 if TYPE_CHECKING:
@@ -500,19 +501,23 @@ class CogStack:
                 disable=not show_progress, colour="green"
             )
 
-            scan_results = es_helpers.scan(
+            if USING_ELASTIC:
+                scanner = partial(
+                    es_helpers.scan, fields=include_fields,
+                    source=False)
+            else:
+                scanner = partial(
+                    es_helpers.scan, _source=include_fields)
+            scan_results = scanner(
                 cast(es_cls, self.elastic),
                 index=index,
                 query=query,
                 size=size,
                 request_timeout=request_timeout,
-                source=False,
-                fields=include_fields,
                 allow_no_indices=False,
             )
             pr_bar.iterable = scan_results
-            pr_bar.total = self.elastic.count(
-                index=index, query=query["query"])["count"]
+            pr_bar.total = self.count_search_results(index, query)
             all_mapped_results = self.__map_search_results(hits=pr_bar)
         except BaseException as err:
             if isinstance(err, KeyboardInterrupt):
@@ -650,11 +655,17 @@ class CogStack:
                 disable=not show_progress, colour="green")
 
             if search_scroll_id is None:
-                search_result = self.elastic.search(
+                if USING_ELASTIC:
+                    searcher = partial(
+                        self.elastic.search, query=query,
+                        fields=include_fields_map)
+                else:
+                    searcher = partial(
+                        self.elastic.search, body=query,
+                        _source=include_fields_map)
+                search_result = searcher(
                     index=index,
                     size=size,
-                    query=query,
-                    fields=include_fields_map,
                     source=False,
                     scroll="10m",
                     timeout=f"{request_timeout}s",
@@ -830,11 +841,17 @@ class CogStack:
                 disable=not show_progress, colour="green")
 
             while result_count == size:
-                search_result = self.elastic.search(
+                if USING_ELASTIC:
+                    searcher = partial(
+                        self.elastic.search, query=query,
+                        fields=include_fields_map)
+                else:
+                    searcher = partial(
+                        self.elastic.search, body=query,
+                        _source=include_fields_map)
+                search_result = searcher(
                     index=index,
                     size=size,
-                    query=query,
-                    fields=include_fields_map,
                     source=False,
                     sort=sort,
                     search_after=search_after_value,
