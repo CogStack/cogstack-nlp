@@ -96,7 +96,10 @@ def setup_test_data(es_client):
         })
 
     # Bulk index
-    from elasticsearch.helpers import bulk
+    try:
+        from elasticsearch.helpers import bulk
+    except ImportError:
+        from opensearchpy.helpers import bulk
     bulk(es_client, documents)
     es_client.indices.refresh(index="test_*")
 
