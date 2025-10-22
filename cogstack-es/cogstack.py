@@ -506,8 +506,9 @@ class CogStack:
                     es_helpers.scan, fields=include_fields,
                     source=False)
             else:
-                scanner = partial(
-                    es_helpers.scan, _source=include_fields)
+                if include_fields:
+                    query["fields"] = include_fields
+                scanner = es_helpers.scan
             scan_results = scanner(
                 cast(es_cls, self.elastic),
                 index=index,
@@ -660,9 +661,10 @@ class CogStack:
                         self.elastic.search, query=query,
                         fields=include_fields_map)
                 else:
+                    if include_fields_map:
+                        query["fields"] = include_fields_map
                     searcher = partial(
-                        self.elastic.search, body=query,
-                        _source=include_fields_map)
+                        self.elastic.search, body=query)
                 search_result = searcher(
                     index=index,
                     size=size,
@@ -846,9 +848,10 @@ class CogStack:
                         self.elastic.search, query=query,
                         fields=include_fields_map)
                 else:
+                    if include_fields_map:
+                        query["fields"] = include_fields_map
                     searcher = partial(
-                        self.elastic.search, body=query,
-                        _source=include_fields_map)
+                        self.elastic.search, body=query)
                 search_result = searcher(
                     index=index,
                     size=size,
