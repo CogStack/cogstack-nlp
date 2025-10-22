@@ -3,7 +3,7 @@ import logging
 import re
 from collections import defaultdict
 from datetime import datetime
-from typing import Dict
+from typing import Dict, List
 
 from django.contrib.auth.models import User
 from django.db import transaction
@@ -66,10 +66,23 @@ def delete_orphan_docs(dataset: Dataset):
     Document.objects.filter(dataset__id=dataset.id).delete()
 
 
-def upload_projects_export(medcat_export: Dict):
+def upload_projects_export(
+    medcat_export: Dict,
+    cdb_id: str,
+    vocab_id: str,
+    modelpack_id: str,
+    project_name_suffix: str = ' IMPORTED',
+    cdb_search_filter_id: str = None,
+    members: List[str] = None,
+    import_project_name_suffix: str = ' IMPORTED',
+    set_validated_docs: bool = False
+):
     for proj in medcat_export['projects']:
+        if len(proj['documents']) == 0:
+            # don't add projects with no documents
+            continue
         p = ProjectAnnotateEntities()
-        p.name = proj['name'] + ' IMPORTED'
+        p.name = f"{proj['name']}{project_name_suffix}"
         if len(proj['cuis']) > 1000:
             # store large CUI lists in a json file.
             cuis_file_name = MEDIA_ROOT + '/' + re.sub('/|\.', '_', p.name + '_cuis_file') + '.json'
@@ -78,6 +91,14 @@ def upload_projects_export(medcat_export: Dict):
             p.cuis_file.name = cuis_file_name
         else:
             p.cuis = proj['cuis']
+
+        if cdb_id is not None and vocab_id is not None:
+            p.concept_db = ConceptDB.objects.get(id=cdb_id)
+            p.vocab = Vocabulary.objects.get(id=vocab_id)
+        elif modelpack_id is not None:
+            p.model_pack = ModelPack.objects.get(id=modelpack_id)
+        else:
+            raise InvalidParameterError("No cdb, vocab, or modelpack provided")
 
         # ensure current deployment has the neccessary - Entity, MetaTak, Relation, and warn on not present User objects.
         ent_labels, meta_tasks, rels, unavailable_users, available_users = set(), defaultdict(set), set(), set(), dict()
@@ -106,6 +127,12 @@ def upload_projects_export(medcat_export: Dict):
         ds_mod.save()
         p.dataset = ds_mod
         p.save()
+
+        if cdb_search_filter_id is not None:
+            p.cdb_search_filter.set([ConceptDB.objects.get(id=cdb_search_filter_id)])
+
+        if members is not None:
+            p.members.set(members)
 
         # create django ORM model instances that are referenced in the upload if they don't exist.
         for u in unavailable_users:
@@ -138,7 +165,11 @@ def upload_projects_export(medcat_export: Dict):
                 r.label = rel
                 r.save()
 
-        p.validated_documents.set(list(Document.objects.filter(dataset=ds_mod)))
+        if set_validated_docs:
+            p.validated_documents.set(list(Document.objects.filter(dataset=ds_mod)))
+        else:
+            p.validated_documents.clear()
+
 
         for doc in proj['documents']:
             doc_mod = Document.objects.filter(Q(dataset=ds_mod) & Q(text=doc['text'])).first()
@@ -196,13 +227,13 @@ def upload_projects_export(medcat_export: Dict):
                 # link relations with start and end anno ents
                 er.start_entity = anno_to_doc_ind[relation['start_entity_start_idx']]
                 er.end_entity = anno_to_doc_ind[relation['end_entity_start_idx']]
-                try:
+                if relation.get('create_time') is not None:
                     er.create_time = datetime.strptime(relation['create_time'], _dt_fmt)
-                except ValueError:
+                else:
                     er.create_time = datetime.now()
-                try:
+                if relation.get('last_modified_time') is not None:
                     er.last_modified = datetime.strptime(relation['last_modified_time'], _dt_fmt)
-                except ValueError:
+                else:
                     er.last_modified = datetime.now()
                 er.save()
         logger.info(f"Finished annotation import for project {proj['name']}")

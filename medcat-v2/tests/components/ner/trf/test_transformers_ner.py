@@ -14,12 +14,13 @@ from medcat.config.config_transformers_ner import ConfigTransformersNER
 from medcat.model_creation.cdb_maker import CDBMaker
 from transformers import TrainerCallback
 
-from unittest import TestCase
+from unittest import TestCase, skipIf
 import unittest.mock
 
 from ...addons.meta_cat.test_meta_cat import FakeTokenizer
 from ....pipeline.test_pipeline import FakeCDB, Config
 from .... import RESOURCES_PATH
+from ....utils.ner.test_deid import is_macos_on_ci
 
 
 class TransformersNERTests(TestCase):
@@ -280,6 +281,8 @@ class TestTransformersNER(TestCase):
         )
 
 
+@skipIf(not is_macos_on_ci(),
+        "MacOS on workflow doesn't have enough memory")
 class AdditionalTransfromersNERTests(TestCase):
     TOKENIZER = FakeTokenizer()
     CNF = ConfigTransformersNER()

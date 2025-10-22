@@ -1,3 +1,4 @@
+import os
 import traceback
 from smtplib import SMTPException
 from tempfile import NamedTemporaryFile
@@ -10,16 +11,15 @@ from django.http import HttpResponseBadRequest, HttpResponseServerError, HttpRes
 from django.shortcuts import render
 from django.utils import timezone
 from django_filters import rest_framework as drf
-from medcat.utils.helpers import tkns_from_doc
+from medcat.utils.cdb_utils import ch2pt_from_pt2ch, get_all_ch, snomed_ct_concept_path
 from rest_framework import viewsets
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from medcat.utils.ner.deid import DeIdModel
+from medcat.components.ner.trf.deid import DeIdModel
 
 from .admin import download_projects_with_text, download_projects_without_text, \
     import_concepts_from_cdb
 from .data_utils import upload_projects_export
-from .medcat_utils import ch2pt_from_pt2ch, get_all_ch, dedupe_preserve_order, snomed_ct_concept_path
 from .metrics import calculate_metrics
 from .model_cache import get_medcat, get_cached_cdb, VOCAB_MAP, clear_cached_medcat, CAT_MAP, CDB_MAP, is_model_loaded
 from .permissions import *
@@ -224,7 +224,6 @@ class ResetPasswordView(PasswordResetView):
                                            Please visit https://medcattrainer.readthedocs.io for more information to resolve this. <br>
                                            You can also ask a question at: https://discourse.cogstack.org/c/medcat/5''')
 
-
 @api_view(http_method_names=['GET'])
 def get_anno_tool_conf(_):
     return Response({k: v for k, v in os.environ.items()})
@@ -282,7 +281,7 @@ def prepare_documents(request):
                     logger.info('loaded medcat model for project: %s', project.id)
 
                     # Set CAT filters
-                    cat.config.linking['filters']['cuis'] = cuis
+                    cat.config.components.linking.filters.cuis = cuis
 
                     if not project.deid_model_annotation:
                         spacy_doc = cat(document.text)
@@ -304,6 +303,7 @@ def prepare_documents(request):
                 project.save()
 
     except Exception as e:
+        logger.warning('Error preparing documents for project %s', p_id, exc_info=e)
         stack = traceback.format_exc()
         return Response({'message': e.args[0] if len(e.args) > 0 else 'Internal Server Error',
                          'description': e.args[1] if len(e.args) > 1 else '',
@@ -424,9 +424,9 @@ def add_concept(request):
     if source_val in spacy_doc.text:
         start = spacy_doc.text.index(source_val)
         end = start + len(source_val)
-        spacy_entity = tkns_from_doc(spacy_doc=spacy_doc, start=start, end=end)
+        spacy_entity = [tkn for tkn in spacy_doc if tkn.idx >= start and tkn.idx <= end]
 
-    cat.add_and_train_concept(cui=cui, name=name, name_status='P', spacy_doc=spacy_doc, spacy_entity=spacy_entity)
+    cat.trainer.add_and_train_concept(cui=cui, name=name, name_status='P', mut_doc=spacy_doc, mut_entity=spacy_entity)
 
     id = create_annotation(source_val=source_val,
                            selection_occurrence_index=sel_occur_idx,
@@ -461,16 +461,8 @@ def import_cdb_concepts(request):
 
 def _submit_document(project: ProjectAnnotateEntities, document: Document):
     if project.train_model_on_submit:
-        try:
-            cat = get_medcat(project=project)
-            train_medcat(cat, project, document)
-        except Exception as e:
-            if project.vocab.id:
-                if len(VOCAB_MAP[project.vocab.id].unigram_table) == 0:
-                    return Exception('Vocab is missing the unigram table. On the vocab instance '
-                                     'use vocab.make_unigram_table() to build')
-            else:
-                raise e
+        cat = get_medcat(project=project)
+        train_medcat(cat, project, document)
 
     # Add cuis to filter if they did not exist
     cuis = []
@@ -614,23 +606,23 @@ def annotate_text(request):
     project = ProjectAnnotateEntities.objects.get(id=p_id)
 
     cat = get_medcat(project=project)
-    cat.config.linking['filters']['cuis'] = set(cuis)
+    cat.config.components.linking.filters.cuis = set(cuis)
     spacy_doc = cat(message)
 
     ents = []
     anno_tkns = []
-    for ent in spacy_doc._.ents:
-        cnt = Entity.objects.filter(label=ent._.cui).count()
+    for ent in spacy_doc.linked_ents:
+        cnt = Entity.objects.filter(label=ent.cui).count()
         inc_ent = all(tkn not in anno_tkns for tkn in ent)
         if inc_ent and cnt != 0:
             anno_tkns.extend([tkn for tkn in ent])
-            entity = Entity.objects.get(label=ent._.cui)
+            entity = Entity.objects.get(label=ent.cui)
             ents.append({
                 'entity': entity.id,
-                'value': ent.text,
-                'start_ind': ent.start_char,
-                'end_ind': ent.end_char,
-                'acc': ent._.context_similarity
+                'value': ent.base.text,
+                'start_ind': ent.base.start_char_index,
+                'end_ind': ent.base.end_char_index,
+                'acc': ent.context_similarity
             })
 
     ents.sort(key=lambda e: e['start_ind'])
@@ -689,10 +681,34 @@ def search_solr(request):
 
 @api_view(http_method_names=['POST'])
 def upload_deployment(request):
-    deployment_upload = request.data
-    upload_projects_export(deployment_upload)
-    # logger.info(f'Errors encountered during previous deployment upload\n{errs}')
-    return Response("successfully uploaded", 200)
+    deployment_export = request.data
+    deployment_upload = deployment_export['exported_projects']
+    cdb_id = deployment_export.get('cdb_id', None)
+    vocab_id = deployment_export.get('vocab_id', None)
+    modelpack_id = deployment_export.get('modelpack_id', None)
+    project_name_suffix = deployment_export.get('project_name_suffix', ' IMPORTED')
+    set_validated_docs = deployment_export.get('set_validated_docs', False)
+    cdb_search_filter_id = deployment_export.get('cdb_search_filter', None)
+    members = deployment_export.get('members', None)
+    import_project_name_suffix = deployment_export.get('import_project_name_suffix', ' IMPORTED')
+
+    if all(x is None for x in [cdb_id, vocab_id, modelpack_id]):
+        return Response("No cdb, vocab, or modelpack provided", 400)
+
+    try:
+        upload_projects_export(deployment_upload,
+                                cdb_id,
+                                vocab_id,
+                                modelpack_id,
+                                project_name_suffix,
+                                cdb_search_filter_id,
+                                members,
+                                import_project_name_suffix,
+                                set_validated_docs)
+        return Response("successfully uploaded", 200)
+    except Exception as e:
+        logger.error(f"Failed to upload projects export: {str(e)}", exc_info=e)
+        return Response(f"Failed to upload projects export: {e.message}", 500)
 
 
 @api_view(http_method_names=['GET', 'DELETE'])
@@ -842,11 +858,11 @@ def cdb_cui_children(request, cdb_id):
 
     # currently assumes this is using the SNOMED CT terminology
     try:
-        root_term = {'cui': '138875005', 'pretty_name': cdb.cui2preferred_name['138875005']}
+        root_term = {'cui': '138875005', 'pretty_name': cdb.cui2info['138875005']['preferred_name']}
         if parent_cui is None:
             return Response({'results': [root_term]})
         else:
-            child_concepts = [{'cui': cui, 'pretty_name': cdb.cui2preferred_name[cui]}
+            child_concepts = [{'cui': cui, 'pretty_name': cdb.cui2info[cui]['preferred_name']}
                               for cui in cdb.addl_info.get('pt2ch')[parent_cui]]
             return Response({'results': child_concepts})
     except KeyError:
@@ -878,7 +894,7 @@ def generate_concept_filter_flat_json(request):
         for cui in cuis:
             ch_nodes = get_all_ch(cui, cdb)
             final_filter += [n for n in ch_nodes if n not in excluded_nodes]
-        final_filter = dedupe_preserve_order(final_filter)
+        final_filter = {cui:1 for cui in final_filter}.keys()
         filter_json = json.dumps(final_filter)
         response = HttpResponse(filter_json, content_type='application/json')
         response['Content-Disposition'] = 'attachment; filename=filter.json'
@@ -895,8 +911,8 @@ def generate_concept_filter(request):
         # get all children from 'parent' concepts above.
         final_filter = {}
         for cui in cuis:
-            final_filter[cui] = [{'cui': c, 'pretty_name': cdb.cui2preferred_name[c]} for c in get_all_ch(cui, cdb)
-                                 if c in cdb.cui2preferred_name and c != cui]
+            final_filter[cui] = [{'cui': c, 'pretty_name': cdb.cui2info[cui]['preferred_name']} for c in get_all_ch(cui, cdb)
+                                 if c in cdb.cui2info[cui]['preferred_name'] and c != cui]
         resp = {'filter_len': sum(len(f) for f in final_filter.values()) + len(final_filter.keys())}
         if resp['filter_len'] < 10000:
             # only send across concept filters that are small enough to render
@@ -912,12 +928,12 @@ def cuis_to_concepts(request):
     if cdb_id is not None:
         if cuis is not None:
             cdb = get_cached_cdb(cdb_id, CDB_MAP)
-            concept_list = [{'cui': cui, 'name': cdb.cui2preferred_name[cui]} for cui in cuis]
+            concept_list = [{'cui': cui, 'name': cdb.cui2info[cui]['preferred_name']} for cui in cuis]
             resp = {'concept_list': concept_list}
             return Response(resp)
         else:
             cdb = get_cached_cdb(cdb_id, CDB_MAP)
-            concept_list = [{'cui': cui, 'name': cdb.cui2preferred_name[cui]} for cui in cdb.cui2preferred_name.keys()]
+            concept_list = [{'cui': cui, 'name': cdb.cui2info[cui]['preferred_name']} for cui in cdb.cui2info.keys()]
             resp = {'concept_list': concept_list}
             return Response(resp)
     return HttpResponseBadRequest('Missing either cuis or cdb_id param. Cannot produce concept list.')

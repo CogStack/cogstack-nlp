@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [ '3.9', '3.10', '3.11', '3.12' ]
+        python-version: [ '3.10', '3.11', '3.12' ]
       max-parallel: 4
 
     steps:
@@ -51,8 +51,9 @@ jobs:
           midpoint=$((num_files / 2))
           first_half_nl=$(echo "$all_files" | head -n $midpoint)
           second_half_nl=$(echo "$all_files" | tail -n +$(($midpoint + 1)))
-          timeout 25m python -m unittest ${first_half_nl[@]}
-          timeout 25m python -m unittest ${second_half_nl[@]}
+          python -m unittest ${first_half_nl[@]}
+          python -m unittest ${second_half_nl[@]}
+        timeout-minutes: 45
       - name: Regression
         run: source tests/resources/regression/run_regression.sh
       - name: Model backwards compatibility
@@ -93,10 +94,10 @@ jobs:
           ref: 'main'
           fetch-depth: 0
 
-      - name: Set up Python 3.9
+      - name: Set up Python 3.10
         uses: actions/setup-python@v6
         with:
-          python-version: 3.9
+          python-version: "3.10"
 
       - name: Install pypa/build
         run: >-

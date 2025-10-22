@@ -43,7 +43,19 @@ def remove_dataset_file(sender, instance, **kwargs):
 def save_exported_projects(sender, instance, **kwargs):
     if not instance.trainer_export_file.path.endswith('.json'):
         raise Exception("Please make sure the file is a .json file")
-    upload_projects_export(json.load(open(instance.trainer_export_file.path)))
+    cdb = instance.cdb_id
+    vocab = instance.vocab_id
+    modelpack = instance.modelpack_id
+
+    cdb = None if cdb is None else cdb.id
+    vocab = None if vocab is None else vocab.id
+    modelpack = None if modelpack is None else modelpack.id
+
+    upload_projects_export(
+        json.load(open(instance.trainer_export_file.path)),
+        cdb_id=cdb,
+        vocab_id=vocab,
+        modelpack_id=modelpack)
 
 
 @receiver(pre_delete, sender=ModelPack)

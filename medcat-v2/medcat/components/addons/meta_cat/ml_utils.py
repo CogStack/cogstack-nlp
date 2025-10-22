@@ -6,7 +6,7 @@ import torch.nn.functional as F
 import numpy as np
 import pandas as pd
 import torch.optim as optim
-from typing import Optional, Any, Union
+from typing import Optional, Any, Union, TypedDict
 from torch import nn
 from scipy.special import softmax
 from medcat.config.config_meta_cat import ConfigMetaCAT
@@ -34,7 +34,9 @@ def set_all_seeds(seed: int) -> None:
 def create_batch_piped_data(data: list[tuple[list[int], int, Optional[int]]],
                             start_ind: int, end_ind: int,
                             device: Union[torch.device, str],
-                            pad_id: int) -> tuple:
+                            pad_id: int
+                            ) -> tuple[torch.Tensor, list[int],
+                                       torch.Tensor, Optional[torch.Tensor]]:
     """Creates a batch given data and start/end that denote batch size,
     will also add padding and move to the right device.
 
@@ -52,13 +54,13 @@ def create_batch_piped_data(data: list[tuple[list[int], int, Optional[int]]],
             Padding index
 
     Returns:
-        x ():
+        x (torch.Tensor):
             Same as data, but subsetted and as a tensor
-        cpos ():
+        cpos (list[int]):
             Center positions for the data
-        attention_mask:
+        attention_mask (torch.Tensor):
             Indicating padding mask for the data
-        y:
+        y (Optional[torch.Tensor]):
             class label of the data
     """
     max_seq_len = max([len(x[0]) for x in data])
@@ -78,7 +80,7 @@ def create_batch_piped_data(data: list[tuple[list[int], int, Optional[int]]],
 
 
 def predict(model: nn.Module, data: list[tuple[list[int], int, Optional[int]]],
-            config: ConfigMetaCAT) -> tuple:
+            config: ConfigMetaCAT) -> tuple[list[int], list[float]]:
     """Predict on data used in the meta_cat.pipe
 
     Args:
@@ -399,8 +401,17 @@ def train_model(model: nn.Module, data: list, config: ConfigMetaCAT,
     return winner_report
 
 
+EvalModelResults = TypedDict('EvalModelResults', {
+        "precision": float,
+        "recall": float,
+        "f1": float,
+        "examples": dict,
+        "confusion matrix": pd.DataFrame,
+    })
+
+
 def eval_model(model: nn.Module, data: list, config: ConfigMetaCAT,
-               tokenizer: TokenizerWrapperBase) -> dict:
+               tokenizer: TokenizerWrapperBase) -> EvalModelResults:
     """Evaluate a trained model on the provided data
 
     Args:
@@ -474,9 +485,22 @@ def eval_model(model: nn.Module, data: list, config: ConfigMetaCAT,
     examples: dict = {'FP': {}, 'FN': {}, 'TP': {}}
     id2category_value = {v: k for k, v
                          in config.general.category_value2id.items()}
+    return _eval_predictions(
+        tokenizer, data, predictions, confusion, id2category_value,
+        y_eval, precision, recall, f1, examples)
+
+
+def _eval_predictions(
+        tokenizer: TokenizerWrapperBase,
+        data: list,
+        predictions: list[int],
+        confusion: pd.DataFrame,
+        id2category_value: dict[int, str],
+        y_eval: list,
+        precision, recall, f1, examples: dict) -> EvalModelResults:
     for i, p in enumerate(predictions):
         y = id2category_value[y_eval[i]]
-        p = id2category_value[p]
+        pred = id2category_value[p]
         c = data[i][1]
         if isinstance(c, list):
             c = c[-1]
@@ -487,11 +511,11 @@ def eval_model(model: nn.Module, data: list, config: ConfigMetaCAT,
                 tokenizer.hf_tokenizers.decode(
                     tkns[c:c + 1]).strip() + ">> " +
                 tokenizer.hf_tokenizers.decode(tkns[c + 1:]))
-        info = "Predicted: {}, True: {}".format(p, y)
-        if p != y:
+        info = "Predicted: {}, True: {}".format(pred, y)
+        if pred != y:
             # We made a mistake
             examples['FN'][y] = examples['FN'].get(y, []) + [(info, text)]
-            examples['FP'][p] = examples['FP'].get(p, []) + [(info, text)]
+            examples['FP'][pred] = examples['FP'].get(pred, []) + [(info, text)]
         else:
             examples['TP'][y] = examples['TP'].get(y, []) + [(info, text)]
 

@@ -906,7 +906,7 @@ $app-header-height: 60px;
 
 .app-container {
   display: flex;
-  height: calc(100% - #{$app-header-height});
+  height: 100%;
   flex-direction: column;
   padding: 5px;
 }

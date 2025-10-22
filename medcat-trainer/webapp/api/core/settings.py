@@ -51,6 +51,8 @@ ALLOWED_HOSTS = ['*']
 
 APPEND_SLASH = True
 
+USE_OIDC = os.getenv('USE_OIDC', '').lower() == '1'
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -197,6 +199,38 @@ REST_FRAMEWORK = {
     ]
 }
 
+if USE_OIDC:
+    log.info("Using OIDC authentication")
+    REST_FRAMEWORK["DEFAULT_AUTHENTICATION_CLASSES"] = [
+        'oidc_auth.authentication.JSONWebTokenAuthentication',
+        'oidc_auth.authentication.BearerTokenAuthentication',
+    ]
+
+OIDC_HOST = os.environ.get("OIDC_HOST", "")
+OIDC_REALM = os.environ.get("OIDC_REALM", "")
+OIDC_FRONTEND_CLIENT_ID = os.environ.get("OIDC_FRONTEND_CLIENT_ID", "")
+
+OIDC_AUTH = {
+    'OIDC_ENDPOINT': f"{OIDC_HOST}/realms/{OIDC_REALM}",
+    'OIDC_CLAIMS_OPTIONS': {
+        'aud': {
+            'values': [
+                'account',
+                OIDC_FRONTEND_CLIENT_ID
+            ],
+            'essential': True,
+        },
+        'iss': {
+            'values': [
+                f"{OIDC_HOST}/realms/{OIDC_REALM}"
+            ],
+            'essential': True,
+        },
+    },
+    'USERINFO_ENDPOINT': f"{OIDC_HOST}/realms/{OIDC_REALM}/protocol/openid-connect/userinfo",
+    'OIDC_CREATE_USER': True,
+    'OIDC_RESOLVE_USER_FUNCTION': 'api.oidc_utils.get_user_by_email',
+}
 
 # Internationalization
 # https://docs.djangoproject.com/en/2.2/topics/i18n/

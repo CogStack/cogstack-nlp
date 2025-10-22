@@ -1,13 +1,13 @@
 import os
 from typing import (Optional, Iterator, Iterable, TypeVar, cast, Type, Any,
-                    Literal)
+                    Literal, Union)
 from typing import Protocol, runtime_checkable
 from typing_extensions import Self
 import logging
 from datetime import datetime
 from contextlib import contextmanager
 
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field, ValidationError, ConfigDict
 
 from medcat import __version__ as medcat_version
 from medcat.utils.defaults import workers
@@ -93,7 +93,8 @@ class SerialisableBaseModel(BaseModel):
             return cast(Self, get_config_from_old_per_cls(path, cls))
         obj = deserialise(path)
         if not isinstance(obj, cls):
-            raise ValueError(f"The path '{path}' is not a {cls.__name__}!")
+            raise ValueError(f"The path '{path}' is not a {cls.__name__}!" +
+                             str(("Instead of", cls, "Got", type(obj))))
         return obj
 
 
@@ -178,9 +179,10 @@ class NLPConfig(SerialisableBaseModel):
     # NOTE: this will allow for more config entries
     #       since we don't know what other implementations may require
 
-    class Config:
-        extra = 'allow'
-        validate_assignment = True
+    model_config = ConfigDict(
+        extra='allow',
+        validate_assignment=True,
+    )
 
 
 class UsageMonitor(SerialisableBaseModel):
@@ -252,14 +254,25 @@ class General(SerialisableBaseModel):
     map_cui_to_group: bool = False
     """If the cdb.addl_info['cui2group'] is provided and this option enabled,
     each CUI will be mapped to the group"""
-    simple_hash: bool = False
-    """Whether to use a simple hash.
+    map_to_other_ontologies: Union[Literal["auto"], list[str]] = "auto"
+    """Which other ontologies to map to if possible.
 
-    NOTE: While using a simple hash is faster at save time, it is less
-    reliable due to not taking into account all the details of the changes."""
+    This will force medcat to include mapping for other ontologies in
+    its outputs. It will use the mappings in `cdb.addl_info["cui2<ont>"]`
+    are present.
 
-    class Config:
-        extra = 'allow'
+    If set to "auto" (or missing), the value will be inferred from available
+    data at first init time. That is to say, it'll map to all ontologies
+    available.
+
+    NB!
+    This will only work if the `cdb.addl_info["cui2<ont>"]` exists.
+    Otherwise, no mapping will be done.
+    """
+
+    model_config = ConfigDict(
+        extra='allow',
+    )
 
 
 class LinkingFilters(SerialisableBaseModel):
@@ -373,9 +386,53 @@ class Linking(ComponentConfig):
     and learning rate for type contexts.
     """
 
-    class Config:
-        extra = 'allow'
+    model_config = ConfigDict(
+        extra='allow',
+    )
 
+class EmbeddingLinking(Linking):
+    """The config exclusively used for the embedding linker"""
+    comp_name: str = "embedding_linker"
+    """Changing compoenent name"""
+    filter_before_disamb: bool = False
+    """Filtering CUIs before disambiguation"""
+    train: bool = False
+    """The embedding linker never needs to be trained in its 
+    current implementation."""
+    long_similarity_threshold: float = 0.0
+    """Used in the inference step to choose the best CUI given the
+    link candidates. Testing shows a threshold of 0.7 increases precision
+    with minimal impact on recall. Default is 0.0 which assumes
+    all entities detected by the NER step are true."""
+    short_similarity_threshold: float = 0.0
+    """Used for generating cui candidates. If a threshold of 0.0
+    is selected then only the highest scoring name will provide cuis
+    to be link candidates. Use a threshold of 0.95 or higher, as this is
+    essentailly string matching and account for spelling errors. Lower 
+    thresholds will provide too many candidates and slow down the inference."""
+    embedding_model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
+    """Name of the embedding model. It must be downloadable from 
+    huggingface linked from an appropriate file directory"""
+    max_token_length: int = 64
+    """Max number of tokens to be embedded from a name.
+    If the max token length is changed then the linker will need to be created
+    with a new config.
+    """
+    embedding_batch_size: int = 4096
+    """How many pieces names can be embedded at once, useful when 
+    embedding name2info names, cui2info names"""
+    linking_batch_size: int = 512
+    """How many entities to be linked at once"""
+    gpu_device: Optional[Any] = None
+    """Choose a device for the linking model to be stored. If None
+    then an appropriate GPU device that is available will be chosen"""
+    context_window_size: int = 14
+    """Choose the window size to get context vectors."""
+    use_ner_link_candidates: bool = True
+    """Link candidates are provided by some NER steps. This will flag if 
+    you want to trust them or not."""
+    use_similarity_threshold: bool = True
+    """Do we have a similarity threshold we care about?"""
 
 class Preprocessing(SerialisableBaseModel):
     """The preprocessing part of the config"""
@@ -445,8 +502,9 @@ class Ner(ComponentConfig):
     custom_cnf: Optional[Any] = None
     """The custom config for the component."""
 
-    class Config:
-        extra = 'allow'
+    model_config = ConfigDict(
+        extra='allow',
+    )
 
 
 class AnnotationOutput(SerialisableBaseModel):

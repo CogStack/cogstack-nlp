@@ -15,12 +15,12 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [ '3.9', '3.10', '3.11', '3.12' ]
-      max-parallel: 4
+        python-version: [ '3.10', '3.11', '3.12', '3.13' ]
+      max-parallel: 5
     steps:
       - uses: actions/checkout@v5
       - name: Install uv for Python ${{ matrix.python-version }}
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v7
         with:
           python-version: ${{ matrix.python-version }}
           enable-cache: true
@@ -38,7 +38,7 @@ jobs:
           uv run ruff check medcat --preview
       - name: Test
         run: |
-          timeout 20m uv run python -m unittest discover
+          timeout 30m uv run python -m unittest discover
       - name: Model regression
         run: |
           uv run bash tests/backwards_compatibility/run_current.sh

@@ -13,7 +13,7 @@ from django.forms import forms, ModelForm
 from medcat.cat import CAT
 from medcat.cdb import CDB
 from medcat.vocab import Vocab
-from medcat.meta_cat import MetaCAT
+from medcat.components.addons.meta_cat.meta_cat import MetaCAT, MetaCATAddon
 from polymorphic.models import PolymorphicModel
 
 from core.settings import MEDIA_ROOT
@@ -29,7 +29,7 @@ BOOL_CHOICES = [
         ]
 
 
-cdb_name_validator = RegexValidator(r'^[a-zA-Z][a-zA-Z0-9_]*$', 'a-z for first character required. Alpahanumeric and _ thereafter are allowed for CDB names')
+cdb_name_validator = RegexValidator(r'^[a-zA-Z][a-zA-Z0-9_]*$', 'a-zA-Z for first character required. Alpahanumeric or _ thereafter are allowed for CDB names')
 
 logger = logging.getLogger(__name__)
 
@@ -42,14 +42,14 @@ class ModelPack(models.Model):
     meta_cats = models.ManyToManyField('MetaCATModel', blank=True, default=None)
     create_time = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
-    last_modified_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, default=None, null=True)   
+    last_modified_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, default=None, null=True)
 
     @transaction.atomic
     def save(self, *args, **kwargs):
         is_new = self._state.adding
         if is_new:
             super().save(*args, **kwargs)
-        
+
         # Process the model pack
         logger.info('Loading model pack: %s', self.model_pack)
         model_pack_name = str(self.model_pack).replace(".zip", "")
@@ -64,15 +64,23 @@ class ModelPack(models.Model):
             CAT.load_cdb(unpacked_model_pack_path)
             concept_db = ConceptDB()
             unpacked_file_name = self.model_pack.file.name.replace('.zip', '')
-            concept_db.cdb_file.name = os.path.join(unpacked_file_name, 'cdb.dat')
+            # cdb path for v2
+            cdb_path = os.path.join(unpacked_file_name, 'cdb')
+            if not os.path.exists(cdb_path):
+                # cdb path for v1
+                cdb_path = os.path.join(unpacked_file_name, 'cdb.dat')
+            concept_db.cdb_file.name = cdb_path
             concept_db.name = f'{self.name}_CDB'
             concept_db.save(skip_load=True)
             self.concept_db = concept_db
         except Exception as exc:
             raise FileNotFoundError(f'Error loading the CDB from this model pack: {self.model_pack.path}') from exc
 
-        # Load Vocab
-        vocab_path = os.path.join(unpacked_model_pack_path, "vocab.dat")
+        # Load Vocab, v2
+        vocab_path = os.path.join(unpacked_model_pack_path, "vocab")
+        if not os.path.exists(vocab_path):
+            # v1
+            vocab_path = os.path.join(unpacked_model_pack_path, "vocab.dat")
         if os.path.exists(vocab_path):
             Vocab.load(vocab_path)
             vocab = Vocabulary()
@@ -88,7 +96,12 @@ class ModelPack(models.Model):
         try:
             metaCATmodels = []
             # should raise an error if there already is a MetaCAT model with this definition
-            for meta_cat_dir, meta_cat in CAT.load_meta_cats(unpacked_model_pack_path):
+            addons = CAT.load_addons(unpacked_model_pack_path)
+            meta_cat_addons = [
+                (addon_path, addon) for addon_path, addon in addons
+                if isinstance(addon, MetaCATAddon)]
+            for meta_cat_dir, meta_cat_addon in meta_cat_addons:
+                meta_cat = meta_cat_addon.mc
                 mc_model = MetaCATModel()
                 mc_model.meta_cat_dir = meta_cat_dir.replace(f'{MEDIA_ROOT}/', '')
                 mc_model.name = f'{meta_cat.config.general.category_name} - {meta_cat.config.model.model_name}'
@@ -98,10 +111,8 @@ class ModelPack(models.Model):
             self.meta_cats.set(metaCATmodels)  # Use set() instead of add() for atomic operation
         except Exception as exc:
             raise MedCATLoadException(f'Failure loading MetaCAT models - {unpacked_model_pack_path}') from exc
-            
-        # Only save if this is an update (not a new instance)
-        if not is_new:
-            super().save(*args, **kwargs)
+
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.name
@@ -513,9 +524,20 @@ class MetaAnnotation(models.Model):
 
 class ExportedProject(models.Model):
     trainer_export_file = models.FileField(help_text='Previously exported MedCATtrainer .json file')
+    import_project_name_suffix = models.CharField(max_length=100, default=' IMPORTED', help_text='The suffix to be added to the project name')
+    members = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, default=None, help_text='The annotators for the project')
+    cdb_id = models.ForeignKey('ConceptDB', on_delete=models.SET_NULL, blank=True, null=True, default=None, help_text='The ConceptDB to be set for this exported project')
+    vocab_id = models.ForeignKey('Vocabulary', on_delete=models.SET_NULL, blank=True, null=True, default=None, help_text='The Vocabulary to be set for this exported project')
+    modelpack_id = models.ForeignKey('ModelPack', on_delete=models.SET_NULL, blank=True, null=True, default=None, help_text='The ModelPack to be set for this exported project')
+    cdb_search_filter_id = models.ForeignKey('ConceptDB', on_delete=models.SET_NULL, blank=True, null=True, default=None, help_text='The CDB that will be used for concept lookup. '
+                                                         'This specific CDB should have been "imported" '
+                                                         'via the CDB admin screen', related_name='concept_source_exported_project')
+    set_validated_docs = models.BooleanField(default=False, help_text='Whether to set the validated documents, e.g. their annotation submit status.')
+
+
 
     def __str__(self):
-        return self.trainer_export_file.name
+        return f'{self.trainer_export_file.name} - {self.cdb_id} - {self.vocab_id} - {self.modelpack_id}'
 
 
 class ProjectMetrics(models.Model):

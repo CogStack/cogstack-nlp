@@ -41,17 +41,17 @@ Some guides on how to use MedCAT v2 are available at [MedCAT Tutorials](https://
 - [MedCATtrainer](https://github.com/CogStack/cogstack-nlp/tree/main/medcat-trainer/) - an interface for building, improving and customising a given Named Entity Recognition and Linking (NER+L) model (MedCAT) for biomedical domain text.
 - [MedCATservice](https://github.com/CogStack/cogstack-nlp/blob/main/medcat-service/) - implements the MedCAT NLP application as a service behind a REST API.
 
-## Install using PIP (Requires Python 3.9+)
+## Install using PIP (Requires Python 3.10+)
 Installation instructions are to follow upon a release of this version on PyPI.
 Though installation is likely to be simply `pip install "medcat>=2.0"` at that time.
-Currently the installation for the 2.0 beta release is simply:
+Currently the installation for the 2.0 release is simply:
 ```
-pip install medcat~=2.0.0b
+pip install medcat
 ```
 Though note the extras you might need (e.g `spacy`, `meta-cat`, `rel-cat`, `deid`).
 If you need them, they need to be specified in brackets, e.g:
 ```
-pip install medcat[spacy,meta-cat,rel-cat,deid]~=2.0.0b
+pip install "medcat[spacy,meta-cat,rel-cat,deid]"
 ```
 
 2. Quickstart (MedCAT v2+):

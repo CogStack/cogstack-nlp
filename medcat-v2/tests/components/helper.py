@@ -40,13 +40,32 @@ class ComponentInitTests:
         cls.vtokenizer = FTokenizer()
         cls.comp_cnf: ComponentConfig = getattr(
             cls.cnf.components, cls.comp_type.name)
+        if isinstance(cls.default_creator, Type):
+            cls._def_creator_name_opts = (cls.default_creator.__name__,)
+        else:
+            # classmethod
+            cls._def_creator_name_opts = (".".join((
+                # etiher class.method_name
+                cls.default_creator.__self__.__name__,
+                cls.default_creator.__name__)),
+                # or just method_name
+                cls.default_creator.__name__
+                )
 
     def test_has_default(self):
         avail_components = types.get_registered_components(self.comp_type)
         self.assertEqual(len(avail_components), self.expected_def_components)
         name, cls_name = avail_components[0]
-        self.assertEqual(name, self.default)
-        self.assertIs(cls_name, self.default_creator.__name__)
+        # 1 name / cls name
+        eq_name = [name == self.default for name, _ in avail_components]
+        eq_cls = [cls_name in self._def_creator_name_opts
+                  for _, cls_name in avail_components]
+        self.assertEqual(sum(eq_name), 1)
+        # NOTE: for NER both the default as well as the Dict based NER
+        #       have the came class name, so may be more than 1
+        self.assertGreaterEqual(sum(eq_cls), 1)
+        # needs to have the same class where name is equal
+        self.assertTrue(eq_cls[eq_name.index(True)])
 
     def test_can_create_def_component(self):
         component = types.create_core_component(

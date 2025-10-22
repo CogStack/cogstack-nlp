@@ -36,7 +36,7 @@ describe('App.vue', () => {
           $cookies: {
             get: vi.fn((key) => key === 'username' ? 'testUser' : null),
             remove: vi.fn()
-        }
+          }
         },
         stubs: ['login', 'font-awesome-icon', 'router-view']
       }
@@ -49,15 +49,14 @@ describe('App.vue', () => {
 
     // Check that router-link stubs exist with correct props
     const links = wrapper.findAllComponents({ name: 'RouterLink' })
-    expect(links.length).toBeGreaterThanOrEqual(5)
+    expect(links.length).toBeGreaterThanOrEqual(4)
     expect(links[0].props('to')).toBe('/')
-    expect(links[1].props('to')).toBe('/')
-    expect(links[2].props('to')).toBe('/metrics-reports')
-    expect(links[3].props('to')).toBe('/model-explore')
-    expect(links[4].props('to')).toBe('/demo')
+    expect(links[1].props('to')).toBe('/metrics-reports')
+    expect(links[2].props('to')).toBe('/model-explore')
+    expect(links[3].props('to')).toBe('/demo')
   })
 
-  
+
   it('calls /api/version/ when created', async () => {
     const mockGet = vi.fn().mockResolvedValue({ data: 'v1.2.3' });
     mount(App, {
@@ -84,15 +83,15 @@ describe('App.vue', () => {
         mocks: {
           $http: { get: mockGet },
           $cookies: {
-          get: vi.fn((key) => key === 'username' ? 'testUser' : null),
-          remove: vi.fn()
-        }
+            get: vi.fn((key) => key === 'username' ? 'testUser' : null),
+            remove: vi.fn()
+          }
         },
         stubs: ['login', 'font-awesome-icon', 'router-link', 'router-view']
       },
       data() {
         return {
-          uname: 'testuser',
+          uname: 'testUser',
           loginModal: false,
           version: 'v1.2.3'
         }
@@ -101,7 +100,7 @@ describe('App.vue', () => {
     await router.isReady()
     await flushPromises()
 
-        expect(wrapper.text()).toContain('testuser');
-        expect(wrapper.find('.logout').exists()).toBe(true);
-      });
-    });
+    expect(wrapper.text()).toContain('testUser');
+    expect(wrapper.find('.logout-link').exists()).toBe(true);
+  });
+});

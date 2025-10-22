@@ -23,7 +23,14 @@ copyright = '2025, CogStack Org'
 author = 'CogStack Org'
 
 # The full version, including alpha/beta/rc tags
-release = ':latest'  # where is the version retrievable from?
+# apprently shoudl be able ot read from env
+release = os.getenv("READTHEDOCS_VERSION", ":latest")
+
+# Simplify medcat-v2.3.1rc2 → v2.3.1rc2
+# NOTE: in case of tag based releases, the environmental variable
+#       should contain the sanitised tag as the slug, so the / is
+#       replaced with the -
+release = release.removeprefix("medcat-")
 
 
 # -- General configuration ---------------------------------------------------

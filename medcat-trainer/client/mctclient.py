@@ -3,7 +3,7 @@ from datetime import datetime
 import json
 import os
 from abc import ABC
-from typing import List, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union
 
 import requests
 
@@ -65,8 +65,6 @@ class MCTConceptDB(MCTObj):
 
     def __post_init__(self):
         if self.name is not None:
-            if not self.name[0].islower():
-                raise ValueError("Name must start with a lowercase letter")
             if not self.name.replace('_', '').replace('-', '').isalnum():
                 raise ValueError("Name must contain only alphanumeric characters and underscores")
 
@@ -87,21 +85,6 @@ class MCTVocab(MCTObj):
 
     def __str__(self):
         return f'{self.id} : {self.vocab_file}'
-
-
-@dataclass
-class MCTModelPack(MCTObj):
-    """A model pack in the MedCATTrainer instance.
-
-    Attributes:
-        name (str): The name of the model pack.
-        model_pack_zip (str): The path to the model pack zip file, should be a <modelpack_name>.zip file.
-    """
-    name: str=None
-    model_pack_zip: str=None
-
-    def __str__(self):
-        return f'{self.id} : {self.name} \t {self. model_pack_zip}'
 
 
 @dataclass
@@ -128,6 +111,25 @@ class MCTRelTask(MCTObj):
 
     def __str__(self):
         return f'{self.id} : {self.name}'
+
+
+@dataclass
+class MCTModelPack(MCTObj):
+    """A model pack in the MedCATTrainer instance.
+
+    Attributes:
+        name (str): The name of the model pack.
+        model_pack_zip (str): The path to the model pack zip file, should be a <modelpack_name>.zip file.
+    """
+    name: str=None
+    model_pack_zip: str=None
+    concept_db: MCTConceptDB=None
+    vocab: MCTVocab=None
+    meta_cats: List[MCTMetaTask]=None
+
+    def __str__(self):
+        return f'{self.id} : {self.name} \t {self. model_pack_zip}'
+
 
 
 @dataclass
@@ -495,6 +497,24 @@ class MedCATTrainerSession:
         mct_vocabs = [MCTVocab(id=v['id'], name=v['name'], vocab_file=v['vocab_file']) for v in vocabs]
         return mct_cdbs, mct_vocabs
 
+    def get_concept_dbs(self) -> List[MCTConceptDB]:
+        """Get all concept databases in the MedCATTrainer instance.
+
+        Returns:
+            List[MCTConceptDB]: A list of all concept databases in the MedCATTrainer instance
+        """
+        cdbs = json.loads(requests.get(f'{self.server}/api/concept-dbs/', headers=self.headers).text)['results']
+        return [MCTConceptDB(id=cdb['id'], name=cdb['name'], conceptdb_file=cdb['cdb_file']) for cdb in cdbs]
+
+    def get_vocabs(self) -> List[MCTVocab]:
+        """Get all vocabularies in the MedCATTrainer instance.
+
+        Returns:
+            List[MCTVocab]: A list of all vocabularies in the MedCATTrainer instance
+        """
+        vocabs = json.loads(requests.get(f'{self.server}/api/vocabs/', headers=self.headers).text)['results']
+        return [MCTVocab(id=v['id'], name=v['name'], vocab_file=v['vocab_file']) for v in vocabs]
+
     def get_model_packs(self) -> List[MCTModelPack]:
         """Get all MedCAT model packs in the MedCATTrainer instance.
 
@@ -502,7 +522,11 @@ class MedCATTrainerSession:
             List[MCTModelPack]: A list of all MedCAT model packs in the MedCATTrainer instance
         """
         resp = json.loads(requests.get(f'{self.server}/api/modelpacks/', headers=self.headers).text)['results']
-        mct_model_packs = [MCTModelPack(id=mp['id'], name=mp['name'], model_pack_zip=mp['model_pack']) for mp in resp]
+        mct_model_packs = [MCTModelPack(id=mp['id'], name=mp['name'], model_pack_zip=mp['model_pack'],
+                                        concept_db=MCTConceptDB(id=mp['concept_db']),
+                                        vocab=MCTVocab(id=mp['vocab']),
+                                        meta_cats=[MCTMetaTask(id=mt) for mt in mp['meta_cats']])
+                            for mp in resp]
         return mct_model_packs
 
     def get_meta_tasks(self) -> List[MCTMetaTask]:
@@ -559,7 +583,7 @@ class MedCATTrainerSession:
         return mct_datasets
 
     def get_project_annos(self, projects: List[MCTProject]):
-        """Get the annotations for a list of projects. Schema is documented here: https://github.com/medcat/MedCATtrainer/blob/main/docs/api.md#download-annotations
+        """Get the annotations for a list of projects.
 
         Args:
             projects (List[MCTProject]): A list of projects to get annotations for
@@ -573,6 +597,61 @@ class MedCATTrainerSession:
         resp = json.loads(requests.get(f'{self.server}/api/download-annos/?project_ids={",".join([str(p.id) for p in projects])}&with_text=1',
                                        headers=self.headers).text)
         return resp
+
+    def upload_projects_export(self, projects: Dict[str, Any],
+                               cdb: Union[MCTConceptDB, str]=None,
+                               vocab: Union[MCTVocab, str]=None,
+                               modelpack: Union[MCTModelPack, str]=None,
+                               import_project_name_suffix: str=' IMPORTED',
+                               cdb_search_filter: Union[MCTConceptDB, str]=None,
+                               members: Union[List[MCTUser], List[str]]=None,
+                               set_validated_docs: bool=False):
+        """Upload Trainer export as a list of projects to a MedCATTrainer instance.
+
+        Args:
+            projects (List[MCTProject]): A list of projects to upload
+            cdb (Union[MCTConceptDB, str]): The concept database to be used in the project - CDB name or the MCTCDB Object
+            vocab (Union[MCTVocab, str]): The vocabulary to be used in the project - Vocab name or the MCTVocab Object
+            modelpack (Union[MCTModelPack, str]): The model pack to be used in the project - ModelPack name or the MCTModelPack Object
+            import_project_name_suffix (str): The suffix to be added to the project name
+            cdb_search_filter (Union[MCTConceptDB, str]): The concept database to be used in the project - CDB name or the MCTCDB Object
+            members (Union[List[MCTUser], List[str]]): The annotators for the project - List of MCTUser objects or list of user names
+            set_validated_docs (bool): Whether to set the validated documents, e.g. their annotation submit status.
+        """
+        if isinstance(cdb, str):
+            cdb = [c for c in self.get_concept_dbs() if c.name == cdb].pop()
+        if isinstance(vocab, str):
+            vocab = [v for v in self.get_vocabs() if v.name == vocab].pop()
+        if isinstance(modelpack, str):
+            modelpack = [m for m in self.get_model_packs() if m.name == modelpack].pop()
+        if isinstance(cdb_search_filter, str):
+            cdb_search_filter = [c for c in self.get_concept_dbs() if c.name == cdb_search_filter].pop()
+        if members and all(isinstance(m, str) for m in members):
+            members = [m for m in self.get_users() if m.username in members]
+
+        payload = {
+            'exported_projects': projects,
+            'project_name_suffix': import_project_name_suffix,
+            'cdb_search_filter': cdb_search_filter.id if cdb_search_filter else None,
+            'members': [m.id for m in members] if members else None,
+            'import_project_name_suffix': import_project_name_suffix,
+            'set_validated_docs': set_validated_docs,
+        }
+
+        if cdb and vocab:
+            payload['cdb_id'] = cdb.id
+            payload['vocab_id'] = vocab.id
+        elif modelpack:
+            payload['modelpack_id'] = modelpack.id
+        else:
+            raise MCTUtilsException('No cdb, vocab, or modelpack provided, use a ')
+
+        resp = requests.post(f'{self.server}/api/upload-deployment/', headers=self.headers,
+                             json=payload)
+        if 200 <= resp.status_code < 300:
+            return resp.json()
+        else:
+            raise MCTUtilsException(f'Failed to upload projects export: {resp.text}')
 
     def __str__(self) -> str:
         return f'{self.server} \t {self.username} \t {self.password}'
