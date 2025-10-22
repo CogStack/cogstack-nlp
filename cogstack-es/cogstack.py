@@ -773,6 +773,7 @@ class CogStack:
                 `search_after_value` which can be used as a function
                 parameter to continue the search.
         """
+        pr_bar: Optional[tqdm.tqdm] = None
         try:
             if len(index) == 0:
                 raise ValueError(
