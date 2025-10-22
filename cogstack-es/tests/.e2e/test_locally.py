@@ -1,6 +1,9 @@
 import pytest
 import pandas as pd
-from elasticsearch import Elasticsearch
+try:
+    from elasticsearch import Elasticsearch
+except ImportError:
+    from opensearchpy import OpenSearch as Elasticsearch
 import sys, os
 sys.path.append(os.path.join(
     os.path.dirname(__file__), "..", ".."))
