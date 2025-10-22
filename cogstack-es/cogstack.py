@@ -466,6 +466,7 @@ class CogStack:
             If the search fails or cancelled by the user.
         """
         pr_bar: Optional[tqdm.tqdm] = None
+        all_mapped_results = []
         try:
             if len(index) == 0:
                 raise ValueError(
@@ -490,7 +491,6 @@ class CogStack:
                 fields=include_fields,
                 allow_no_indices=False,
             )
-            all_mapped_results = []
             pr_bar.iterable = scan_results
             pr_bar.total = self.elastic.count(
                 index=index, query=query["query"])["count"]
