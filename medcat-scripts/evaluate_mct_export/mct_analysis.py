@@ -12,7 +12,7 @@ from torch import nn
 import numpy as np
 import pandas as pd
 from collections import Counter
-from typing import Iterator, Optional, Union, TypedDict, Any
+from typing import Iterator, Optional, Union, TypedDict, Any, Sequence
 from medcat.components.addons.meta_cat.mctokenizers.tokenizers import (
     TokenizerWrapperBase)
 
@@ -28,7 +28,8 @@ from medcat.components.addons.meta_cat.data_utils import (
 from medcat.storage.serialisers import deserialise
 from medcat.data.mctexport import (
     MedCATTrainerExport as _MedCATTrainerExport,
-    MedCATTrainerExportAnnotation, iter_anns)
+    MedCATTrainerExportAnnotation, iter_anns,
+    MetaAnnotation)
 import warnings
 
 
@@ -107,9 +108,11 @@ class MedcatTrainer_export(object):
                 _meta_anns = ann['meta_anns']  # type: ignore
                 meta_anns: list[dict]
                 if isinstance(_meta_anns, dict):
-                    meta_anns = list(_meta_anns.values())
+                    # NOTE: myp doesn't recognise the type for some readon
+                    meta_anns = list(_meta_anns.values())  # type: ignore
                 elif isinstance(_meta_anns, list):
-                    meta_anns = list(_meta_anns)
+                    # NOTE: myp doesn't recognise the type for some readon
+                    meta_anns = list(_meta_anns)  # type: ignore
                 elif not meta_anns:
                     # allow empty
                     pass
@@ -281,7 +284,7 @@ class MedcatTrainer_export(object):
             print(f'The figure was saved at: {filename}')
         return fig
 
-    def _rename_meta_ann_values(self, meta_anns: dict[str, dict[str, str]],
+    def _rename_meta_ann_values(self, meta_anns: dict[str, MetaAnnotation],
                                 name_replacement: str,
                                 meta_ann_name: str,
                                 meta_values: dict[str, str],
@@ -294,7 +297,7 @@ class MedcatTrainer_export(object):
                         meta_ann_values2rename[meta_ann_name][value])
 
     def _rename_meta_ann_for_name(
-            self, meta_anns: dict[str, dict[str, str]],
+            self, meta_anns: dict[str, MetaAnnotation],
             name2replace: str,
             name_replacement: str,
             meta_ann_values2rename: dict[str, dict[str, str]]):
@@ -306,7 +309,7 @@ class MedcatTrainer_export(object):
                 meta_ann_values2rename)
 
     def _rename_meta_ann(
-            self, meta_anns: dict[str, dict[str, str]],
+            self, meta_anns: dict[str, MetaAnnotation],
             meta_anns2rename: dict[str, str] = dict(),
             meta_ann_values2rename: dict[str, dict[str, str]] = dict()):
         for meta_name2replace in meta_anns2rename:
@@ -338,7 +341,7 @@ class MedcatTrainer_export(object):
         for _, _, ann in self._iter_anns(False, False):
             if 'meta_anns' in ann:
                 _meta_anns = ann['meta_anns']  # type: ignore
-                meta_anns: dict[str, dict[str, str]]
+                meta_anns: dict[str, MetaAnnotation]
                 if isinstance(_meta_anns, list):
                     meta_anns = {ma['name']: ma
                                  for ma in _meta_anns}
@@ -351,7 +354,7 @@ class MedcatTrainer_export(object):
         return
 
     def _eval_model(self, model: nn.Module,
-                    data: list[tuple[list[int], int, Optional[int]]],
+                    data: Sequence[tuple[list[int], list[int], Optional[str]]],
                     config: ConfigMetaCAT, tokenizer: TokenizerWrapperBase
                     ) -> dict:
         device = torch.device(config.general.device)  # Create a torch device
@@ -377,11 +380,12 @@ class MedcatTrainer_export(object):
 
         with torch.no_grad():
             for i in range(num_batches):
-                x, cpos, y = create_batch_piped_data(data,
-                                                     i*batch_size_eval,
-                                                     (i+1)*batch_size_eval,
-                                                     device=device,
-                                                     pad_id=pad_id)
+                x, cpos, _, y = create_batch_piped_data(
+                    data,
+                    i*batch_size_eval,
+                    (i+1)*batch_size_eval,
+                    device=device,
+                    pad_id=pad_id)
                 logits = model(x, cpos, ignore_cpos=ignore_cpos)
                 loss = criterion(logits, y)
 
@@ -405,7 +409,7 @@ class MedcatTrainer_export(object):
 
         # Prepare the data
         assert metacat_model.tokenizer is not None
-        data = prepare_from_json(
+        data_raw = prepare_from_json(
             # NOTE: the method probably needs changing on lib side
             cast(dict[str, Any], mct_export),
             g_config.cntx_left,
@@ -417,7 +421,7 @@ class MedcatTrainer_export(object):
 
         # Check is the name there
         category_name = g_config.category_name
-        if category_name not in data:
+        if category_name not in data_raw:
             warnings.warn(
                 f"The meta_model {category_name} does not exist in this "
                 "MedCATtrainer export.", UserWarning)
@@ -427,12 +431,13 @@ class MedcatTrainer_export(object):
                 f"{category_name} does not exist"
                 }  # type: ignore
 
-        data = data[category_name]
+        category_data = data_raw[category_name]
 
         # We already have everything, just get the data
         category_value2id = g_config.category_value2id
+        data: list[tuple[list, list, str]]
         data, data_undersampled, category_values = encode_category_values(
-            data, existing_category_value2id=category_value2id)
+            category_data, existing_category_value2id=category_value2id)
         print(category_values)
         print(len(data))
         # Run evaluation
