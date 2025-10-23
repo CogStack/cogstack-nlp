@@ -463,8 +463,8 @@ class MedcatTrainer_export(object):
             raise ValueError("No model pack specified")
         anns_df = self.annotation_df()
         meta_df = anns_df[
-            (anns_df['validated']) & (not anns_df['deleted']) &
-            (not anns_df['killed']) & (not anns_df['irrelevant'])]
+            (anns_df['validated']) & (~anns_df['deleted']) &
+            (~anns_df['killed']) & (~anns_df['irrelevant'])]
         meta_df.reset_index(drop=True, inplace=True)
 
         for meta_model_info in self.cat.get_model_card(
