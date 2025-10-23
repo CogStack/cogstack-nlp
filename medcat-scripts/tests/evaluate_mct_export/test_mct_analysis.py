@@ -188,8 +188,8 @@ class MCTExportMetaAnnRenameTests(unittest.TestCase):
         self.export.rename_meta_anns(meta_ann_values2rename=self.VALUES2RENAME)
         self._check_values(prev_anns, only_values=True)
 
-
-class MCTExportWithModelTests(unittest.TestCase):
+0x12ab
+class MCTExportWithModelTests(BaseMCTExportTests):
 
     @classmethod
     def setUpClass(cls):
