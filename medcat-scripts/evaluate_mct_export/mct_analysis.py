@@ -3,34 +3,22 @@ import plotly.graph_objects as go
 from medcat.cat import CAT
 from datetime import date
 from typing import cast
+import tempfile
+from contextlib import contextmanager
 
 import os
 import json
-import torch
-import math
-from torch import nn
-import numpy as np
 import pandas as pd
 from collections import Counter
-from typing import Iterator, Optional, Union, TypedDict, Any, Sequence
-from medcat.components.addons.meta_cat.mctokenizers.tokenizers import (
-    TokenizerWrapperBase)
-
-from medcat.components.addons.meta_cat.ml_utils import create_batch_piped_data
+from typing import Iterator, Optional, Union, TypedDict, Any
 
 from medcat.components.addons.meta_cat.meta_cat import MetaCATAddon, MetaCAT
 from medcat.stats.stats import get_stats
 from medcat.utils.legacy.identifier import is_legacy_model_pack
-from medcat.utils.legacy.convert_meta_cat import get_meta_cat_from_old
-from medcat.config.config_meta_cat import ConfigMetaCAT
-from medcat.components.addons.meta_cat.data_utils import (
-    prepare_from_json, encode_category_values)
-from medcat.storage.serialisers import deserialise
 from medcat.data.mctexport import (
     MedCATTrainerExport as _MedCATTrainerExport,
     MedCATTrainerExportAnnotation, iter_anns,
     MetaAnnotation)
-import warnings
 
 
 DATETIME_FORMAT = r"%Y-%m-%d:%H:%M:%S"
@@ -353,100 +341,49 @@ class MedcatTrainer_export(object):
         self.annotations = self._annotations()
         return
 
-    def _eval_model(self, model: nn.Module,
-                    data: Sequence[tuple[list[int], list[int], Optional[str]]],
-                    config: ConfigMetaCAT, tokenizer: TokenizerWrapperBase
-                    ) -> dict:
-        device = torch.device(config.general.device)  # Create a torch device
-        batch_size_eval = config.general.batch_size_eval
-        pad_id = config.model.padding_idx
-        ignore_cpos = config.model.ignore_cpos
-        class_weights = config.train.class_weights
+    @contextmanager
+    def _capture_intermediate_data(self):
+        # NOTE: The way ml_utils.eval_model works is that
+        #       it does in fact produce the exact data that
+        #       we need, however it passes it to _eval_predictions
+        #       and subsequently processes it into a format that
+        #       is not as useful for the eval problem we're trying
+        #       to solve here
+        from medcat.components.addons.meta_cat import ml_utils
+        captured = []
+        original = ml_utils._eval_predictions
 
-        if class_weights is not None:
-            class_weights = torch.FloatTensor(class_weights).to(device)
-            # Set the criterion to Cross Entropy Loss
-            criterion = nn.CrossEntropyLoss(weight=class_weights)
-        else:
-            # Set the criterion to Cross Entropy Loss
-            criterion = nn.CrossEntropyLoss()
+        def wrapper(*args, **kwargs):
+            if len(args) >= 3:
+                captured.append(args[2])
+            else:
+                captured.append(kwargs["predictions"])
+            return original(*args, **kwargs)
 
-        # y_eval = [x[2] for x in data]
-        num_batches = math.ceil(len(data) / batch_size_eval)
-        running_loss = []
-        all_logits = []
-        model.to(device)
-        model.eval()
-
-        with torch.no_grad():
-            for i in range(num_batches):
-                x, cpos, _, y = create_batch_piped_data(
-                    data,
-                    i*batch_size_eval,
-                    (i+1)*batch_size_eval,
-                    device=device,
-                    pad_id=pad_id)
-                logits = model(x, cpos, ignore_cpos=ignore_cpos)
-                loss = criterion(logits, y)
-
-                # Track loss and logits
-                running_loss.append(loss.item())
-                all_logits.append(logits.detach().cpu().numpy())
-
-        predictions = np.argmax(np.concatenate(all_logits, axis=0), axis=1)
-        return predictions
+        ml_utils._eval_predictions = wrapper  # type: ignore
+        try:
+            yield captured
+        finally:
+            ml_utils._eval_predictions = original  # type: ignore
 
     def _eval(self,
               metacat_model: MetaCAT,
               mct_export: _MedCATTrainerExport
-              ) -> MetaAnnotationPredictions:
-        g_config = metacat_model.config.general
-        t_config = metacat_model.config.train
-        t_config.test_size = 0
-        t_config.shuffle_data = False
-        t_config.prerequisites = {}
-        t_config.cui_filter = set()
-
-        # Prepare the data
-        assert metacat_model.tokenizer is not None
-        data_raw = prepare_from_json(
-            # NOTE: the method probably needs changing on lib side
-            cast(dict[str, Any], mct_export),
-            g_config.cntx_left,
-            g_config.cntx_right, metacat_model.tokenizer,
-            cui_filter=t_config.cui_filter,
-            replace_center=g_config.replace_center,
-            prerequisites=t_config.prerequisites,
-            lowercase=g_config.lowercase)
-
-        # Check is the name there
-        category_name = g_config.category_name
-        if category_name not in data_raw:
-            warnings.warn(
-                f"The meta_model {category_name} does not exist in this "
-                "MedCATtrainer export.", UserWarning)
-            # NOTE: not to spec in terms of output
-            return {
-                category_name:  # type: ignore
-                f"{category_name} does not exist"
-                }  # type: ignore
-
-        category_data = data_raw[category_name]
-
-        # We already have everything, just get the data
-        category_value2id = g_config.category_value2id
-        data: list[tuple[list, list, str]]
-        data, data_undersampled, category_values = encode_category_values(
-            category_data, existing_category_value2id=category_value2id)
-        print(category_values)
-        print(len(data))
+              ) -> list[str]:
         # Run evaluation
         assert metacat_model.tokenizer is not None
-        result = self._eval_model(
-            metacat_model.model, data, config=metacat_model.config,
-            tokenizer=metacat_model.tokenizer)
-
-        return {'predictions': result, 'meta_values': category_values}
+        # save entire thing on disk for full path
+        with tempfile.NamedTemporaryFile(suffix=".json",
+                                         delete=False) as f:
+            with open(f.name, "w") as fw:
+                json.dump(mct_export, fw)
+            f.flush()
+            # NOTE: doing this to capture intermediate results being passed
+            #       to the _eval_predictions method
+            with self._capture_intermediate_data() as captured:
+                metacat_model.eval(f.name)
+        # NOTE: the return list is amended after yield
+        return captured[0]
 
     def full_annotation_df(self) -> pd.DataFrame:
         """
@@ -462,53 +399,27 @@ class MedcatTrainer_export(object):
         if not self.cat or not self.model_pack_path:
             raise ValueError("No model pack specified")
         anns_df = self.annotation_df()
-        meta_df = anns_df[
+
+        meta_df = anns_df
+
+        for meta_model in self.cat.get_addons_of_type(MetaCATAddon):
+            meta_cat = meta_model.mc
+            meta_model_cat = meta_cat.config.general.category_name
+            meta_results = self._eval(meta_cat, self.mct_export)
+            pred_meta_values = meta_results
+
+            loc = meta_df.columns.get_loc(meta_model_cat)
+            if isinstance(loc, int):
+                meta_df.insert(
+                    loc + 1, f'predict_{meta_model_cat}', pred_meta_values)
+            else:
+                print(f"Warning: Unexpected column location type: {type(loc)}")
+                meta_df.insert(
+                    1, f'predict_{meta_model_cat}', pred_meta_values)
+        meta_df = meta_df[
             (anns_df['validated']) & (~anns_df['deleted']) &
             (~anns_df['killed']) & (~anns_df['irrelevant'])]
         meta_df.reset_index(drop=True, inplace=True)
-
-        for meta_model_info in self.cat.get_model_card(
-                as_dict=True)['MetaCAT models']:
-            meta_model = meta_model_info['Category Name']
-            print(f'Checking metacat model: {meta_model}')
-            if self.is_legacy_model_pack:
-                _meta_model = get_meta_cat_from_old(
-                    self.model_pack_path + '/meta_' + meta_model,
-                    self.cat._pipeline._tokenizer)
-            else:
-                meta_model_path = os.path.join(
-                    self.model_pack_path, "saved_components",
-                    f"addon_meta_cat.{meta_model}")
-                # NOTE: the expected workflow when loading the model
-                #       is one where the config is stored as part of the
-                #       overall config and thus using it for loading is trivial
-                #       but here we need to manually load the config from disk
-                config_path = os.path.join(
-                    meta_model_path, "meta_cat", "config")
-                cnf: ConfigMetaCAT = deserialise(config_path)  # type: ignore
-                _meta_model = MetaCATAddon.load_existing(
-                    cnf, self.cat._pipeline._tokenizer, meta_model_path)
-            meta_cat = _meta_model.mc
-            meta_results = self._eval(meta_cat, self.mct_export)
-            _meta_values = {v: k for k, v in
-                            meta_results['meta_values'].items()}
-            pred_meta_values = []
-            counter = 0
-            for meta_value in meta_df[meta_model]:
-                if pd.isnull(meta_value):
-                    pred_meta_values.append(np.nan)
-                else:
-                    pred_meta_values.append(_meta_values.get(
-                        meta_results['predictions'][counter], np.nan))
-                    counter += 1
-
-            loc = meta_df.columns.get_loc(meta_model)
-            if isinstance(loc, int):
-                meta_df.insert(
-                    loc + 1, f'predict_{meta_model}', pred_meta_values)
-            else:
-                print(f"Warning: Unexpected column location type: {type(loc)}")
-            meta_df.insert(1, f'predict_{meta_model}', pred_meta_values)
 
         return meta_df
 
