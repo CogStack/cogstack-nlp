@@ -713,14 +713,15 @@ class CogStack:
             self.elastic.clear_scroll(scroll_id=search_scroll_id)
         except BaseException as err:
             if isinstance(err, KeyboardInterrupt):
-                pr_bar.bar_format = "%s{l_bar}%s{bar}%s{r_bar}" % (
-                    "\033[0;33m",
-                    "\033[0;33m",
-                    "\033[0;33m",
-                )
-                pr_bar.set_description(
-                    "CogStack read cancelled! Processed", refresh=True
-                )
+                if pr_bar is not None:
+                    pr_bar.bar_format = "%s{l_bar}%s{bar}%s{r_bar}" % (
+                        "\033[0;33m",
+                        "\033[0;33m",
+                        "\033[0;33m",
+                    )
+                    pr_bar.set_description(
+                        "CogStack read cancelled! Processed", refresh=True
+                    )
                 self.elastic.clear_scroll(scroll_id=search_scroll_id)
                 print("Request cancelled and current "
                       "search_scroll_id deleted...")
@@ -894,14 +895,15 @@ class CogStack:
                     raise LookupError(search_result["_shards"]["failures"])
         except BaseException as err:
             if isinstance(err, KeyboardInterrupt):
-                pr_bar.bar_format = "%s{l_bar}%s{bar}%s{r_bar}" % (
-                    "\033[0;33m",
-                    "\033[0;33m",
-                    "\033[0;33m",
-                )
-                pr_bar.set_description(
-                    "CogStack read cancelled! Processed", refresh=True
-                )
+                if pr_bar is not None:
+                    pr_bar.bar_format = "%s{l_bar}%s{bar}%s{r_bar}" % (
+                        "\033[0;33m",
+                        "\033[0;33m",
+                        "\033[0;33m",
+                    )
+                    pr_bar.set_description(
+                        "CogStack read cancelled! Processed", refresh=True
+                    )
                 print("Request cancelled.")
             elif isinstance(err, ValueError) and err.args == (
                     'Size must not be greater than 10000',):
