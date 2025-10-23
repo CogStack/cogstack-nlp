@@ -667,7 +667,6 @@ class CogStack:
                         query["fields"] = include_fields_map
                     searcher = partial(
                         self.elastic.search,
-                        # NOTE: need to be nested
                         body=query,
                         _source=False,
                         timeout=request_timeout)
@@ -853,19 +852,24 @@ class CogStack:
                 if USING_ELASTIC:
                     searcher = partial(
                         self.elastic.search, query=query,
-                        fields=include_fields_map)
+                        fields=include_fields_map,
+                        sort=sort,
+                        search_after=search_after_value,
+                        timeout=f"{request_timeout}s", source=False)
                 else:
+                    if "query" not in query:
+                        query = {"query": query}
                     if include_fields_map:
                         query["fields"] = include_fields_map
+                    if search_after_value:
+                        query["search_after"] = search_after_value
+                    query["sort"] = sort
                     searcher = partial(
-                        self.elastic.search, body=query)
+                        self.elastic.search, body=query,
+                        timeout=request_timeout, _source=False)
                 search_result = searcher(
                     index=index,
                     size=size,
-                    source=False,
-                    sort=sort,
-                    search_after=search_after_value,
-                    timeout=f"{request_timeout}s",
                     track_scores=True,
                     track_total_hits=True,
                     allow_no_indices=False,
@@ -879,7 +883,9 @@ class CogStack:
                 pr_bar.total = (
                     pr_bar.total
                     if pr_bar.total
-                    else search_result.body["hits"]["total"]
+                    else (search_result.body["hits"]["total"]
+                          if USING_ELASTIC else
+                          search_result["hits"]["total"])
                 )
                 if search_result["_shards"]["failed"] > 0:
                     raise LookupError(search_result["_shards"]["failures"])
