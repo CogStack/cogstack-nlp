@@ -518,7 +518,9 @@ class CogStack:
                 allow_no_indices=False,
             )
             pr_bar.iterable = scan_results
-            pr_bar.total = self.count_search_results(index, query)
+            csr_str = self.count_search_results(index, query)
+            total = int(csr_str.rsplit(" ", 1)[-1])
+            pr_bar.total = total
             all_mapped_results = self.__map_search_results(hits=pr_bar)
         except BaseException as err:
             if isinstance(err, KeyboardInterrupt):
