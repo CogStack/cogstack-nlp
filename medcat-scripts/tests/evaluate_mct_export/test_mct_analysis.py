@@ -6,6 +6,8 @@ import pandas as pd
 
 import unittest
 
+from medcat_den.injection import injected_den
+
 
 _FILE_DIR = os.path.dirname(__file__)
 
@@ -25,6 +27,9 @@ from mct_analysis import MedcatTrainer_export
 # add path to MCT export
 RESOURCE_DIR = os.path.abspath(os.path.join(_FILE_DIR, "..", "resources"))
 MCT_EXPORT_JSON_PATH = os.path.join(RESOURCE_DIR, "MCT_export_example.json")
+
+
+EXAMPLE_MODEL_HASH = "a645742030cae7be"
 
 
 class MCTExportInitTests(unittest.TestCase):
@@ -182,3 +187,16 @@ class MCTExportMetaAnnRenameTests(unittest.TestCase):
         prev_anns = list(self._get_all_meta_anns())
         self.export.rename_meta_anns(meta_ann_values2rename=self.VALUES2RENAME)
         self._check_values(prev_anns, only_values=True)
+
+
+class MCTExportWithModelTests(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        with injected_den():
+            cls.export = MedcatTrainer_export(
+                [MCT_EXPORT_JSON_PATH, ], EXAMPLE_MODEL_HASH)
+
+    def test_can_get_full_df(self):
+        full_df = self.export.full_annotation_df()
+        self.assertNonEmptyDataframe(full_df)
