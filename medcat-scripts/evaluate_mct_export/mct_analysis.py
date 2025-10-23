@@ -96,10 +96,10 @@ class MedcatTrainer_export(object):
                 _meta_anns = ann['meta_anns']  # type: ignore
                 meta_anns: list[dict]
                 if isinstance(_meta_anns, dict):
-                    # NOTE: myp doesn't recognise the type for some readon
+                    # NOTE: mypy doesn't recognise the type for some readon
                     meta_anns = list(_meta_anns.values())  # type: ignore
                 elif isinstance(_meta_anns, list):
-                    # NOTE: myp doesn't recognise the type for some readon
+                    # NOTE: mypy doesn't recognise the type for some readon
                     meta_anns = list(_meta_anns)  # type: ignore
                 elif not meta_anns:
                     # allow empty
