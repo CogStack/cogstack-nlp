@@ -508,7 +508,8 @@ class CogStack:
             else:
                 if include_fields:
                     query["fields"] = include_fields
-                scanner = es_helpers.scan
+                # NOTE: just for typing
+                scanner = partial(es_helpers.scan)
             scan_results = scanner(
                 cast(es_cls, self.elastic),
                 index=index,
