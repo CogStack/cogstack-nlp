@@ -35,6 +35,8 @@ jobs:
           uv run python -m ensurepip
           uv pip install -r requirements.txt
           uv pip install -r requirements-dev.txt
+          # reinstall MedCAT from local to test against changes in core lib
+          uv pip install -e "../medcat-v2[spacy,deid,meta-cat,rel-cat]"
       - name: Check types
         run: |
           # NOTE: Only testing against .py files in this folder
