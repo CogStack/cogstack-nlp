@@ -7,6 +7,7 @@ import os
 import pytest
 
 from cogstack import read_creds
+from cogstack.cogstack import has_elasticsearch
 
 
 EXPECTED_TEMP_FILE_PATH = os.path.join(
@@ -17,12 +18,19 @@ EXPECTED_TEMP_FILE_PATH = os.path.join(
 def all_mocked(python_code: str):
     with tempfile.NamedTemporaryFile('w', suffix='.py') as temp_file:
         temp_file.write(python_code)
-        with patch('cogstack.es.Elasticsearch') as mock_es:
+        client_cls_path = (
+            'cogstack.es.Elasticsearch' if has_elasticsearch()
+            else 'cogstack.os.Opensearch')
+        with patch(client_cls_path) as mock_es:
             with patch.dict('os.environ', {
                         read_creds.CS_HOSTS_ENV: 'http://localhost:9200',
                         read_creds.CS_API_KEY_ENV: "TEST-API-KEY",
                     }):
-                with patch('elasticsearch.helpers.scan') as mock_scan:
+                helpers_scan_path = (
+                    'elasticsearch.helpers.scan' if has_elasticsearch()
+                    else 'opensearch.helpers.scan'
+                )
+                with patch(helpers_scan_path) as mock_scan:
                     with patch('tqdm.tqdm') as mock_tqdm:
                         yield (temp_file.name, mock_es,
                                mock_scan, mock_tqdm)

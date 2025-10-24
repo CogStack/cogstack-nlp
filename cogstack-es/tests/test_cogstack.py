@@ -2,12 +2,16 @@ import pytest
 from unittest.mock import Mock, patch, MagicMock
 import pandas as pd
 from cogstack import CogStack
+from cogstack.cogstack import has_elasticsearch
 
 
 @pytest.fixture
 def mock_elasticsearch():
     """Fixture to mock Elasticsearch client"""
-    with patch('cogstack.es.Elasticsearch') as mock_es:
+    client_cls_path = (
+        'cogstack.es.Elasticsearch' if has_elasticsearch()
+        else 'cogstack.os.Opensearch')
+    with patch(client_cls_path) as mock_es:
         mock_client = Mock()
         mock_es.return_value = mock_client
         mock_client.ping.return_value = True
