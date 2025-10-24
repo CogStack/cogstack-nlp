@@ -70,7 +70,10 @@ def test_read_data_with_scan(mock_elasticsearch: tuple[MagicMock, Mock]):
     ]
 
     # Mock scan helper
-    with patch('cogstack.es.ClientWrapper.scan') as mock_scan, \
+    scan_path = (
+        'cogstack.es.ClientWrapper.scan' if has_elasticsearch()
+        else 'cogstack.os.ClientWrapper.scan')
+    with patch(scan_path) as mock_scan, \
          patch('cogstack.cogstack.tqdm.tqdm') as mock_tqdm:
 
         mock_scan.return_value = mock_hits
