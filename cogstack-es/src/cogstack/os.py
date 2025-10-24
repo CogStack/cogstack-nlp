@@ -63,7 +63,7 @@ class ClientWrapper:
         return es_helpers.scan(
             self.client,
             index=index,
-            body=full_query,
+            query=full_query,
             source=source,
             size=size,
             request_timeout=request_timeout,
