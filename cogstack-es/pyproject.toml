@@ -48,7 +48,7 @@ OS = [
 ]
 
 [tool.setuptools]
-py-modules = ["cogstack"]
+package-dir = {"" = "src"}
 
 [project.urls]
 Homepage = "https://github.com/CogStack/cogstack-nlp/tree/main/cogstack-es"
