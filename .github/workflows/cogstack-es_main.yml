@@ -12,6 +12,9 @@ defaults:
   run:
     working-directory: ./cogstack-es
 
+permissions:
+  id-token: write
+
 jobs:
   types-only-with-ES-and-OS:
     runs-on: ubuntu-latest
