@@ -93,10 +93,12 @@ class ClientWrapper:
             full_query["fields"] = include_fields_map
         if search_after:
             full_query["search_after"] = search_after
+        if sort is None:
+            sort = {"id": "asc"}
+        full_query["sort"] = sort
         return self.client.search(
             index=index,
             body=full_query,
-            sort=sort,
             size=size,
             scroll=scroll,
             allow_no_indices=allow_no_indices,
