@@ -26,11 +26,20 @@ else:
         from elasticsearch import NotFoundError, BadRequestError
         USING_ELASTIC = True
     except ImportError:
-        from opensearchpy import OpenSearch as ElasticClient
-        import opensearchpy.helpers
-        es_helpers = opensearchpy.helpers
-        from opensearchpy import NotFoundError, RequestError as BadRequestError
-        USING_ELASTIC = False
+        try:
+            from opensearchpy import OpenSearch as ElasticClient
+            import opensearchpy.helpers
+            es_helpers = opensearchpy.helpers
+            from opensearchpy import (
+                NotFoundError, RequestError as BadRequestError)
+            USING_ELASTIC = False
+        except ImportError:
+            raise ImportError(
+                "No Elasticsearch or OpenSearch client found. "
+                "Install with one of:\n"
+                "  pip install cogstack-es[ES8]\n"
+                "  pip install cogstack-es[ES9]\n"
+                "  pip install cogstack-es[OS]")
     es_cls = ElasticClient
 from IPython.display import display, HTML
 import pandas as pd
