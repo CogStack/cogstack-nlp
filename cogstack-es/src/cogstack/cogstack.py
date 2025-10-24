@@ -26,6 +26,15 @@ def has_opensearch() -> bool:
     return has_module("opensearchpy")
 
 
+if not has_elasticsearch() and not has_opensearch():
+    ImportError(
+        "No Elasticsearch or Opensearch client found. Install with one of:\n"
+        "  pip install cogstack-es[ES8]\n"
+        "  pip install cogstack-es[ES9]\n"
+        "  pip install cogstack-es[OS]"
+    )
+
+
 class IndicesClientProto(Protocol):
 
     def get_alias(self) -> dict:
