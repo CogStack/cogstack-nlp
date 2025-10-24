@@ -15,14 +15,35 @@ warnings.filterwarnings("ignore")
 
 
 def has_module(module_name: str) -> bool:
+    """Check whether a module is present.
+
+    This can be useful for figuring out whether Elasticsearch
+    or Opensearch could / can be used.
+
+    Args:
+        module_name (str): The module path.
+
+    Returns:
+        bool: Whether its present.
+    """
     return find_spec(module_name) is not None
 
 
 def has_elasticsearch() -> bool:
+    """Checks whether elasticsearch client library is available.
+
+    Returns:
+        bool: Whether elasticsearch is available.
+    """
     return has_module("elasticsearch")
 
 
 def has_opensearch() -> bool:
+    """Checks whether opensearch client library is available.
+
+    Returns:
+        bool: Whether opensearch is available.
+    """
     return has_module("opensearchpy")
 
 
