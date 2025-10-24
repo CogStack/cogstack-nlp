@@ -136,7 +136,7 @@ class TestConnection:
             username="elastic",
             password="changeme"
         )
-        assert cs.elastic is not None
+        assert cs.provider is not None
 
     def test_failed_connection(self):
         """Test connection failure handling"""
