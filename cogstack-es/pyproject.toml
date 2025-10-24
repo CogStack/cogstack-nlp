@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cogstack-es"
-version = "0.1.0"
+dynamic = ["version"]
 description = "ElasticSearch or OpenSearch wrapper for CogStack deployments"
 readme = "ReadMe.md"
 authors = [{ name = "Mart Ratas", email = "mart.ratas@kcl.ac.uk" }]
