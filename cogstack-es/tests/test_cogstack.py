@@ -7,7 +7,7 @@ from cogstack import CogStack
 @pytest.fixture
 def mock_elasticsearch():
     """Fixture to mock Elasticsearch client"""
-    with patch('cogstack.es_cls') as mock_es:
+    with patch('cogstack.es.Elasticsearch') as mock_es:
         mock_client = Mock()
         mock_es.return_value = mock_client
         mock_client.ping.return_value = True
@@ -23,7 +23,7 @@ def test_basic_auth_connection(mock_elasticsearch: tuple[MagicMock, Mock]):
         with patch('getpass.getpass', return_value='test_pass'):
             cs = CogStack.with_basic_auth(['http://localhost:9200'])
             assert isinstance(cs, CogStack)
-            assert cs.elastic.ping()
+            assert cs.provider.ping()
             dunder_init.assert_called_once()
 
 
@@ -33,7 +33,7 @@ def test_api_key_auth_connection(mock_elasticsearch: tuple[MagicMock, Mock]):
     api_key = {"encoded": "test_encoded_key"}
     cs = CogStack.with_api_key_auth(['http://localhost:9200'], api_key)
     assert isinstance(cs, CogStack)
-    assert cs.elastic.ping()
+    assert cs.provider.ping()
     dunder_init.assert_called_once()
 
 
@@ -41,16 +41,16 @@ def test_count_search_results(mock_elasticsearch: tuple[MagicMock, Mock]):
     """Test count_search_results method"""
     # Mock the count response
     _, mock_inst = mock_elasticsearch
-    mock_inst.count.return_value = {'count': 100}
+    mock_inst.count_raw.return_value = 100
 
     cs = CogStack(['http://localhost:9200'])
-    cs.elastic = mock_inst
+    cs.provider = mock_inst
 
     query = {"match": {"title": "test"}}
     result = cs.count_search_results('test_index', query)
 
     assert "100" in result
-    mock_inst.count.assert_called_once()
+    mock_inst.count_raw.assert_called_once()
 
 
 def test_read_data_with_scan(mock_elasticsearch: tuple[MagicMock, Mock]):
@@ -66,18 +66,18 @@ def test_read_data_with_scan(mock_elasticsearch: tuple[MagicMock, Mock]):
     ]
 
     # Mock scan helper
-    with patch('cogstack.es_helpers.scan') as mock_scan, \
-         patch('cogstack.tqdm.tqdm') as mock_tqdm:
+    with patch('cogstack.es.ClientWrapper.scan') as mock_scan, \
+         patch('cogstack.cogstack.tqdm.tqdm') as mock_tqdm:
 
         mock_scan.return_value = mock_hits
         mock_tqdm.return_value = mock_hits  # Make tqdm iterable
         mock_tqdm.total = 2
 
         # Mock count for progress bar
-        mock_inst.count.return_value = {'count': 2}
+        mock_inst.count_raw.return_value = 2
 
         cs = CogStack(['http://localhost:9200'])
-        cs.elastic = mock_inst
+        cs.provider = mock_inst
 
         query = {"query": {"match": {"title": "test"}}}
         result = cs.read_data_with_scan('test_index', query, ['title'])
