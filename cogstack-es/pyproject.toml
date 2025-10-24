@@ -54,3 +54,5 @@ package-dir = {"" = "src"}
 Homepage = "https://github.com/CogStack/cogstack-nlp/tree/main/cogstack-es"
 Repository = "https://github.com/CogStack/cogstack-nlp/tree/main/cogstack-es"
 Issues = "https://github.com/CogStack/cogstack-nlp/issues"
+
+[tool.setuptools_scm]
