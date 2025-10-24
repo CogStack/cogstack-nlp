@@ -43,14 +43,22 @@ def setup_mocks(mock_es: MagicMock, mock_scan: MagicMock,
     mock_es.return_value = mock_client
     mock_client.ping.return_value = True
 
-    mock_aliases = Mock()
-    mock_aliases.body = {
-        'index1': {'aliases': {'alias1': {}}}
-    }
-    mock_mapping = Mock()
-    mock_mapping.body = {
-        'index1': {'mappings': {'properties': {}}}
-    }
+    if has_elasticsearch():
+        mock_aliases = Mock()
+        mock_aliases.body = {
+            'index1': {'aliases': {'alias1': {}}}
+        }
+        mock_mapping = Mock()
+        mock_mapping.body = {
+            'index1': {'mappings': {'properties': {}}}
+        }
+    else:
+        mock_aliases = {
+            'index1': {'aliases': {'alias1': {}}}
+        }
+        mock_mapping = {
+            'index1': {'mappings': {'properties': {}}}
+        }
     # Mock Elasticsearch responses
     mock_client.indices.get_alias.return_value = mock_aliases
     mock_client.indices.get_mapping.return_value = mock_mapping
