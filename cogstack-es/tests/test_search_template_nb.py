@@ -24,7 +24,7 @@ def all_mocked(python_code: str):
         with patch(client_cls_path) as mock_es:
             with patch.dict('os.environ', {
                         read_creds.CS_HOSTS_ENV: 'http://localhost:9200',
-                        read_creds.CS_API_KEY_ENV: "TEST-API-KEY",
+                        read_creds.CS_API_KEY_ENCODED_ENV: "TEST-API-KEY",
                     }):
                 helpers_scan_path = (
                     'elasticsearch.helpers.scan' if has_elasticsearch()
