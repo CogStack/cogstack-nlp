@@ -28,7 +28,7 @@ def all_mocked(python_code: str):
                     }):
                 helpers_scan_path = (
                     'elasticsearch.helpers.scan' if has_elasticsearch()
-                    else 'opensearch.helpers.scan'
+                    else 'opensearchpy.helpers.scan'
                 )
                 with patch(helpers_scan_path) as mock_scan:
                     with patch('tqdm.tqdm') as mock_tqdm:
