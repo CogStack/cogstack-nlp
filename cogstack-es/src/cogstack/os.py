@@ -96,9 +96,7 @@ class ClientWrapper:
         return self.client.search(
             index=index,
             body=full_query,
-            fields=include_fields_map,
             sort=sort,
-            search_after=search_after,
             size=size,
             scroll=scroll,
             allow_no_indices=allow_no_indices,
