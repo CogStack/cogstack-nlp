@@ -91,10 +91,6 @@ class ClientProvider(Protocol):
     def clear_scroll(self, scroll_id: str | None) -> None:
         pass
 
-    # NOTE: probably not needed - will just be done in search method of ES
-    # def get_search_body(self, ):# TODO
-    #     pass
-
     # exception handling for import reasons
 
     def has_no_indices(self, err: BaseException) -> bool:
@@ -459,17 +455,6 @@ class CogStack:
         query = self.__extract_query(query=query)
         count = self.provider.count_raw(
             index=index, query=query, allow_no_indices=False)
-        # if self.using_elastic:
-        #     count = self.provider.count(index=index, query=query,
-        #                                allow_no_indices=False)["count"]
-        # else:
-        #     # For OpenSearch, use search with size=0 instead
-        #     result = self.provider.search(
-        #         index=index,
-        #         body={"query": query, "size": 0},
-        #         allow_no_indices=False
-        #     )
-        #     count = result["hits"]["total"]["value"]
         return f"Number of documents: {format(count, ',')}"
 
     def read_data_with_scan(
