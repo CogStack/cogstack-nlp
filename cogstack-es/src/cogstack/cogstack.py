@@ -1,40 +1,12 @@
 from collections.abc import Mapping
 import getpass
 import traceback
-from typing import Any, Optional, Iterable, Sequence, Union, Protocol
-from typing import cast, TYPE_CHECKING
+from typing import Any, Optional, Iterable, Sequence, Union, Protocol, Type
+from typing import Literal
 import warnings
-from functools import partial
+# from functools import partial
+from importlib.util import find_spec
 
-
-if TYPE_CHECKING:
-    from elasticsearch import Elasticsearch as ElasticClient
-    import elasticsearch.helpers
-    es_helpers = elasticsearch.helpers
-    from elasticsearch import NotFoundError, BadRequestError
-    USING_ELASTIC = True
-else:
-    try:
-        from elasticsearch import Elasticsearch as ElasticClient
-        import elasticsearch.helpers
-        es_helpers = elasticsearch.helpers
-        from elasticsearch import NotFoundError, BadRequestError
-        USING_ELASTIC = True
-    except ImportError:
-        try:
-            from opensearchpy import OpenSearch as ElasticClient
-            import opensearchpy.helpers
-            es_helpers = opensearchpy.helpers
-            from opensearchpy import (
-                NotFoundError, RequestError as BadRequestError)
-            USING_ELASTIC = False
-        except ImportError:
-            raise ImportError(
-                "No Elasticsearch or OpenSearch client found. "
-                "Install with one of:\n"
-                "  pip install cogstack-es[ES8]\n"
-                "  pip install cogstack-es[ES9]\n"
-                "  pip install cogstack-es[OS]")
 from IPython.display import display, HTML
 import pandas as pd
 import tqdm
@@ -42,31 +14,93 @@ import tqdm
 warnings.filterwarnings("ignore")
 
 
+def has_module(module_name: str) -> bool:
+    return find_spec(module_name) is not None
+
+
+def has_elasticsearch() -> bool:
+    return has_module("elasticsearch")
+
+
+def has_opensearch() -> bool:
+    return has_module("opensearchpy")
+
+
 class IndicesClientProto(Protocol):
 
-    def get_alias(self, *args: Any, **kwargs: Any) -> Any:
+    def get_alias(self) -> dict:
         pass
 
-    def get_mapping(self, *args: Any, **kwargs: Any) -> Any:
+    def get_mapping(self,
+                    index: str | Sequence[str],
+                    allow_no_indices: bool) -> dict:
         pass
 
 
-class ESClient(Protocol):
+class ClientProvider(Protocol):
+
+    def ping(self) -> bool:
+        pass
 
     @property
     def indices(self) -> IndicesClientProto:
         pass
 
-    def count(self, *args: Any, **kwargs: Any) -> Any:
+    def scan(self,
+             query: dict,
+             include_fields_map: Sequence[str] | None,
+             source: bool,
+             index: str | Sequence[str],
+             size: int,
+             request_timeout: int,
+             allow_no_indices: bool,
+             ) -> Iterable[Any]:
         pass
 
-    def search(self, *args: Any, **kwargs: Any) -> Any:
+    def search(self,
+               query: dict,
+               include_fields_map: Sequence[Mapping[str, Any]] | None,
+               index: str | Sequence[str],
+               size: int | None,
+               allow_no_indices: bool,
+               rest_total_hits_as_int: bool,
+               source: bool,
+               timeout: int | None,
+               scroll: str | Literal[-1, 0] | None = None,
+               track_scores: bool | None = None,
+               track_total_hits: bool | int | None = None,
+               sort: dict | list[str] | None = None,
+               search_after: list[Union[
+                   str, int, float, Any, None]] | None = None,
+               ) -> dict:
         pass
 
-    def scroll(self, *args: Any, **kwargs: Any) -> Any:
+    def scroll(self,
+               scroll_id: str,
+               scroll: str,
+               rest_total_hits_as_int: bool,
+               ) -> dict:
         pass
 
-    def clear_scroll(self, *args: Any, **kwargs: Any) -> Any:
+    def count_raw(self,
+                  index: str | Sequence[str],
+                  query: dict,
+                  allow_no_indices: bool) -> int:
+        pass
+
+    def clear_scroll(self, scroll_id: str | None) -> None:
+        pass
+
+    # NOTE: probably not needed - will just be done in search method of ES
+    # def get_search_body(self, ):# TODO
+    #     pass
+
+    # exception handling for import reasons
+
+    def has_no_indices(self, err: BaseException) -> bool:
+        pass
+
+    def is_bad_request(self, err: BaseException) -> bool:
         pass
 
 
@@ -82,8 +116,8 @@ class CogStack:
 
     ES_TIMEOUT = 300
 
-    def __init__(self, elastic: ESClient) -> None:
-        self.elastic = elastic
+    def __init__(self, provider: ClientProvider) -> None:
+        self.provider = provider
 
     @classmethod
     def with_basic_auth(
@@ -145,14 +179,14 @@ class CogStack:
         -------
             CogStack: An instance of the CogStack class.
         """
-        elastic = CogStack.get_es_with_api_key(hosts, api_key)
-        return cls(elastic)
+        provider = CogStack.get_es_with_api_key(hosts, api_key)
+        return cls(provider)
 
     @staticmethod
     def get_es_with_basic_auth(
         hosts: list[str], username: Optional[str] = None,
         password: Optional[str] = None
-    ) -> ESClient:
+    ) -> ClientProvider:
         """
         Create an instance of CogStack using basic authentication.
         If the `username` or `password` parameters are not provided,
@@ -171,7 +205,7 @@ class CogStack:
 
         Returns
         -------
-            ESClient: An instance of the Elasticsearch or OpenSearch.
+            ClientProvider: A provider of Elasticsearch or OpenSearch.
         """
         if username is None:
             username = input("Username: ")
@@ -186,7 +220,7 @@ class CogStack:
     @staticmethod
     def get_es_with_api_key(hosts: list[str],
                             api_key: Optional[dict] = None
-                            ) -> ESClient:
+                            ) -> ClientProvider:
         """
         Create an instance of CogStack using API key authentication.
 
@@ -218,7 +252,7 @@ class CogStack:
 
         Returns
         -------
-            ESClient: An instance of the Elasticsearch or OpenSearch.
+            ClientProvider: A provider of Elasticsearch or OpenSearch.
         """
         has_encoded_value = False
         api_id_value: str
@@ -275,7 +309,7 @@ class CogStack:
         hosts: list[str],
         basic_auth: Optional[tuple[str, str]] = None,
         api_key: Optional[Union[str, tuple[str, str]]] = None,
-    ) -> ESClient:
+    ) -> ClientProvider:
         """Connect to Elasticsearch or OpenSearch using the credentials.
         Parameters
         ----------
@@ -289,25 +323,33 @@ class CogStack:
                 for API key authentication.
         Returns
         -------
-            ESClient: An instance of the Elasticsearch or OpenSearch.
+            ClientProvider: A provider of Elasticsearch or OpenSearch.
         Raises
         ------
             Exception: If the connection to Elasticsearch or OpenSearch fails.
         """
-        elastic = ElasticClient(
+        ClientWrapper: Type[ClientProvider]
+        if has_elasticsearch():
+            print("Using Elasticsearch")
+            from .es import ClientWrapper
+        else:
+            print("Using Opensearch")
+            from .os import ClientWrapper
+        # they currently have the same init args
+        provider = ClientWrapper(  # type: ignore
             hosts=hosts,
             api_key=api_key,
             basic_auth=basic_auth,
             verify_certs=False,
             request_timeout=CogStack.ES_TIMEOUT,
         )
-        if not elastic.ping():
+        if not provider.ping():
             raise ConnectionError(
                 "CogStack connection failed. "
                 "Please check your host list and credentials and try again."
             )
         print("CogStack connection established successfully.")
-        return elastic
+        return provider
 
     def get_indices_and_aliases(self):
         """
@@ -317,9 +359,7 @@ class CogStack:
         ---------
             A table of indices and aliases to use in subsequent queries
         """
-        all_aliases = self.elastic.indices.get_alias()
-        if USING_ELASTIC:
-            all_aliases = all_aliases.body
+        all_aliases = self.provider.indices.get_alias()
         index_aliases_coll = []
         for index in all_aliases:
             index_aliases = {}
@@ -358,11 +398,11 @@ class CogStack:
             if len(index) == 0:
                 raise ValueError(
                     "Provide at least one index or index alias name")
-            all_mappings = self.elastic.indices.get_mapping(
+            all_mappings = self.provider.indices.get_mapping(
                 index=index, allow_no_indices=False
             )
-            if USING_ELASTIC:
-                all_mappings = all_mappings.body
+            # if self.using_elastic:
+            #     all_mappings = all_mappings.body
             columns = ["Field", "Type"]
             if isinstance(index, list):
                 columns.insert(0, "Index")
@@ -417,17 +457,19 @@ class CogStack:
         if len(index) == 0:
             raise ValueError("Provide at least one index or index alias name")
         query = self.__extract_query(query=query)
-        if USING_ELASTIC:
-            count = self.elastic.count(index=index, query=query,
-                                       allow_no_indices=False)["count"]
-        else:
-            # For OpenSearch, use search with size=0 instead
-            result = self.elastic.search(
-                index=index,
-                body={"query": query, "size": 0},
-                allow_no_indices=False
-            )
-            count = result["hits"]["total"]["value"]
+        count = self.provider.count_raw(
+            index=index, query=query, allow_no_indices=False)
+        # if self.using_elastic:
+        #     count = self.provider.count(index=index, query=query,
+        #                                allow_no_indices=False)["count"]
+        # else:
+        #     # For OpenSearch, use search with size=0 instead
+        #     result = self.provider.search(
+        #         index=index,
+        #         body={"query": query, "size": 0},
+        #         allow_no_indices=False
+        #     )
+        #     count = result["hits"]["total"]["value"]
         return f"Number of documents: {format(count, ',')}"
 
     def read_data_with_scan(
@@ -503,18 +545,9 @@ class CogStack:
                 desc="CogStack retrieved...",
                 disable=not show_progress, colour="green"
             )
-
-            if USING_ELASTIC:
-                scanner = partial(
-                    es_helpers.scan, fields=include_fields,
-                    source=False)
-            else:
-                if include_fields:
-                    query["fields"] = include_fields
-                # NOTE: just for typing
-                scanner = partial(es_helpers.scan)
-            scan_results = scanner(
-                cast(ElasticClient, self.elastic),
+            scan_results = self.provider.scan(
+                include_fields_map=include_fields,
+                source=False,
                 index=index,
                 query=query,
                 size=size,
@@ -539,12 +572,9 @@ class CogStack:
                     )
                 print("Request cancelled and current "
                       "search_scroll_id deleted...")
-            elif isinstance(err, NotFoundError) or (
-                    isinstance(err, ValueError) and
-                    err.args == (
-                        'Provide at least one index or index alias name',)):
+            elif self.provider.has_no_indices(err):
                 raise ValueError("Index not found") from err
-            elif isinstance(err, BadRequestError):
+            elif self.provider.is_bad_request(err):
                 raise ValueError("Bad request") from err
             elif isinstance(err, ValueError) and err.args == (
                     'Size must not be greater than 10000',):
@@ -662,29 +692,17 @@ class CogStack:
                 disable=not show_progress, colour="green")
 
             if search_scroll_id is None:
-                if USING_ELASTIC:
-                    searcher = partial(
-                        self.elastic.search, query=query,
-                        fields=include_fields_map, source=False,
-                        timeout=f"{request_timeout}s",)
-                else:
-                    query = {"query": query}
-                    if include_fields_map:
-                        query["fields"] = include_fields_map
-                    searcher = partial(
-                        self.elastic.search,
-                        body=query,
-                        _source=False,
-                        timeout=request_timeout)
-                search_result = searcher(
+                search_result = self.provider.search(
+                    query=query,
+                    include_fields_map=include_fields_map,
                     index=index,
                     size=size,
                     scroll="10m",
                     allow_no_indices=False,
                     rest_total_hits_as_int=True,
+                    source=False,
+                    timeout=request_timeout,
                 )
-                if USING_ELASTIC:
-                    search_result = search_result.body
                 pr_bar.total = search_result["hits"]["total"]
                 hits = search_result["hits"]["hits"]
                 result_count = len(hits)
@@ -696,13 +714,11 @@ class CogStack:
 
             while search_scroll_id and result_count == size:
                 # Perform ES scroll request
-                search_result = self.elastic.scroll(
+                search_result = self.provider.scroll(
                     scroll_id=search_scroll_id,
                     scroll="10m",
                     rest_total_hits_as_int=True,
                 )
-                if USING_ELASTIC:
-                    search_result = search_result.body
                 hits = search_result["hits"]["hits"]
                 pr_bar.total = (
                     pr_bar.total
@@ -713,7 +729,7 @@ class CogStack:
                 search_scroll_id = search_result["_scroll_id"]
                 result_count = len(hits)
                 pr_bar.update(result_count)
-            self.elastic.clear_scroll(scroll_id=search_scroll_id)
+            self.provider.clear_scroll(scroll_id=search_scroll_id)
         except BaseException as err:
             if isinstance(err, KeyboardInterrupt):
                 if pr_bar is not None:
@@ -725,7 +741,7 @@ class CogStack:
                     pr_bar.set_description(
                         "CogStack read cancelled! Processed", refresh=True
                     )
-                self.elastic.clear_scroll(scroll_id=search_scroll_id)
+                self.provider.clear_scroll(scroll_id=search_scroll_id)
                 print("Request cancelled and current "
                       "search_scroll_id deleted...")
             elif isinstance(err, ValueError) and err.args == (
@@ -856,31 +872,19 @@ class CogStack:
                 disable=not show_progress, colour="green")
 
             while result_count == size:
-                if USING_ELASTIC:
-                    searcher = partial(
-                        self.elastic.search, query=query,
-                        fields=include_fields_map,
-                        sort=sort,
-                        search_after=search_after_value,
-                        timeout=f"{request_timeout}s", source=False)
-                else:
-                    if "query" not in query:
-                        query = {"query": query}
-                    if include_fields_map:
-                        query["fields"] = include_fields_map
-                    if search_after_value:
-                        query["search_after"] = search_after_value
-                    query["sort"] = sort
-                    searcher = partial(
-                        self.elastic.search, body=query,
-                        timeout=request_timeout, _source=False)
-                search_result = searcher(
+                search_result = self.provider.search(
+                    query=query,
+                    include_fields_map=include_fields_map,
+                    sort=sort,
+                    search_after=search_after_value,
                     index=index,
                     size=size,
                     track_scores=True,
                     track_total_hits=True,
                     allow_no_indices=False,
                     rest_total_hits_as_int=True,
+                    source=False,
+                    timeout=request_timeout
                 )
                 hits = search_result["hits"]["hits"]
                 all_mapped_results.extend(self.__map_search_results(hits=hits))
@@ -890,9 +894,7 @@ class CogStack:
                 pr_bar.total = (
                     pr_bar.total
                     if pr_bar.total
-                    else (search_result.body["hits"]["total"]
-                          if USING_ELASTIC else
-                          search_result["hits"]["total"])
+                    else search_result["hits"]["total"]
                 )
                 if search_result["_shards"]["failed"] > 0:
                     raise LookupError(search_result["_shards"]["failures"])
