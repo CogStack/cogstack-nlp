@@ -28,7 +28,8 @@ def all_mocked(python_code: str):
                                mock_scan, mock_tqdm)
 
 
-def setup_mocks(mock_es: MagicMock, mock_scan: MagicMock, mock_tqdm: MagicMock):
+def setup_mocks(mock_es: MagicMock, mock_scan: MagicMock,
+                mock_tqdm: MagicMock):
     # Setup mocks
     mock_client = Mock()
     mock_es.return_value = mock_client
