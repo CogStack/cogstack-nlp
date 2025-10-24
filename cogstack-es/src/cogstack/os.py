@@ -57,7 +57,7 @@ class ClientWrapper:
              ) -> Iterable[Any]:
         full_query: dict[str, Any] = {
             "query": query
-        }
+        } if "query" not in query else query
         if include_fields_map:
             full_query["fields"] = include_fields_map
         return es_helpers.scan(
