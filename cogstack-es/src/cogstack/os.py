@@ -7,22 +7,6 @@ from opensearchpy import NotFoundError, RequestError
 from .cogstack import IndicesClientProto
 
 
-# class OSIndices:
-
-#     def __init__(self, es_indices: IndicesClient):
-#         self.es_indices = es_indices
-
-#     def get_alias(self) -> dict:
-#         return self.es_indices.get_alias()
-
-#     def get_mapping(self,
-#                     index: str | Sequence[str],
-#                     allow_no_indices: bool) -> dict:
-#         return self.es_indices.get_mapping(
-#             index=index,
-#             allow_no_indices=allow_no_indices)
-
-
 class ClientWrapper:
 
     def __init__(self,
