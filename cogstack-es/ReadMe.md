@@ -1,10 +1,22 @@
 
 # Login and search
-This project is responsible for logging in and performing a search.
+This project is responsible for logging in and performing a search for Elasticsearch or Opensearch.
+
+# Installation
+
+This package is distributed through PyPI and can be installed using one of:
+```
+pip install cogstack-es[ES9]  # For Elasticsearch 9
+pip install cogstack-es[ES8]  # For Elasticsearch 8
+pip install cogstack-es[OS]  # For Opensearch
+```
+
+PS:
+After installation, the import still remains `import cogstack` even though the installed package is called `cogstack-es`.
 
 ## Login details
-1. Create a [credentials.py](credentials.py)
-2. Populate it with your cogstack instance and login details
+You need to get your login details and host from your administrator.
+This is usually an API key.
 An example template can be seen below:
 ```
 hosts = []  # This is a list of your cogstack elasticsearch instances.
