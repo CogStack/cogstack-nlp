@@ -20,7 +20,7 @@ def all_mocked(python_code: str):
         temp_file.write(python_code)
         client_cls_path = (
             'cogstack.es.Elasticsearch' if has_elasticsearch()
-            else 'cogstack.os.Opensearch')
+            else 'cogstack.os.OpenSearch')
         with patch(client_cls_path) as mock_es:
             with patch.dict('os.environ', {
                         read_creds.CS_HOSTS_ENV: 'http://localhost:9200',

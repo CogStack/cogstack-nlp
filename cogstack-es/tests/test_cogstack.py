@@ -10,7 +10,7 @@ def mock_elasticsearch():
     """Fixture to mock Elasticsearch client"""
     client_cls_path = (
         'cogstack.es.Elasticsearch' if has_elasticsearch()
-        else 'cogstack.os.Opensearch')
+        else 'cogstack.os.OpenSearch')
     with patch(client_cls_path) as mock_es:
         mock_client = Mock()
         mock_es.return_value = mock_client
