@@ -64,7 +64,7 @@ class ClientWrapper:
             self.client,
             index=index,
             query=full_query,
-            source=source,
+            _source=source,
             size=size,
             request_timeout=request_timeout,
             allow_no_indices=allow_no_indices,
