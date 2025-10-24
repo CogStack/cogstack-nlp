@@ -8,13 +8,8 @@ from functools import partial
 
 
 if TYPE_CHECKING:
-    from elasticsearch import Elasticsearch as _Elasticsearch
-    # from opensearchpy import OpenSearch as _OpenSearch
+    from elasticsearch import Elasticsearch as ElasticClient
     import elasticsearch.helpers
-    # import opensearchpy.helpers
-    # ElasticClient = Union[_Elasticsearch, _OpenSearch]
-    ElasticClient = _Elasticsearch
-    es_cls = _Elasticsearch
     es_helpers = elasticsearch.helpers
     from elasticsearch import NotFoundError, BadRequestError
     USING_ELASTIC = True
@@ -40,7 +35,6 @@ else:
                 "  pip install cogstack-es[ES8]\n"
                 "  pip install cogstack-es[ES9]\n"
                 "  pip install cogstack-es[OS]")
-    es_cls = ElasticClient
 from IPython.display import display, HTML
 import pandas as pd
 import tqdm
@@ -300,7 +294,7 @@ class CogStack:
         ------
             Exception: If the connection to Elasticsearch or OpenSearch fails.
         """
-        elastic = es_cls(
+        elastic = ElasticClient(
             hosts=hosts,
             api_key=api_key,
             basic_auth=basic_auth,
@@ -520,7 +514,7 @@ class CogStack:
                 # NOTE: just for typing
                 scanner = partial(es_helpers.scan)
             scan_results = scanner(
-                cast(es_cls, self.elastic),
+                cast(ElasticClient, self.elastic),
                 index=index,
                 query=query,
                 size=size,
