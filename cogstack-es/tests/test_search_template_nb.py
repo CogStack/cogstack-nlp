@@ -6,21 +6,26 @@ import tempfile
 import os
 import pytest
 
+from cogstack import read_creds
 
-EXPECTED_TEMP_FILE_PATH = "data/cogstack_search_results\\file_name.csv"
+
+EXPECTED_TEMP_FILE_PATH = os.path.join(
+    "data", "cogstack_search_results", "file_name.csv")
 
 
 @contextmanager
 def all_mocked(python_code: str):
     with tempfile.NamedTemporaryFile('w', suffix='.py') as temp_file:
         temp_file.write(python_code)
-        with patch('cogstack.es_cls') as mock_es:
-            with patch('credentials.hosts', ['http://localhost:9200']):
-                with patch('credentials.api_key', {"encoded": "test_api_key"}):
-                    with patch('elasticsearch.helpers.scan') as mock_scan:
-                        with patch('tqdm.tqdm') as mock_tqdm:
-                            yield (temp_file.name, mock_es,
-                                   mock_scan, mock_tqdm)
+        with patch('cogstack.es.Elasticsearch') as mock_es:
+            with patch.dict('os.environ', {
+                        read_creds.CS_HOSTS_ENV: 'http://localhost:9200',
+                        read_creds.CS_API_KEY_ENV: "TEST-API-KEY",
+                    }):
+                with patch('elasticsearch.helpers.scan') as mock_scan:
+                    with patch('tqdm.tqdm') as mock_tqdm:
+                        yield (temp_file.name, mock_es,
+                               mock_scan, mock_tqdm)
 
 
 def setup_mocks(mock_es: MagicMock, mock_scan: MagicMock, mock_tqdm: MagicMock):
