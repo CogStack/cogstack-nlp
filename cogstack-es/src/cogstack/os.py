@@ -92,7 +92,7 @@ class ClientWrapper:
         if include_fields_map:
             full_query["fields"] = include_fields_map
         if search_after:
-            query["search_after"] = search_after
+            full_query["search_after"] = search_after
         return self.client.search(
             index=index,
             body=full_query,
