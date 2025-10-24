@@ -1,5 +1,0 @@
-elasticsearch>=9.0.0,<10.0
-opensearch-py>=2.0.0
-ipython
-tqdm>=4.64,<5.0
-pandas>=2.2,<3.0

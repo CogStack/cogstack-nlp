@@ -1,0 +1,56 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel",  "setuptools_scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cogstack-es"
+version = "0.1.0"
+description = "ElasticSearch or OpenSearch wrapper for CogStack deployments"
+readme = "ReadMe.md"
+authors = [{ name = "Mart Ratas", email = "mart.ratas@kcl.ac.uk" }]
+license = { text = "Apache-2.0" }
+requires-python = ">=3.10"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "License :: OSI Approved :: Apache Software License"
+]
+
+dependencies = [
+    "tqdm>=4.64,<5.0",
+    "pandas>=2.2,<3.0",
+    "ipython",
+]
+
+[project.optional-dependencies]
+dev = [
+    "mypy",
+    "pandas-stubs",
+    "types-tqdm",
+    "pytest",
+    "ruff",
+    "nbconvert",
+]
+ES8 = [
+    "elasticsearch>=8.0.0,<9.0",
+]
+ES9 = [
+    "elasticsearch>=9.0.0,<10.0",
+]
+OS = [
+    "opensearch-py>=2.0.0,<3.0",
+]
+
+[tool.setuptools]
+py-modules = ["cogstack"]
+
+[project.urls]
+Homepage = "https://github.com/CogStack/cogstack-nlp/tree/main/cogstack-es"
+Repository = "https://github.com/CogStack/cogstack-nlp/tree/main/cogstack-es"
+Issues = "https://github.com/CogStack/cogstack-nlp/issues"
