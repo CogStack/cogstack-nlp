@@ -33,7 +33,7 @@ if [ -z ${SERVER_WORKER_TIMEOUT+x} ]; then
   echo "SERVER_WORKER_TIMEOUT is unset -- setting to default (sec): $SERVER_WORKER_TIMEOUT";
 fi
 
-
+# Note - SERVER_ACCESS_LOG_FORMAT is unused when worker-class is set to UvicornWorker
 SERVER_ACCESS_LOG_FORMAT="%(t)s [ACCESS] %(h)s \"%(r)s\" %(s)s \"%(f)s\" \"%(a)s\""
 
 # start the server

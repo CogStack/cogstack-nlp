@@ -1,13 +1,18 @@
+import logging
+
 import gradio as gr
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from medcat_service.demo.gradio_demo import io
 from medcat_service.dependencies import get_settings
+from medcat_service.log_config import log_config
 from medcat_service.routers import admin, health, process
 from medcat_service.types import HealthCheckFailedException
 
 settings = get_settings()
+
+logging.config.dictConfig(log_config)
 
 app = FastAPI(
     title="MedCAT Service",
@@ -40,4 +45,5 @@ if __name__ == "__main__":
     # Only run this when directly executing `python main.py` for local dev.
     import os
     import uvicorn
+
     uvicorn.run("medcat_service.main:app", host="0.0.0.0", port=int(os.environ.get("SERVER_PORT", 8000)))
