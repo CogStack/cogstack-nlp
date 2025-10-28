@@ -10,8 +10,6 @@ import numpy as np
 from wsgiref.util import FileWrapper
 from medcat import __version__ as medcat_version
 from medcat.cat import CAT
-from medcat.cdb import CDB
-from medcat.vocab import Vocab
 from urllib.request import urlretrieve, urlopen
 from urllib.error import HTTPError
 #from medcat.meta_cat import MetaCAT
@@ -29,10 +27,7 @@ CONTENT_API_URL = f'https://uts-ws.nlm.nih.gov/rest/content/current/CUI/{TEST_CU
 
 model_pack_path = os.getenv('MODEL_PACK_PATH', 'models/medmen_wstatus_2021_oct.zip')
 
-try:
-    cat = CAT.load_model_pack(model_pack_path)
-except Exception as e:
-    print(str(e))
+cat = CAT.load_model_pack(model_pack_path)
 
 
 TPL_ENT = """<mark class="entity" v-on:click="show_info({id})" style="background: {bg}; padding: 0.12em 0.6em; margin: 0 0.25em; line-height: 1; border-radius: 0.35em; box-decoration-break: clone; -webkit-box-decoration-break: clone"> {text} <span style="font-size: 0.8em; font-weight: bold; line-height: 1; border-radius: 0.35em; text-transform: uppercase; vertical-align: middle; margin-left: 0.1rem">{label}</span></mark>"""
