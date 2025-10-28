@@ -55,13 +55,6 @@ COPY --from=build /webapp /webapp
 # Copy Python site-packages (installed by pip) from build stage
 COPY --from=build /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 
-# Set environment variables
-ENV VOCAB_URL=https://medcat.rosalind.kcl.ac.uk/media/vocab.dat
-ENV CDB_URL=https://medcat.rosalind.kcl.ac.uk/media/cdb-medmen-v1.dat
-
-ENV CDB_PATH=/webapp/models/cdb.dat
-ENV VOCAB_PATH=/webapp/models/vocab.dat
-
 # Set the pythonpath
 WORKDIR /webapp
 
