@@ -1,4 +1,5 @@
 import logging
+import logging.config
 
 import gradio as gr
 from fastapi import FastAPI, Request
