@@ -91,7 +91,7 @@ class Converter:
             from medcat.utils.legacy.convert_meta_cat import (
                 get_meta_cat_from_old)
             for subfolder in meta_cat_folders:
-                mc = get_meta_cat_from_old(subfolder, cat._pipeline.tokenizer)
+                mc = get_meta_cat_from_old(subfolder, cat.pipe.tokenizer)
                 cat.add_addon(mc)
 
         # RelCATs
@@ -105,7 +105,7 @@ class Converter:
                 get_rel_cat_from_old)
             for subfolder in rel_cats_folders:
                 rel_cat = get_rel_cat_from_old(
-                    cdb, subfolder, cat._pipeline.tokenizer)
+                    cdb, subfolder, cat.pipe.tokenizer)
                 cat.add_addon(rel_cat)
 
         # DeID / TransformersNER
@@ -117,7 +117,7 @@ class Converter:
         if trf_folders:
             from medcat.utils.legacy.convert_deid import get_trf_ner_from_old
             trf_ners = [
-                get_trf_ner_from_old(subfolder, cat._pipeline.tokenizer)
+                get_trf_ner_from_old(subfolder, cat.pipe.tokenizer)
                 for subfolder in os.listdir(self.old_model_folder)
             ]
             if len(trf_ners) > 1:
@@ -136,20 +136,20 @@ class Converter:
             # replace component in pipeline
             # get the index of component in list
             index = next((c_num for c_num, comp in
-                          enumerate(cat._pipeline._components)
+                          enumerate(cat.pipe._components)
                           if comp.get_type() is CoreComponentType.ner))
             # set / change / replace the NER component
             logger.info(f"Changing the NER component in the pipe to {trf_ner}")
-            cat._pipeline._components[index] = trf_ner
+            cat.pipe._components[index] = trf_ner
             # replace linker to no-action linker
             config.components.linking.comp_name = 'no_action'
             index_link = next(
-                (c_num for c_num, comp in enumerate(cat._pipeline._components)
+                (c_num for c_num, comp in enumerate(cat.pipe._components)
                  if comp.get_type() is CoreComponentType.linking))
             # set / change / replace Linker to no-action linker
             logger.info("Changing the linking component in the pipe to a "
                         "no-action linker")
-            cat._pipeline._components[index_link] = NoActionLinker()
+            cat.pipe._components[index_link] = NoActionLinker()
 
         if self.new_model_folder:
             logger.info("Saving converted model to '%s'",
