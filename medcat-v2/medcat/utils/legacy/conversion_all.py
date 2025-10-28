@@ -100,7 +100,8 @@ class Converter:
             if subfolder.startswith("rel_")
         ]
         if rel_cats_folders:
-            from medcat.utils.legacy.convert_rel_cat import get_rel_cat_from_old
+            from medcat.utils.legacy.convert_rel_cat import (
+                get_rel_cat_from_old)
             for subfolder in rel_cats_folders:
                 rel_cat = get_rel_cat_from_old(
                     cdb, subfolder, cat._pipeline.tokenizer)
