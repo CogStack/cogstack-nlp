@@ -1,7 +1,8 @@
 import logging
 import threading
+from collections.abc import Hashable
 from functools import lru_cache
-from typing import Annotated, Optional
+from typing import Annotated
 
 from fastapi import Depends
 
@@ -18,17 +19,17 @@ def get_settings() -> Settings:
     return settings
 
 
-_def_medcat_processor: Optional[MedCatProcessor] = None
+_def_medcat_processors: dict[Hashable, MedCatProcessor] = {}
 _def_medcat_processor_lock = threading.Lock()
 
 
 def get_medcat_processor_singleton(settings: Settings) -> MedCatProcessor:
     with _def_medcat_processor_lock:
-        global _def_medcat_processor
-        if _def_medcat_processor is None:
-            log.info("Creating new Medcat Processsor using settings: %s", settings)
-            _def_medcat_processor = MedCatProcessor(settings)
-        return _def_medcat_processor
+        key = hash(settings)
+        if key not in _def_medcat_processors:
+            log.warning("Creating new MedCatProcessor using settings: %s", settings)
+            _def_medcat_processors[key] = MedCatProcessor(settings)
+        return _def_medcat_processors[key]
 
 
 @lru_cache
