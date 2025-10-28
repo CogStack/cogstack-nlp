@@ -12,7 +12,6 @@ from medcat.utils.legacy.convert_cdb import get_cdb_from_old
 from medcat.utils.legacy.convert_config import get_config_from_old
 from medcat.utils.legacy.convert_vocab import get_vocab_from_old
 from medcat.utils.legacy.convert_meta_cat import get_meta_cat_from_old
-from medcat.utils.legacy.convert_rel_cat import get_rel_cat_from_old
 from medcat.utils.legacy.helpers import fix_subnames
 
 
@@ -95,16 +94,17 @@ class Converter:
             cat.add_addon(mc)
 
         # RelCATs
-        rel_cats = [
-            get_rel_cat_from_old(
-                cdb,
-                os.path.join(self.old_model_folder, subfolder),
-                cat._pipeline.tokenizer)
+        rel_cats_folders = [
+            os.path.join(self.old_model_folder, subfolder)
             for subfolder in os.listdir(self.old_model_folder)
             if subfolder.startswith("rel_")
         ]
-        for rc in rel_cats:
-            cat.add_addon(rc)
+        if rel_cats_folders:
+            from medcat.utils.legacy.convert_rel_cat import get_rel_cat_from_old
+            for subfolder in rel_cats_folders:
+                rel_cat = get_rel_cat_from_old(
+                    cdb, subfolder, cat._pipeline.tokenizer)
+                cat.add_addon(rel_cat)
 
         # DeID / TransformersNER
         trf_folders = [
