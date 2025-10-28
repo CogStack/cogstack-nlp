@@ -15,6 +15,7 @@ from urllib.error import HTTPError
 #from medcat.meta_cat import MetaCAT
 from .models import *
 from .forms import DownloaderForm, UMLSApiKeyForm
+from functools import lru_cache
 
 AUTH_CALLBACK_SERVICE = 'https://medcat.rosalind.kcl.ac.uk/auth-callback'
 VALIDATION_BASE_URL = 'https://uts-ws.nlm.nih.gov/rest/isValidServiceValidate'
@@ -27,7 +28,10 @@ CONTENT_API_URL = f'https://uts-ws.nlm.nih.gov/rest/content/current/CUI/{TEST_CU
 
 model_pack_path = os.getenv('MODEL_PACK_PATH', 'models/medmen_wstatus_2021_oct.zip')
 
-cat = CAT.load_model_pack(model_pack_path)
+
+@lru_cache
+def get_model_pack():
+    return CAT.load_model_pack(model_pack_path)
 
 
 TPL_ENT = """<mark class="entity" v-on:click="show_info({id})" style="background: {bg}; padding: 0.12em 0.6em; margin: 0 0.25em; line-height: 1; border-radius: 0.35em; box-decoration-break: clone; -webkit-box-decoration-break: clone"> {text} <span style="font-size: 0.8em; font-weight: bold; line-height: 1; border-radius: 0.35em; text-transform: uppercase; vertical-align: middle; margin-left: 0.1rem">{label}</span></mark>"""
@@ -75,6 +79,7 @@ def fix_floats(in_dict: dict) -> dict:
 
 
 def get_html_and_json(text):
+    cat = get_model_pack()
     doc = cat(text)
 
     a = {
