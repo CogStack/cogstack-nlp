@@ -13,7 +13,6 @@ from medcat.utils.legacy.convert_config import get_config_from_old
 from medcat.utils.legacy.convert_vocab import get_vocab_from_old
 from medcat.utils.legacy.convert_meta_cat import get_meta_cat_from_old
 from medcat.utils.legacy.convert_rel_cat import get_rel_cat_from_old
-from medcat.utils.legacy.convert_deid import get_trf_ner_from_old
 from medcat.utils.legacy.helpers import fix_subnames
 
 
@@ -108,17 +107,20 @@ class Converter:
             cat.add_addon(rc)
 
         # DeID / TransformersNER
-        trf_ners = [
-            get_trf_ner_from_old(
-                os.path.join(self.old_model_folder, subfolder),
-                cat._pipeline.tokenizer)
+        trf_folders = [
+            os.path.join(self.old_model_folder, subfolder)
             for subfolder in os.listdir(self.old_model_folder)
             if subfolder.startswith("trf_")
         ]
-        if len(trf_ners) > 1:
-            raise ValueError("Cannot use more than 1 tranformers NER. "
-                             f"Got {len(trf_ners)}")
-        if trf_ners:
+        if trf_folders:
+            from medcat.utils.legacy.convert_deid import get_trf_ner_from_old
+            trf_ners = [
+                get_trf_ner_from_old(subfolder, cat._pipeline.tokenizer)
+                for subfolder in os.listdir(self.old_model_folder)
+            ]
+            if len(trf_ners) > 1:
+                raise ValueError("Cannot use more than 1 tranformers NER. "
+                                 f"Got {len(trf_ners)}")
             logger.info("Found a Transformers based NER component "
                         "- probably for DeID")
             trf_ner = trf_ners[0]
