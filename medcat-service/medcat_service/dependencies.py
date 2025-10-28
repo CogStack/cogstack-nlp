@@ -33,7 +33,7 @@ def get_medcat_processor_singleton(settings: Settings) -> MedCatProcessor:
 
 @lru_cache
 def get_medcat_processor(settings: Annotated[Settings, Depends(get_settings)]) -> MedCatProcessor:
-    log.debug("Creating new medcat processor from cache miss")
+    log.debug("Creating new medcat processor due to cache miss")
     return get_medcat_processor_singleton(settings)
 
 
