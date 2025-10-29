@@ -118,7 +118,7 @@ class Converter:
             from medcat.utils.legacy.convert_deid import get_trf_ner_from_old
             trf_ners = [
                 get_trf_ner_from_old(subfolder, cat.pipe.tokenizer)
-                for subfolder in os.listdir(self.old_model_folder)
+                for subfolder in trf_folders
             ]
             if len(trf_ners) > 1:
                 raise ValueError("Cannot use more than 1 tranformers NER. "
