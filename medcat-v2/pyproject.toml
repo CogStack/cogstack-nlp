@@ -1,7 +1,7 @@
 [project]
 name = "medcat"
 
-version = "2.0.0-dev"
+version = "2.2.0-dev"
 
 description = "Medical Concept Annotation Toolkit (v2)"
 
@@ -103,8 +103,6 @@ dict_ner = [
 ]
 deid = [
   "datasets>=2.2.2,<3.0.0",
-  # Transformers 4.57 doesn't support 3.9
-  "transformers!=4.57.0; python_version == '3.9'",
   "transformers>=4.41.0,<5.0", # avoid major bump
   # Transformers 4.57 doesn't support 3.9
   "transformers!=4.57.0; python_version == '3.9'",
@@ -115,8 +113,6 @@ deid = [
   "scipy>=1.14; python_version >= '3.13'",
 ]
 rel_cat = [
-  # Transformers 4.57 doesn't support 3.9
-  "transformers!=4.57.0; python_version == '3.9'",
   "transformers>=4.41.0,<5.0", # avoid major bump
   # Transformers 4.57 doesn't support 3.9
   "transformers!=4.57.0; python_version == '3.9'",
