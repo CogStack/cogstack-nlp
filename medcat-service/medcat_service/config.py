@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Optional, Tuple, Union
+from typing import Any
 
 import torch
 from pydantic import AliasChoices, Field, field_validator
@@ -19,13 +19,19 @@ def _coerce_loglevel(v: Any) -> int:
     return logging.INFO
 
 
-class Settings(BaseSettings):
+class ObservabilitySettings(BaseSettings):
+    model_config = SettingsConfigDict(frozen=True, env_prefix="APP_")
 
+    enable_metrics: bool = Field(
+        default=False, description="Enable prometheus metrics collection served on the path /metrics")
+
+
+class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         frozen=True,
         env_prefix="",  # no prefix; we specify full env names via alias
         case_sensitive=False,
-        populate_by_name=True
+        populate_by_name=True,
     )
 
     app_root_path: str = Field(
@@ -34,23 +40,22 @@ class Settings(BaseSettings):
         examples=["/medcat-service"],
     )
 
-    deid_mode: bool = Field(default=False,
-                            validation_alias=AliasChoices("deid_mode", "MEDCAT_DEID_MODE"),
-                            description="Enable DEID mode"
-                            )
+    deid_mode: bool = Field(
+        default=False, validation_alias=AliasChoices("deid_mode", "MEDCAT_DEID_MODE"), description="Enable DEID mode"
+    )
     deid_redact: bool = Field(
         default=True,
         validation_alias=AliasChoices("deid_redact", "MEDCAT_DEID_REDACT"),
-        description="Enable DEID redaction. Returns text like [***] instead of [ANNOTATION]"
+        description="Enable DEID redaction. Returns text like [***] instead of [ANNOTATION]",
     )
 
     # Model paths
-    model_cdb_path: Optional[str] = Field("/cat/models/medmen/cdb.dat", alias="APP_MODEL_CDB_PATH")
-    model_vocab_path: Optional[str] = Field("/cat/models/medmen/vocab.dat", alias="APP_MODEL_VOCAB_PATH")
-    model_meta_path_list: Union[str, Tuple[str, ...]] = Field(default=(), alias="APP_MODEL_META_PATH_LIST")
-    model_rel_path_list: Union[str, Tuple[str, ...]] = Field(default=(), alias="APP_MODEL_REL_PATH_LIST")
-    medcat_model_pack: Optional[str] = Field("", alias="APP_MEDCAT_MODEL_PACK")
-    model_cui_filter_path: Optional[str] = Field("", alias="APP_MODEL_CUI_FILTER_PATH")
+    model_cdb_path: str | None = Field("/cat/models/medmen/cdb.dat", alias="APP_MODEL_CDB_PATH")
+    model_vocab_path: str | None = Field("/cat/models/medmen/vocab.dat", alias="APP_MODEL_VOCAB_PATH")
+    model_meta_path_list: str | tuple[str, ...] = Field(default=(), alias="APP_MODEL_META_PATH_LIST")
+    model_rel_path_list: str | tuple[str, ...] = Field(default=(), alias="APP_MODEL_REL_PATH_LIST")
+    medcat_model_pack: str | None = Field("", alias="APP_MEDCAT_MODEL_PACK")
+    model_cui_filter_path: str | None = Field("", alias="APP_MODEL_CUI_FILTER_PATH")
     spacy_model: str = Field("", alias="MEDCAT_SPACY_MODEL")
 
     # ---- App logging & MedCAT logging ----
@@ -69,6 +74,8 @@ class Settings(BaseSettings):
     # ---- Output formatting ----
     # e.g. "dict" | "list" | "json" (service currently uses "dict" default)
     annotations_entity_output_mode: str = Field(default="dict", alias="MEDCAT_ANNOTATIONS_ENTITY_OUTPUT_MODE")
+
+    observability: ObservabilitySettings = ObservabilitySettings()
 
     # ---- Normalizers ---------------------------------------------------------
     @field_validator("app_log_level", "medcat_log_level", mode="before")
@@ -99,7 +106,7 @@ class Settings(BaseSettings):
 
     @field_validator("bulk_nproc", mode="before")
     def adjust_bulk_nproc(cls, num_procs: int) -> int:
-        """ This method is used to adjust the number of processes to use for bulk processing.
+        """This method is used to adjust the number of processes to use for bulk processing.
             Set number of processes to 1 if MPS (Apple Sillicon) is available, as MPS does not support multiprocessing.
 
         Args:

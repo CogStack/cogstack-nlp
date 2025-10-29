@@ -36,6 +36,11 @@ app.include_router(process.router)
 
 gr.mount_gradio_app(app, io, path="/demo")
 
+if settings.observability.enable_metrics:
+    from prometheus_fastapi_instrumentator import Instrumentator
+
+    Instrumentator(excluded_handlers=["/api/health.*", "/metrics"],).instrument(app).expose(app, tags=["admin"])
+
 
 @app.exception_handler(HealthCheckFailedException)
 async def healthcheck_failed_exception_handler(request: Request, exc: HealthCheckFailedException):
@@ -45,6 +50,7 @@ async def healthcheck_failed_exception_handler(request: Request, exc: HealthChec
 if __name__ == "__main__":
     # Only run this when directly executing `python main.py` for local dev.
     import os
+
     import uvicorn
 
     uvicorn.run("medcat_service.main:app", host="0.0.0.0", port=int(os.environ.get("SERVER_PORT", 8000)))
