@@ -50,6 +50,8 @@ SERVER_ACCESS_LOG_FORMAT="%(t)s [ACCESS] %(h)s \"%(r)s\" %(s)s \"%(f)s\" \"%(a)s
 #
 # Using Gunicorn, even though FastAPI recommends Uvicorn, to keep support for the post_fork config
 echo "Starting up the service using gunicorn server ..."
+set -x
+
 exec gunicorn \
   --bind "$SERVER_HOST:$SERVER_PORT" \
   --workers="$SERVER_WORKERS" \
@@ -62,5 +64,6 @@ exec gunicorn \
   --config /cat/config.py \
   --max-requests="$SERVER_GUNICORN_MAX_REQUESTS" \
   --max-requests-jitter="$SERVER_GUNICORN_MAX_REQUESTS_JITTER" \
+  ${SERVER_GUNICORN_EXTRA_ARGS:-} \
   --worker-class uvicorn.workers.UvicornWorker \
   medcat_service.main:app
