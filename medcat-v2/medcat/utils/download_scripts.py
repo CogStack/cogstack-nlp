@@ -79,17 +79,18 @@ def fetch_scripts(destination: str | Path = ".") -> Path:
     # Extract only medcat-scripts/ from the archive
     with zipfile.ZipFile(zip_path) as zf:
         for m in zf.namelist():
-            if f"/{SCRIPTS_PATH}" in m:
-                # skip repo-hash prefix
-                target = dest / Path(*Path(m).parts[1:])
-                if m.endswith("/"):
-                    target.mkdir(parents=True, exist_ok=True)
-                else:
-                    with open(target, "wb") as f:
-                        f.write(zf.read(m))
+            if f"/{SCRIPTS_PATH}" not in m:
+                continue
+            # skip repo-hash prefix
+            target = dest / Path(*Path(m).parts[2:])
+            if m.endswith("/"):
+                target.mkdir(parents=True, exist_ok=True)
+            else:
+                with open(target, "wb") as f:
+                    f.write(zf.read(m))
 
-    logger.info("Scripts extracted to: %s", dest / SCRIPTS_PATH)
-    return dest / SCRIPTS_PATH
+    logger.info("Scripts extracted to: %s", dest)
+    return dest
 
 
 def main(destination: str = ".",
