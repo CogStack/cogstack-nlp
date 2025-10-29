@@ -1,7 +1,8 @@
 import sys
 
 
-_DL_SCRIPTS_USAGE = "Usage: python -m medcat download-scripts [DEST] [log_level]"
+_DL_SCRIPTS_USAGE = (
+    "Usage: python -m medcat download-scripts [DEST] [log_level]")
 
 
 def main(*args: str):
