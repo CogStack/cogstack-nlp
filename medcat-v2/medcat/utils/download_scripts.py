@@ -90,3 +90,11 @@ def fetch_scripts(destination: str | Path = ".") -> Path:
 
     logger.info("Scripts extracted to: %s", dest / SCRIPTS_PATH)
     return dest / SCRIPTS_PATH
+
+
+def main(destination: str = ".",
+         log_level: int | str = logging.INFO):
+    logger.setLevel(log_level)
+    if not logger.handlers:
+        logger.addHandler(logging.StreamHandler())
+    fetch_scripts(destination)
