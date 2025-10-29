@@ -316,6 +316,9 @@ The following environment variables are available for tailoring the MedCAT Servi
 - `SERVER_PORT` - the port number used (default: `5000`),
 - `SERVER_WORKERS` - the number of workers serving the Flask app working in parallel (default: `1` ; only used in production server).
 - `SERVER_WORKER_TIMEOUT` - the max timeout (in sec) for receiving response from worker (default: `300` ; only used with production server).
+- `SERVER_GUNICORN_MAX_REQUESTS` - maximum number of requests a worker will process before restarting (default: `1000`),
+- `SERVER_GUNICORN_MAX_REQUESTS_JITTER` - adds randomness to `MAX_REQUESTS` to avoid all workers restarting simultaneously (default: `50`),
+- `SERVER_GUNICORN_EXTRA_ARGS` - any additional Gunicorn CLI arguments you want to pass (default: none). (Example value: "SERVER_GUNICORN_EXTRA_ARGS=--backlog 20")
 
 The following environment variables are available for tailoring the MedCAT Service wrapper:
 
