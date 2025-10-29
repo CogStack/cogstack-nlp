@@ -43,8 +43,6 @@ if [ -z ${SERVER_GUNICORN_MAX_REQUESTS_JITTER+x} ]; then
   echo "SERVER_GUNICORN_MAX_REQUESTS_JITTER is unset -- setting to default (sec): $SERVER_GUNICORN_MAX_REQUESTS_JITTER";
 fi
 
-  ${SERVER_GUNICORN_EXTRA_ARGS:-} \
-
 # Note - SERVER_ACCESS_LOG_FORMAT is unused when worker-class is set to UvicornWorker
 SERVER_ACCESS_LOG_FORMAT="%(t)s [ACCESS] %(h)s \"%(r)s\" %(s)s \"%(f)s\" \"%(a)s\""
 
