@@ -1,10 +1,12 @@
 import sys
 
 
+_DL_SCRIPTS_USAGE = "Usage: python -m medcat download-scripts [DEST] [log_level]"
+
+
 def main(*args: str):
     if not args:
-        print("Usage: python -m medcat download-scripts [DEST] [log_level]",
-              file=sys.stderr)
+        print(_DL_SCRIPTS_USAGE, file=sys.stderr)
         sys.exit(1)
     if len(args) >= 1 and args[0] == "download-scripts":
         from medcat.utils.download_scripts import main
@@ -14,8 +16,7 @@ def main(*args: str):
             kwargs["log_level"] = args[2].upper()
         main(dest, **kwargs)
     else:
-        print("Usage: python -m medcat download-scripts [DEST]",
-              file=sys.stderr)
+        print(_DL_SCRIPTS_USAGE, file=sys.stderr)
         sys.exit(1)
 
 
