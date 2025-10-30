@@ -144,7 +144,7 @@ def main(*in_args: str):
                         help="The URL to download and extract from. "
                              "This is expected to refer to a .zip file "
                              "that has a `medcat-scripts` folder.")
-    parser.add_argument("--overwrite-tag", type=str, default=None,
+    parser.add_argument("--overwrite-tag", '-t', type=str, default=None,
                         help="The tag to use from GitHub")
     parser.add_argument("--log-level", type=str, default='INFO',
                         choices=["DEBUG", "INFO", "WARNING", "ERROR"],
