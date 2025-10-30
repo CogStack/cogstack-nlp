@@ -3,7 +3,7 @@
 It will link the current setup (i.e medcat version) into account and
 subsequently identify and download the medcat-scripts based on the most
 recent applicable tag. So if you've got medcat==2.2.0, it might grab
-medcat-scripts/v2.2.3 for instance.
+medcat/v2.2.3 for instance.
 """
 import importlib.metadata
 import tempfile
@@ -17,6 +17,7 @@ import argparse
 logger = logging.getLogger(__name__)
 
 
+EXPECTED_TAG_PREFIX = 'medcat/v2'
 GITHUB_REPO = "CogStack/cogstack-nlp"
 SCRIPTS_PATH = "medcat-scripts/"
 DOWNLOAD_URL_TEMPLATE = (
@@ -41,7 +42,7 @@ def _find_latest_scripts_tag(major_minor: str) -> str:
     matching = [
         t["name"]
         for t in tags
-        if t["name"].startswith(f"medcat-scripts/v{major_minor}.")
+        if t["name"].startswith(f"{EXPECTED_TAG_PREFIX}{major_minor}.")
         or t["name"].startswith(f"v{major_minor}.")
     ]
     logger.debug("Found %d matching (out of a total of %d): %s",
