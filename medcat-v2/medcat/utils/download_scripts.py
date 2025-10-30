@@ -70,13 +70,12 @@ def _determine_url(overwrite_url: str | None) -> str:
     return zip_url
 
 
-def _download_zip(zip_url: str) -> Path:
+def _download_zip(zip_url: str, tmp: tempfile._TemporaryFileWrapper):
     with requests.get(zip_url, stream=True, timeout=30) as r:
         r.raise_for_status()
-        with tempfile.NamedTemporaryFile(delete=False) as tmp:
-            for chunk in r.iter_content(chunk_size=8192):
-                tmp.write(chunk)
-            return Path(tmp.name)
+        for chunk in r.iter_content(chunk_size=8192):
+            tmp.write(chunk)
+        tmp.flush()
 
 
 def _extract_zip(dest: Path, zip_path: Path):
@@ -121,8 +120,9 @@ def fetch_scripts(destination: str | Path = ".",
     dest.mkdir(parents=True, exist_ok=True)
 
     zip_url = _determine_url(overwrite_url)
-    zip_path = _download_zip(zip_url)
-    _extract_zip(dest, zip_path)
+    with tempfile.NamedTemporaryFile() as tmp:
+        _download_zip(zip_url, tmp)
+        _extract_zip(dest, Path(tmp.name))
     return dest
 
 
