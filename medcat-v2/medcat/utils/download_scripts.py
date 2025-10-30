@@ -128,7 +128,7 @@ def fetch_scripts(destination: str | Path = ".",
 
 def main(*in_args: str):
     parser = argparse.ArgumentParser(
-        prog="python -m medcat",
+        prog="python -m medcat download-scripts",
         description="Download medcat-scripts"
     )
     parser.add_argument("destination", type=str, default=".",
