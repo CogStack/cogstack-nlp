@@ -54,20 +54,7 @@ def _find_latest_scripts_tag(major_minor: str) -> str:
     return matching[0]
 
 
-def fetch_scripts(destination: str | Path = ".",
-                  overwrite_url: str | None = None) -> Path:
-    """Download the latest compatible medcat-scripts folder into.
-
-    Args:
-        destination (str | Path): The destination path. Defaults to ".".
-        overwrite_urrl (str | None): The overwirte URL. Defaults to None.
-
-    Returns:
-        Path: The path of the scripts.
-    """
-    dest = Path(destination).expanduser().resolve()
-    dest.mkdir(parents=True, exist_ok=True)
-
+def _determine_url(overwrite_url: str | None) -> str:
     version = _get_medcat_version()
     if overwrite_url:
         logger.info("Using the overwrite URL instead: %s", overwrite_url)
@@ -80,13 +67,19 @@ def fetch_scripts(destination: str | Path = ".",
 
         # Download the GitHub auto-generated zipball
         zip_url = DOWNLOAD_URL_TEMPLATE.format(tag=tag)
+    return zip_url
+
+
+def _download_zip(zip_url: str) -> Path:
     with requests.get(zip_url, stream=True, timeout=30) as r:
         r.raise_for_status()
         with tempfile.NamedTemporaryFile(delete=False) as tmp:
             for chunk in r.iter_content(chunk_size=8192):
                 tmp.write(chunk)
-            zip_path = Path(tmp.name)
+            return Path(tmp.name)
 
+
+def _extract_zip(dest: Path, zip_path: Path):
     # Extract only medcat-scripts/ from the archive
     wrote_files_num = 0
     total_files = 0
@@ -111,6 +104,25 @@ def fetch_scripts(destination: str | Path = ".",
             "The folder doesn't seem to exist in the provided archive.",
             SCRIPTS_PATH)
     logger.info("Scripts extracted to: %s", dest)
+
+
+def fetch_scripts(destination: str | Path = ".",
+                  overwrite_url: str | None = None) -> Path:
+    """Download the latest compatible medcat-scripts folder into.
+
+    Args:
+        destination (str | Path): The destination path. Defaults to ".".
+        overwrite_urrl (str | None): The overwirte URL. Defaults to None.
+
+    Returns:
+        Path: The path of the scripts.
+    """
+    dest = Path(destination).expanduser().resolve()
+    dest.mkdir(parents=True, exist_ok=True)
+
+    zip_url = _determine_url(overwrite_url)
+    zip_path = _download_zip(zip_url)
+    _extract_zip(dest, zip_path)
     return dest
 
 
