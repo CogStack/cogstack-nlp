@@ -20,7 +20,7 @@ def main(*args: str):
     if not args or args[0] not in _COMMANDS:
         print(_get_usage(), file=sys.stderr)
         sys.exit(1)
-    _COMMANDS.get(args[0])(*args[1:])
+    _COMMANDS[args[0]](*args[1:])
 
 
 if __name__ == "__main__":
