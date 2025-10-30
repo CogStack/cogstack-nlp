@@ -88,8 +88,11 @@ def fetch_scripts(destination: str | Path = ".",
             zip_path = Path(tmp.name)
 
     # Extract only medcat-scripts/ from the archive
+    wrote_files_num = 0
+    total_files = 0
     with zipfile.ZipFile(zip_path) as zf:
         for m in zf.namelist():
+            total_files += 1
             if f"/{SCRIPTS_PATH}" not in m:
                 continue
             # skip repo-hash prefix
@@ -99,7 +102,9 @@ def fetch_scripts(destination: str | Path = ".",
             else:
                 with open(target, "wb") as f:
                     f.write(zf.read(m))
+                wrote_files_num += 1
 
+    logger.debug("Wrote %d / %d files", wrote_files_num, total_files)
     logger.info("Scripts extracted to: %s", dest)
     return dest
 
