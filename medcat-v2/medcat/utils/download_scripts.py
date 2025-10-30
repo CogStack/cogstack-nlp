@@ -105,6 +105,10 @@ def fetch_scripts(destination: str | Path = ".",
                 wrote_files_num += 1
 
     logger.debug("Wrote %d / %d files", wrote_files_num, total_files)
+    if not wrote_files_num:
+        logger.warning("Was unable to extract any files from %s. "
+                       "The folder doesn't seem to exist in the provided zip.",
+                       SCRIPTS_PATH)
     logger.info("Scripts extracted to: %s", dest)
     return dest
 
