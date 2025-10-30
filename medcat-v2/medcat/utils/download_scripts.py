@@ -131,7 +131,7 @@ def main(*in_args: str):
         prog="python -m medcat download-scripts",
         description="Download medcat-scripts"
     )
-    parser.add_argument("destination", type=str, default=".",
+    parser.add_argument("destination", type=str, default=".", nargs='?',
                         help="The destination folder for the scripts")
     parser.add_argument("--overwrite-url", type=str, default=None,
                         help="The URL to download and extract from. "
