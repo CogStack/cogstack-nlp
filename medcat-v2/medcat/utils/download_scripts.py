@@ -11,6 +11,7 @@ import zipfile
 from pathlib import Path
 import requests
 import logging
+import argparse
 
 
 logger = logging.getLogger(__name__)
@@ -27,7 +28,9 @@ def _get_medcat_version() -> str:
     """Return the installed MedCAT version as 'major.minor'."""
     version = importlib.metadata.version("medcat")
     major, minor, *_ = version.split(".")
-    return f"{major}.{minor}"
+    minor_version = f"{major}.{minor}"
+    logger.debug("Using medcat minor version of %s", minor_version)
+    return minor_version
 
 
 def _find_latest_scripts_tag(major_minor: str) -> str:
@@ -41,6 +44,8 @@ def _find_latest_scripts_tag(major_minor: str) -> str:
         if t["name"].startswith(f"medcat-scripts/v{major_minor}.")
         or t["name"].startswith(f"v{major_minor}.")
     ]
+    logger.debug("Found %d matching (out of a total of %d): %s",
+                 len(matching), len(tags), matching)
     if not matching:
         raise RuntimeError(
             f"No medcat-scripts tags found for MedCAT {major_minor}.x")
@@ -49,11 +54,13 @@ def _find_latest_scripts_tag(major_minor: str) -> str:
     return matching[0]
 
 
-def fetch_scripts(destination: str | Path = ".") -> Path:
+def fetch_scripts(destination: str | Path = ".",
+                  overwrite_url: str | None = None) -> Path:
     """Download the latest compatible medcat-scripts folder into.
 
     Args:
         destination (str | Path): The destination path. Defaults to ".".
+        overwrite_urrl (str | None): The overwirte URL. Defaults to None.
 
     Returns:
         Path: The path of the scripts.
@@ -62,13 +69,17 @@ def fetch_scripts(destination: str | Path = ".") -> Path:
     dest.mkdir(parents=True, exist_ok=True)
 
     version = _get_medcat_version()
-    tag = _find_latest_scripts_tag(version)
+    if overwrite_url:
+        logger.info("Using the overwrite URL instead: %s", overwrite_url)
+        zip_url = overwrite_url
+    else:
+        tag = _find_latest_scripts_tag(version)
 
-    logger.info("Fetching scripts for MedCAT %s → tag %s}",
-                version, tag)
+        logger.info("Fetching scripts for MedCAT %s → tag %s}",
+                    version, tag)
 
-    # Download the GitHub auto-generated zipball
-    zip_url = DOWNLOAD_URL_TEMPLATE.format(tag=tag)
+        # Download the GitHub auto-generated zipball
+        zip_url = DOWNLOAD_URL_TEMPLATE.format(tag=tag)
     with requests.get(zip_url, stream=True, timeout=30) as r:
         r.raise_for_status()
         with tempfile.NamedTemporaryFile(delete=False) as tmp:
@@ -93,9 +104,23 @@ def fetch_scripts(destination: str | Path = ".") -> Path:
     return dest
 
 
-def main(destination: str = ".",
-         log_level: int | str = logging.INFO):
+def main(*in_args: str):
+    parser = argparse.ArgumentParser(
+        prog="python -m medcat",
+        description="Download medcat-scripts"
+    )
+    parser.add_argument("destination", type=str, default=".",
+                        help="The destination folder for the scripts")
+    parser.add_argument("--overwrite-url", type=str, default=None,
+                        help="The URL to download and extract from. "
+                             "This is expected to refer to a .zip file "
+                             "that has a `medcat-scripts` folder.")
+    parser.add_argument("--log-level", type=str, default='INFO',
+                        choices=["DEBUG", "INFO", "WARNING", "ERROR"],
+                        help="The log level for fetching")
+    args = parser.parse_args(in_args)
+    log_level = args.log_level
     logger.setLevel(log_level)
     if not logger.handlers:
         logger.addHandler(logging.StreamHandler())
-    fetch_scripts(destination)
+    fetch_scripts(args.destination, args.overwrite_url)
