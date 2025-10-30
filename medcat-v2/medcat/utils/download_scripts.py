@@ -17,7 +17,7 @@ import argparse
 logger = logging.getLogger(__name__)
 
 
-EXPECTED_TAG_PREFIX = 'medcat/v2'
+EXPECTED_TAG_PREFIX = 'medcat/v'
 GITHUB_REPO = "CogStack/cogstack-nlp"
 SCRIPTS_PATH = "medcat-scripts/"
 DOWNLOAD_URL_TEMPLATE = (
@@ -43,7 +43,6 @@ def _find_latest_scripts_tag(major_minor: str) -> str:
         t["name"]
         for t in tags
         if t["name"].startswith(f"{EXPECTED_TAG_PREFIX}{major_minor}.")
-        or t["name"].startswith(f"v{major_minor}.")
     ]
     logger.debug("Found %d matching (out of a total of %d): %s",
                  len(matching), len(tags), matching)
