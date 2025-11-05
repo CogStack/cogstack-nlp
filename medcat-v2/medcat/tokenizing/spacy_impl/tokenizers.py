@@ -103,14 +103,14 @@ class SpacyTokenizer(BaseTokenizer):
     # saveable tokenizer
 
     def save_internals_to(self, folder_path: str) -> str:
-        subfolder = os.path.join(
-            folder_path, f"{TOKENIZER_PREFIX}{self._spacy_model_name}")
+        subfolder_only = f"{TOKENIZER_PREFIX}{self._spacy_model_name}"
+        subfolder = os.path.join(folder_path, subfolder_only)
         if os.path.exists(subfolder):
             # NOTE: always overwrite
             shutil.rmtree(subfolder)
         logger.debug("Saving spacy model to '%s'", subfolder)
         self._nlp.to_disk(subfolder)
-        return subfolder
+        return subfolder_only
 
     def load_internals_from(self, folder_path: str) -> bool:
         return os.path.exists(folder_path)
