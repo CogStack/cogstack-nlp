@@ -127,9 +127,8 @@ However, they have been split into `cogstack-es` which lives [here](https://gith
 
 ## MedCATtrainer
 
-MedCATtrainer has been modified to work with v2 in [this PR](https://github.com/CogStack/MedCATtrainer/pull/253).
-However, as of writing, this change has not yet been merged in or been released.
-The v2-supporting release will most likely be released as **v3** on the trainer side.
+MedCATtrainer has been modified to work with v2 in [here](https://github.com/CogStack/cogstack-nlp/tree/main/medcat-trainer).
+The v2-supporting releases are those from **v3** on the trainer side.
 
 ## Feedback welcome!
 
