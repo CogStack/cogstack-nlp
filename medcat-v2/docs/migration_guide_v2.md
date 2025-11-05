@@ -122,9 +122,7 @@ The v2 tutorials are available [here](https://github.com/CogStack/cogstack-nlp/t
 ## Updated `working_with_cogstack` scripts
 
 The `working_with_cogstack` scripts have also been upgraded to support v2.
-The changes are currently in [this PR](https://github.com/CogStack/working_with_cogstack/pull/20).
-They have not yet been merged in to the `main` branch but will be in the near future.
-At that point, there will probably be a separate branch to keep track of v1-specific scripts.
+However, they have been split into `cogstack-es` which lives [here](https://github.com/CogStack/cogstack-nlp/tree/main/cogstack-es), but notably also available on PyPI (i.e `pip install "cogstack-es[ES9]"`); and `medcat-scripts` availble [here](https://github.com/CogStack/cogstack-nlp/tree/main/medcat-scripts).
 
 ## MedCATtrainer
 
