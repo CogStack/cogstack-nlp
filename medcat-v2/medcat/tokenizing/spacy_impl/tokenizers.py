@@ -58,7 +58,8 @@ class SpacyTokenizer(BaseTokenizer):
             ensure_spacy_model(self._spacy_model_name)
             spacy_model_name = self._spacy_model_name
         if stopwords is not None:
-            lang_str = os.path.basename(spacy_model_name).split('_', 1)[0]
+            lang_str = os.path.basename(spacy_model_name).removeprefix(
+                TOKENIZER_PREFIX).split('_', 1)[0]
             cls = spacy.util.get_lang_class(lang_str)
             cls.Defaults.stop_words = set(stopwords)
         self._nlp = spacy.load(spacy_model_name,
