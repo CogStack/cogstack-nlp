@@ -123,7 +123,7 @@ The v2 tutorials are available [here](https://github.com/CogStack/cogstack-nlp/t
 ## Updated `working_with_cogstack` scripts
 
 The `working_with_cogstack` scripts have also been upgraded to support v2.
-However, they have been split into `cogstack-es` which lives [here](https://github.com/CogStack/cogstack-nlp/tree/main/cogstack-es), but notably also available on PyPI (i.e `pip install "cogstack-es[ES9]"`); and `medcat-scripts` availble [here](https://github.com/CogStack/cogstack-nlp/tree/main/medcat-scripts).
+However, they have been split into `cogstack-es` which lives [here](https://github.com/CogStack/cogstack-nlp/tree/main/cogstack-es), but notably also available on PyPI (i.e `pip install "cogstack-es[ES9]"`); and `medcat-scripts` available [here](https://github.com/CogStack/cogstack-nlp/tree/main/medcat-scripts).
 
 ## MedCATtrainer
 
@@ -179,12 +179,12 @@ A: Training now uses a dedicated `medcat.trainer.Trainer` class. See tutorials a
 
 **Q: Are v1 `working_with_cogstack` scripts still supported?**
 
-A: No. Many will break due to internal changes. Please refer to the new scripts in the [relevant branch](https://github.com/CogStack/working_with_cogstack/pull/20).
+A: No. You should use [medcat scripts](https://github.com/CogStack/cogstack-nlp/tree/main/medcat-scripts) and [cogstack-es](https://github.com/CogStack/cogstack-nlp/tree/main/cogstack-es) by doing `python -m medcat download-scripts` and `pip install "cogstack-es[ES9]"`.
 
 
 **Q: Does MedCATtrainer work out of the box for v2?**
 
-A: No. While the [changes have been ported](https://github.com/CogStack/MedCATtrainer/pull/253), there is currently no release for these changes and it is unlikely to already be spun up yet. But it will be soon.
+A: Yes. Trainer versions from v3 onwards will work natively with v2.
 
 
 **Q: Does `medcat-service` work for serving a model?**
