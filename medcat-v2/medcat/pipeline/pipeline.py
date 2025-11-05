@@ -79,7 +79,7 @@ class Pipeline:
         #       but it should be non-None otherwise
         self.vocab: Vocab = vocab  # type: ignore
         self.config = self.cdb.config
-        self._tokenizer = self._init_tokenizer()
+        self._tokenizer = self._init_tokenizer(model_load_path)
         self._components: list[CoreComponent] = []
         self._addons: list[AddonComponent] = []
         self._init_components(model_load_path, old_pipe, addon_config_dict)
@@ -95,8 +95,12 @@ class Pipeline:
         tag_comp = self.get_component(CoreComponentType.tagging)
         return DelegatingTokenizer(self.tokenizer, [tag_comp])
 
-    def _init_tokenizer(self) -> BaseTokenizer:
+    def _init_tokenizer(self, model_load_path: Optional[str]) -> BaseTokenizer:
         nlp_cnf = self.config.general.nlp
+        if model_load_path:
+            # NOTE: this should update the load path to the correct one
+            nlp_cnf.modelname = os.path.join(
+                model_load_path, os.path.basename(nlp_cnf.modelname))
         try:
             return create_tokenizer(nlp_cnf.provider, self.config)
         except TypeError as type_error:
