@@ -129,8 +129,9 @@ class ConfigMergeTests(unittest.TestCase):
     def test_can_merge_config(self):
         model = cat.CAT.load_model_pack(
             EXAMPLE_MODEL_PACK_ZIP, config_dict=self.model_dict)
-        self.assertEqual(
-            model.config.general.nlp.modelname, self.spacy_model_name)
+        # NOTE: this is converted to a (non-existent) path
+        self.assertIn(
+            self.spacy_model_name, model.config.general.nlp.modelname)
 
 
 class OntologiesMapTests(TrainedModelTests):
