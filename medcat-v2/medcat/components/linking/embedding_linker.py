@@ -14,7 +14,7 @@ import math
 from medcat.utils.import_utils import ensure_optional_extras_installed
 import medcat
 
-# NOTE: the below needs to be fore torch/transformers imports
+# NOTE: the below needs to be before torch/transformers imports
 _EXTRA_NAME = "embed-linker"
 ensure_optional_extras_installed(medcat.__name__, _EXTRA_NAME)
 
