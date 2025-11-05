@@ -919,7 +919,9 @@ class CATWithDocAddonSpacyTests(CATWithDocAddonTests):
         cls.saved_model_path = cls.cat.save_model_pack(
             cls._save_folder.name, make_archive=False)
         # NOTE: that has changed config
-        cls.saved_spacy_path = cls.cat.config.general.nlp.modelname
+        cls.saved_spacy_path = os.path.join(
+            cls.saved_model_path,
+            cls.cat.config.general.nlp.modelname)
 
     @classmethod
     def tearDownClass(cls):
