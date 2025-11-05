@@ -70,6 +70,7 @@ Here's a list of the additional features you can opt for with what they're used 
 | Transformer NER     | `deid`       | Enables transformer-based NER, primarily used for de-identification models |
 | Relation Extraction | `rel-cat`    | Adds support for extracting relations between entities                     |
 | Dictionary NER      | `dict-ner`   | Example dictionary NER module (experimental and rarely needed)             |
+| Embedding lonker    | `embed-linker` | Linker that uses more sophisiticated context embeddings for linking      |
 
 ## Summary of Changes
 
