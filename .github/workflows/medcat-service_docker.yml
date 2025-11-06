@@ -28,7 +28,7 @@ jobs:
 
       - name: 🧹 Free up disk space
         run: |
-          echo "Remove largs / unnecessary packages / tools"
+          df -h # Optional: Check space before build
           # Remove large, unnecessary packages/tools
           sudo rm -rf /usr/share/dotnet
           sudo rm -rf /usr/local/lib/android
@@ -106,7 +106,10 @@ jobs:
 
       - name: Clean Docker to free up space
         # NOTE: otherwise the runner tends to run out of disk space roughly 75% of the time
-        run: docker system prune -af
+        run: |
+          df -h # Optional: Check space before build
+          docker system prune -af
+          df -h # Optional: Check space before build
 
       - name: Build and push Docker Jupyter singleuser image with GPU support
         id: docker_build_gpu
