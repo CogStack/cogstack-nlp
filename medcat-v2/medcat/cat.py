@@ -910,11 +910,18 @@ class CAT(AbstractSerialisable):
         Returns:
             Union[str, ModelCard]: The model card.
         """
-        from medcat.components.addons.meta_cat import MetaCATAddon
-        met_cat_model_cards = [
-            mc.mc.get_model_card(True) for mc in
-            self.get_addons_of_type(MetaCATAddon)
-        ]
+        has_meta_cat = True
+        try:
+            from medcat.components.addons.meta_cat import MetaCATAddon
+        except MissingDependenciesError:
+            has_meta_cat = False
+        if has_meta_cat:
+            met_cat_model_cards = [
+                mc.mc.get_model_card(True) for mc in
+                self.get_addons_of_type(MetaCATAddon)
+            ]
+        else:
+            met_cat_model_cards: list[dict] = []
         cdb_info = self.cdb.get_basic_info()
         model_card: ModelCard = {
             'Model ID': self.config.meta.hash,
