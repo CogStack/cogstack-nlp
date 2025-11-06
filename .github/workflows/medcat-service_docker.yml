@@ -90,6 +90,10 @@ jobs:
           build-args: |
             REINSTALL_CORE_FROM_LOCAL=true
 
+      - name: Clean Docker to free up space
+        # NOTE: otherwise the runner tends to run out of disk space roughly 75% of the time
+        run: docker system prune -af
+
       - name: Build and push Docker Jupyter singleuser image with GPU support
         id: docker_build_gpu
         uses: docker/build-push-action@v6
