@@ -26,6 +26,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      - name: 🧹 Free up disk space
+        run: |
+          df -h # Optional: Check space before build
+          # Remove large, unnecessary packages/tools
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /usr/share/swift
+          sudo rm -rf /usr/share/rust
+          sudo rm -rf /usr/share/powershell
+
+          # Remove cached tools and files
+          sudo apt-get clean
+          df -h # Optional: Check space before build
+
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
@@ -115,6 +129,7 @@ jobs:
       matrix:
         variant: [v1, v2, DeID]
     steps:
+
       - name: Check out code
         uses: actions/checkout@v5
 

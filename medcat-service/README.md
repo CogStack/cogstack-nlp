@@ -328,6 +328,7 @@ The following environment variables are available for tailoring the MedCAT Servi
 - `APP_MODEL_META_PATH_LIST` - the list of paths to meta-annotation models, each separated by `:` character (optional),
 - `APP_BULK_NPROC` - the number of threads used in bulk processing (default: `8`),
 - `APP_MEDCAT_MODEL_PACK` -  MedCAT Model Pack path, if this parameter has a value IT WILL BE LOADED FIRST OVER EVERYTHING ELSE (CDB, Vocab, MetaCATs, etc.) declared above.
+- `APP_ENABLE_METRICS` - Enable prometheus metrics collection served on the path /metrics
 
 ### Shared Memory (`DOCKER_SHM_SIZE`)
 

@@ -6,9 +6,9 @@ This project is responsible for logging in and performing a search for Elasticse
 
 This package is distributed through PyPI and can be installed using one of:
 ```
-pip install cogstack-es[ES9]  # For Elasticsearch 9
-pip install cogstack-es[ES8]  # For Elasticsearch 8
-pip install cogstack-es[OS]  # For Opensearch
+pip install "cogstack-es[ES9]"  # For Elasticsearch 9
+pip install "cogstack-es[ES8]"  # For Elasticsearch 8
+pip install "cogstack-es[OS]"  # For Opensearch
 ```
 
 PS:

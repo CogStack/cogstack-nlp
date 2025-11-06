@@ -5,15 +5,24 @@ from medcat.tokenizing.tokens import MutableEntity, MutableDocument
 from medcat.tokenizing.tokenizers import BaseTokenizer
 from typing import Optional, Iterator, Set
 from medcat.vocab import Vocab
-from torch import Tensor
-from transformers import AutoTokenizer, AutoModel
 from medcat.utils.postprocessing import create_main_ann
 from tqdm import tqdm
 from collections import defaultdict
-import torch.nn.functional as F
-import torch
 import logging
 import math
+
+from medcat.utils.import_utils import ensure_optional_extras_installed
+import medcat
+
+# NOTE: the below needs to be before torch/transformers imports
+_EXTRA_NAME = "embed-linker"
+ensure_optional_extras_installed(medcat.__name__, _EXTRA_NAME)
+
+# avoid linting issues due to above check
+from torch import Tensor  # noqa: E402
+from transformers import AutoTokenizer, AutoModel  # noqa: E402
+import torch.nn.functional as F  # noqa: E402
+import torch  # noqa: E402
 
 logger = logging.getLogger(__name__)
 

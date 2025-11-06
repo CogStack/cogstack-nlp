@@ -200,11 +200,3 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: medcat-v2/dist
-
-      - name: Create tag for medcat-scripts
-        run: |
-          git tag medcat-scritps/v${{ needs.build.outputs.version_only }}
-          git push origin medcat-scritps/v${{ needs.build.outputs.version_only }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-

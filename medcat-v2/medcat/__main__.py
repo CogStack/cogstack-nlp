@@ -1,24 +1,26 @@
 import sys
+from medcat.utils.download_scripts import main as __download_scripts
 
 
-_DL_SCRIPTS_USAGE = (
-    "Usage: python -m medcat download-scripts [DEST] [log_level]")
+_COMMANDS = {
+    "download-scripts": __download_scripts
+}
+
+
+def _get_usage() -> str:
+    header = "Available commands:\n"
+    base = "python -m medcat "
+    args = " --help"
+    commands = [base + cmd_name + args
+                for cmd_name in _COMMANDS]
+    return header + "\n".join(commands)
 
 
 def main(*args: str):
-    if not args:
-        print(_DL_SCRIPTS_USAGE, file=sys.stderr)
+    if not args or args[0] not in _COMMANDS:
+        print(_get_usage(), file=sys.stderr)
         sys.exit(1)
-    if len(args) >= 1 and args[0] == "download-scripts":
-        from medcat.utils.download_scripts import main
-        dest = args[1] if len(args) > 1 else "."
-        kwargs = {}
-        if len(args) > 2:
-            kwargs["log_level"] = args[2].upper()
-        main(dest, **kwargs)
-    else:
-        print(_DL_SCRIPTS_USAGE, file=sys.stderr)
-        sys.exit(1)
+    _COMMANDS[args[0]](*args[1:])
 
 
 if __name__ == "__main__":
