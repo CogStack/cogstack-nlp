@@ -26,6 +26,7 @@ jobs:
 
       - name: 🧹 Free up disk space
         run: |
+          echo "Remove largs / unnecessary packages / tools"
           # Remove large, unnecessary packages/tools
           sudo rm -rf /usr/share/dotnet
           sudo rm -rf /usr/local/lib/android
