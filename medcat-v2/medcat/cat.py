@@ -915,13 +915,14 @@ class CAT(AbstractSerialisable):
             from medcat.components.addons.meta_cat import MetaCATAddon
         except MissingDependenciesError:
             has_meta_cat = False
+        met_cat_model_cards: list[dict]
         if has_meta_cat:
             met_cat_model_cards = [
                 mc.mc.get_model_card(True) for mc in
                 self.get_addons_of_type(MetaCATAddon)
             ]
         else:
-            met_cat_model_cards: list[dict] = []
+            met_cat_model_cards = []
         cdb_info = self.cdb.get_basic_info()
         model_card: ModelCard = {
             'Model ID': self.config.meta.hash,
