@@ -23,6 +23,20 @@ jobs:
     outputs:
       image_version: ${{ steps.meta.outputs.version }}
     steps:
+
+      - name: 🧹 Free up disk space
+        run: |
+          # Remove large, unnecessary packages/tools
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /usr/share/swift
+          sudo rm -rf /usr/share/rust
+          sudo rm -rf /usr/share/powershell
+
+          # Remove cached tools and files
+          sudo apt-get clean
+          df -h # Optional: Check space before build
+
       - name: Checkout
         uses: actions/checkout@v5
 
@@ -119,18 +133,6 @@ jobs:
       matrix:
         variant: [v1, v2, DeID]
     steps:
-      - name: 🧹 Free up disk space
-        run: |
-          # Remove large, unnecessary packages/tools
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /usr/local/lib/android
-          sudo rm -rf /usr/share/swift
-          sudo rm -rf /usr/share/rust
-          sudo rm -rf /usr/share/powershell
-
-          # Remove cached tools and files
-          sudo apt-get clean
-          df -h # Optional: Check space before build
 
       - name: Check out code
         uses: actions/checkout@v5
