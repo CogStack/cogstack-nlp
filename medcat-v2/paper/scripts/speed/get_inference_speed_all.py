@@ -34,7 +34,7 @@ def main():
             RunType.WARM: ["-w", "1"],
         },
         cnf=RunConfig(repeats=args.repeats,))
-    dumped = {run_type: model.model_dump()
+    dumped = {run_type.name: model.model_dump()
               for run_type, model in results.items()}
     if args.save_json:
         print("Saving to", args.save_json)
