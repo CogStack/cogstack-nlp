@@ -89,8 +89,13 @@ def main():
     parser.add_argument("model_pack_path",
                         help="Model pack path",
                         type=str)
+    parser.add_argument("--repeats",
+                        help="Number of repeats to use",
+                        type=int, default=20)
     args = parser.parse_args()
-    results = do_experiment(args.model_pack_path, RunConfig())
+    results = do_experiment(
+        args.model_pack_path,
+        RunConfig(repeats=args.repeats,))
     print("Overall:")
     pprint(results.model_dump())
 
