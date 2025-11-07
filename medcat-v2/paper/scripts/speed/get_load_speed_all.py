@@ -1,96 +1,10 @@
-from pydantic import BaseModel, ConfigDict
-# import runpy
-import subprocess
-import os
-import sys
 import argparse
 from pprint import pprint
-from enum import Enum, auto
 import json
+import os
 
 import get_load_speed
-
-
-class RunConfig(BaseModel):
-    repeats: int = 20
-    # how many times to perform for warmup
-    warmup_count: int = 1
-
-
-class RunResults(BaseModel):
-    all_times: list[float]
-    mean: float
-    min: float
-    max: float
-
-    model_config = ConfigDict(frozen=True)
-
-    @classmethod
-    def from_times(cls, times: list[float]) -> "RunResults":
-        return cls(
-            all_times=times,
-            mean=sum(times) / len(times),
-            min=min(times),
-            max=max(times),
-        )
-
-
-class OverallResults(BaseModel):
-    startup: RunResults
-    cold: RunResults
-    warm: RunResults
-
-
-class RunType(Enum):
-    STARTUP = auto()
-    COLD = auto()
-    WARM = auto()
-
-
-def _single_experiment(model_path: str,
-                       cnf: RunConfig,
-                       run_type: RunType,
-                       ) -> RunResults:
-    target_script = os.path.join(
-        os.path.dirname(__file__), get_load_speed.__name__ + ".py")
-    sys_argv = [sys.executable, target_script, model_path,]
-    if run_type is RunType.STARTUP:
-        sys_argv.extend(["-w", "0", "-s"])
-    elif run_type is RunType.COLD:
-        sys_argv.extend(["-w", "0"])
-    elif run_type is RunType.WARM:
-        sys_argv.extend(["-w", str(cnf.warmup_count)])
-    else:
-        raise ValueError("Unknown run type")
-    all_took: list[float] = []
-    for _ in range(cnf.repeats):
-        run_out = subprocess.run(sys_argv, capture_output=True)
-        try:
-            took_time = float(run_out.stdout)
-        except ValueError as err:
-            raise ValueError(
-                f"Unable to get run time from for {run_type}:\n"
-                f"'{run_out.stdout.decode()}'\n"
-                f"\nError output was:\n"
-                f"{run_out.stderr.decode()}\n"
-                f"\nWas running the command:\n {' '.join(sys_argv)}"
-                ) from err
-        all_took.append(took_time)
-    return RunResults.from_times(all_took)
-
-
-def do_experiment(
-        model_path: str,
-        cnf: RunConfig = RunConfig(),
-        ) -> OverallResults:
-    return OverallResults(
-        startup=_single_experiment(
-            model_path, cnf, RunType.STARTUP),
-        cold=_single_experiment(
-            model_path, cnf, RunType.COLD),
-        warm=_single_experiment(
-            model_path, cnf, RunType.WARM)
-    )
+from common4subproc import do_experiment, RunType, RunConfig
 
 
 def main():
@@ -107,9 +21,17 @@ def main():
                         help="The json path to save the results to",
                         type=str, default=None)
     args = parser.parse_args()
+    target_script = os.path.join(
+        os.path.dirname(__file__), get_load_speed.__name__ + ".py")
     results = do_experiment(
-        args.model_pack_path,
-        RunConfig(repeats=args.repeats,))
+        target_script,
+        [args.model_pack_path,],
+        run_type_map={
+            RunType.STARTUP: ["-w", "0", "-s"],
+            RunType.COLD: ["-w", "0"],
+            RunType.WARM: [],
+        },
+        cnf=RunConfig(repeats=args.repeats,))
     dumped = results.model_dump()
     if args.save_json:
         print("Saving to", args.save_json)
