@@ -28,12 +28,6 @@ class RunResults(BaseModel):
         )
 
 
-class OverallResults(BaseModel):
-    startup: RunResults
-    cold: RunResults
-    warm: RunResults
-
-
 class RunType(Enum):
     STARTUP = auto()
     COLD = auto()
@@ -71,15 +65,10 @@ def do_experiment(
         target_args: list[str],
         run_type_map: dict[RunType, list[str]],
         cnf: RunConfig = RunConfig(),
-        ) -> OverallResults:
-    return OverallResults(
-        startup=_single_experiment(
-            target_script, target_args, cnf, RunType.STARTUP,
-            run_type_map=run_type_map),
-        cold=_single_experiment(
-            target_script, target_args, cnf, RunType.COLD,
-            run_type_map=run_type_map),
-        warm=_single_experiment(
-            target_script, target_args, cnf, RunType.WARM,
+        ) -> dict[RunType, RunResults]:
+    return {
+        run_type: _single_experiment(
+            target_script, target_args, cnf, run_type,
             run_type_map=run_type_map)
-    )
+        for run_type in run_type_map
+    }
