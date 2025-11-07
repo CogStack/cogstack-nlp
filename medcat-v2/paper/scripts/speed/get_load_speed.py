@@ -1,13 +1,7 @@
-
-import time
-import cProfile
-import pstats
 import argparse
 import logging
-import io
-import timeit
-OVERALL_START_TIME = time.perf_counter()
-from medcat.cat import CAT  # noqa
+
+from common import perform_work
 
 
 logger = logging.getLogger(__name__)
@@ -39,7 +33,8 @@ def main():
                         type=int, default=1)
     args = parser.parse_args()
     took_time = perform_work(
-        args.model_pack_path,
+        setup=["from medcat.cat import CAT",],
+        worker=[f"""CAT.load_model_pack("{args.model_pack_path}")"""],
         warmup=args.warmup,
         startup=args.startup,
         verbose=args.verbose,
@@ -48,75 +43,6 @@ def main():
     )
     print(took_time)
     return took_time
-
-
-def perform_work(model_pack_path: str,
-                 warmup: int,
-                 startup: bool,
-                 verbose: bool,
-                 profiling: bool,
-                 lines_in_profile: int,
-                 ) -> float:
-    sh = logging.StreamHandler()
-    logger.addHandler(sh)
-    if verbose:
-        logger.setLevel(logging.DEBUG)
-    else:
-        logger.setLevel(logging.CRITICAL)
-    # NOTE: to make sure all the imports are done and so on
-    if warmup > 0 and startup:
-        raise ValueError("Timing warmed up from startup doesn't make sense")
-    start_time = time.perf_counter()
-    timed = timeit.repeat(
-        f"""
-load_once("{model_pack_path}", False, 0)
-        """,
-        setup=f"""
-from get_load_speed import load_once, logger
-for cur_warmup in range({warmup}, {profiling}, {lines_in_profile}):
-    logger.debug("Warmup number %d ...", cur_warmup)
-    load_once("{model_pack_path}", False, 0)
-        """,
-        repeat=1, number=1
-    )
-    took_time = timed[0]
-    if startup:
-        logger.info("Adding startup time of %fs to account for imports",
-                    start_time - OVERALL_START_TIME)
-        took_time += start_time - OVERALL_START_TIME
-    logger.info("Took a total of %ss", took_time)
-    # NOTE: print for any time output
-    # NOTE: no units for easy automation
-    return took_time
-
-
-def _get_stats_str(profile: cProfile.Profile, lines_in_profile: int,
-                   stat_type: str) -> str:
-    string_io = io.StringIO()
-    stats = pstats.Stats(profile, stream=string_io)
-    stats.sort_stats(stat_type).print_stats(lines_in_profile)
-    return string_io.getvalue()
-
-
-def load_once(model_path: str, do_profiling: bool,
-              lines_in_profile: int):
-    if do_profiling:
-        profile = cProfile.Profile()
-
-        profile.enable()
-
-    CAT.load_model_pack(model_path)
-
-    if do_profiling:
-        profile.disable()
-
-        # NOTE: for logging
-        tot_stats = _get_stats_str(profile, lines_in_profile, "tottime")
-        logger.info("TOTtime for top %d", lines_in_profile)
-        logger.info(tot_stats)
-        cum_stats = _get_stats_str(profile, lines_in_profile, "cumtime")
-        logger.info("CUMtime for top %d", lines_in_profile)
-        logger.info(cum_stats)
 
 
 if __name__ == "__main__":
