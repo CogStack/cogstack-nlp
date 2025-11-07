@@ -5,6 +5,7 @@ import pstats
 import argparse
 import logging
 import io
+import timeit
 OVERALL_START_TIME = time.perf_counter()
 from medcat.cat import CAT  # noqa
 
@@ -65,17 +66,24 @@ def perform_work(model_pack_path: str,
     # NOTE: to make sure all the imports are done and so on
     if warmup > 0 and startup:
         raise ValueError("Timing warmed up from startup doesn't make sense")
-    logger.debug("Starting with wramp of %d repetations", warmup)
-    for cur_warmup in range(warmup):
-        logger.debug("Warmup number %d ...", cur_warmup)
-        load_once(model_pack_path, False, 0)
-    logger.info("Warmup done! Now loading!")
-    # NOTE: if doing startup, then counting from before
+    start_time = time.perf_counter()
+    timed = timeit.repeat(
+        f"""
+load_once("{model_pack_path}", False, 0)
+        """,
+        setup=f"""
+from get_load_speed import load_once, logger
+for cur_warmup in range({warmup}, {profiling}, {lines_in_profile}):
+    logger.debug("Warmup number %d ...", cur_warmup)
+    load_once("{model_pack_path}", False, 0)
+        """,
+        repeat=1, number=1
+    )
+    took_time = timed[0]
     if startup:
-        logger.info("Using overall start time (before import)")
-    start_time = time.perf_counter() if not startup else OVERALL_START_TIME
-    load_once(model_pack_path, profiling, lines_in_profile)
-    took_time = time.perf_counter() - start_time
+        logger.info("Adding startup time of %fs to account for imports",
+                    start_time - OVERALL_START_TIME)
+        took_time += start_time - OVERALL_START_TIME
     logger.info("Took a total of %ss", took_time)
     # NOTE: print for any time output
     # NOTE: no units for easy automation
