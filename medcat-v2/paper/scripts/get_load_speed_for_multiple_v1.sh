@@ -1,0 +1,9 @@
+echo "Regular NER / 2023 model"
+ner1="2023 NER (no MetaCAT)"
+ner_model_path_no_mc="/Users/martratas/Documents/CogStack/MedCAT/MedCAT/models/20230227__kch_gstt_trained_model_no_mc_d84c313f24311484.zip"
+ner2="2023 NER (w MetaCAT)"
+ner_model_path_w_mc="/Users/martratas/Documents/CogStack/MedCAT/MedCAT/models/20230227__kch_gstt_trained_model_494c3717f637bb89.zip"
+deid="n2c2 DeID"
+deid_model_path="/Users/martratas/Documents/CogStack/MedCAT/MedCAT/models/deid_medcat_n2c2_modelpack.zip"
+
+bash scripts/get_load_speed_for_multiple.sh "$ner1" "$ner_model_path_no_mc" "$ner2" "$ner_model_path_w_mc" "$deid" "$deid_model_path"
