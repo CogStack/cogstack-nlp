@@ -6,6 +6,7 @@ import sys
 import argparse
 from pprint import pprint
 from enum import Enum, auto
+import json
 
 import get_load_speed
 
@@ -92,12 +93,21 @@ def main():
     parser.add_argument("--repeats",
                         help="Number of repeats to use",
                         type=int, default=20)
+    parser.add_argument("--save-json", "-j",
+                        help="The json path to save the results to",
+                        type=float, default=None)
     args = parser.parse_args()
     results = do_experiment(
         args.model_pack_path,
         RunConfig(repeats=args.repeats,))
-    print("Overall:")
-    pprint(results.model_dump())
+    dumped = results.model_dump()
+    if args.save_json:
+        print("Saving to", args.save_json)
+        with open(args.save_json, 'w') as f:
+            json.dump(dumped, f)
+    else:
+        print("Overall:")
+        pprint(dumped)
 
 
 if __name__ == "__main__":
