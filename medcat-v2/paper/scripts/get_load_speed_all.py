@@ -95,7 +95,7 @@ def main():
                         type=int, default=20)
     parser.add_argument("--save-json", "-j",
                         help="The json path to save the results to",
-                        type=float, default=None)
+                        type=str, default=None)
     args = parser.parse_args()
     results = do_experiment(
         args.model_pack_path,
