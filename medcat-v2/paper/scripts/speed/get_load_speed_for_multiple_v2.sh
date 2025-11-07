@@ -14,4 +14,4 @@ if [ -z "$1" ]
 fi
 
 
-bash scripts/get_load_speed_for_multiple.sh $out_prefix "$ner1" "$ner_model_path_no_mc" "$ner2" "$ner_model_path_w_mc" "$deid" "$deid_model_path"
+bash scripts/speed/get_load_speed_for_multiple.sh $out_prefix "$ner1" "$ner_model_path_no_mc" "$ner2" "$ner_model_path_w_mc" "$deid" "$deid_model_path"
