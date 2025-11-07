@@ -32,7 +32,8 @@ def main():
             RunType.WARM: [],
         },
         cnf=RunConfig(repeats=args.repeats,))
-    dumped = results.model_dump()
+    dumped = {run_type: model.model_dump()
+              for run_type, model in results.items()}
     if args.save_json:
         print("Saving to", args.save_json)
         with open(args.save_json, 'w') as f:
