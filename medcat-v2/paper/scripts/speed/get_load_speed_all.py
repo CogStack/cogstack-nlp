@@ -65,7 +65,17 @@ def _single_experiment(model_path: str,
     all_took: list[float] = []
     for _ in range(cnf.repeats):
         run_out = subprocess.run(sys_argv, capture_output=True)
-        all_took.append(float(run_out.stdout))
+        try:
+            took_time = float(run_out.stdout)
+        except ValueError as err:
+            raise ValueError(
+                f"Unable to get run time from for {run_type}:\n"
+                f"'{run_out.stdout.decode()}'\n"
+                f"\nError output was:\n"
+                f"{run_out.stderr.decode()}\n"
+                f"\nWas running the command:\n {' '.join(sys_argv)}"
+                ) from err
+        all_took.append(took_time)
     return RunResults.from_times(all_took)
 
 
