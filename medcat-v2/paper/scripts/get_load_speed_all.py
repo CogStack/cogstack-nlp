@@ -59,6 +59,8 @@ def _single_experiment(model_path: str,
         sys_argv.extend(["-w", "0"])
     elif run_type is RunType.WARM:
         sys_argv.extend(["-w", str(cnf.warmup_count)])
+    else:
+        raise ValueError("Unknown run type")
     all_took: list[float] = []
     for _ in range(cnf.repeats):
         run_out = subprocess.run(sys_argv, capture_output=True)
