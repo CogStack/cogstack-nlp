@@ -88,7 +88,7 @@ def main():
                         help="Model pack path",
                         type=str)
     args = parser.parse_args()
-    results = do_experiment(args.model_pack_path, RunConfig(repeats=3))
+    results = do_experiment(args.model_pack_path, RunConfig())
     print("Overall:")
     pprint(results.model_dump())
 
