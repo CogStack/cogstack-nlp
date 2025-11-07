@@ -7,5 +7,10 @@ deid="n2c2 DeID"
 deid_model_path="/Users/martratas/Documents/CogStack/MedCAT/MedCAT/models/deid_medcat_n2c2_modelpack.zip"
 
 out_prefix="out/load_speed/v1"
+if [ -z "$1" ]
+  then
+    out_prefix=$1
+    echo "Overwriting out prefix with: "$1
+fi
 
 bash scripts/get_load_speed_for_multiple.sh $out_prefix "$ner1" "$ner_model_path_no_mc" "$ner2" "$ner_model_path_w_mc" "$deid" "$deid_model_path"
