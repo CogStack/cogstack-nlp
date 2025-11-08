@@ -12,4 +12,4 @@ if [ -z "$1" ]
     echo "Overwriting out prefix with: "$1
 fi
 
-bash scripts/speed/get_inference_speed_for_multiple.sh $out_prefix "$ner1" "$ner_model_path_no_mc" $csv_path "$ner2" "$ner_model_path_w_mc" $csv_path
+bash scripts/speed/get_inference_speed_for_multiple.sh "$out_prefix" "$ner1" "$ner_model_path_no_mc" "$csv_path" "$ner2" "$ner_model_path_w_mc" "$csv_path"
