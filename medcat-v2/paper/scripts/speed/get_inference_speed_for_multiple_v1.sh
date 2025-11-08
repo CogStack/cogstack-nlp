@@ -6,10 +6,10 @@ ner_model_path_w_mc="/Users/martratas/Documents/CogStack/MedCAT/MedCAT/models/20
 csv_path="data/unsupervised/mimic_iv_discharge_head20.csv"
 
 out_prefix="out/inference_speed/v1"
-if [ -z "$1" ]
+if [[ ! -z "$1" ]]
   then
     out_prefix=$1
-    echo "Overwriting out prefix with: "$1
+    echo "Overwriting out prefix with: '"$1"'"
 fi
 
 bash scripts/speed/get_inference_speed_for_multiple.sh "$out_prefix" "$ner1" "$ner_model_path_no_mc" "$csv_path" "$ner2" "$ner_model_path_w_mc" "$csv_path"

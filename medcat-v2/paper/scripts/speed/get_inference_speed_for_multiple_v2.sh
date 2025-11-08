@@ -6,7 +6,7 @@ ner_model_path_w_mc="/Users/martratas/Documents/CogStack/MedCAT/monorepo-nlp/med
 csv_path="data/unsupervised/mimic_iv_discharge_head20.csv"
 
 out_prefix="out/inference_speed/v2"
-if [ -z "$1" ]
+if [[ ! -z "$1" ]]
   then
     out_prefix=$1
     echo "Overwriting out prefix with: "$1

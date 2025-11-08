@@ -7,7 +7,7 @@ deid="n2c2_DeID"
 deid_model_path="/Users/martratas/Documents/CogStack/MedCAT/monorepo-nlp/medcat-v2/.temp/CONVERT_deid_model_af31d2a9c5ccbe4d.zip.zip"
 
 out_prefix="out/load_speed/v2"
-if [ -z "$1" ]
+if [[ ! -z "$1" ]]
   then
     out_prefix=$1
     echo "Overwriting out prefix with: "$1
