@@ -47,7 +47,7 @@ def _single_experiment(target_script: str,
     for _ in range(cnf.repeats):
         run_out = subprocess.run(sys_argv, capture_output=True)
         try:
-            took_time = float(run_out.stdout)
+            took_time = float(run_out.stdout.split(b"\n")[-1])
         except ValueError as err:
             raise ValueError(
                 f"Unable to get run time from for {run_type}:\n"
