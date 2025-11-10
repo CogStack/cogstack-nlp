@@ -27,7 +27,7 @@ while (( "$#" )); do
 
     SAVE_PATH=$SAVE_PREFIX"_"$MODEL_NAME".json"
     echo "Will save to" $SAVE_PATH
-    
+
     FULL_TARGET="scripts/speed/get_inference_speed_all.py $MODEL_PATH $CSV_PATH --save-json $SAVE_PATH"
     echo "Running: python $FULL_TARGET"
     python $FULL_TARGET

@@ -26,7 +26,7 @@ while (( "$#" )); do
 
     SAVE_PATH=$SAVE_PREFIX"_"$MODEL_NAME".json"
     echo "Will save to" $SAVE_PATH
-    
+
     python scripts/speed/get_load_speed_all.py $MODEL_PATH --save-json $SAVE_PATH
 
     echo "---"
