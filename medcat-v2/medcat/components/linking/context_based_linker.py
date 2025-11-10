@@ -2,7 +2,8 @@ import random
 import logging
 from typing import Iterator, Optional, Union
 
-from medcat.components.types import CoreComponentType, AbstractCoreComponent
+from medcat.components.types import CoreComponentType
+from medcat.components.types import AbstractEntityProvidingComponent
 from medcat.tokenizing.tokens import MutableEntity, MutableDocument
 from medcat.components.linking.vector_context_model import (
     ContextModel, PerDocumentTokenCache)
@@ -18,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 # class Linker(PipeRunner):
-class Linker(AbstractCoreComponent):
+class Linker(AbstractEntityProvidingComponent):
     """Link to a biomedical database.
 
     Args:
@@ -32,6 +33,7 @@ class Linker(AbstractCoreComponent):
 
     # Override
     def __init__(self, cdb: CDB, vocab: Vocab, config: Config) -> None:
+        super().__init__()
         self.cdb = cdb
         self.vocab = vocab
         self.config = config
@@ -193,7 +195,9 @@ class Linker(AbstractCoreComponent):
             yield from self._process_entity_inference(
                 doc, entity, per_doc_valid_token_cache)
 
-    def __call__(self, doc: MutableDocument) -> MutableDocument:
+    def predict_entities(self, doc: MutableDocument,
+                         ents: list[MutableEntity] | None = None
+                         ) -> list[MutableEntity]:
         # Reset main entities, will be recreated later
         doc.linked_ents.clear()
         cnf_l = self.config.components.linking
@@ -206,15 +210,15 @@ class Linker(AbstractCoreComponent):
         # cleared afterwards otherwise
         le = list(linked_entities)
 
-        doc.ner_ents.clear()
-        doc.ner_ents.extend(le)
-        create_main_ann(doc, self.config.general.show_nested_entities)
+        # doc.ner_ents.clear()
+        # doc.ner_ents.extend(le)
 
         # TODO - reintroduce pretty labels? and apply here?
 
         # TODO - reintroduce groups? and map here?
 
-        return doc
+        return create_main_ann(
+            doc, le, self.config.general.show_nested_entities)
 
     def train(self, cui: str,
               entity: MutableEntity,
