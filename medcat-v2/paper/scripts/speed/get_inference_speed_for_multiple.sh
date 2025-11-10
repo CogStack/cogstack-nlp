@@ -35,7 +35,7 @@ while (( "$#" )); do
     echo "---"
 
     # Shift discards the first N arguments.
-    # We discard the two arguments we just processed ($1 and $2)
+    # We discard the thre arguments we just processed ($1, $2, and $3)
     shift 3
 done
 
