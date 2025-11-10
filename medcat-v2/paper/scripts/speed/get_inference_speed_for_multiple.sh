@@ -14,7 +14,7 @@ if (( $# % 3 != 0 )); then
     exit 1
 fi
 
-echo "Starting pairwise argument processing..."
+echo "Starting triplet argument processing..."
 echo "-----------------------------------------"
 
 # The 'while' loop continues as long as there are arguments left ($# is non-zero)
@@ -28,7 +28,9 @@ while (( "$#" )); do
     SAVE_PATH=$SAVE_PREFIX"_"$MODEL_NAME".json"
     echo "Will save to" $SAVE_PATH
     
-    python scripts/speed/get_inference_speed_all.py $MODEL_PATH $CSV_PATH --save-json $SAVE_PATH
+    FULL_TARGET="scripts/speed/get_inference_speed_all.py $MODEL_PATH $CSV_PATH --save-json $SAVE_PATH"
+    echo "Running: python $FULL_TARGET"
+    python $FULL_TARGET
 
     echo "---"
 
