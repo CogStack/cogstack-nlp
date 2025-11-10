@@ -30,6 +30,7 @@ class NER(AbstractEntityProvidingComponent):
 
     def __init__(self, tokenizer: BaseTokenizer,
                  cdb: CDB) -> None:
+        self.super().__init__()
         self.tokenizer = tokenizer
         self.cdb = cdb
         self.config = self.cdb.config
