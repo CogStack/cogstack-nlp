@@ -2,7 +2,8 @@ from typing import Optional
 
 import logging
 from medcat.tokenizing.tokens import MutableDocument, MutableEntity
-from medcat.components.types import CoreComponentType, AbstractCoreComponent
+from medcat.components.types import CoreComponentType
+from medcat.components.types import AbstractEntityProvidingComponent
 from medcat.components.ner.vocab_based_annotator import maybe_annotate_name
 from medcat.tokenizing.tokenizers import BaseTokenizer
 from medcat.vocab import Vocab
@@ -13,7 +14,7 @@ from medcat.config.config import ComponentConfig
 logger = logging.getLogger(__name__)
 
 
-class NER(AbstractCoreComponent):
+class NER(AbstractEntityProvidingComponent):
     name = 'cat_ner'
 
     def __init__(self, tokenizer: BaseTokenizer,
