@@ -69,7 +69,7 @@ class NER(AbstractEntityProvidingComponent):
             if name in self.cdb.name2info and not tkn.base.is_stop:
                 ent = maybe_annotate_name(
                     self.tokenizer, name, tkns, doc,
-                    self.cdb, self.config)
+                    self.cdb, self.config, len(ner_ents))
                 if ent:
                     ner_ents.append(ent)
             # if name is not a subname CDB (explicitly)
@@ -109,14 +109,14 @@ class NER(AbstractEntityProvidingComponent):
                     if name in self.cdb.name2info:
                         ent = maybe_annotate_name(
                             self.tokenizer, name, tkns, doc,
-                            self.cdb, self.config)
+                            self.cdb, self.config, len(ner_ents))
                         if ent:
                             ner_ents.append(ent)
                 elif name_reverse is not None:
                     if name_reverse in self.cdb.name2info:
                         ent = maybe_annotate_name(
                             self.tokenizer, name_reverse, tkns,
-                            doc, self.cdb, self.config)
+                            doc, self.cdb, self.config, len(ner_ents))
                         if ent:
                             ner_ents.append(ent)
                 else:

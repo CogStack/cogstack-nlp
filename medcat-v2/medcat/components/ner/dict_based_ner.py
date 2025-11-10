@@ -107,7 +107,7 @@ class NER(AbstractEntityProvidingComponent):
                 ' ', self.config.general.separator)
             ent = maybe_annotate_name(
                 self.tokenizer, preprocessed_name, cur_tokens,
-                doc, self.cdb, self.config)
+                doc, self.cdb, self.config, len(ner_ents))
             if ent:
                 ner_ents.append(ent)
         return ner_ents
