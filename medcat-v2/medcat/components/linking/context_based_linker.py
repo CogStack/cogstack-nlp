@@ -107,9 +107,11 @@ class Linker(AbstractEntityProvidingComponent):
                 entity.context_similarity = 1
                 yield entity
 
-    def _train_on_doc(self, doc: MutableDocument) -> Iterator[MutableEntity]:
+    def _train_on_doc(self, doc: MutableDocument,
+                      ner_ents: list[MutableEntity]
+                      ) -> Iterator[MutableEntity]:
         # Run training
-        for entity in doc.ner_ents:
+        for entity in ner_ents:
             yield from self._process_entity_train(
                 doc, entity, PerDocumentTokenCache())
 
@@ -188,9 +190,11 @@ class Linker(AbstractEntityProvidingComponent):
             entity.context_similarity = context_similarity
             yield entity
 
-    def _inference(self, doc: MutableDocument) -> Iterator[MutableEntity]:
+    def _inference(self, doc: MutableDocument,
+                   ner_ents: list[MutableEntity]
+                   ) -> Iterator[MutableEntity]:
         per_doc_valid_token_cache = PerDocumentTokenCache()
-        for entity in doc.ner_ents:
+        for entity in ner_ents:
             logger.debug("Linker started with entity: %s", entity.base.text)
             yield from self._process_entity_inference(
                 doc, entity, per_doc_valid_token_cache)
@@ -199,13 +203,15 @@ class Linker(AbstractEntityProvidingComponent):
                          ents: list[MutableEntity] | None = None
                          ) -> list[MutableEntity]:
         # Reset main entities, will be recreated later
-        doc.linked_ents.clear()
         cnf_l = self.config.components.linking
 
+        if ents is None:
+            raise ValueError("Need to have NER'ed entities provided")
+
         if cnf_l.train:
-            linked_entities = self._train_on_doc(doc)
+            linked_entities = self._train_on_doc(doc, ents)
         else:
-            linked_entities = self._inference(doc)
+            linked_entities = self._inference(doc, ents)
         # evaluating generator here because the `all_ents` list gets
         # cleared afterwards otherwise
         le = list(linked_entities)
