@@ -46,12 +46,14 @@ def _single_experiment(target_script: str,
     all_took: list[float] = []
     for _ in range(cnf.repeats):
         run_out = subprocess.run(sys_argv, capture_output=True)
+        raw_time_str = run_out.stdout.strip().split(b"\n")[-1]
         try:
-            took_time = float(run_out.stdout.strip().split(b"\n")[-1])
+            took_time = float(raw_time_str)
         except ValueError as err:
             raise ValueError(
-                f"Unable to get run time from for {run_type}:\n"
-                f"'{run_out.stdout.decode()}'\n"
+                f"Unable to get run time for {run_type} from:\n"
+                f"'{raw_time_str}'\n"
+                f"Total output:\n{run_out.stdout.decode()}\n"
                 f"\nError output was:\n"
                 f"{run_out.stderr.decode()}\n"
                 f"\nWas running the command:\n {' '.join(sys_argv)}"
