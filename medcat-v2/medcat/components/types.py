@@ -1,6 +1,8 @@
 from typing import Optional, Protocol, Callable, runtime_checkable, Union
+from typing import Literal
 from typing_extensions import Self
 from enum import Enum, auto
+from abc import ABC, abstractmethod
 
 from medcat.utils.registry import Registry, MedCATRegistryException
 from medcat.tokenizing.tokens import MutableDocument, MutableEntity
@@ -69,7 +71,7 @@ class CoreComponent(BaseComponent, Protocol):
         pass
 
 
-class AbstractCoreComponent(CoreComponent):
+class AbstractCoreComponent(ABC, CoreComponent):
     NAME_PREFIX = "core_"
 
     @property
@@ -78,6 +80,78 @@ class AbstractCoreComponent(CoreComponent):
 
     def is_core(self) -> bool:
         return True
+
+
+class AbstractEntityProvidingComponent(AbstractCoreComponent):
+    """This is an abstract NER or linker component.
+
+    The class simplifies some things so that they don't have to be
+    re-implemented in each implementation.
+    """
+
+    def __init__(self,
+                 read_from_linked_ents: bool | Literal['auto'] = 'auto',
+                 write_to_linked_ents: bool | Literal['auto'] = 'auto'):
+        is_linker = self.get_type() == CoreComponentType.linking
+        if read_from_linked_ents == 'auto':
+            self._read_from_linked_ents = is_linker
+        else:
+            self._read_from_linked_ents = read_from_linked_ents
+        if write_to_linked_ents == 'auto':
+            self._write_to_linked_ents = is_linker
+        else:
+            self._write_to_linked_ents = write_to_linked_ents
+
+    # NOTE: These 2 are separated as methods to allow for custom behaviour
+    #       when deeriving from this class
+    def get_ents_in(self, doc: MutableDocument) -> list[MutableEntity] | None:
+        return doc.ner_ents.copy() if self._read_from_linked_ents else None
+
+    def set_ents(self, doc: MutableDocument, ents: list[MutableEntity]
+                 ) -> None:
+        if self._write_to_linked_ents:
+            self.set_linked_ents(doc, ents)
+        else:
+            self.set_ner_ents(doc, ents)
+
+    @classmethod
+    def set_ner_ents(cls, doc: MutableDocument, ents: list[MutableEntity]
+                     ) -> None:
+        doc.ner_ents.clear()
+        doc.ner_ents.extend(ents)
+
+    @classmethod
+    def set_linked_ents(cls, doc: MutableDocument, ents: list[MutableEntity]
+                        ) -> None:
+        doc.linked_ents.clear()
+        doc.linked_ents.extend(ents)
+
+    @abstractmethod
+    def predict_entities(self, doc: MutableDocument,
+                         ents: list[MutableEntity] | None = None
+                         ) -> list[MutableEntity]:
+        """Predict the relevant entities for the document.
+
+        This is meant to be used for the NER or the Linker component.
+        The idea is that this is the specific implementation only really
+        needs to implement this method for inference to work.
+
+        Args:
+            doc (MutableDocument): The document.
+            ents (list[MutableEntity] | None, optional): The entities to
+                consider (if any). If None, all possible entities in the
+                document are considered. Defaults to None.
+
+        Returns:
+            list[MutableEntity]: The predicted entities in document.
+        """
+        pass
+
+    def __call__(self, doc: MutableDocument) -> MutableDocument:
+        in_ents = self.get_ents_in(doc)
+        out_ents = self.predict_entities(doc, in_ents)
+        self.set_ents(doc, out_ents)
+        return doc
 
 
 @runtime_checkable
