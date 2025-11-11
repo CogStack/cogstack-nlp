@@ -1,13 +1,19 @@
 from medcat.tokenizing.tokenizers import MutableDocument, MutableEntity
 
 
+def create_main_ann(doc: MutableDocument, show_nested_entities: bool = False) -> None:
+    filter_linked_annotations(
+        doc, doc.linked_ents, show_nested_entities=show_nested_entities)
+
+
 # NOTE: the following used (in medcat v1) check tuis
 #       but they were never passed to the method so
 #       I've omitted it now
-def create_main_ann(doc: MutableDocument,
-                    linked_ents: list[MutableEntity],
-                    show_nested_entities: bool = False
-                    ) -> list[MutableEntity]:
+def filter_linked_annotations(
+        doc: MutableDocument,
+        linked_ents: list[MutableEntity],
+        show_nested_entities: bool = False
+        ) -> list[MutableEntity]:
     """Creates annotation in the spacy ents list
     from all the annotations for this document.
 

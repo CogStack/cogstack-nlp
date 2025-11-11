@@ -11,7 +11,7 @@ from medcat.cdb import CDB
 from medcat.vocab import Vocab
 from medcat.config.config import Config, ComponentConfig
 from medcat.utils.defaults import StatusTypes as ST
-from medcat.utils.postprocessing import create_main_ann
+from medcat.utils.postprocessing import filter_linked_annotations
 from medcat.tokenizing.tokenizers import BaseTokenizer
 
 
@@ -223,7 +223,7 @@ class Linker(AbstractEntityProvidingComponent):
 
         # TODO - reintroduce groups? and map here?
 
-        return create_main_ann(
+        return filter_linked_annotations(
             doc, le, self.config.general.show_nested_entities)
 
     def train(self, cui: str,

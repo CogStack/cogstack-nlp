@@ -12,7 +12,7 @@ from functools import partial
 from medcat.cdb.cdb import CDB
 from medcat.components.addons.meta_cat.ml_utils import set_all_seeds
 from medcat.utils.ner import transformers_ner
-from medcat.utils.postprocessing import create_main_ann
+from medcat.utils.postprocessing import filter_linked_annotations
 from medcat.utils.hasher import Hasher
 from medcat.config.config_transformers_ner import ConfigTransformersNER
 from medcat.config.config import ComponentConfig
@@ -745,7 +745,7 @@ class TransformersNERComponent:
             entity.confidence = r['score']
 
             ents.append(entity)
-        return create_main_ann(doc, ents)
+        return filter_linked_annotations(doc, ents)
 
     def _process(self,
                  stream: Iterable[Union[MutableDocument, None]],

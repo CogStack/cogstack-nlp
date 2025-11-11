@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import Mock, MagicMock
 from typing import List
 
-from medcat.utils.postprocessing import create_main_ann
+from medcat.utils.postprocessing import filter_linked_annotations
 from medcat.components.types import AbstractEntityProvidingComponent
 
 
@@ -63,7 +63,7 @@ class TestPostprocessing(unittest.TestCase):
         self.doc.ner_ents = [self.entity_chest_pain, self.entity_chest, self.entity_pain]
 
         AbstractEntityProvidingComponent.set_linked_ents(
-            self.doc, create_main_ann(self.doc, self.doc.ner_ents, show_nested_entities=False))
+            self.doc, filter_linked_annotations(self.doc, self.doc.ner_ents, show_nested_entities=False))
 
         entity_texts = [ent.base.text for ent in self.doc.linked_ents]
 
@@ -79,7 +79,7 @@ class TestPostprocessing(unittest.TestCase):
         self.doc.ner_ents = [self.entity_chest_pain, self.entity_chest, self.entity_pain]
 
         AbstractEntityProvidingComponent.set_linked_ents(
-            self.doc, create_main_ann(self.doc, self.doc.ner_ents, show_nested_entities=True))
+            self.doc, filter_linked_annotations(self.doc, self.doc.ner_ents, show_nested_entities=True))
 
         entity_texts = [ent.base.text for ent in self.doc.linked_ents]
 
@@ -101,7 +101,7 @@ class TestPostprocessing(unittest.TestCase):
 
         # Test with show_nested_entities=False
         AbstractEntityProvidingComponent.set_linked_ents(
-            self.doc, create_main_ann(self.doc, self.doc.ner_ents, show_nested_entities=False))
+            self.doc, filter_linked_annotations(self.doc, self.doc.ner_ents, show_nested_entities=False))
 
         entity_texts = [ent.base.text for ent in self.doc.linked_ents]
 
@@ -136,7 +136,7 @@ class TestPostprocessing(unittest.TestCase):
         self.doc.ner_ents = [entity_chest_pain_1, entity_chest_pain_2, entity_chest_1, entity_pain_1_overlap]
 
         AbstractEntityProvidingComponent.set_linked_ents(
-            self.doc, create_main_ann(self.doc, self.doc.ner_ents, show_nested_entities=False))
+            self.doc, filter_linked_annotations(self.doc, self.doc.ner_ents, show_nested_entities=False))
 
         entity_texts = [ent.base.text for ent in self.doc.linked_ents]
         entity_positions = [(ent.base.text, ent.base.start_char_index, ent.base.end_char_index)
@@ -177,7 +177,7 @@ class TestPostprocessing(unittest.TestCase):
         self.doc.ner_ents = [entity_chest_pain_1, entity_chest_pain_2, entity_chest_1, entity_pain_1_overlap]
 
         AbstractEntityProvidingComponent.set_linked_ents(
-            self.doc, create_main_ann(self.doc, self.doc.ner_ents, show_nested_entities=True))
+            self.doc, filter_linked_annotations(self.doc, self.doc.ner_ents, show_nested_entities=True))
 
         entity_texts = [ent.base.text for ent in self.doc.linked_ents]
 

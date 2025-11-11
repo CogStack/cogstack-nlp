@@ -6,7 +6,7 @@ from medcat.tokenizing.tokens import MutableEntity, MutableDocument
 from medcat.tokenizing.tokenizers import BaseTokenizer
 from typing import Optional, Iterator, Set
 from medcat.vocab import Vocab
-from medcat.utils.postprocessing import create_main_ann
+from medcat.utils.postprocessing import filter_linked_annotations
 from tqdm import tqdm
 from collections import defaultdict
 import logging
@@ -581,7 +581,7 @@ class Linker(AbstractEntityProvidingComponent):
             for entities in self._batch_data(to_infer, self.cnf_l.linking_batch_size):
                 le.extend(list(self._inference(doc, entities)))
 
-        return create_main_ann(doc, le)
+        return filter_linked_annotations(doc, le)
 
     @property
     def names_context_matrix(self):
