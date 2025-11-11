@@ -1,7 +1,16 @@
+import warnings
+
 from medcat.tokenizing.tokenizers import MutableDocument, MutableEntity
 
 
 def create_main_ann(doc: MutableDocument, show_nested_entities: bool = False) -> None:
+    warnings.warn(
+        "The `medcat.utils.postprocessing.create_main_ann` method is"
+        "depreacated and subject to removal in a future release. Please "
+        "use `medcat.utils.postprocessing.filter_linked_annotations` instead.",
+        DeprecationWarning,
+        stacklevel=2
+    )
     filter_linked_annotations(
         doc, doc.linked_ents, show_nested_entities=show_nested_entities)
 
