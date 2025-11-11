@@ -1,4 +1,3 @@
-echo "Regular NER / 2023 model"
 ner1="2023_NER_no_MetaCAT"
 ner_model_path_no_mc="/Users/martratas/Documents/CogStack/MedCAT/monorepo-nlp/medcat-v2/.temp/CONVERT_2023_model_no_mc_234dda1597f635e3.zip"
 ner2="2023_NER_w_MetaCAT"
