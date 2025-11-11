@@ -5,11 +5,12 @@ echo "Starting MedCAT Service"
 #export APP_MEDCAT_MODEL_PACK="models/examples/example-deid-model-pack.zip"
 #export DEID_MODE=True
 #export DEID_REDACT=True
-export APP_ENABLE_METRICS=${APP_ENABLE_METRICS:-True}
 
 if [ -z "${APP_MODEL_CDB_PATH}" ] && [ -z "${APP_MODEL_VOCAB_PATH}" ] && [ -z "${APP_MEDCAT_MODEL_PACK}" ]; then
   export APP_MEDCAT_MODEL_PACK="models/examples/example-medcat-v2-model-pack.zip"
   echo "Using default model pack in  $APP_MEDCAT_MODEL_PACK"
 fi
+
+export APP_ENABLE_METRICS=${APP_ENABLE_METRICS:-True}
 
 fastapi dev medcat_service/main.py 
