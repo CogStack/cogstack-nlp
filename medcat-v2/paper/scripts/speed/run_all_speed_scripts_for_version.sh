@@ -4,7 +4,7 @@ python --version
 python -m pip show medcat | grep "Version"
 
 
-for fn in `ls scripts/speed/*_v1.sh`;
+for fn in `ls scripts/speed/*_$ver.sh`;
 do
     echo "__________________________"
     echo "Running script:"
