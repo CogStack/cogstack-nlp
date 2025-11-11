@@ -15,7 +15,8 @@ class TestAdminApi(unittest.TestCase):
     def _reload_app(self):
         """
         Reload the FastAPI app after env changes
-        Used to fix this error when trying to change the observability "Cannot add middleware after an application has started"
+        Used to fix this error when trying to change the observability
+        "Cannot add middleware after an application has started"
         """
         # Clear cached imports so settings are re-evaluated
         for mod in list(sys.modules):
