@@ -1,8 +1,6 @@
 name: medcat-v1-tutorials - Test
 
 on:
-  push:
-    branches: [ main ]
   pull_request:
     paths:
       - 'v1/medcat/**'
