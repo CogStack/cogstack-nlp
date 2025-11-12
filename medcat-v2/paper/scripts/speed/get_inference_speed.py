@@ -8,11 +8,6 @@ class InferenceSpeedConfig(BaseModel):
     inference_file_path: str
 
 
-def get_speed():
-
-    pass
-
-
 def main():
     parser = argparse.ArgumentParser(
         "get_inference_speed.py"
