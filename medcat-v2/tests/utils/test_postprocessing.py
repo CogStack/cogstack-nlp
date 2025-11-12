@@ -1,8 +1,9 @@
 import unittest
+import unittest.mock
 from unittest.mock import Mock, MagicMock
 from typing import List
 
-from medcat.utils.postprocessing import filter_linked_annotations
+from medcat.utils.postprocessing import filter_linked_annotations, create_main_ann
 from medcat.components.types import AbstractEntityProvidingComponent
 
 
@@ -186,6 +187,29 @@ class TestPostprocessing(unittest.TestCase):
         self.assertEqual(entity_texts.count("chest pain"), 2, "Should have two 'chest pain' entities")
         self.assertIn("chest", entity_texts, "Should keep overlapping 'chest' entity")
         self.assertIn("pain", entity_texts, "Should keep overlapping 'pain' entity")
+
+
+class TestCreateMainAnn(unittest.TestCase):
+
+    def setUp(self):
+        # self.mock_doc = unittest.mock.Mock()
+        # self.mock_doc.linked_ents.__iter__ = unittest.mock.Mock(
+        #     return_value=iter([]))
+        self.mock_doc = create_mock_document(
+            f"{'st0':10s}{'st1':10s}{'st2':10s}{'st3':10s}")
+        # self.mock_doc.linked_ents.append = unittest.mock.Mock()
+        self.mock_entities = [create_mock_entity(
+            f"st{index}", index * 10, index * 10 + 3, cui="C1"
+        ) for index in range(4)]
+        self.mock_doc.ner_ents = self.mock_entities
+
+    def test_create_main_ann_has_side_effect(self):
+        create_main_ann(self.mock_doc)
+        self.assertGreaterEqual(len(self.mock_doc.linked_ents), 1)
+
+    def test_filter_linked_annotations_has_no_side_effect(self):
+        filter_linked_annotations(self.mock_doc, self.mock_entities)
+        self.assertEqual(len(self.mock_doc.linked_ents), 0)
 
 
 if __name__ == '__main__':
