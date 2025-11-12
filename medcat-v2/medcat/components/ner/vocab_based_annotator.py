@@ -43,6 +43,11 @@ def annotate_name(tokenizer: BaseTokenizer, name: str,
             "Using the text start index %d (multiplied by %d) and adding "
             "the span length %d to get the id of %d", start_index,
             _START_INDEX_MULT, span_len, cur_id)
+        logger.warning(
+            "Setting MutableDocument.ner_ents during the method "
+            "`medcat.components.ner.vocab_based_annotator.annotate_name` "
+            "because the old API (without an ID) was used")
+        doc.ner_ents.append(entity)  # TODO: remove this
 
     entity.id = cur_id
     entity.confidence = -1  # This does not calculate confidence
