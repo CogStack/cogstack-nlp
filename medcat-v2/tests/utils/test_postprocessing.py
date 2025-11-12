@@ -203,6 +203,9 @@ class TestCreateMainAnn(unittest.TestCase):
         ) for index in range(4)]
         self.mock_doc.ner_ents = self.mock_entities
 
+    def test_init_doc_has_no_linked_ents(self):
+        self.assertEqual(len(self.mock_doc.linked_ents), 0)
+
     def test_create_main_ann_has_side_effect(self):
         create_main_ann(self.mock_doc)
         self.assertGreaterEqual(len(self.mock_doc.linked_ents), 1)
