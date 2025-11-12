@@ -11,8 +11,8 @@ def create_main_ann(doc: MutableDocument, show_nested_entities: bool = False) ->
         DeprecationWarning,
         stacklevel=2
     )
-    filter_linked_annotations(
-        doc, doc.linked_ents, show_nested_entities=show_nested_entities)
+    doc.linked_ents = filter_linked_annotations(  # type: ignore
+        doc, doc.ner_ents, show_nested_entities=show_nested_entities)
 
 
 # NOTE: the following used (in medcat v1) check tuis
