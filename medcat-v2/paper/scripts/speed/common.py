@@ -4,6 +4,7 @@ from contextlib import contextmanager
 import cProfile
 import pstats
 import io
+import time
 
 
 logger = logging.getLogger(__name__)
@@ -24,7 +25,7 @@ def show_profile(do_profiling: bool, lines_in_profile: int):
 
         profile.enable()
 
-    yield
+    yield []
 
     if do_profiling:
         profile.disable()
@@ -63,14 +64,22 @@ def perform_work(setup: list[str],
         logger.warning("For startup, will include warmup in timed work")
         worker = setup + worker
         setup = []
-    with show_profile(do_profiling=profiling,
-                      lines_in_profile=lines_in_profile):
-        timed = timeit.repeat(
+    if profiling:
+        # NOTE: do it manually so I can profile only the worker part
+        exec("\n".join(setup))
+        start_time = time.perf_counter()
+        with show_profile(
+                do_profiling=True,
+                lines_in_profile=lines_in_profile):
+            exec("\n".join(worker))
+        times = [time.perf_counter() - start_time]
+    else:
+        times = timeit.repeat(
             "\n".join(worker),
             setup="\n".join(setup),
             repeat=1, number=1
         )
-    took_time = timed[0]
+    took_time = times[0]
     logger.info("Took a total of %ss", took_time)
     # NOTE: print for any time output
     # NOTE: no units for easy automation
