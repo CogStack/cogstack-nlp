@@ -5,6 +5,10 @@ import cProfile
 import pstats
 import io
 import time
+import importlib.metadata
+
+
+mct_ver = importlib.metadata.distribution("medcat").version
 
 
 logger = logging.getLogger(__name__)

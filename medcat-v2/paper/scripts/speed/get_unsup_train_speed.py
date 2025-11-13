@@ -1,10 +1,6 @@
-from common import perform_work
+from common import perform_work, mct_ver
 from pydantic import BaseModel
 import argparse
-import importlib.metadata
-
-
-mct_ver = importlib.metadata.distribution("medcat").version
 
 
 class InferenceSpeedConfig(BaseModel):
