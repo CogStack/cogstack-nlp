@@ -44,6 +44,7 @@ def main():
         setup=["from medcat.cat import CAT",
                "import pandas as pd",
                f"cat = CAT.load_model_pack('{args.model_pack_path}')",
+               "cat.cdb.has_subname('abc')" if mct_ver.startswith("2") else "",
                f"df = pd.read_csv('{args.csv_path}')"],
         worker=[work_string],
         warmup=args.warmup,
