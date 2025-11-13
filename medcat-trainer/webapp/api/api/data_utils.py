@@ -1,10 +1,12 @@
 import json
 import logging
+import os
 import re
 from collections import defaultdict
 from datetime import datetime
 from typing import Dict, List
 
+import pandas as pd
 from django.contrib.auth.models import User
 from django.db import transaction
 from django.db.models import Q
@@ -17,6 +19,11 @@ _MAX_DATASET_SIZE_DEFAULT = 10000
 _dt_fmt = '%Y-%m-%d %H:%M:%S.%f'
 
 logger = logging.getLogger(__name__)
+
+
+class InvalidParameterError(Exception):
+    """Exception raised when invalid parameters are provided"""
+    pass
 
 
 def dataset_from_file(dataset: Dataset):
@@ -210,8 +217,10 @@ def upload_projects_export(
                     m_a = MetaAnnotation()
                     m_a.annotated_entity = a
                     # there will be at least one or more of these available.
-                    m_a = MetaTask.objects.filter(name=task_name).first()
+                    m_a.meta_task = MetaTask.objects.filter(name=task_name).first()
                     m_a.validated = meta_anno['validated']
+                    m_a.acc = meta_anno['acc']
+                    m_a.meta_task_value = MetaTaskValue.objects.filter(name=meta_anno['value']).first()
                     m_a.save()
                     # missing acc on the model
             anno_to_doc_ind = {a.start_ind: a for a in annos}

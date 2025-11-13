@@ -1,0 +1,60 @@
+{
+  "projects": [
+    {
+      "id": 999,
+      "name": "SMAll_SYNT-EXAMPLE-AD",
+      "cuis": "",
+      "tuis": "",
+      "documents": [
+        {
+          "id": 1787,
+          "name": "Doc-iotost",
+          "last_modified": "2025-11-11T17:02:49.377416",
+          "text": "Patient reports increasing forgetfulness and difficulty recalling recent events.  Family members have observed changes in behaviour and personality. Cognitive assessment revealed deficits consistent with early cognitive impairment.  Differential diagnosis includes Neurodegenerative dementia and vascular dementia. Further investigations, including MRI brain and neuropsychological testing, are planned to clarify the diagnosis. The patient denies any significant head trauma.",
+          "annotations": [
+            {
+              "start": 265,
+              "end": 291,
+              "cui": "26929004",
+              "value": "Neurodegenerative dementia",
+              "validated": true,
+              "user": "synthetic_reviewer",
+              "meta_anns": {
+                "Presence": {
+                  "name": "Presence",
+                  "value": "True",
+                  "acc": 1,
+                  "validated": true
+                },
+                "Subject": {
+                  "name": "Subject",
+                  "value": "Patient",
+                  "acc": 1,
+                  "validated": true
+                },
+                "Time": {
+                  "name": "Time",
+                  "value": "Recent",
+                  "acc": 1,
+                  "validated": true
+                }
+              },
+              "correct": true,
+              "deleted": false,
+              "alternative": false,
+              "killed": false,
+              "irrelevant": false,
+              "manually_created": false,
+              "acc": 1.0,
+              "id": 182294767
+            }
+          ]
+        }
+      ],
+      "project_group_id": null,
+      "project_group_name": null,
+      "project_status": "A",
+      "project_locked": false
+    }
+  ]
+}
