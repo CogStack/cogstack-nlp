@@ -1,3 +1,4 @@
+import logging
 import os
 import traceback
 from smtplib import SMTPException
@@ -11,11 +12,12 @@ from django.http import HttpResponseBadRequest, HttpResponseServerError, HttpRes
 from django.shortcuts import render
 from django.utils import timezone
 from django_filters import rest_framework as drf
-from medcat.utils.cdb_utils import ch2pt_from_pt2ch, get_all_ch, snomed_ct_concept_path
+
 from rest_framework import viewsets
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from medcat.components.ner.trf.deid import DeIdModel
+from medcat.utils.cdb_utils import ch2pt_from_pt2ch, get_all_ch, snomed_ct_concept_path
 
 from .admin import download_projects_with_text, download_projects_without_text, \
     import_concepts_from_cdb
