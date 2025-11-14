@@ -41,12 +41,10 @@ class UploadProjectsExportTestCase(TestCase):
         )
         self.vocab.save(skip_load=True)
 
-        # Load example JSON
-        # Path from webapp/api/api/tests/test_data_utils.py to notebook_docs/example_data/example.json
-        # Go up: tests -> api -> api -> webapp -> project root
+        # Load example JSON from test fixtures
         example_json_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))),
-            'notebook_docs', 'example_data', 'example.json'
+            os.path.dirname(__file__),
+            'fixtures', 'example.json'
         )
         with open(example_json_path, 'r') as f:
             self.medcat_export = json.load(f)
