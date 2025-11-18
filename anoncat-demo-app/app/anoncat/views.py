@@ -1,5 +1,5 @@
 from django.shortcuts import render
-from medcat.cat import CAT
+from medcat.utils.ner.deid import DeIdModel as CAT
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
@@ -23,7 +23,7 @@ def deidentify(request):
 
     input_text = request.data['text']
     redact = request.data['redact']
-    output_text = deid_text(cat, input_text, redact=redact)
+    output_text = cat.deid_text(input_text, redact=redact)
 
     # Save the form data to the DeidentifiedText model
     text = DeidentifiedText()
