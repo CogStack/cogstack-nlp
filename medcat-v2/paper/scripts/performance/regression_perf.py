@@ -14,7 +14,8 @@ DEFAULT_REGRESSION_SUITE = os.path.join(
 
 
 CASES_PATTERN = re.compile(
-    r"The number of total (successful|failing) \(sub\) cases\s*: (\d+) \( ?(\d+\.\d+)%\)"
+    r"The number of total (successful|failing) \(sub\) cases\s*: (\d+) "
+    r"\( ?(\d+\.\d+)%\)"
 )
 
 
@@ -53,11 +54,12 @@ class RegressionOverallResults(BaseModel):
                    successful_cases=good_cases,
                    failed_cases=bad_cases)
         if not inst.is_valid(good_perc / 100, bad_perc / 100):
-            raise ValueError(f"Unbalanced totals:\nRecords:\n{records}"
-                             f"\nvs\nOutcome:\n{inst}\n"
-                             f"Expected: {good_perc}% S, {bad_perc}% F\n"
-                             f"Got: {inst.successful_cases / inst.total_cases} S, "
-                             f"{inst.failed_cases / inst.total_cases} F")
+            raise ValueError(
+                f"Unbalanced totals:\nRecords:\n{records}"
+                f"\nvs\nOutcome:\n{inst}\n"
+                f"Expected: {good_perc}% S, {bad_perc}% F\n"
+                f"Got: {inst.successful_cases / inst.total_cases} S, "
+                f"{inst.failed_cases / inst.total_cases} F")
         return inst
 
 
@@ -83,7 +85,8 @@ class CapturingHandler(logging.Handler):
             match = self.pattern.match(line)
             if match:
                 self.records.append(
-                    (match.group(1), int(match.group(2)), float(match.group(3))))
+                    (match.group(1), int(match.group(2)),
+                     float(match.group(3))))
 
     def get_captured_records(self) -> list[str]:
         """
