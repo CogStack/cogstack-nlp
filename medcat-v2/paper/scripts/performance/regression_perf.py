@@ -65,7 +65,7 @@ class RegressionOverallResults(BaseModel):
 
 class CapturingHandler(logging.Handler):
     """
-    A custom logging handler that captures formatted messages 
+    A custom logging handler that captures formatted messages
     in a list instead of outputting them.
     """
     def __init__(self, *args,
