@@ -11,8 +11,8 @@ if IS_V2:
     from medcat.tokenizing.tokens import MutableEntity
     from medcat.cdb.concepts import CUIInfo
 else:
-    from medcat.statsdata.mctexport import MedCATTrainerExportDocument
-    from medcat.statsdata.mctexport import MedCATTrainerExportProject
+    from medcat.stats.mctexport import MedCATTrainerExportDocument
+    from medcat.stats.mctexport import MedCATTrainerExportProject
     from v1_helper import CUIInfo, project_filters, MutableEntity
 from medcat.config import LinkingFilters
 

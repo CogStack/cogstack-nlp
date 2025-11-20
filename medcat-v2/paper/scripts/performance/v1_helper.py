@@ -7,7 +7,7 @@ from spacy.tokens import Span
 from medcat.cdb import CDB
 from medcat.config import LinkingFilters
 
-from medcat.statsdata.mctexport import MedCATTrainerExportProject
+from medcat.stats.mctexport import MedCATTrainerExportProject
 
 
 class CUIInfo(TypedDict):
