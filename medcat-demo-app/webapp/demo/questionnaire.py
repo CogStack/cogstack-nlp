@@ -120,7 +120,7 @@ def submit_questionnaire(request):
             # Build the full URL to the secret endpoint
             scheme = 'https' if request.is_secure() else 'http'
             host = request.get_host()
-            secret_url = f"{scheme}://{host}/show-super-secret-stuff/?api_key={api_key.key}"
+            secret_url = f"{scheme}://{host}/callback-after-questionnaire/?api_key={api_key.key}"
 
             return JsonResponse({
                 'success': True,
