@@ -2,12 +2,19 @@ from typing import Callable
 
 from tqdm import tqdm
 
-from medcat.data.mctexport import MedCATTrainerExportDocument
-from medcat.data.mctexport import MedCATTrainerExportProject
-from medcat.tokenizing.tokens import MutableEntity
-from medcat.cdb.concepts import CUIInfo
-from medcat.config.config import LinkingFilters
-from medcat.utils.filters import project_filters
+from common_pref import IS_V2
+
+if IS_V2:
+    from medcat.data.mctexport import MedCATTrainerExportDocument
+    from medcat.data.mctexport import MedCATTrainerExportProject
+    from medcat.utils.filters import project_filters
+    from medcat.tokenizing.tokens import MutableEntity
+    from medcat.cdb.concepts import CUIInfo
+else:
+    from medcat.statsdata.mctexport import MedCATTrainerExportDocument
+    from medcat.statsdata.mctexport import MedCATTrainerExportProject
+    from v1_helper import CUIInfo, project_filters, MutableEntity
+from medcat.config import LinkingFilters
 
 
 class StatsCalculator:
