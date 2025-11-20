@@ -61,10 +61,3 @@ WORKDIR /webapp
 # Create the db backup cron job (copied from your setup)
 COPY etc/cron.d/db-backup-cron /etc/cron.d/db-backup-cron
 RUN chmod 0644 /etc/cron.d/db-backup-cron && crontab /etc/cron.d/db-backup-cron
-
-# Run migrations and collect static (could be in entrypoint script)
-RUN python manage.py makemigrations && \
-    python manage.py makemigrations demo && \
-    python manage.py migrate && \
-    python manage.py migrate demo && \
-    python manage.py collectstatic --noinput
