@@ -257,7 +257,7 @@
             resultDiv.style.display = 'none';
             
             try {
-                const response = await fetch('/umls-license-questionnaire/submit-questionnaire/', {
+                const response = await fetch('/umls-license-questionnaire/submit-questionnaire', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
