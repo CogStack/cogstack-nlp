@@ -6,13 +6,11 @@ services:
         network: host
         context: ./webapp
     command: >
-      bash -c "/etc/init.d/cron start &&
-               python manage.py makemigrations &&
-               python manage.py makemigrations demo &&
-               python manage.py migrate &&
-               python manage.py migrate demo &&
-               python manage.py collectstatic --noinput &&
-               python /webapp/manage.py runserver 0.0.0.0:8000"
+      bash -c "
+          python manage.py migrate --noinput &&
+          python manage.py collectstatic --noinput &&
+          /etc/init.d/cron start &&
+          python manage.py runserver 0.0.0.0:8000"
     volumes:
       - ./webapp/data:/webapp/data
       - ./webapp/db:/webapp/db
