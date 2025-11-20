@@ -18,16 +18,21 @@ else:
 from my_stats import StatsCalculator
 
 
-def get_overall_prec_rec_f1(cat: CAT, export: MedCATTrainerExport
+def get_overall_prec_rec_f1(cat: CAT, export: MedCATTrainerExport,
+                            filter_before_disamb: bool = False
                             ) -> tuple[float, float, float]:
     if IS_V2:
         calculator = StatsCalculator(
             cat.config.components.linking.filters,
             cat.cdb.cui2info)
+        if filter_before_disamb:
+            cat.config.components.linking.filter_before_disamb = True
     else:
         calculator = StatsCalculator(
             cat.config.linking.filters,
             from_cdb(cat.cdb))
+        if filter_before_disamb:
+            cat.config.linking.filter_before_disamb = True
     for proj in tqdm(export["projects"], desc="Projects"):
         if IS_V2:
             calculator.process_project(
