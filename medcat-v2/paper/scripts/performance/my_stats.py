@@ -74,7 +74,7 @@ class StatsCalculator:
                 continue
 
             # Support both single CUI and multiple acceptable CUIs
-            cuis = ann.get('acceptable_cuis', [ann['cui']])
+            cuis = ann.get('acceptable_cuis', ann['cui'])
             if not isinstance(cuis, list):
                 cuis = [cuis]
 
@@ -182,7 +182,6 @@ class StatsCalculator:
 
     def compute_metrics(self) -> dict:
         """Compute overall and per-CUI metrics."""
-        print("Overall REPORT w", self.tp, self.fp, self.fn, "\n")
         metrics = {
             'overall': self._compute_prf(self.tp, self.fp, self.fn),
             'per_cui': {}
