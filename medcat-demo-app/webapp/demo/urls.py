@@ -10,10 +10,10 @@ urlpatterns = [
     path('auth-callback-api', validate_umls_api_key, name='validate-umls-api-key'),
     path('download-model', download_model, name="download-model"),
     # questionnaire
-    path('umls-license-questionnair/qet-client-id', get_client_identifier,
+    path('umls-license-questionnair/get-client-id', get_client_identifier,
          name="get-client-identifier"),
-    path('umls-license-questionnair/qet-questionnaire', get_questionnaire,
-         name="qet-questionnaire"),
+    path('umls-license-questionnair/get-questionnaire', get_questionnaire,
+         name="get-questionnaire"),
     path('umls-license-questionnair/submit-questionnaire', submit_questionnaire,
          name="submit-questionnaire"),
     path('umls-license-questionnair/check-api-key', check_api_key,
