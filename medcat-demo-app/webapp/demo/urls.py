@@ -18,4 +18,6 @@ urlpatterns = [
          name="submit-questionnaire"),
     path('umls-license-questionnair/check-api-key', check_api_key,
          name="check-api-key"),
+    path('callback-after-questionnaire', model_after_api_key,
+         name="model_after_api_key"),
 ]

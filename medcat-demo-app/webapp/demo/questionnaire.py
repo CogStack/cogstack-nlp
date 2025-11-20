@@ -23,7 +23,7 @@ def get_client_identifier(request):
 def get_questionnaire(request):
     """Get N random questions from the pool"""
     identifier = get_client_identifier(request)
-    
+
     # Check if user can attempt
     if not UserAttempt.can_attempt(identifier):
         cooldown = UserAttempt.get_cooldown_remaining(identifier)
@@ -32,18 +32,18 @@ def get_questionnaire(request):
             'cooldown_seconds': cooldown,
             'message': f'Please wait {cooldown // 60} minutes before trying again'
         }, status=429)
-    
+
     # Get random questions (adjust N as needed)
     N = 5  # Number of questions to ask
     questions = list(Question.objects.filter(is_active=True))
-    
+
     if len(questions) < N:
         return JsonResponse({
             'error': 'Not enough questions available'
         }, status=500)
-    
+
     selected_questions = random.sample(questions, N)
-    
+
     # Format questions for response
     questions_data = []
     for q in selected_questions:
@@ -57,7 +57,7 @@ def get_questionnaire(request):
                 'd': q.option_d,
             }
         })
-    
+
     return JsonResponse({
         'questions': questions_data,
         'total': N,
@@ -70,7 +70,7 @@ def get_questionnaire(request):
 def submit_questionnaire(request):
     """Validate answers and generate API key if all correct"""
     identifier = get_client_identifier(request)
-    
+
     # Check if user can attempt
     if not UserAttempt.can_attempt(identifier):
         cooldown = UserAttempt.get_cooldown_remaining(identifier)
@@ -78,16 +78,16 @@ def submit_questionnaire(request):
             'error': 'Too many failed attempts',
             'cooldown_seconds': cooldown
         }, status=429)
-    
+
     try:
         data = json.loads(request.body)
         answers = data.get('answers', {})  # Expected format: {"question_id": "a", ...}
     except json.JSONDecodeError:
         return JsonResponse({'error': 'Invalid JSON'}, status=400)
-    
+
     if not answers:
         return JsonResponse({'error': 'No answers provided'}, status=400)
-    
+
     # Validate all answers
     all_correct = True
     for question_id, user_answer in answers.items():
@@ -100,25 +100,32 @@ def submit_questionnaire(request):
             return JsonResponse({
                 'error': f'Invalid question ID: {question_id}'
             }, status=400)
-    
+
     # Record attempt
     with transaction.atomic():
         attempt = UserAttempt.objects.create(
             identifier=identifier,
             passed=all_correct
         )
-        
+
         if all_correct:
             # Generate API key
             api_key = APIKey.objects.create(identifier=identifier)
             
+            # Build the full URL to the secret endpoint
+            scheme = 'https' if request.is_secure() else 'http'
+            host = request.get_host()
+            secret_url = f"{scheme}://{host}/show-super-secret-stuff/?api_key={api_key.key}"
+
             return JsonResponse({
                 'success': True,
                 'message': 'All answers correct! API key generated.',
                 'api_key': api_key.key,
                 'expires_at': api_key.expires_at.isoformat(),
-                'valid_for_minutes': 30
+                'valid_for_minutes': 30,
+                'secret_link': secret_url
             })
+
         else:
             return JsonResponse({
                 'success': False,
@@ -133,12 +140,12 @@ def submit_questionnaire(request):
 def check_api_key(request):
     """Check if an API key is valid"""
     api_key = request.headers.get('X-API-Key') or request.GET.get('api_key')
-    
+
     if not api_key:
         return JsonResponse({'error': 'No API key provided'}, status=400)
-    
+
     is_valid = APIKey.is_valid(api_key)
-    
+
     if is_valid:
         key_obj = APIKey.objects.get(key=api_key)
         return JsonResponse({
