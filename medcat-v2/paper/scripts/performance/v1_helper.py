@@ -46,7 +46,7 @@ class BaseMutableEntity(BaseModel):
 class MutableEntity(BaseModel):
     base: BaseMutableEntity
     cui: str
-    confidence: float
+    context_similarity: float
 
     @classmethod
     def from_spacy(cls, span: Span) -> 'MutableEntity':
@@ -55,7 +55,7 @@ class MutableEntity(BaseModel):
                                  text=span.text)
         return cls(base=base,
                    cui=span._.cui,
-                   confidence=span._.context_similarity)
+                   context_similarity=span._.context_similarity)
 
     @classmethod
     def from_spacy_list(cls, spans: list[Span]) -> list['MutableEntity']:
