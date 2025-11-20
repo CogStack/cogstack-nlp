@@ -6,6 +6,8 @@ from django.shortcuts import render
 import json
 import random
 
+from medcat import __version__ as medcat_version
+
 from .models import Question, UserAttempt, APIKey
 
 
@@ -33,7 +35,8 @@ def get_questionnaire(request):
         cooldown = UserAttempt.get_cooldown_remaining(identifier)
         return render(request, 'questionnaire/cooldown.html', {
             'cooldown_seconds': cooldown,
-            'cooldown_minutes': cooldown_minutes
+            'cooldown_minutes': cooldown_minutes,
+            'medcat_version': medcat_version,
         })
 
 
@@ -43,7 +46,8 @@ def get_questionnaire(request):
 
     if len(questions) < N:
         return render(request, 'questionnaire/error.html', {
-            'error': 'Not enough questions available. Please contact the administrator.'
+            'error': 'Not enough questions available. Please contact the administrator.',
+            'medcat_version': medcat_version,
         })
 
 
@@ -65,7 +69,8 @@ def get_questionnaire(request):
 
     return render(request, 'questionnaire/quiz.html', {
         'questions': selected_questions,
-        'total': N
+        'total': N,
+        'medcat_version': medcat_version,
     })
 
 
