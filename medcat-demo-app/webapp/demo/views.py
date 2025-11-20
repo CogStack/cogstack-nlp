@@ -202,6 +202,7 @@ def validate_umls_api_key(request):
                     'message': f'Error validating API key: {str(e)}'
                 }
 
+            context['medcat_version'] = medcat_version
             return render(request, 'umls_user_validation.html', context=context)
     else:
         form = UMLSApiKeyForm()
@@ -216,6 +217,7 @@ def model_after_api_key(request):
         'message': f'Questionnaire based API key is being used',
         'downloader_form': DownloaderForm(MedcatModel.objects.all())
     }
+    context['medcat_version'] = medcat_version
     return render(request, 'umls_user_validation.html', context=context)
 
 
