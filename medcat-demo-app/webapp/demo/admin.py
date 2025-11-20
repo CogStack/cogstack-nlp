@@ -7,14 +7,11 @@ admin.site.register(MedcatModel)
 def remove_text(modeladmin, request, queryset):
     UploadedText.objects.all().delete()
 
+
 class UploadedTextAdmin(admin.ModelAdmin):
     model = UploadedText
     actions = [remove_text]
 
-# Register your models here.
-admin.site.register(UploadedText, UploadedTextAdmin)
-
-@admin.register(Question)
 class QuestionAdmin(admin.ModelAdmin):
     list_display = ('question_text_short', 'correct_answer', 'is_active')
     list_filter = ('is_active', 'correct_answer')
@@ -25,7 +22,6 @@ class QuestionAdmin(admin.ModelAdmin):
     question_text_short.short_description = 'Question'
 
 
-@admin.register(UserAttempt)
 class UserAttemptAdmin(admin.ModelAdmin):
     list_display = ('identifier', 'attempted_at', 'passed')
     list_filter = ('passed', 'attempted_at')
@@ -36,7 +32,6 @@ class UserAttemptAdmin(admin.ModelAdmin):
         return False
 
 
-@admin.register(APIKey)
 class APIKeyAdmin(admin.ModelAdmin):
     list_display = ('key_short', 'identifier', 'created_at', 'expires_at', 'is_active', 'is_expired')
     list_filter = ('is_active', 'created_at', 'expires_at')
@@ -55,3 +50,10 @@ class APIKeyAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request):
         return False
+
+
+# Register your models here.
+admin.site.register(UploadedText, UploadedTextAdmin)
+admin.site.register(Question, QuestionAdmin)
+admin.site.register(UserAttempt, UserAttemptAdmin)
+admin.site.register(APIKey, APIKeyAdmin)
