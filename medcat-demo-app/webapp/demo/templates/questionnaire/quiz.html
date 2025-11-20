@@ -1,9 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Knowledge Questionnaire</title>
+{% extends "base.html" %}
+
+{% block style %}
     <style>
         * {
             margin: 0;
@@ -257,7 +254,7 @@
             resultDiv.style.display = 'none';
             
             try {
-                const response = await fetch('/umls-license-questionnaire/submit-questionnaire', {
+                const response = await fetch('/questionnaire/submit/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
