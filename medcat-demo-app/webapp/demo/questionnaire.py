@@ -2,10 +2,14 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 from django.db import transaction
+from django.shortcuts import render
 import json
 import random
 
 from .models import Question, UserAttempt, APIKey
+
+
+cooldown_minutes = 30
 
 
 def get_client_identifier(request):
@@ -27,20 +31,21 @@ def get_questionnaire(request):
     # Check if user can attempt
     if not UserAttempt.can_attempt(identifier):
         cooldown = UserAttempt.get_cooldown_remaining(identifier)
-        return JsonResponse({
-            'error': 'Too many failed attempts',
+        return render(request, 'questionnaire/cooldown.html', {
             'cooldown_seconds': cooldown,
-            'message': f'Please wait {cooldown // 60} minutes before trying again'
-        }, status=429)
+            'cooldown_minutes': cooldown_minutes
+        })
+
 
     # Get random questions (adjust N as needed)
     N = 5  # Number of questions to ask
     questions = list(Question.objects.filter(is_active=True))
 
     if len(questions) < N:
-        return JsonResponse({
-            'error': 'Not enough questions available'
-        }, status=500)
+        return render(request, 'questionnaire/error.html', {
+            'error': 'Not enough questions available. Please contact the administrator.'
+        })
+
 
     selected_questions = random.sample(questions, N)
 
@@ -58,11 +63,11 @@ def get_questionnaire(request):
             }
         })
 
-    return JsonResponse({
-        'questions': questions_data,
-        'total': N,
-        'message': 'Answer all questions correctly to receive an API key'
+    return render(request, 'questionnaire/quiz.html', {
+        'questions': selected_questions,
+        'total': N
     })
+
 
 
 @csrf_exempt

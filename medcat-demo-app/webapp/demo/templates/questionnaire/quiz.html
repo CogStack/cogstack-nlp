@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Knowledge Questionnaire</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .container {
+            max-width: 700px;
+            width: 100%;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .question {
+            margin-bottom: 30px;
+            padding: 25px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .question-number {
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 12px;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .question-text {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        
+        .options {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .option {
+            display: flex;
+            align-items: center;
+            padding: 14px 16px;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .option:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+        
+        .option input[type="radio"] {
+            margin-right: 12px;
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
+            accent-color: #667eea;
+        }
+        
+        .option label {
+            cursor: pointer;
+            flex: 1;
+            font-size: 16px;
+            color: #333;
+        }
+        
+        .submit-btn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            margin-top: 10px;
+        }
+        
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .submit-btn:active {
+            transform: translateY(0);
+        }
+        
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        #result {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 8px;
+            display: none;
+        }
+        
+        .result-success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        
+        .result-error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        
+        .result-title {
+            font-weight: 600;
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        
+        .api-key-box {
+            background: #fff;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+            border: 1px solid #c3e6cb;
+            font-family: 'Courier New', monospace;
+            word-break: break-all;
+            font-size: 13px;
+        }
+        
+        .secret-link {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 12px 24px;
+            background: #28a745;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            transition: background 0.2s ease;
+        }
+        
+        .secret-link:hover {
+            background: #218838;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+            color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Knowledge Challenge</h1>
+        <p class="subtitle">Answer all {{ total }} questions correctly to receive your API key. You have one attempt every 30 minutes.</p>
+        
+        <form id="quizForm">
+            {% csrf_token %}
+            {% for question in questions %}
+            <div class="question">
+                <div class="question-number">Question {{ forloop.counter }} of {{ total }}</div>
+                <div class="question-text">{{ question.question_text }}</div>
+                <div class="options">
+                    <div class="option">
+                        <input type="radio" id="q{{ question.id }}_a" name="question_{{ question.id }}" value="a" required>
+                        <label for="q{{ question.id }}_a">{{ question.option_a }}</label>
+                    </div>
+                    <div class="option">
+                        <input type="radio" id="q{{ question.id }}_b" name="question_{{ question.id }}" value="b">
+                        <label for="q{{ question.id }}_b">{{ question.option_b }}</label>
+                    </div>
+                    <div class="option">
+                        <input type="radio" id="q{{ question.id }}_c" name="question_{{ question.id }}" value="c">
+                        <label for="q{{ question.id }}_c">{{ question.option_c }}</label>
+                    </div>
+                    <div class="option">
+                        <input type="radio" id="q{{ question.id }}_d" name="question_{{ question.id }}" value="d">
+                        <label for="q{{ question.id }}_d">{{ question.option_d }}</label>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            
+            <button type="submit" class="submit-btn">Submit Answers</button>
+        </form>
+        
+        <div class="loading" id="loading">
+            <p>⏳ Checking your answers...</p>
+        </div>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        document.getElementById('quizForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const answers = {};
+            
+            for (let [key, value] of formData.entries()) {
+                if (key.startsWith('question_')) {
+                    const questionId = key.replace('question_', '');
+                    answers[questionId] = value;
+                }
+            }
+            
+            const submitBtn = e.target.querySelector('.submit-btn');
+            const loading = document.getElementById('loading');
+            const resultDiv = document.getElementById('result');
+            
+            submitBtn.disabled = true;
+            loading.style.display = 'block';
+            resultDiv.style.display = 'none';
+            
+            try {
+                const response = await fetch('/questionnaire/submit/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+                    },
+                    body: JSON.stringify({ answers })
+                });
+                
+                const data = await response.json();
+                
+                loading.style.display = 'none';
+                resultDiv.style.display = 'block';
+                
+                if (data.success) {
+                    resultDiv.className = 'result-success';
+                    resultDiv.innerHTML = `
+                        <div class="result-title">✅ Congratulations!</div>
+                        <p>${data.message}</p>
+                        <div class="api-key-box">
+                            <strong>Your API Key:</strong><br>
+                            ${data.api_key}
+                        </div>
+                        <p><strong>Valid for:</strong> ${data.valid_for_minutes} minutes</p>
+                        <p><strong>Expires at:</strong> ${new Date(data.expires_at).toLocaleString()}</p>
+                        <a href="${data.secret_link}" class="secret-link">🔓 Access Secret Content</a>
+                    `;
+                } else {
+                    resultDiv.className = 'result-error';
+                    const minutes = Math.floor(data.cooldown_seconds / 60);
+                    resultDiv.innerHTML = `
+                        <div class="result-title">❌ Incorrect Answers</div>
+                        <p>${data.message}</p>
+                        <p><strong>Cooldown:</strong> ${minutes} minutes remaining</p>
+                    `;
+                }
+            } catch (error) {
+                loading.style.display = 'none';
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result-error';
+                resultDiv.innerHTML = `
+                    <div class="result-title">⚠️ Error</div>
+                    <p>Something went wrong. Please try again later.</p>
+                `;
+            } finally {
+                submitBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
