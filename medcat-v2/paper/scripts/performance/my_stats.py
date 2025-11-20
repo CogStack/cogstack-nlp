@@ -1,10 +1,13 @@
-# from typing import Callable
+from typing import Callable
+
+from tqdm import tqdm
 
 from medcat.data.mctexport import MedCATTrainerExportDocument
+from medcat.data.mctexport import MedCATTrainerExportProject
 from medcat.tokenizing.tokens import MutableEntity
-# from medcat.cat import CAT
 from medcat.cdb.concepts import CUIInfo
 from medcat.config.config import LinkingFilters
+from medcat.utils.filters import project_filters
 
 
 class StatsCalculator:
@@ -58,7 +61,22 @@ class StatsCalculator:
         # Phase 2: Remaining predictions are False Positives
         for idx, pred in enumerate(pred_anns):
             if idx not in matched_preds:
-                self._record_fp(pred)
+                if self.filters.check_filters(pred["cui"]):
+                    self._record_fp(pred)
+
+    def process_project(self, project: MedCATTrainerExportProject,
+                        entity_getter: Callable[[str], list[MutableEntity]],
+                        use_project_filters: bool = True,
+                        extra_cui_filter: set[str] | None = None,
+                        show_progress: bool = True,
+                        ) -> None:
+        with project_filters(self.filters,
+                             project,
+                             extra_cui_filter,
+                             use_project_filters):
+            for doc in tqdm(project["documents"], disable=not show_progress,
+                            desc="Documents"):
+                self.process_document(doc, entity_getter(doc["text"]))
 
     def _extract_gold_annotations(
         self,
