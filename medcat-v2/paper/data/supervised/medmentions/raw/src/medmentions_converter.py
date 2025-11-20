@@ -38,7 +38,7 @@ def load_medmentions(file_name: str) -> Iterator[tuple[str, str, str, dict]]:
         yield doc_id, title, abstract, unwrap_anns(ann_lines)
 
 
-def get_export(file_name: str, snomed_pt2ch: dict) -> MedCATTrainerExport:
+def get_export(file_name: str) -> MedCATTrainerExport:
     mct_export: MedCATTrainerExport = {
         "projects": [
             {
@@ -76,9 +76,8 @@ def load_json(fn: str) -> dict:
 
 
 def main(*args: str):
-    in_file, out_file, snomed_pt2ch_file = args
-    snomed_pt2ch = load_json(snomed_pt2ch_file)
-    mct_export = get_export(in_file, snomed_pt2ch)
+    in_file, out_file = args
+    mct_export = get_export(in_file)
     save_export(mct_export, out_file)
 
 
