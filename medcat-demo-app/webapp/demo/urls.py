@@ -12,7 +12,7 @@ urlpatterns = [
     # questionnaire
     path('umls-license-questionnaire/get-client-id', get_client_identifier,
          name="get-client-identifier"),
-    path('umls-license-questionnaire/get-questionnaire', get_questionnaire,
+    path('umls-license-questionnaire/', get_questionnaire,
          name="get-questionnaire"),
     path('umls-license-questionnaire/submit-questionnaire', submit_questionnaire,
          name="submit-questionnaire"),
