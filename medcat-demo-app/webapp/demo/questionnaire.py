@@ -5,6 +5,7 @@ from django.db import transaction
 from django.shortcuts import render
 import json
 import random
+import os
 
 from medcat import __version__ as medcat_version
 
@@ -24,6 +25,10 @@ def get_client_identifier(request):
     return ip
 
 
+def get_number_of_questions() -> int:
+    return int(os.environ.get("MEDCAT_DEMO_MIN_QUESTIONS", 5))
+
+
 @csrf_exempt
 @require_http_methods(["GET"])
 def get_questionnaire(request):
@@ -41,7 +46,7 @@ def get_questionnaire(request):
 
 
     # Get random questions (adjust N as needed)
-    N = 5  # Number of questions to ask
+    N = get_number_of_questions()
     questions = list(Question.objects.filter(is_active=True))
 
     if len(questions) < N:
