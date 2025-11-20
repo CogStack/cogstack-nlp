@@ -16,7 +16,7 @@ class CUIInfo(TypedDict):
 
 class _FakeDict:
 
-    def __call__(self, cdb: CDB):
+    def __init__(self, cdb: CDB):
         self.cdb = cdb
 
     def get(self, cui: str, def_val: Any | None = None) -> CUIInfo | None:
