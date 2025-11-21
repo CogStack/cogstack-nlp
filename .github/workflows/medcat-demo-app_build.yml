@@ -49,7 +49,8 @@ jobs:
     - name: Check container logs for errors
       run: |
         docker-compose logs medcatweb
-        docker-compose logs medcatweb | grep -i 'error' && exit 1 || true
+        # NOTE: ignore line "Applying auth.0007_alter_validators_add_error_messages" - not an error
+        docker-compose logs medcatweb | grep -v "Applying auth.0007_alter_validators_add_error_messages" | grep -i 'error' && exit 1 || true
 
     - name: Tear down
       run: docker-compose -f docker-compose-test.yml down
