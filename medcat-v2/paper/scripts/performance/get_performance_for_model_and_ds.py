@@ -82,7 +82,8 @@ def main(model_pack_path: str,
         print("Exploring", export_path)
         data = load_data(export_path)
         new_metrics = get_overall_prec_rec_f1(cat, data)
-        out_data.extend([os.path.basename(export_path)] + list(new_metrics))
+        out_data.append([os.path.basename(
+            os.path.dirname(export_path))] + list(new_metrics))
         print(new_metrics)
     df = pd.DataFrame(
         out_data,
