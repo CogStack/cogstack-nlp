@@ -46,4 +46,24 @@
         You can find your API key by logging into your UMLS account and visiting your <a href="https://uts.nlm.nih.gov/uts/profile" target="_blank">UMLS Profile</a>.
     </p>
 </div>
+<div class="accordion mb-3" id="noApiKeyAccordion">
+    <div class="card">
+        <div class="card-header" id="noApiKeyHeading">
+            <h5 class="mb-0">
+                <button class="btn btn-link" type="button" data-toggle="collapse" data-target="#noApiKeyCollapse" aria-expanded="false" aria-controls="noApiKeyCollapse">
+                    <i class="fas fa-question-circle"></i> Cannot obtain an API key...
+                </button>
+            </h5>
+        </div>
+        <div id="noApiKeyCollapse" class="collapse" aria-labelledby="noApiKeyHeading" data-parent="#noApiKeyAccordion">
+            <div class="card-body">
+                If you are unable to obtain an API key due to NIH, you still need to accept their
+                <a href="https://uts.nlm.nih.gov/uts/assets/LicenseAgreement.pdf">license</a>.
+                Once you've read the license agreement you can fill in
+                <a href="/umls-license-questionnaire/">this questionnaire</a> to verify that you
+                have read and understood the license.
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
