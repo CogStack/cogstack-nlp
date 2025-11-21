@@ -367,6 +367,7 @@ class CogStack:
             api_key=api_key,
             basic_auth=basic_auth,
             verify_certs=False,
+            use_ssl=False,
             request_timeout=CogStack.ES_TIMEOUT,
         )
         if not provider.ping():
