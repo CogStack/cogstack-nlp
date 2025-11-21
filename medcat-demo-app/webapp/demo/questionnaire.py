@@ -9,10 +9,7 @@ import os
 
 from medcat import __version__ as medcat_version
 
-from .models import Question, UserAttempt, APIKey
-
-
-cooldown_minutes = 30
+from .models import Question, UserAttempt, APIKey, cooldown_minutes
 
 
 def get_client_identifier(request):
@@ -137,15 +134,16 @@ def submit_questionnaire(request):
                 'message': 'All answers correct! API key generated.',
                 'api_key': api_key.key,
                 'expires_at': api_key.expires_at.isoformat(),
-                'valid_for_minutes': 30,
+                'valid_for_minutes': cooldown_minutes,
                 'secret_link': secret_url
             })
 
         else:
             return JsonResponse({
                 'success': False,
-                'message': 'Some answers were incorrect. Try again in 30 minutes.',
-                'cooldown_seconds': 1800
+                'message': 'Some answers were incorrect. '
+                f'Try again in {cooldown_minutes} minutes.',
+                'cooldown_seconds': cooldown_minutes * 60,
             }, status=403)
 
 

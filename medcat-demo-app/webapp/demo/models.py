@@ -10,6 +10,9 @@ from django.utils import timezone
 MODEL_FS = FileSystemStorage(location="/medcat_data")
 
 
+cooldown_minutes = 30
+
+
 # Create your models here.
 class UploadedText(models.Model):
     text = models.TextField(default="", blank=True)
@@ -65,7 +68,7 @@ class UserAttempt(models.Model):
     @classmethod
     def can_attempt(cls, identifier):
         """Check if user can attempt the questionnaire"""
-        thirty_mins_ago = timezone.now() - timedelta(minutes=30)
+        thirty_mins_ago = timezone.now() - timedelta(minutes=cooldown_minutes)
         recent_failed = cls.objects.filter(
             identifier=identifier,
             attempted_at__gte=thirty_mins_ago,
@@ -76,7 +79,7 @@ class UserAttempt(models.Model):
     @classmethod
     def get_cooldown_remaining(cls, identifier):
         """Get remaining cooldown time in seconds"""
-        thirty_mins_ago = timezone.now() - timedelta(minutes=30)
+        thirty_mins_ago = timezone.now() - timedelta(minutes=cooldown_minutes)
         recent_failed = cls.objects.filter(
             identifier=identifier,
             attempted_at__gte=thirty_mins_ago,
@@ -85,7 +88,7 @@ class UserAttempt(models.Model):
 
         if recent_failed:
             time_passed = timezone.now() - recent_failed.attempted_at
-            remaining = timedelta(minutes=30) - time_passed
+            remaining = timedelta(minutes=cooldown_minutes) - time_passed
             return max(0, int(remaining.total_seconds()))
         return 0
 
@@ -102,7 +105,7 @@ class APIKey(models.Model):
         if not self.key:
             self.key = secrets.token_urlsafe(48)
         if not self.expires_at:
-            self.expires_at = timezone.now() + timedelta(minutes=30)
+            self.expires_at = timezone.now() + timedelta(minutes=cooldown_minutes)
         super().save(*args, **kwargs)
 
     @classmethod
