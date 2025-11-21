@@ -198,7 +198,7 @@
     <div class="quiz-wrapper">
     <div class="quiz-container">
         <h1>🎯 Knowledge Challenge</h1>
-        <p class="subtitle">Answer all {{ total }} questions correctly to receive your API key. You have one attempt every 30 minutes.</p>
+        <p class="subtitle">Answer all {{ total }} questions correctly to receive acces to models. You have one attempt every 30 minutes.</p>
 
         <form id="quizForm">
             {% csrf_token %}
@@ -282,12 +282,8 @@
                     resultDiv.innerHTML = `
                         <div class="result-title">✅ Congratulations!</div>
                         <p>${data.message}</p>
-                        <div class="api-key-box">
-                            <strong>Your API Key:</strong><br>
-                            ${data.api_key}
-                        </div>
                         <p><strong>Valid for:</strong> ${data.valid_for_minutes} minutes</p>
-                        <p><strong>Expires at:</strong> ${new Date(data.expires_at).toLocaleString()}</p>
+                        <p><strong>Access until:</strong> ${new Date(data.expires_at).toLocaleString()}</p>
                         <a href="${data.secret_link}" class="secret-link">🔓 Access Models</a>
                     `;
                 } else {
