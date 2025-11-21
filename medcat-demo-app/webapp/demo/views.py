@@ -207,6 +207,7 @@ def validate_umls_api_key(request):
     else:
         form = UMLSApiKeyForm()
 
+    context['medcat_version'] = medcat_version
     return render(request, 'umls_api_key_entry.html', {'form': form})
 
 
