@@ -119,7 +119,7 @@
 
 {% block script %}
     <script>
-        let remainingSeconds = { cooldown_seconds };
+        let remainingSeconds = {{ cooldown_seconds|default:0 }};
         const countdownEl = document.getElementById('countdown');
         const retryBtn = document.getElementById('retryBtn');
 
