@@ -1,5 +1,5 @@
 # Stage 1: Build stage (dependencies and compilation)
-FROM python:3.12-slim as build
+FROM python:3.12-slim AS build
 
 # Create the required folders
 RUN mkdir -p /webapp/models
@@ -37,7 +37,7 @@ RUN if [ "$REINSTALL_CORE_FROM_LOCAL" = "true" ]; then \
 RUN python -m spacy download en_core_web_md
 
 # Stage 2: Final (production) image
-FROM python:3.12-slim as final
+FROM python:3.12-slim AS final
 
 # Install runtime dependencies (you don’t need git in production)
 RUN apt-get update && apt-get install -y --no-install-recommends \
