@@ -46,21 +46,19 @@ class APIKeyAdmin(admin.ModelAdmin):
 
             formatted = format_html(
                 '<div style="margin: 10px 0;">'
-                '<input type="text" value="{}" readonly '
+                '<input type="text" value="{}" id="api-url-{}" readonly '
                 'style="width: 500px; padding: 5px; margin-right: 10px;" /> '
-                '<button type="button" onclick="copyToClipboard(\'{}\', \'{}\')" '
-                'style="padding: 5px 10px; cursor: pointer;">Copy URL</button>'
+                '<button type="button" onclick="'
+                'navigator.clipboard.writeText(\'{}\').then(function() {{'
+                '  document.getElementById(\'copy-status-{}\').textContent = \'✓ Copied!\';'
+                '  setTimeout(function() {{'
+                '    document.getElementById(\'copy-status-{}\').textContent = \'\';'
+                '  }}, 2000);'
+                '}});'
+                '" style="padding: 5px 10px; cursor: pointer;">Copy URL</button>'
                 '<span id="copy-status-{}" style="margin-left: 10px; color: green;"></span>'
-                '</div>'
-                '<script>'
-                'function copyToClipboard(text, id) {{'
-                '  navigator.clipboard.writeText(text).then(function() {{'
-                '    document.getElementById("copy-status-" + id).textContent = "✓ Copied!";'
-                '    setTimeout(function() {{'
-                '      document.getElementById("copy-status-" + id).textContent = "";'
-                '    }}, 2000);'
-                '}}'
-                '</script>', callback_url, callback_url, unique_id, unique_id,
+                '</div>',
+                callback_url, unique_id, callback_url, unique_id, unique_id, unique_id
             )
             return formatted
         return "-"
