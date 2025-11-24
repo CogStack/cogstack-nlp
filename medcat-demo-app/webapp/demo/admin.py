@@ -1,4 +1,7 @@
 from django.contrib import admin
+from django.utils.html import format_html
+from django.conf import settings
+
 from .models import *
 
 admin.site.register(Downloader)
@@ -20,9 +23,9 @@ class APIKeyAdmin(admin.ModelAdmin):
 
     def get_readonly_fields(self, request, obj=None):
         if obj:  # Editing an existing object
-            return ('key', 'created_at', 'expires_at')
+            return ('key', 'created_at', 'api_key_link', 'expires_at')
         else:  # Creating a new object
-            return ('key', 'created_at')
+            return ('key', 'created_at', 'api_key_link')
 
     def key_short(self, obj):
         return f"{obj.key[:10]}..."
@@ -34,12 +37,14 @@ class APIKeyAdmin(admin.ModelAdmin):
     is_expired.boolean = True
     is_expired.short_description = 'Expired'
 
-    def api_key_link(self, obj):
-        if obj.key and obj.is_active:
-            callback_url = f"/manual-api-callback/?api_key={self.key}"
-            unique_id = self.identifier
+    def api_key_link(self, obj: APIKey):
+        if bool(obj.key) and obj.is_active:
+            current_site = settings.BASE_URL
+            base_url = f"{current_site}/manual-api-callback/"
+            callback_url = f"{base_url}?api_key={obj.key}"
+            unique_id = obj.identifier
 
-            return format_html(
+            formatted = format_html(
                 '<div style="margin: 10px 0;">'
                 '<input type="text" value="{}" readonly '
                 'style="width: 500px; padding: 5px; margin-right: 10px;" /> '
@@ -55,12 +60,9 @@ class APIKeyAdmin(admin.ModelAdmin):
                 '      document.getElementById("copy-status-" + id).textContent = "";'
                 '    }}, 2000);'
                 '}}'
-                '</script>',
-                callback_url,    # 1st {} - input value
-                callback_url,    # 2nd {} - text to copy
-                unique_id,   # 3rd {} - ID for JavaScript function
-                unique_id    # 4th {} - ID for status span
+                '</script>', callback_url, callback_url, unique_id, unique_id,
             )
+            return formatted
         return "-"
     api_key_link.short_description = 'API Key URL'
 

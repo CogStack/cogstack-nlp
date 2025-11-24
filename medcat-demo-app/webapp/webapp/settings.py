@@ -136,6 +136,9 @@ USE_L10N = True
 
 USE_TZ = True
 
+# BASE URL
+BASE_URL = os.getenv('BASE_URL', 'http://localhost:80')
+
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.2/howto/static-files/
