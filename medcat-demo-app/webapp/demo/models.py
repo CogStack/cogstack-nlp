@@ -39,13 +39,17 @@ class MedcatModel(models.Model):
     model_description = models.TextField(max_length=200)
 
 
+def _default_expiry():
+    return timezone.now() + timedelta(days=cooldown_days)
+
+
 class APIKey(models.Model):
     """Temporary API keys for successful completions"""
     key = models.CharField(max_length=64, unique=True, db_index=True)
     identifier = models.CharField(max_length=255)
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField(
-        default=lambda: timezone.now() + timedelta(days=cooldown_days))
+        default=_default_expiry)
     is_active = models.BooleanField(default=True)
 
     def save(self, *args, **kwargs):
