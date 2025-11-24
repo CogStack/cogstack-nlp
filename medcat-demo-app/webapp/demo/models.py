@@ -10,7 +10,7 @@ from django.utils import timezone
 MODEL_FS = FileSystemStorage(location="/medcat_data")
 
 
-cooldown_minutes = 30
+cooldown_days = 14
 
 
 # Create your models here.
@@ -51,7 +51,7 @@ class APIKey(models.Model):
         if not self.key:
             self.key = secrets.token_urlsafe(48)
         if not self.expires_at:
-            self.expires_at = timezone.now() + timedelta(minutes=cooldown_minutes)
+            self.expires_at = timezone.now() + timedelta(days=cooldown_days)
         super().save(*args, **kwargs)
 
     @classmethod
