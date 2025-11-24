@@ -21,31 +21,6 @@ class Migration(migrations.Migration):
                 ('is_active', models.BooleanField(default=True)),
             ],
         ),
-        migrations.CreateModel(
-            name='Question',
-            fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('question_text', models.TextField()),
-                ('option_a', models.CharField(max_length=255)),
-                ('option_b', models.CharField(max_length=255)),
-                ('option_c', models.CharField(max_length=255)),
-                ('option_d', models.CharField(max_length=255)),
-                ('correct_answer', models.CharField(choices=[('a', 'A'), ('b', 'B'), ('c', 'C'), ('d', 'D')], max_length=1)),
-                ('is_active', models.BooleanField(default=True)),
-            ],
-        ),
-        migrations.CreateModel(
-            name='UserAttempt',
-            fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('identifier', models.CharField(db_index=True, max_length=255)),
-                ('attempted_at', models.DateTimeField(auto_now_add=True)),
-                ('passed', models.BooleanField(default=False)),
-            ],
-            options={
-                'ordering': ['-attempted_at'],
-            },
-        ),
         migrations.AlterField(
             model_name='downloader',
             name='downloaded_file',

@@ -39,60 +39,6 @@ class MedcatModel(models.Model):
     model_description = models.TextField(max_length=200)
 
 
-class Question(models.Model):
-    """Multiple choice questions for the questionnaire"""
-    question_text = models.TextField()
-    option_a = models.CharField(max_length=255)
-    option_b = models.CharField(max_length=255)
-    option_c = models.CharField(max_length=255)
-    option_d = models.CharField(max_length=255)
-    correct_answer = models.CharField(
-        max_length=1,
-        choices=[('a', 'A'), ('b', 'B'), ('c', 'C'), ('d', 'D')]
-    )
-    is_active = models.BooleanField(default=True)
-
-    def __str__(self):
-        return self.question_text[:50]
-
-
-class UserAttempt(models.Model):
-    """Track user attempts to prevent brute-forcing"""
-    identifier = models.CharField(max_length=255, db_index=True)  # IP or user ID
-    attempted_at = models.DateTimeField(auto_now_add=True)
-    passed = models.BooleanField(default=False)
-
-    class Meta:
-        ordering = ['-attempted_at']
-
-    @classmethod
-    def can_attempt(cls, identifier):
-        """Check if user can attempt the questionnaire"""
-        thirty_mins_ago = timezone.now() - timedelta(minutes=cooldown_minutes)
-        recent_failed = cls.objects.filter(
-            identifier=identifier,
-            attempted_at__gte=thirty_mins_ago,
-            passed=False
-        ).exists()
-        return not recent_failed
-
-    @classmethod
-    def get_cooldown_remaining(cls, identifier):
-        """Get remaining cooldown time in seconds"""
-        thirty_mins_ago = timezone.now() - timedelta(minutes=cooldown_minutes)
-        recent_failed = cls.objects.filter(
-            identifier=identifier,
-            attempted_at__gte=thirty_mins_ago,
-            passed=False
-        ).first()
-
-        if recent_failed:
-            time_passed = timezone.now() - recent_failed.attempted_at
-            remaining = timedelta(minutes=cooldown_minutes) - time_passed
-            return max(0, int(remaining.total_seconds()))
-        return 0
-
-
 class APIKey(models.Model):
     """Temporary API keys for successful completions"""
     key = models.CharField(max_length=64, unique=True, db_index=True)
