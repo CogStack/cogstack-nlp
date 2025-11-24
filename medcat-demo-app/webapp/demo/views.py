@@ -215,7 +215,7 @@ def validate_umls_api_key(request):
 def model_after_api_key(request):
     context = {
         'is_valid': True,
-        'message': f'Questionnaire based API key is being used',
+        'message': f'Manually obtained API key is being used',
         'downloader_form': DownloaderForm(MedcatModel.objects.all())
     }
     context['medcat_version'] = medcat_version

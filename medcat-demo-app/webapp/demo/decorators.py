@@ -31,7 +31,7 @@ def require_valid_api_key(view_func):
         if not APIKey.is_valid(api_key):
             return JsonResponse({
                 'error': 'Invalid or expired API key',
-                'message': 'Please complete the questionnaire to obtain a valid API key'
+                'message': 'Please obtain a valid API key'
             }, status=401)
         
         # API key is valid, proceed with the view
