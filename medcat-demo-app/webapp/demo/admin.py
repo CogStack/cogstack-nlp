@@ -17,7 +17,12 @@ class APIKeyAdmin(admin.ModelAdmin):
     list_display = ('key_short', 'identifier', 'created_at', 'expires_at', 'is_active', 'is_expired')
     list_filter = ('is_active', 'created_at', 'expires_at')
     search_fields = ('key', 'identifier')
-    readonly_fields = ('key', 'created_at', 'expires_at')
+
+    def get_readonly_fields(self, request, obj=None):
+        if obj:  # Editing an existing object
+            return ('key', 'created_at', 'expires_at')
+        else:  # Creating a new object
+            return ('key', 'created_at')
 
     def key_short(self, obj):
         return f"{obj.key[:10]}..."
