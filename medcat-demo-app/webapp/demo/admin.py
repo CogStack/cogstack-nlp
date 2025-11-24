@@ -34,6 +34,36 @@ class APIKeyAdmin(admin.ModelAdmin):
     is_expired.boolean = True
     is_expired.short_description = 'Expired'
 
+    def api_key_link(self, obj):
+        if obj.key and obj.is_active:
+            callback_url = f"/manual-api-callback/?api_key={self.key}"
+            unique_id = self.identifier
+
+            return format_html(
+                '<div style="margin: 10px 0;">'
+                '<input type="text" value="{}" readonly '
+                'style="width: 500px; padding: 5px; margin-right: 10px;" /> '
+                '<button type="button" onclick="copyToClipboard(\'{}\', \'{}\')" '
+                'style="padding: 5px 10px; cursor: pointer;">Copy URL</button>'
+                '<span id="copy-status-{}" style="margin-left: 10px; color: green;"></span>'
+                '</div>'
+                '<script>'
+                'function copyToClipboard(text, id) {{'
+                '  navigator.clipboard.writeText(text).then(function() {{'
+                '    document.getElementById("copy-status-" + id).textContent = "✓ Copied!";'
+                '    setTimeout(function() {{'
+                '      document.getElementById("copy-status-" + id).textContent = "";'
+                '    }}, 2000);'
+                '}}'
+                '</script>',
+                callback_url,    # 1st {} - input value
+                callback_url,    # 2nd {} - text to copy
+                unique_id,   # 3rd {} - ID for JavaScript function
+                unique_id    # 4th {} - ID for status span
+            )
+        return "-"
+    api_key_link.short_description = 'API Key URL'
+
 
 # Register your models here.
 admin.site.register(UploadedText, UploadedTextAdmin)
