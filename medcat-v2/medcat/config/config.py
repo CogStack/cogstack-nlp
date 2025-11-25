@@ -170,6 +170,39 @@ class NLPConfig(SerialisableBaseModel):
 
     NB! For these changes to take effect, the pipe would need to be recreated.
     """
+    faster_spacy_tokenization: bool = False
+    """Allow skipping the spacy pipeline.
+
+    If True, uses basic tokenization only (spacy.make_doc) for ~3-4x overall
+    speedup.
+    If False, uses full linguistic pipeline including POS tagging,
+    lemmatization, and stopword detection.
+
+    **Impact of fast_tokenization=True:**
+    - No part-of-speech tags: All tokens treated uniformly during normalization
+    - No lemmatization: Words used in surface form (e.g., "running" vs "run")
+    - No stopword detection: All tokens in multi-token spans considered;
+      all tokens used in context vector calculation
+    - Real world performance (in terms of precision and recall) is likely to
+      be lower
+
+    **When to use fast mode:**
+    - Processing very large datasets where speed is critical
+    - Text is already clean/normalized
+    - Minor drops in precision/recall (typically 1-3%) are acceptable
+
+    **When to use full mode (default):**
+    - Maximum accuracy is required
+    - Working with noisy or varied text
+    - Proper linguistic analysis improves your specific use case
+
+    Benchmark on your data to determine if the speedup justifies the
+    accuracy tradeoff.
+
+    PS: Only applicable for spacy based tokenizer.
+
+    NB! For these changes to take effect, the pipe would need to be recreated.
+    """
     modelname: str = 'en_core_web_md'
     """What model will be used for tokenization.
 
