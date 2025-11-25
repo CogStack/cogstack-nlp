@@ -53,7 +53,7 @@ class SerialisingStrategy(Enum):
                 continue
             yield attr_name, attr
         # deal with extras in pydantic models
-        if isinstance(obj, BaseModel):
+        if isinstance(obj, BaseModel) and obj.__pydantic_extra__:
             for attr_name, attr in obj.__pydantic_extra__.items():
                 yield attr_name, attr
 
