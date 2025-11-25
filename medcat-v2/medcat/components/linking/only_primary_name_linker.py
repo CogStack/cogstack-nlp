@@ -19,7 +19,6 @@ class OnlyPrimaryNamesLinker(Linker):
 
     def __init__(self, cdb: CDB, vocab: Vocab, config: Config) -> None:
         super().__init__(cdb, vocab, config)
-        print("==INIT== primary_name_only_linker")
         # don't need / use the context model
         del self.context_model
 
