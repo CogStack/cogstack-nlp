@@ -4,6 +4,7 @@ import pandas as pd
 import json
 from typing import Optional, Any
 from collections import Counter
+from contextlib import contextmanager
 
 from medcat import cat
 from medcat.data.model_card import ModelCard
@@ -18,6 +19,7 @@ from medcat.utils.cdb_state import captured_state_cdb
 from medcat.components.addons.meta_cat import MetaCATAddon
 from medcat.utils.defaults import AVOID_LEGACY_CONVERSION_ENVIRON
 from medcat.utils.defaults import LegacyConversionDisabledError
+from medcat.utils.config_utils import temp_changed_config
 
 import unittest
 import tempfile
@@ -221,6 +223,60 @@ class InferenceFromLoadedTests(TrainedModelTests):
         for nr, ent in enumerate(ents.values()):
             with self.subTest(f"{nr}"):
                 ConvertedFunctionalityTests.assert_has_ent(ent)
+
+    @classmethod
+    @contextmanager
+    def _faster_spacy_inference(cls):
+        with temp_changed_config(
+            cls.model.config.general.nlp,
+            "faster_spacy_tokenization",
+            True
+        ):
+            with temp_changed_config(
+                cls.model.config.general.nlp,
+                "modelname",
+                "en_core_web_md"
+            ):
+                cls.model._recreate_pipe()
+                yield
+        cls.model._recreate_pipe()
+
+    def _is_spacy_model(self):
+        if self.model.config.general.nlp.provider != "spacy":
+            raise unittest.SkipTest("Only applicable for spacy models")
+
+    def test_default_spacy_runs_pipe(self):
+        self._is_spacy_model()
+        self.assertFalse(self.model.pipe._tokenizer._avoid_pipe)
+
+    def test_faster_spacy_inference_is_set(self):
+        self._is_spacy_model()
+        with self._faster_spacy_inference():
+            self.assertTrue(self.model.pipe._tokenizer._avoid_pipe)
+
+    def test_faster_spacy_inference_works(self):
+        self._is_spacy_model()
+        with self._faster_spacy_inference():
+            ents = self.model.get_entities(
+                ConvertedFunctionalityTests.TEXT)['entities']
+            self.assertTrue(ents)
+            for nr, ent in enumerate(ents.values()):
+                with self.subTest(f"{nr}"):
+                    ConvertedFunctionalityTests.assert_has_ent(ent)
+
+    def test_faster_spacy_inference_is_used(self):
+        self._is_spacy_model()
+        with self._faster_spacy_inference():
+            with unittest.mock.patch.object(
+                    self.model.pipe._tokenizer._nlp,
+                    '__call__') as dunder_call_mock:
+                with unittest.mock.patch.object(
+                        self.model.pipe._tokenizer._nlp,
+                        'make_doc') as make_doc_mock:
+                    self.model.get_entities(
+                        ConvertedFunctionalityTests.TEXT)
+                    dunder_call_mock.assert_not_called()
+                    make_doc_mock.assert_called()
 
     def test_entities_in_correct_order(self):
         # NOTE: the issue wouldn't show up with smaller amount of text
