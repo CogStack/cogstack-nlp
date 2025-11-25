@@ -35,9 +35,28 @@ class OnlyPrimaryNamesLinker(Linker):
         if name is None:
             logger.info("No name detected for entity %s", entity)
             return
-        primary_cuis = [cui for cui, status in
-                        self.cdb.name2info[name]["per_cui_status"].items()
-                        if status in StatusTypes.PRIMARY_STATUS]
+        cnf_l = self.config.components.linking
+        if cnf_l.filter_before_disamb:
+            cuis = [cui for cui in cuis if cnf_l.filters.check_filters(cui)]
+        if not cuis:
+            logger.debug("No CUIs that fit filter for %s", entity)
+            return
+        if len(cuis) == 1:
+            if cnf_l.filters.check_filters(cuis[0]):
+                logger.info("Choosing only possible CUI %s for %s",
+                            cuis[0], entity)
+                entity.cui = cuis[0]
+                entity.context_similarity = 1.0
+                yield entity
+            else:
+                logger.info(
+                    "A single CUI (%s) was mapped to for %s but not in filter",
+                    cuis[0], entity)
+            return
+        primary_cuis = [cui for cui in cuis
+                        if (self.cdb.name2info[name]['per_cui_status'][cui]
+                            in StatusTypes.PRIMARY_STATUS and
+                            cnf_l.filters.check_filters(cui))]
         if not primary_cuis:
             logger.info("No pimary CUIs for name %s", name)
             return
