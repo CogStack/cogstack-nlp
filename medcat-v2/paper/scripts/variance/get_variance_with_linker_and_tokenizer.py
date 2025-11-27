@@ -1,17 +1,63 @@
 import json
 import time
+from enum import Enum
 
 from cProfile import Profile
 from pstats import Stats
 
 from medcat.cat import CAT
+from medcat.components.types import CoreComponentType
 from medcat.stats import get_stats
 
 EXAMPLE_DATASET = "paper/data/supervised/cometa/mct_export.json"
 EXAMPLE_MODEL_PATH = ".temp/CONVERT_2023_model_no_mc_234dda1597f635e3.zip"
-USE_NEW_LINKER = False
+USE_LINKER = "DEFAULT"
 USE_REGEX_TOKENIZER = True
-DO_PROFILING = True
+DO_PROFILING = False
+
+
+class LinkerType(Enum):
+    DEFAULT = 0
+    VECTOR_CONTEXT = 0
+    FASTER = 1
+    EMBEDDING = 2
+
+    @classmethod
+    def get_type(cls, linker: str) -> 'LinkerType':
+        if linker.upper() in cls:
+            return cls[linker.upper()]
+        elif linker.lower() in ("new", "faster"):
+            return cls.FASTER
+        elif "embed" in linker.lower():
+            return cls.EMBEDDING
+        elif linker.lower() in ("normal", "def", "regular", "reg", "old"):
+            return cls.DEFAULT
+        raise ValueError(f"Unknown linker type: '{linker}'")
+
+    def set_linker(self, cat: CAT):
+        cmp_cnf = cat.config.components
+        if self is LinkerType.DEFAULT:
+            # make change just in case this is a re-run / subsequent change
+            cmp_cnf.linking.comp_name = "default"
+        if self is LinkerType.FASTER:
+            cmp_cnf.linking.comp_name = "primary_name_only_linker"
+        elif self is LinkerType.EMBEDDING:
+            from medcat.config.config import EmbeddingLinking
+            from medcat.components.linking.embedding_linker import (
+                Linker as ELinker)
+            cmp_cnf.linking = EmbeddingLinking()
+            # NOTE: should fix on the lib side
+            cmp_cnf.linking.comp_name = "medcat2_embedding_linker"
+            # need to recreate and create embeddings
+            cat._recreate_pipe()
+            linker: ELinker = cat.pipe.get_component(CoreComponentType.linking)
+            print("Creating embeddings...")
+            linker.create_embeddings()
+            # NOTE: returning without another pipe recreation
+            return
+        else:
+            raise ValueError("Not defined for linker:")
+        cat._recreate_pipe()
 
 
 def setup_cui_filter(data: dict) -> None:
@@ -33,29 +79,25 @@ def setup_cui_filter(data: dict) -> None:
 
 
 def main(
-        new_linker_raw: bool | str = USE_NEW_LINKER,
+        linker_type_str: str = USE_LINKER,
         regex_tokenizer_raw: bool | str = USE_REGEX_TOKENIZER,
         model_path: str = EXAMPLE_MODEL_PATH,
         data_path: str = EXAMPLE_DATASET):
-    if isinstance(new_linker_raw, str):
-        new_linker = new_linker_raw.lower() in ("new", "yes", "true")
-    else:
-        new_linker = new_linker_raw
+    linker_type = LinkerType.get_type(linker_type_str)
     if isinstance(regex_tokenizer_raw, str):
         regex_tokenizer = regex_tokenizer_raw.lower() in (
             "regex", "yes", "true")
     else:
         regex_tokenizer = regex_tokenizer_raw
-    print(f"Setup:\n Linker:{'new' if new_linker else 'old'}"
+    print(f"Setup:\n Linker:{linker_type.name}"
           f"\n Tokenizer:{'regex' if regex_tokenizer else 'spacy'}")
     print("Loading model", model_path, "...")
     cat = CAT.load_model_pack(model_path)
     # NOTE: prep subnames
     cat.cdb.has_subname("")
-    if new_linker:
-        print("USING NEW LINKER")
-        cat.config.components.linking.comp_name = "primary_name_only_linker"
-        cat._recreate_pipe()
+    if linker_type != LinkerType.DEFAULT:
+        print("USING non-default LINKER", linker_type)
+        linker_type.set_linker(cat)
     else:
         print("Using DEFAULT linker...")
     if regex_tokenizer:
