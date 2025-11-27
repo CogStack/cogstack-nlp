@@ -392,7 +392,7 @@ class Linking(ComponentConfig):
 
 class EmbeddingLinking(Linking):
     """The config exclusively used for the embedding linker"""
-    comp_name: str = "embedding_linker"
+    comp_name: str = "medcat2_embedding_linker"
     """Changing compoenent name"""
     filter_before_disamb: bool = False
     """Filtering CUIs before disambiguation"""
