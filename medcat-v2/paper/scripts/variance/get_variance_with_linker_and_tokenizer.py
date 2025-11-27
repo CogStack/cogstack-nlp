@@ -4,6 +4,7 @@ from enum import Enum
 import io
 from contextlib import redirect_stdout, redirect_stderr, contextmanager
 import re
+import os
 
 from cProfile import Profile
 from pstats import Stats
@@ -123,7 +124,10 @@ def main(
         with capture_output() as captured:
             _main(linker_type_str, regex_tokenizer_raw,
                   model_path, data_path)
-        print(",".join(captured))
+        # start with data path
+        data_folder_name = os.path.basename(
+            os.path.dirname(data_path))
+        print(",".join([data_folder_name] + captured))
     else:
         _main(linker_type_str, regex_tokenizer_raw,
               model_path, data_path)
