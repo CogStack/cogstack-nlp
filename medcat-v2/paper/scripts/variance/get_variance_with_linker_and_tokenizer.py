@@ -1,6 +1,9 @@
 import json
 import time
 from enum import Enum
+import io
+from contextlib import redirect_stdout, redirect_stderr, contextmanager
+import re
 
 from cProfile import Profile
 from pstats import Stats
@@ -78,7 +81,55 @@ def setup_cui_filter(data: dict) -> None:
           "\n Max CUIs", max(per_proj_cuis))
 
 
+@contextmanager
+def capture_output():
+    f = io.StringIO()
+    out_list = []
+    with redirect_stdout(f):
+        with redirect_stderr(f):
+            yield out_list
+    lines = f.getvalue().split("\n")
+    linker: str | None = None
+    tokenizer: str | None = None
+    prec: str | None = None
+    rec: str | None = None
+    f1: str | None = None
+    for line in lines:
+        if m := re.match(r"\s+Linker:\s*(.*)", line):
+            linker = m.group(1)
+        elif m := re.match(r"\s+Tokenizer:\s*(.*)", line):
+            tokenizer = m.group(1)
+        elif m := re.search(
+                r"Epoch:\s*0,.*Prec:\s*([\d.]+),\s*"
+                r"Rec:\s*([\d.]+),\s*"r"F1:\s*([\d.]+)", line):
+            prec, rec, f1 = m.groups()
+        if None not in (linker, tokenizer, prec, rec, f1):
+            # break early if all found
+            break
+    if None in (linker, tokenizer, prec, rec, f1):
+        raise ValueError(
+            "Unable to find linker, tokenizer, precision, recall, or f1. Got "
+            f"{linker}, {tokenizer}, {prec}, {rec}, {f1}")
+    out_list.extend([linker, tokenizer, prec, rec, f1])
+
+
 def main(
+        linker_type_str: str = USE_LINKER,
+        regex_tokenizer_raw: bool | str = USE_REGEX_TOKENIZER,
+        model_path: str = EXAMPLE_MODEL_PATH,
+        data_path: str = EXAMPLE_DATASET,
+        one_line_only: bool = False):
+    if one_line_only:
+        with capture_output() as captured:
+            _main(linker_type_str, regex_tokenizer_raw,
+                  model_path, data_path)
+        print(",".join(captured))
+    else:
+        _main(linker_type_str, regex_tokenizer_raw,
+              model_path, data_path)
+
+
+def _main(
         linker_type_str: str = USE_LINKER,
         regex_tokenizer_raw: bool | str = USE_REGEX_TOKENIZER,
         model_path: str = EXAMPLE_MODEL_PATH,
@@ -133,4 +184,7 @@ def main(
 
 if __name__ == "__main__":
     from sys import argv
-    main(*argv[1:])
+    one_line_only = "--one-line" in argv
+    if one_line_only:
+        argv.remove("--one-line")
+    main(*argv[1:], one_line_only=one_line_only)
