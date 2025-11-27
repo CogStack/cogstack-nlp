@@ -13,6 +13,13 @@ python $SCRIPT old regex $MODEL_PATH $DATASET
 echo "With regex tokenizer AND faster linker"
 python $SCRIPT new regex $MODEL_PATH $DATASET
 
+# with embedding linker
+
+echo "With spacy tokenizer + embed lnker"
+python $SCRIPT embed spacy $MODEL_PATH $DATASET
+echo "With regex tokenizer + embed linker"
+python $SCRIPT embed regex $MODEL_PATH $DATASET
+
 # other dataset
 echo "==Linking Challenge=="
 DATASET="data/supervised/linking_challenge/mct_export.json"
@@ -25,3 +32,10 @@ echo "With regex tokenizer"
 python $SCRIPT old regex $MODEL_PATH $DATASET
 echo "With regex tokenizer AND faster linker"
 python $SCRIPT new regex $MODEL_PATH $DATASET
+
+# with embedding linker
+
+echo "With spacy tokenizer + embed lnker"
+python $SCRIPT embed spacy $MODEL_PATH $DATASET
+echo "With regex tokenizer + embed linker"
+python $SCRIPT embed regex $MODEL_PATH $DATASET
