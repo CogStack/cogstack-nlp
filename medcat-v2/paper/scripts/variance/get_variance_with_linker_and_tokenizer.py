@@ -95,6 +95,7 @@ def capture_output():
     prec: str | None = None
     rec: str | None = None
     f1: str | None = None
+    time_taken: str | None = None
     for line in lines:
         if m := re.match(r"\s+Linker:\s*(.*)", line):
             linker = m.group(1)
@@ -104,14 +105,18 @@ def capture_output():
                 r"Epoch:\s*0,.*Prec:\s*([\d.]+),\s*"
                 r"Rec:\s*([\d.]+),\s*"r"F1:\s*([\d.]+)", line):
             prec, rec, f1 = m.groups()
-        if None not in (linker, tokenizer, prec, rec, f1):
+        elif m := re.search(
+                r"Took ([\d.]+)", line):
+            time_taken = m.group(1)
+        if None not in (linker, tokenizer, prec, rec, f1, time_taken):
             # break early if all found
             break
-    if None in (linker, tokenizer, prec, rec, f1):
+    if None in (linker, tokenizer, prec, rec, f1, time_taken):
         raise ValueError(
-            "Unable to find linker, tokenizer, precision, recall, or f1. Got "
-            f"{linker}, {tokenizer}, {prec}, {rec}, {f1}")
-    out_list.extend([linker, tokenizer, prec, rec, f1])
+            "Unable to find linker, tokenizer, precision, recall, f1, "
+            "or time taken. Got "
+            f"{linker}, {tokenizer}, {prec}, {rec}, {f1} {time_taken}")
+    out_list.extend([linker, tokenizer, prec, rec, f1, time_taken])
 
 
 def main(
