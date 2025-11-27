@@ -1,8 +1,9 @@
 from typing import Optional
 
 import logging
-from medcat.tokenizing.tokens import MutableDocument
-from medcat.components.types import CoreComponentType, AbstractCoreComponent
+from medcat.tokenizing.tokens import MutableDocument, MutableEntity
+from medcat.components.types import CoreComponentType
+from medcat.components.types import AbstractEntityProvidingComponent
 from medcat.components.ner.vocab_based_annotator import maybe_annotate_name
 from medcat.utils.import_utils import ensure_optional_extras_installed
 from medcat.tokenizing.tokenizers import BaseTokenizer
@@ -24,11 +25,12 @@ from ahocorasick import Automaton # noqa
 logger = logging.getLogger(__name__)
 
 
-class NER(AbstractCoreComponent):
+class NER(AbstractEntityProvidingComponent):
     name = 'cat_dict_ner'
 
     def __init__(self, tokenizer: BaseTokenizer,
                  cdb: CDB) -> None:
+        super().__init__()
         self.tokenizer = tokenizer
         self.cdb = cdb
         self.config = self.cdb.config
@@ -60,7 +62,9 @@ class NER(AbstractCoreComponent):
     def get_type(self) -> CoreComponentType:
         return CoreComponentType.ner
 
-    def __call__(self, doc: MutableDocument) -> MutableDocument:
+    def predict_entities(self, doc: MutableDocument,
+                         ents: list[MutableEntity] | None = None
+                         ) -> list[MutableEntity]:
         """Detect candidates for concepts - linker will then be able
         to do the rest. It adds `entities` to the doc.entities and each
         entity can have the entity.link_candidates - that the linker
@@ -69,15 +73,20 @@ class NER(AbstractCoreComponent):
         Args:
             doc (MutableDocument):
                 Spacy document to be annotated with named entities.
+            ents (list[MutableEntity] | None):
+                The entities given. This should be None.
 
         Returns:
-            doc (MutableDocument):
-                Spacy document with detected entities.
+            list[MutableEntity]:
+                The NER'ed entities.
         """
+        if ents is not None:
+            ValueError(f"Unexpected entities sent to NER: {ents}")
         if self.cdb.has_changed_names:
             self.cdb._reset_subnames()
             self._rebuild_automaton()
         text = doc.base.text.lower()
+        ner_ents: list[MutableEntity] = []
         for end_idx, raw_name in self.automaton.iter(text):
             start_idx = end_idx - len(raw_name) + 1
             cur_tokens = doc.get_tokens(start_idx, end_idx)
@@ -96,9 +105,12 @@ class NER(AbstractCoreComponent):
                 continue
             preprocessed_name = raw_name.replace(
                 ' ', self.config.general.separator)
-            maybe_annotate_name(self.tokenizer, preprocessed_name, cur_tokens,
-                                doc, self.cdb, self.config)
-        return doc
+            ent = maybe_annotate_name(
+                self.tokenizer, preprocessed_name, cur_tokens,
+                doc, self.cdb, self.config, len(ner_ents))
+            if ent:
+                ner_ents.append(ent)
+        return ner_ents
 
     @classmethod
     def create_new_component(

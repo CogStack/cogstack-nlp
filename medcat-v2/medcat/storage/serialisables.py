@@ -1,6 +1,8 @@
 from typing import Any, Union, Protocol, runtime_checkable, Iterable
 from enum import Enum, auto
 
+from pydantic import BaseModel
+
 
 class SerialisingStrategy(Enum):
     """Describes the strategy for serialising."""
@@ -50,6 +52,10 @@ class SerialisingStrategy(Enum):
                 # ignore privates
                 continue
             yield attr_name, attr
+        # deal with extras in pydantic models
+        if isinstance(obj, BaseModel) and obj.__pydantic_extra__:
+            for attr_name, attr in obj.__pydantic_extra__.items():
+                yield attr_name, attr
 
     def _iter_obj_values(self, obj: 'Serialisable') -> Iterable[Any]:
         for _, val in self._iter_obj_items(obj):

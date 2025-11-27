@@ -11,4 +11,6 @@ if [ -z "${APP_MODEL_CDB_PATH}" ] && [ -z "${APP_MODEL_VOCAB_PATH}" ] && [ -z "$
   echo "Using default model pack in  $APP_MEDCAT_MODEL_PACK"
 fi
 
+export APP_ENABLE_METRICS=${APP_ENABLE_METRICS:-True}
+
 fastapi dev medcat_service/main.py 

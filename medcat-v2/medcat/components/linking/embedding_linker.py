@@ -1,11 +1,12 @@
 from medcat.cdb import CDB
 from medcat.config.config import Config, ComponentConfig, EmbeddingLinking
-from medcat.components.types import CoreComponentType, AbstractCoreComponent
+from medcat.components.types import CoreComponentType
+from medcat.components.types import AbstractEntityProvidingComponent
 from medcat.tokenizing.tokens import MutableEntity, MutableDocument
 from medcat.tokenizing.tokenizers import BaseTokenizer
 from typing import Optional, Iterator, Set
 from medcat.vocab import Vocab
-from medcat.utils.postprocessing import create_main_ann
+from medcat.utils.postprocessing import filter_linked_annotations
 from tqdm import tqdm
 from collections import defaultdict
 import logging
@@ -27,7 +28,7 @@ import torch  # noqa: E402
 logger = logging.getLogger(__name__)
 
 
-class Linker(AbstractCoreComponent):
+class Linker(AbstractEntityProvidingComponent):
     name = "embedding_linker"
 
     def __init__(self, cdb: CDB, config: Config) -> None:
@@ -36,6 +37,7 @@ class Linker(AbstractCoreComponent):
             cdb (CDB): The concept database to use.
             config (Config): The base config.
         """
+        super().__init__()
         self.cdb = cdb
         self.config = config
         if not isinstance(config.components.linking, EmbeddingLinking):
@@ -92,7 +94,7 @@ class Linker(AbstractCoreComponent):
         using the chosen embedding model."""
         if embedding_model_name is None:
             embedding_model_name = self.cnf_l.embedding_model_name  # fallback
-            
+
         if max_length is not None and max_length != self.max_length:
             logger.info(
             "Updating max_length from %s to %s", self.max_length, max_length
@@ -548,10 +550,9 @@ class Linker(AbstractCoreComponent):
             to_infer.append(entity)
         return le, to_infer
 
-    def __call__(self, doc: MutableDocument) -> MutableDocument:
-        # Reset main entities, will be recreated later
-        doc.linked_ents.clear()
-
+    def predict_entities(self, doc: MutableDocument,
+                         ents: list[MutableEntity] | None = None
+                         ) -> list[MutableEntity]:
         if self.cdb.is_dirty:
             logging.warning(
                 "CDB has been modified since last save/load. "
@@ -580,11 +581,7 @@ class Linker(AbstractCoreComponent):
             for entities in self._batch_data(to_infer, self.cnf_l.linking_batch_size):
                 le.extend(list(self._inference(doc, entities)))
 
-        doc.ner_ents.clear()
-        doc.ner_ents.extend(le)
-        create_main_ann(doc)
-
-        return doc
+        return filter_linked_annotations(doc, le)
 
     @property
     def names_context_matrix(self):

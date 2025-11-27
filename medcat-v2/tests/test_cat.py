@@ -129,8 +129,9 @@ class ConfigMergeTests(unittest.TestCase):
     def test_can_merge_config(self):
         model = cat.CAT.load_model_pack(
             EXAMPLE_MODEL_PACK_ZIP, config_dict=self.model_dict)
-        self.assertEqual(
-            model.config.general.nlp.modelname, self.spacy_model_name)
+        # NOTE: this is converted to a (non-existent) path
+        self.assertIn(
+            self.spacy_model_name, model.config.general.nlp.modelname)
 
 
 class OntologiesMapTests(TrainedModelTests):
@@ -919,7 +920,9 @@ class CATWithDocAddonSpacyTests(CATWithDocAddonTests):
         cls.saved_model_path = cls.cat.save_model_pack(
             cls._save_folder.name, make_archive=False)
         # NOTE: that has changed config
-        cls.saved_spacy_path = cls.cat.config.general.nlp.modelname
+        cls.saved_spacy_path = os.path.join(
+            cls.saved_model_path,
+            cls.cat.config.general.nlp.modelname)
 
     @classmethod
     def tearDownClass(cls):

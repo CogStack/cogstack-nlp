@@ -1,8 +1,8 @@
 name: medcat-v1-tutorials - Test
 
 on:
-  push:
-    branches: [ main ]
+  schedule:
+    - cron: "0 0 * * 0"  # every Sunday at midnight UTC (avoid clash with v2 stability)
   pull_request:
     paths:
       - 'v1/medcat/**'

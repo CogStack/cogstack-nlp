@@ -1,8 +1,9 @@
 from typing import Optional
 
 import logging
-from medcat.tokenizing.tokens import MutableDocument
-from medcat.components.types import CoreComponentType, AbstractCoreComponent
+from medcat.tokenizing.tokens import MutableDocument, MutableEntity
+from medcat.components.types import CoreComponentType
+from medcat.components.types import AbstractEntityProvidingComponent
 from medcat.components.ner.vocab_based_annotator import maybe_annotate_name
 from medcat.tokenizing.tokenizers import BaseTokenizer
 from medcat.vocab import Vocab
@@ -13,11 +14,12 @@ from medcat.config.config import ComponentConfig
 logger = logging.getLogger(__name__)
 
 
-class NER(AbstractCoreComponent):
+class NER(AbstractEntityProvidingComponent):
     name = 'cat_ner'
 
     def __init__(self, tokenizer: BaseTokenizer,
                  cdb: CDB) -> None:
+        super().__init__()
         self.tokenizer = tokenizer
         self.cdb = cdb
         self.config = self.cdb.config
@@ -25,7 +27,9 @@ class NER(AbstractCoreComponent):
     def get_type(self) -> CoreComponentType:
         return CoreComponentType.ner
 
-    def __call__(self, doc: MutableDocument) -> MutableDocument:
+    def predict_entities(self, doc: MutableDocument,
+                         ents: list[MutableEntity] | None = None
+                         ) -> list[MutableEntity]:
         """Detect candidates for concepts - linker will then be able
         to do the rest. It adds `entities` to the doc.entities and each
         entity can have the entity.link_candidates - that the linker
@@ -34,15 +38,18 @@ class NER(AbstractCoreComponent):
         Args:
             doc (MutableDocument):
                 Spacy document to be annotated with named entities.
+            ents (list[MutableEntity] | None):
+                The entities given. This should be None.
 
         Returns:
-            doc (MutableDocument):
-                Spacy document with detected entities.
+            list[MutableEntity]:
+                The NER'ed entities.
         """
         max_skip_tokens = self.config.components.ner.max_skip_tokens
         _sep = self.config.general.separator
         # Just take the tokens we need
         _doc = [tkn for tkn in doc if not tkn.to_skip]
+        ner_ents: list[MutableEntity] = []
         for i, tkn in enumerate(_doc):
             tkn = _doc[i]
             tkns = [tkn]
@@ -60,8 +67,11 @@ class NER(AbstractCoreComponent):
                     break
             # if name is in CDB
             if name in self.cdb.name2info and not tkn.base.is_stop:
-                maybe_annotate_name(self.tokenizer, name, tkns, doc,
-                                    self.cdb, self.config)
+                ent = maybe_annotate_name(
+                    self.tokenizer, name, tkns, doc,
+                    self.cdb, self.config, len(ner_ents))
+                if ent:
+                    ner_ents.append(ent)
             # if name is not a subname CDB (explicitly)
             if not name:
                 # There has to be at least something appended to the name
@@ -97,16 +107,21 @@ class NER(AbstractCoreComponent):
 
                 if name_changed:
                     if name in self.cdb.name2info:
-                        maybe_annotate_name(self.tokenizer, name, tkns, doc,
-                                            self.cdb, self.config)
+                        ent = maybe_annotate_name(
+                            self.tokenizer, name, tkns, doc,
+                            self.cdb, self.config, len(ner_ents))
+                        if ent:
+                            ner_ents.append(ent)
                 elif name_reverse is not None:
                     if name_reverse in self.cdb.name2info:
-                        maybe_annotate_name(self.tokenizer, name_reverse, tkns,
-                                            doc, self.cdb, self.config)
+                        ent = maybe_annotate_name(
+                            self.tokenizer, name_reverse, tkns,
+                            doc, self.cdb, self.config, len(ner_ents))
+                        if ent:
+                            ner_ents.append(ent)
                 else:
                     break
-
-        return doc
+        return ner_ents
 
     @classmethod
     def create_new_component(

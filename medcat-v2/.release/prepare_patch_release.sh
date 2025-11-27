@@ -117,8 +117,22 @@ if $DRY_RUN; then
     git checkout "$ORIGINAL_REF" >/dev/null 2>&1 || error_exit "Could not return to original branch"
 fi
 
+# Validate cherry-pick hashes
+if [[ ${#CHERRYPICK_HASHES[@]} -eq 0 ]]; then
+    echo "EMPTY"
+    # Allow empty list only if this is a .0 release and a prerelease exists
+    if [[ "$VERSION_PATCH" == "0" ]]; then
+        if ! git tag -l "medcat/v${VERSION_MAJOR_MINOR}.0[a-z]*" | grep -q .; then
+            error_exit "No cherry-pick hashes provided for $VERSION — expected at least one unless this is a .0 release after a pre-release."
+        fi
+    else
+        error_exit "No cherry-pick hashes provided for $VERSION — expected at least one for patch releases."
+    fi
+fi
+
+
 # do the cherry-picking
-for HASH in "${CHERRYPICK_HASHES[@]}"; do
+for HASH in "${CHERRYPICK_HASHES[@]-}"; do
     if ! run_or_echo git cherry-pick "$HASH"; then
         echo "Conflict detected when cherry-picking $HASH."
         echo

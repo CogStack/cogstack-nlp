@@ -3,12 +3,12 @@
     <div class="title">
       <div class="cs-title">
         <img src="./assets/cs-logo.png" class="logo">
-        CogStack
+        <span class="cs-text">CogStack</span>
       </div>
       <div class="app-title">
-        Anon
+        <span class="anon-text">Anon</span>
         <img src="./assets/logo.png" class="logo">
-        AT
+        <span class="anon-text">AT</span>
       </div>
       <span class="help">
         <v-icon icon="mdi-help-circle-outline" @click="helpModal = true"></v-icon>
@@ -199,6 +199,88 @@ export default {
 
   &:hover {
     cursor: pointer;
+  }
+}
+
+/* Mobile header adjustments */
+@media (max-width: 767px) {
+  .wrapper {
+    height: 120px !important;
+  }
+
+  .title {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px;
+  }
+
+  .cs-title {
+    width: 100%;
+    text-align: center;
+    font-size: 24px;
+    margin-bottom: 5px;
+  }
+
+  .cs-title .logo {
+    height: 32px;
+  }
+
+  .app-title {
+    width: 100%;
+    padding: 0;
+    font-size: 36px;
+    text-align: center;
+  }
+
+  .app-title .logo {
+    height: 36px;
+  }
+
+  .help {
+    top: 10px;
+    right: 10px;
+    font-size: 20px;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .wrapper {
+    height: 130px !important;
+  }
+
+  .title {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 15px 10px;
+  }
+
+  .cs-title {
+    width: 100%;
+    text-align: center;
+    font-size: 28px;
+    margin-bottom: 8px;
+  }
+
+  .cs-title .logo {
+    height: 40px;
+  }
+
+  .app-title {
+    width: 100%;
+    padding: 0;
+    font-size: 48px;
+    text-align: center;
+  }
+
+  .app-title .logo {
+    height: 48px;
+  }
+
+  .help {
+    top: 15px;
+    right: 15px;
   }
 }
 

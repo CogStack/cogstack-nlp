@@ -1,3 +1,4 @@
+import logging
 import os
 import traceback
 from smtplib import SMTPException
@@ -11,11 +12,12 @@ from django.http import HttpResponseBadRequest, HttpResponseServerError, HttpRes
 from django.shortcuts import render
 from django.utils import timezone
 from django_filters import rest_framework as drf
-from medcat.utils.cdb_utils import ch2pt_from_pt2ch, get_all_ch, snomed_ct_concept_path
+
 from rest_framework import viewsets
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from medcat.components.ner.trf.deid import DeIdModel
+from medcat.utils.cdb_utils import ch2pt_from_pt2ch, get_all_ch, snomed_ct_concept_path
 
 from .admin import download_projects_with_text, download_projects_without_text, \
     import_concepts_from_cdb
@@ -707,8 +709,8 @@ def upload_deployment(request):
                                 set_validated_docs)
         return Response("successfully uploaded", 200)
     except Exception as e:
-        logger.error(f"Failed to upload projects export: {str(e)}", exc_info=e)
-        return Response(f"Failed to upload projects export: {e.message}", 500)
+        logger.error(f"Failed to upload projects export: {e}", exc_info=e)
+        return Response(f"Failed to upload projects export: {e}", 500)
 
 
 @api_view(http_method_names=['GET', 'DELETE'])

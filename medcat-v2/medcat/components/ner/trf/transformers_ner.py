@@ -12,7 +12,7 @@ from functools import partial
 from medcat.cdb.cdb import CDB
 from medcat.components.addons.meta_cat.ml_utils import set_all_seeds
 from medcat.utils.ner import transformers_ner
-from medcat.utils.postprocessing import create_main_ann
+from medcat.utils.postprocessing import filter_linked_annotations
 from medcat.utils.hasher import Hasher
 from medcat.config.config_transformers_ner import ConfigTransformersNER
 from medcat.config.config import ComponentConfig
@@ -26,7 +26,8 @@ from medcat.storage.serialisers import (
     serialise, AvailableSerialisers, deserialise)
 from medcat.storage.serialisables import SerialisingStrategy
 from medcat.preprocessors.cleaners import NameDescriptor
-from medcat.components.types import CoreComponentType, AbstractCoreComponent
+from medcat.components.types import CoreComponentType
+from medcat.components.types import AbstractEntityProvidingComponent
 from medcat.vocab import Vocab
 from medcat.utils.defaults import COMPONENTS_FOLDER
 
@@ -44,7 +45,7 @@ os.environ['WANDB_DISABLED'] = 'true'
 logger = logging.getLogger(__name__)
 
 
-class TransformersNER(AbstractCoreComponent):
+class TransformersNER(AbstractEntityProvidingComponent):
     name = 'transformers_ner'
     _def_serialiser = AvailableSerialisers.dill
 
@@ -53,6 +54,7 @@ class TransformersNER(AbstractCoreComponent):
                  component: 'TransformersNERComponent',
                  config: Optional[ConfigTransformersNER] = None,
                  training_arguments=None,) -> None:
+        super().__init__(write_to_linked_ents=True)
         self._component = component
 
     @classmethod
@@ -106,8 +108,13 @@ class TransformersNER(AbstractCoreComponent):
                         folder, serialiser=self._def_serialiser,
                         overwrite=overwrite)
 
-    def __call__(self, doc: MutableDocument) -> MutableDocument:
-        return self._component(doc)
+    def predict_entities(self, doc: MutableDocument,
+                         ents: list[MutableEntity] | None = None
+                         ) -> list[MutableEntity]:
+        if ents:
+            raise ValueError(
+                "This method should ne be called with pre-defined entities")
+        return self._component(doc)[1]
 
     # for manual serialisability
 
@@ -687,7 +694,8 @@ class TransformersNERComponent:
             yield docs
 
     def pipe(self, stream: Iterable[Union[MutableDocument, None]],
-             *args, **kwargs) -> Iterator[MutableDocument]:
+             *args, **kwargs) -> Iterator[tuple[MutableDocument,
+                                                list[MutableEntity]]]:
         """Process many documents at once.
 
         Args:
@@ -700,7 +708,8 @@ class TransformersNERComponent:
             Doc: The same document.
 
         Returns:
-            Iterator[MutableDocument]: If the stream is None or empty.
+            Iterator[tuple[MutableDocument, list[MutableEntity]]]: The stream
+                of documents and entities
         """
         # Just in case
         if stream is None or not stream:
@@ -710,11 +719,11 @@ class TransformersNERComponent:
         batch_size_chars = self.config.general.pipe_batch_size_in_chars
         yield from self._process(stream, batch_size_chars)  # type: ignore
 
-    def _process_doc(self, doc: MutableDocument):
+    def _process_doc(self, doc: MutableDocument) -> list[MutableEntity]:
         aggr_strat = self.config.general.ner_aggregation_strategy
         res = self.ner_pipe(doc.base.text,
                             aggregation_strategy=aggr_strat)
-        doc.ner_ents = []  # type: ignore
+        ents: list[MutableEntity] = []
         for r in res:
             inds = []
             for ind, word in enumerate(doc):
@@ -732,15 +741,16 @@ class TransformersNERComponent:
                 label=r['entity_group'])
             entity.cui = r['entity_group']
             entity.context_similarity = r['score']
-            entity.id = len(doc.ner_ents)
+            entity.id = len(ents)
             entity.confidence = r['score']
 
-            doc.ner_ents.append(entity)
-        create_main_ann(doc)
+            ents.append(entity)
+        return filter_linked_annotations(doc, ents)
 
     def _process(self,
                  stream: Iterable[Union[MutableDocument, None]],
-                 batch_size_chars: int) -> Iterator[Optional[MutableDocument]]:
+                 batch_size_chars: int) -> Iterator[
+                     tuple[MutableDocument, list[MutableEntity]]]:
         if not hasattr(self, "ner_pipe"):
             self.create_eval_pipeline()
         for docs in self.batch_generator(
@@ -748,11 +758,12 @@ class TransformersNERComponent:
             # For now we will process the documents one by one, should be
             # improved in the future to use batching
             for doc in docs:
-                self._process_doc(doc)
-            yield from docs
+                ents = self._process_doc(doc)
+                yield doc, ents
 
     # Override
-    def __call__(self, doc: MutableDocument) -> MutableDocument:
+    def __call__(self, doc: MutableDocument,
+                 ) -> tuple[MutableDocument, list[MutableEntity]]:
         """Process one document, used in the spacy pipeline for sequential
         document processing.
 
@@ -761,13 +772,10 @@ class TransformersNERComponent:
                 A spacy document
 
         Returns:
-            Doc: The same spacy document.
+            tuple[MutableDocument, list[MutableEntity]]: The document and
+                the corresponding entities.
         """
-
-        # Just call the pipe method
-        doc = next(self.pipe(iter([doc])))
-
-        return doc
+        return next(self.pipe(iter([doc])))
 
 
 # NOTE: Only needed for datasets backwards compatibility

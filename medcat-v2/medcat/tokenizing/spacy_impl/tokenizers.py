@@ -58,7 +58,8 @@ class SpacyTokenizer(BaseTokenizer):
             ensure_spacy_model(self._spacy_model_name)
             spacy_model_name = self._spacy_model_name
         if stopwords is not None:
-            lang_str = os.path.basename(spacy_model_name).split('_', 1)[0]
+            lang_str = os.path.basename(spacy_model_name).removeprefix(
+                TOKENIZER_PREFIX).split('_', 1)[0]
             cls = spacy.util.get_lang_class(lang_str)
             cls.Defaults.stop_words = set(stopwords)
         self._nlp = spacy.load(spacy_model_name,
@@ -87,7 +88,8 @@ class SpacyTokenizer(BaseTokenizer):
     @classmethod
     def create_new_tokenizer(cls, config: Config) -> 'SpacyTokenizer':
         nlp_cnf = config.general.nlp
-        return cls(nlp_cnf.modelname,
+        return cls(
+            nlp_cnf.modelname,
             nlp_cnf.disabled_components,
             config.general.diacritics,
             config.preprocessing.max_document_length,
@@ -102,14 +104,14 @@ class SpacyTokenizer(BaseTokenizer):
     # saveable tokenizer
 
     def save_internals_to(self, folder_path: str) -> str:
-        subfolder = os.path.join(
-            folder_path, f"{TOKENIZER_PREFIX}{self._spacy_model_name}")
+        subfolder_only = f"{TOKENIZER_PREFIX}{self._spacy_model_name}"
+        subfolder = os.path.join(folder_path, subfolder_only)
         if os.path.exists(subfolder):
             # NOTE: always overwrite
             shutil.rmtree(subfolder)
         logger.debug("Saving spacy model to '%s'", subfolder)
         self._nlp.to_disk(subfolder)
-        return subfolder
+        return subfolder_only
 
     def load_internals_from(self, folder_path: str) -> bool:
         return os.path.exists(folder_path)

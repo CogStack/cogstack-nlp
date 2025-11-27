@@ -13,9 +13,13 @@ from medcat.tokenizing.tokenizers import BaseTokenizer
 logger = logging.getLogger(__name__)
 
 
+_START_INDEX_MULT = 1000
+
+
 def annotate_name(tokenizer: BaseTokenizer, name: str,
                   tkns: list[MutableToken],
                   doc: MutableDocument, cdb: CDB,
+                  cur_id: int | None,
                   label: str):
     entity: MutableEntity = tokenizer.create_entity(
         doc, tkns[0].base.index, tkns[-1].base.index + 1, label=label)
@@ -24,10 +28,29 @@ def annotate_name(tokenizer: BaseTokenizer, name: str,
     # All standard name entity recognition models will not set this.
     entity.detected_name = name
     entity.link_candidates = list(cdb.name2info[name]['per_cui_status'])
-    entity.id = len(doc.ner_ents)
+
+    if cur_id is None:
+        logger.warning(
+            "`medcat.components.ner.vocab_based_annotator.annotate_name` "
+            "was called with no `cur_id`. This behaviour is not fully "
+            "supported anymore.")
+        start_index = entity.base.start_char_index
+        span_len = len(name)
+        cur_id = start_index * _START_INDEX_MULT + span_len
+        # NOTE: These will be unique if the maximum length of each
+        #       entity does not exceed _START_INDEX_MULT (1000)
+        logger.warning(
+            "Using the text start index %d (multiplied by %d) and adding "
+            "the span length %d to get the id of %d", start_index,
+            _START_INDEX_MULT, span_len, cur_id)
+        logger.warning(
+            "Setting MutableDocument.ner_ents during the method "
+            "`medcat.components.ner.vocab_based_annotator.annotate_name` "
+            "because the old API (without an ID) was used")
+        doc.ner_ents.append(entity)  # TODO: remove this
+
+    entity.id = cur_id
     entity.confidence = -1  # This does not calculate confidence
-    # Append the entity to the document
-    doc.ner_ents.append(entity)
 
     # Not necessary, but why not
     logger.debug("NER detected an entity.\n\tDetected name: %s" +
@@ -39,6 +62,7 @@ def annotate_name(tokenizer: BaseTokenizer, name: str,
 def maybe_annotate_name(tokenizer: BaseTokenizer, name: str,
                         tkns: list[MutableToken],
                         doc: MutableDocument, cdb: CDB, config: Config,
+                        cur_id: int | None = None,
                         label: str = 'concept'
                         ) -> Optional[MutableEntity]:
     """Given a name it will check should it be annotated based on config rules.
@@ -57,6 +81,8 @@ def maybe_annotate_name(tokenizer: BaseTokenizer, name: str,
             Concept database.
         config (Config):
             Global config for medcat.
+        cur_id (int | None):
+            The potential ID for the entity. Defaults to None.
         label (str):
             Label for this name (usually `concept` if we are using
             a vocab based approach).
@@ -85,6 +111,7 @@ def maybe_annotate_name(tokenizer: BaseTokenizer, name: str,
         if (len(name) >= config.components.ner.upper_case_limit_len or
                 (len(tkns) == 1 and tkns[0].base.is_upper)):
             # Everything is fine, mark name
-            return annotate_name(tokenizer, name, tkns, doc, cdb, label)
+            return annotate_name(
+                tokenizer, name, tkns, doc, cdb, cur_id, label)
 
     return None

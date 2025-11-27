@@ -5,6 +5,7 @@ import gradio as gr
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from medcat_service.config import Settings
 from medcat_service.demo.gradio_demo import io
 from medcat_service.dependencies import get_settings
 from medcat_service.log_config import log_config
@@ -36,10 +37,17 @@ app.include_router(process.router)
 
 gr.mount_gradio_app(app, io, path="/demo")
 
-if settings.observability.enable_metrics:
-    from prometheus_fastapi_instrumentator import Instrumentator
 
-    Instrumentator(excluded_handlers=["/api/health.*", "/metrics"],).instrument(app).expose(app, tags=["admin"])
+def configure_observability(settings: Settings, app: FastAPI):
+    if settings.observability.enable_metrics:
+        from prometheus_fastapi_instrumentator import Instrumentator
+
+        Instrumentator(
+            excluded_handlers=["/api/health.*", "/metrics"],
+        ).instrument(app).expose(app, tags=["admin"])
+
+
+configure_observability(settings, app)
 
 
 @app.exception_handler(HealthCheckFailedException)
