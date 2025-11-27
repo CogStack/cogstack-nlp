@@ -1,6 +1,8 @@
 SCRIPT="scripts/variance/get_variance_with_linker_and_tokenizer.py"
 MODEL_PATH="../.temp/CONVERT_2023_model_no_mc_234dda1597f635e3.zip"
-MODEL_PATH="../tests/resources/mct2_model_pack.zip"
+
+# HEADER
+echo "Dataset,linker,tokenizer,prec,rec,f1"
 
 #"==COMETA=="
 DATASET="data/supervised/cometa/mct_export.json"
