@@ -141,8 +141,7 @@ include = ["medcat*"]
 # look for .git folder in root of repo
 root = ".."
 version_scheme = "post-release"
-# NOTE: tags are case sensitive
-tag_regex = "^[Mm]ed[Cc][Aa][Tt]/v(?P<version>\\d+(?:\\.\\d+)*)(?:[ab]\\d+|rc\\d+)?$"
+tag_regex = "^medcat/v(?P<version>\\d+(?:\\.\\d+)*)(?:[ab]\\d+|rc\\d+)?$"
 local_scheme = "node-and-date"
 
 [tool.ruff.lint]
