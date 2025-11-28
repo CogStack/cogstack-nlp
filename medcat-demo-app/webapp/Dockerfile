@@ -30,7 +30,7 @@ RUN pip install -U pip && if [ "$USE_CPU_TORCH" = "true" ]; then \
 ARG REINSTALL_CORE_FROM_LOCAL=false
 RUN if [ "$REINSTALL_CORE_FROM_LOCAL" = "true" ]; then \
         echo "Reinstalling medcat based on relative path"; \
-        pip install -e "/webapp/medcat-v2[meta-cat,spacy]"; \
+        SETUPTOOLS_SCM_PRETEND_VERSION="2.4.0-dev0" pip install -e "/webapp/medcat-v2[meta-cat,spacy]"; \
     fi
 
 # Get the spacy model (for later copy)
