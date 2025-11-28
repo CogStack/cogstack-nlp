@@ -144,8 +144,6 @@ version_scheme = "post-release"
 # NOTE: tags are case sensitive
 tag_regex = "^[Mm]ed[Cc][Aa][Tt]/v(?P<version>\\d+(?:\\.\\d+)*)(?:[ab]\\d+|rc\\d+)?$"
 local_scheme = "node-and-date"
-# to avoid tags that don't match (e.g from other projects in repo)
-git_describe_command = "git describe --dirty --tags --long --match '[Mm]ed[Cc][Aa][Tt]/v*'"
 
 [tool.ruff.lint]
 # 1. Enable some extra checks for ruff
