@@ -64,11 +64,11 @@ class PrimNameLinker(Linker):
                             in StatusTypes.PRIMARY_STATUS and
                             cnf_l.filters.check_filters(cui))]
         if not primary_cuis:
-            logger.info("No pimary CUIs for name %s", name)
+            logger.info("No primary CUIs for name %s", name)
             return
         if len(primary_cuis) > 1:
             logger.info(
-                "Ambiguous pimary CUIs for name %s: %s", name, primary_cuis)
+                "Ambiguous primary CUIs for name %s: %s", name, primary_cuis)
             return
         cui = primary_cuis[0]
         entity.cui = cui
