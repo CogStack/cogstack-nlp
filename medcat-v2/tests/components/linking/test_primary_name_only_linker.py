@@ -4,7 +4,7 @@ from medcat.cdb import CDB
 from medcat.cat import CAT
 from medcat.vocab import Vocab
 from medcat.components.linking.only_primary_name_linker import (
-    OnlyPrimaryNamesLinker)
+    PrimNameLinker)
 
 import unittest
 
@@ -24,7 +24,7 @@ class PrimaryNamesLinkerTests(unittest.TestCase):
     def setUpClass(cls):
         vocab = Vocab.load(EXAMPLE_VOCAB_PATH)
         cdb = CDB.load(EXAMPLE_CDB_PATH)
-        cdb.config.components.linking.comp_name = OnlyPrimaryNamesLinker.name
+        cdb.config.components.linking.comp_name = PrimNameLinker.name
         cls.cat = CAT(cdb, vocab)
 
     def test_gets_entities(self):

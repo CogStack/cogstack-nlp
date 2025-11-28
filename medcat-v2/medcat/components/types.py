@@ -216,7 +216,7 @@ _DEFAULT_LINKING: dict[str, tuple[str, str]] = {
     # primary name only
     "primary_name_only_linker": (
         "medcat.components.linking.only_primary_name_linker",
-        "OnlyPrimaryNamesLinker.create_new_component"),
+        "PrimNameLinker.create_new_component"),
 }
 
 

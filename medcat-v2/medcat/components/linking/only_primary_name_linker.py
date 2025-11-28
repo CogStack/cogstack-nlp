@@ -14,7 +14,13 @@ from medcat.config import Config
 logger = logging.getLogger(__name__)
 
 
-class OnlyPrimaryNamesLinker(Linker):
+class PrimNameLinker(Linker):
+    """Linker that only links primary names (or other 1-1 matches).
+
+    This linker avoids the hard part of linking - the disambiguation.
+    This should allow it to work faster, but (generally) at the expense
+    of performance.
+    """
     name = 'primary_name_only_linker'
 
     def __init__(self, cdb: CDB, vocab: Vocab, config: Config) -> None:
