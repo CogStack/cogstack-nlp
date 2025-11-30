@@ -67,18 +67,6 @@ fi
 # NOTE: will overwrite release branch if --force is specified
 run_or_echo git checkout -B "$RELEASE_BRANCH"
 
-# Update version in pyproject.toml
-if [[ "$(uname)" == "Darwin" ]]; then
-    # macOS (BSD sed)
-    run_or_echo sed -i \'\' \'s/^version = \".*\"/version = \"\'$VERSION\'\"/\' pyproject.toml
-else
-    # Linux (GNU sed)
-    run_or_echo sed -i \'s/^version = \".*\"/version = \"\'$VERSION\'\"/\' pyproject.toml
-fi
-
-run_or_echo git add pyproject.toml
-run_or_echo git commit -m \"Bump version to $VERSION for release\"
-
 # Create and push tag
 run_or_echo git tag -a \"$VERSION_TAG\" -m \"Release v$VERSION\"
 run_or_echo git push origin \"$RELEASE_BRANCH\"

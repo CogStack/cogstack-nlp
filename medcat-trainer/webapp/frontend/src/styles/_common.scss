@@ -46,26 +46,58 @@ $blur-radius: 10px;
 .title {
   padding: 5px 15px;
   font-size: 14pt;
-  box-shadow: 0 5px 5px -5px rgba(0,0,0,0.2);
+  box-shadow: 0 5px 5px -5px rgba(0, 0, 0, 0.2);
   color: black;
   height: $title-height;
 }
 
 @each $i, $col in $task-colors {
   .highlight-task-#{$i} {
-    background-color: $col;
-    border-radius: 3px;
+    text-decoration: underline;
+    text-decoration-color: $col;
+    text-decoration-thickness: 3px;
+    text-underline-offset: 3px; // Moved down 1px to avoid descender breaks
     cursor: pointer;
-    border: 1px solid $col;
-    color: white;
+    color: inherit; // Keep original text color
+
+    // When selected, add background highlight with state color
+    &.highlight-task-selected {
+      background-color: $col;
+      padding: 1px 2px;
+      border-radius: 2px;
+      color: white;
+    }
+
+    // Stack underlines when nested - each nested level gets a larger offset with clear spacing
+    [class^="highlight-task-"] {
+      text-underline-offset: 7px; // Second level underline (4px spacing from first, moved down 1px)
+    }
+
+    [class^="highlight-task-"] [class^="highlight-task-"] {
+      text-underline-offset: 11px; // Third level underline (4px spacing from second, moved down 1px)
+      // Increase line height for 3+ levels to prevent overlap with next line
+      line-height: 2.2;
+      padding-bottom: 4px;
+      display: inline-block;
+    }
+
+    [class^="highlight-task-"] [class^="highlight-task-"] [class^="highlight-task-"] {
+      text-underline-offset: 15px; // Fourth level underline (4px spacing from third, moved down 1px)
+      // Further increase line height for 4+ levels
+      line-height: 2.4;
+      padding-bottom: 6px;
+      display: inline-block;
+    }
   }
 }
 
-.alert-enter-active, .alert-leave-active {
+.alert-enter-active,
+.alert-leave-active {
   transition: opacity .5s;
 }
 
-.alert-enter, .alert-leave-to {
+.alert-enter,
+.alert-leave-to {
   opacity: 0;
 }
 
@@ -73,4 +105,3 @@ $blur-radius: 10px;
   padding-left: 10px;
   opacity: 0.5;
 }
-

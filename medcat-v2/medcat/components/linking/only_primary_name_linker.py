@@ -14,7 +14,13 @@ from medcat.config import Config
 logger = logging.getLogger(__name__)
 
 
-class OnlyPrimaryNamesLinker(Linker):
+class PrimNameLinker(Linker):
+    """Linker that only links primary names (or other 1-1 matches).
+
+    This linker avoids the hard part of linking - the disambiguation.
+    This should allow it to work faster, but (generally) at the expense
+    of performance.
+    """
     name = 'primary_name_only_linker'
 
     def __init__(self, cdb: CDB, vocab: Vocab, config: Config) -> None:
@@ -43,13 +49,13 @@ class OnlyPrimaryNamesLinker(Linker):
             return
         if len(cuis) == 1:
             if cnf_l.filters.check_filters(cuis[0]):
-                logger.info("Choosing only possible CUI %s for %s",
-                            cuis[0], entity)
+                logger.debug("Choosing only possible CUI %s for %s",
+                             cuis[0], entity)
                 entity.cui = cuis[0]
                 entity.context_similarity = 1.0
                 yield entity
             else:
-                logger.info(
+                logger.debug(
                     "A single CUI (%s) was mapped to for %s but not in filter",
                     cuis[0], entity)
             return
@@ -58,11 +64,11 @@ class OnlyPrimaryNamesLinker(Linker):
                             in StatusTypes.PRIMARY_STATUS and
                             cnf_l.filters.check_filters(cui))]
         if not primary_cuis:
-            logger.info("No pimary CUIs for name %s", name)
+            logger.debug("No primary CUIs for name %s", name)
             return
         if len(primary_cuis) > 1:
-            logger.info(
-                "Ambiguous pimary CUIs for name %s: %s", name, primary_cuis)
+            logger.debug(
+                "Ambiguous primary CUIs for name %s: %s", name, primary_cuis)
             return
         cui = primary_cuis[0]
         entity.cui = cui

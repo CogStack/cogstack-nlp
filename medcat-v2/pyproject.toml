@@ -1,7 +1,7 @@
 [project]
 name = "medcat"
 
-version = "2.2.0-dev"
+dynamic = ["version"]
 
 description = "Medical Concept Annotation Toolkit (v2)"
 
@@ -33,7 +33,7 @@ classifiers = [
   #   3 - Alpha
   #   4 - Beta
   #   5 - Production/Stable
-  "Development Status :: 4 - Beta",
+  "Development Status :: 5 - Production/Stable",
 
   "Intended Audience :: Healthcare Industry",
   # "Topic :: Natural Language Processing :: Named Entity Recognition and Linking",
@@ -128,8 +128,21 @@ test = []  # TODO - list
 [build-system]
 # These are the assumed default build requirements from pip:
 # https://pip.pypa.io/en/stable/reference/pip/#pep-517-and-518-support
-requires = ["setuptools>=43.0.0", "wheel"]
+requires = ["setuptools>=43.0.0", "setuptools_scm>=8", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = { "medcat" = "medcat" }
+
+[tool.setuptools.packages.find]
+include = ["medcat*"]
+
+[tool.setuptools_scm]
+# look for .git folder in root of repo
+root = ".."
+version_scheme = "post-release"
+tag_regex = "^medcat/v(?P<version>\\d+(?:\\.\\d+)*)(?:[ab]\\d+|rc\\d+)?$"
+local_scheme = "node-and-date"
 
 [tool.ruff.lint]
 # 1. Enable some extra checks for ruff

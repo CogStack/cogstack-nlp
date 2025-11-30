@@ -1,5 +1,5 @@
 # Stage 1: Build stage (dependencies and compilation)
-FROM python:3.12-slim as build
+FROM python:3.12-slim AS build
 
 # Create the required folders
 RUN mkdir -p /webapp/models
@@ -30,14 +30,14 @@ RUN pip install -U pip && if [ "$USE_CPU_TORCH" = "true" ]; then \
 ARG REINSTALL_CORE_FROM_LOCAL=false
 RUN if [ "$REINSTALL_CORE_FROM_LOCAL" = "true" ]; then \
         echo "Reinstalling medcat based on relative path"; \
-        pip install -e "/webapp/medcat-v2[meta-cat,spacy]"; \
+        SETUPTOOLS_SCM_PRETEND_VERSION="2.4.0-dev0" pip install -e "/webapp/medcat-v2[meta-cat,spacy]"; \
     fi
 
 # Get the spacy model (for later copy)
 RUN python -m spacy download en_core_web_md
 
 # Stage 2: Final (production) image
-FROM python:3.12-slim as final
+FROM python:3.12-slim AS final
 
 # Install runtime dependencies (you don’t need git in production)
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -62,9 +62,5 @@ WORKDIR /webapp
 COPY etc/cron.d/db-backup-cron /etc/cron.d/db-backup-cron
 RUN chmod 0644 /etc/cron.d/db-backup-cron && crontab /etc/cron.d/db-backup-cron
 
-# Run migrations and collect static (could be in entrypoint script)
-RUN python manage.py makemigrations && \
-    python manage.py makemigrations demo && \
-    python manage.py migrate && \
-    python manage.py migrate demo && \
-    python manage.py collectstatic --noinput
+# Run collect static (could be in entrypoint script)
+RUN python manage.py collectstatic --noinput

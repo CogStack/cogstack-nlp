@@ -47,7 +47,8 @@ class SpacyTokenizer(BaseTokenizer):
                  max_document_length: int,
                  tokenizer_getter: Callable[[Language, bool], Tokenizer
                                             ] = spacy_split_all,
-                 stopwords: Optional[set[str]] = None,):
+                 stopwords: Optional[set[str]] = None,
+                 avoid_pipe: bool = False):
         self._spacy_model_name = os.path.basename(
             spacy_model_name).removeprefix(TOKENIZER_PREFIX)
         if self.load_internals_from(spacy_model_name):
@@ -62,6 +63,7 @@ class SpacyTokenizer(BaseTokenizer):
                 TOKENIZER_PREFIX).split('_', 1)[0]
             cls = spacy.util.get_lang_class(lang_str)
             cls.Defaults.stop_words = set(stopwords)
+        self._avoid_pipe = avoid_pipe
         self._nlp = spacy.load(spacy_model_name,
                                disable=spacy_disabled_components)
         self._nlp.tokenizer = tokenizer_getter(self._nlp, use_diacritics)
@@ -83,7 +85,11 @@ class SpacyTokenizer(BaseTokenizer):
         return Entity(span)
 
     def __call__(self, text: str) -> MutableDocument:
-        return Document(self._nlp(text))
+        if self._avoid_pipe:
+            doc = Document(self._nlp.make_doc(text))
+        else:
+            doc = Document(self._nlp(text))
+        return doc
 
     @classmethod
     def create_new_tokenizer(cls, config: Config) -> 'SpacyTokenizer':
@@ -93,7 +99,8 @@ class SpacyTokenizer(BaseTokenizer):
             nlp_cnf.disabled_components,
             config.general.diacritics,
             config.preprocessing.max_document_length,
-            stopwords=config.preprocessing.stopwords)
+            stopwords=config.preprocessing.stopwords,
+            avoid_pipe=config.general.nlp.faster_spacy_tokenization)
 
     def get_doc_class(self) -> Type[MutableDocument]:
         return Document
