@@ -25,7 +25,8 @@ def main(model_pack_path: str, save_path: str):
     cat = CAT.load_model_pack(model_pack_path)
     convert(cat)
     print("Saving to", save_path)
-    saved = cat.save_model_pack(os.path.dirname(save_path), pack_name=os.path.basename(save_path))
+    saved = cat.save_model_pack(os.path.dirname(save_path),
+                                pack_name=os.path.basename(save_path))
     print("Saved to", saved)
 
 
