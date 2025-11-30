@@ -18,11 +18,13 @@ python $SCRIPT old regex $MODEL_PATH $DATASET $EXTRA
 python $SCRIPT new regex $MODEL_PATH $DATASET $EXTRA
 
 # with embedding linker
+# convert embedding model once
+EMBED_MODEL_PATH=`python scripts/variance/convert_to_embed_linker.py $MODEL_PATH data/embed_model_converted | tail -n 1`
 
 # "With spacy tokenizer + embed lnker"
-python $SCRIPT embed spacy $MODEL_PATH $DATASET $EXTRA
+python $SCRIPT embed spacy $EMBED_MODEL_PATH $DATASET $EXTRA
 # "With regex tokenizer + embed linker"
-python $SCRIPT embed regex $MODEL_PATH $DATASET $EXTRA
+python $SCRIPT embed regex $EMBED_MODEL_PATH $DATASET $EXTRA
 
 # other dataset
 # "==Linking Challenge=="
@@ -40,6 +42,6 @@ python $SCRIPT new regex $MODEL_PATH $DATASET $EXTRA
 # with embedding linker
 
 # "With spacy tokenizer + embed lnker"
-python $SCRIPT embed spacy $MODEL_PATH $DATASET $EXTRA
+python $SCRIPT embed spacy $EMBED_MODEL_PATH $DATASET $EXTRA
 # "With regex tokenizer + embed linker"
-python $SCRIPT embed regex $MODEL_PATH $DATASET $EXTRA
+python $SCRIPT embed regex $EMBED_MODEL_PATH $DATASET $EXTRA
