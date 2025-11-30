@@ -27,7 +27,7 @@ def main(model_pack_path: str, save_path: str):
     print("Saving to", save_path)
     saved = cat.save_model_pack(os.path.dirname(save_path),
                                 pack_name=os.path.basename(save_path))
-    print("Saved to", saved)
+    print(f"Saved to\n{saved}")
 
 
 if __name__ == "__main__":
