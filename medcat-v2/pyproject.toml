@@ -141,8 +141,9 @@ include = ["medcat*"]
 # look for .git folder in root of repo
 root = ".."
 version_scheme = "post-release"
-tag_regex = "^medcat/v(?P<version>\\d+(?:\\.\\d+)*)(?:[ab]\\d+|rc\\d+)?$"
+tag_regex = "^[Mm]ed[Cc][Aa][Tt]/v(?P<version>\\d+(?:\\.\\d+)*)(?:[ab]\\d+|rc\\d+)?$"
 local_scheme = "node-and-date"
+git_describe_command = "git describe --dirty --tags --long --match '[Mm]ed[Cc][Aa][Tt]/v*'"
 
 [tool.ruff.lint]
 # 1. Enable some extra checks for ruff
