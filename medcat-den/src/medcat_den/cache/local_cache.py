@@ -137,7 +137,7 @@ class LocalCache:
                     pack_name=model_hash,
                     add_hash_to_pack_name=False,
                     force_save_local=True
-                )
+                ) + ".zip"
                 with open(model_path, "rb") as f:
                     model_bytes = f.read()
                 self.insert_raw(model_hash, model_bytes)
