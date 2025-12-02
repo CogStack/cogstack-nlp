@@ -19,7 +19,7 @@ jobs:
       - name: Install uv for Python 3.10
         uses: astral-sh/setup-uv@v7
         with:
-          python-version: 3.10
+          python-version: "3.10"
           enable-cache: true
           cache-dependency-glob: "medcat-v2/uv.lock"
       - name: Install the project
