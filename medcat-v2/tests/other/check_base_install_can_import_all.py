@@ -29,8 +29,6 @@ def walk_packages(path: str,
         if fn == "__init__.py":
             yield pkg_to_here
             continue
-        if fn == "__main__.py":
-            continue
         yield f"{pkg_to_here}.{fn.removesuffix('.py')}"
 
 
