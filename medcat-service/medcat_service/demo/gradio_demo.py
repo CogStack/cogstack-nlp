@@ -95,21 +95,27 @@ def convert_display_model_to_list_of_lists(entity_display_model: list[EntityAnno
 
 def perform_named_entity_resolution(input_text: str):
     """
-    Performs clinical coding by processing the input text with MedCAT to extract and annotate medical concepts (entities).
+    Performs clinical coding by processing the input text with MedCAT to extract and
+    annotate medical concepts (entities).
 
     Returns:
-      1. A dictionary following the NER response model (EntityResponse), containing the original text and the list of detected entities.
-      2. A datatable-compatible list of lists, where each sublist represents an entity annotation and its attributes for display purposes.
+      1. A dictionary following the NER response model (EntityResponse), containing the original text
+         and the list of detected entities.
+      2. A datatable-compatible list of lists, where each sublist represents an entity annotation and
+         its attributes for display purposes.
 
-    This method is used as the main function for the Gradio MedCAT demo and MCP server, enabling users to input free text and receive automatic annotation and coding of clinical entities.
+    This method is used as the main function for the Gradio MedCAT demo and MCP server,
+    enabling users to input free text and receive automatic annotation and coding of clinical entities.
 
     Args:
         input_text (str): The input text to be processed and annotated for medical entities by MedCAT.
 
     Returns:
         Tuple:
-            - dict: A dictionary following the NER response model (EntityResponse), containing the original text and the list of detected entities.
-            - list[list[str]]: A datatable-compatible list of lists, where each sublist represents an entity annotation and its attributes for display purposes.
+            - dict: A dictionary following the NER response model (EntityResponse), containing the
+              original text and the list of detected entities.
+            - list[list[str]]: A datatable-compatible list of lists, where each sublist represents an
+              entity annotation and its attributes for display purposes.
 
     """
 
