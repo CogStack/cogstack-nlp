@@ -7,7 +7,7 @@ medcat[meta-cat,spacy,deid]~=2.2.0
 transformers>=4.34.0,<5.0.0
 requests==2.32.4
 fastapi[standard]==0.115.2
-pydantic==2.9.2
+pydantic>=2.11.10,<2.12.5
 pydantic-settings==2.10.1
 gradio[mcp]==5.38.0
 prometheus-fastapi-instrumentator==7.1.0

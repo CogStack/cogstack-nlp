@@ -1,5 +1,3 @@
-from typing import Dict, List
-
 import gradio as gr
 from pydantic import BaseModel
 
@@ -43,7 +41,7 @@ class EntityResponse(BaseModel):
     Expected data format of gradio highlightedtext component
     """
 
-    entities: List[EntityAnnotation]
+    entities: list[EntityAnnotation]
     text: str
 
 
@@ -75,7 +73,7 @@ def convert_annotation_to_display_model(entity: Entity) -> EntityAnnotationDispl
     )
 
 
-def convert_entity_dict_to_annotations(entity_dict_list: List[Dict[str, Entity]]) -> list[EntityAnnotation]:
+def convert_entity_dict_to_annotations(entity_dict_list: list[dict[str, Entity]]) -> list[EntityAnnotation]:
     annotations: list[EntityAnnotation] = []
     for entity_dict in entity_dict_list:
         for key, entity in entity_dict.items():
@@ -83,7 +81,7 @@ def convert_entity_dict_to_annotations(entity_dict_list: List[Dict[str, Entity]]
     return annotations
 
 
-def convert_entity_dict_to_display_model(entity_dict_list: List[Dict[str, Entity]]) -> list[EntityAnnotationDisplay]:
+def convert_entity_dict_to_display_model(entity_dict_list: list[dict[str, Entity]]) -> list[EntityAnnotationDisplay]:
     annotations: list[EntityAnnotationDisplay] = []
     for entity_dict in entity_dict_list:
         for key, entity in entity_dict.items():
