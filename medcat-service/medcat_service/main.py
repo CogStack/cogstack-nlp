@@ -1,3 +1,5 @@
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
 import logging
 import logging.config
 
@@ -45,6 +47,29 @@ def configure_observability(settings: Settings, app: FastAPI):
         Instrumentator(
             excluded_handlers=["/api/health.*", "/metrics"],
         ).instrument(app).expose(app, tags=["admin"])
+
+    if settings.observability.enable_tracing:
+        from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+        from opentelemetry import trace
+        from opentelemetry.sdk.trace import TracerProvider
+        # from opentelemetry.sdk.trace.export import BatchExportSpanProcessor
+        from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
+
+        from opentelemetry.sdk.resources import Resource
+        from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+
+        print("Enabling tracing")
+        resource = Resource.create({"service.name": "medcat-service"})
+        provider = TracerProvider()
+        processor = BatchSpanProcessor(ConsoleSpanExporter())
+        provider.add_span_processor(processor)
+
+        processor2 = BatchSpanProcessor(OTLPSpanExporter(endpoint="http://host.docker.internal:4318/v1/traces"))
+        provider.add_span_processor(processor2)
+        trace.set_tracer_provider(provider)
+        # trace.get_tracer_provider().add_span_processor(span_processor)
+
+        FastAPIInstrumentor.instrument_app(app, excluded_urls="/api/health.*,/metrics")
 
 
 configure_observability(settings, app)

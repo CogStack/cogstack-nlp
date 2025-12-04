@@ -24,7 +24,9 @@ class ObservabilitySettings(BaseSettings):
 
     enable_metrics: bool = Field(
         default=False, description="Enable prometheus metrics collection served on the path /metrics")
-
+    
+    enable_tracing: bool = Field(
+        default=False, description="Enable opentelemetry tracing instrumentation")
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(

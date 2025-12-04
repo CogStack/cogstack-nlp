@@ -15,9 +15,12 @@ from medcat.config import Config
 from medcat.config.config_meta_cat import ConfigMetaCAT
 from medcat.config.config_rel_cat import ConfigRelCAT
 from medcat.vocab import Vocab
+from opentelemetry import trace
 
 from medcat_service.config import Settings
 from medcat_service.types import HealthCheckResponse, ModelCardInfo, ProcessErrorsResult, ProcessResult, ServiceInfo
+
+tracer = trace.get_tracer("medcat_service")
 
 
 class MedCatProcessor:
@@ -25,7 +28,7 @@ class MedCatProcessor:
     MedCAT Processor class is wrapper over MedCAT that implements annotations extractions functionality
     (both single and bulk processing) that can be easily exposed for an API.
     """
-
+    @tracer.start_as_current_span("initialise_medcat_processor")
     def __init__(self, settings: Settings):
 
         self.service_settings = settings
@@ -132,6 +135,7 @@ class MedCatProcessor:
 
         yield entities
 
+    @tracer.start_as_current_span("process_content")
     def process_content(self, content, *args, **kwargs):
         """Processes a single document extracting the annotations.
 
@@ -203,6 +207,7 @@ class MedCatProcessor:
 
         return nlp_result
 
+    @tracer.start_as_current_span("process_content_bulk")
     def process_content_bulk(self, content):
         """Processes an array of documents extracting the annotations.
 
@@ -224,18 +229,26 @@ class MedCatProcessor:
             text_input = MedCatProcessor._generate_input_doc(content, invalid_doc_ids)
             if self.service_settings.deid_mode and isinstance(self.cat, DeIdModel):
                 text_to_deid_from_tuple = (x[1] for x in text_input)
-
-                ann_res = self.cat.deid_multi_texts(
-                    list(text_to_deid_from_tuple),
-                    redact=self.service_settings.deid_redact,
-                    n_process=self.service_settings.bulk_nproc,
-                )
+                with tracer.start_as_current_span("deid_multi_texts") as span:
+                    ann_res = self.cat.deid_multi_texts(
+                        list(text_to_deid_from_tuple),
+                        redact=self.service_settings.deid_redact,
+                        n_process=self.service_settings.bulk_nproc,
+                    )
             elif isinstance(self.cat, CAT):
+
+                def traced_gen():
+                    for item in self.cat.get_entities_multi_texts(
+                        text_input, n_process=self.service_settings.bulk_nproc, batch_size=1, batch_size_chars=-1
+                    ):
+                        with tracer.start_as_current_span("cat.get_entities_multi_texts_item"):
+                            yield item
+
                 ann_res = {
                     ann_id: res for ann_id, res in
-                    self.cat.get_entities_multi_texts(
-                        text_input, n_process=self.service_settings.bulk_nproc)
+                    traced_gen()
                 }
+
         except Exception as e:
             self.log.error("Unable to process data", exc_info=e)
 
