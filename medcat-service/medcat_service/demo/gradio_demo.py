@@ -95,7 +95,26 @@ def convert_display_model_to_list_of_lists(entity_display_model: list[EntityAnno
     return [[str(getattr(entity, field)) for field in entity.model_fields] for entity in entity_display_model]
 
 
-def process_input(input_text: str):
+def perform_named_entity_resolution(input_text: str):
+    """
+    Performs clinical coding by processing the input text with MedCAT to extract and annotate medical concepts (entities).
+
+    Returns:
+      1. A dictionary following the NER response model (EntityResponse), containing the original text and the list of detected entities.
+      2. A datatable-compatible list of lists, where each sublist represents an entity annotation and its attributes for display purposes.
+
+    This method is used as the main function for the Gradio MedCAT demo and MCP server, enabling users to input free text and receive automatic annotation and coding of clinical entities.
+
+    Args:
+        input_text (str): The input text to be processed and annotated for medical entities by MedCAT.
+
+    Returns:
+        Tuple:
+            - dict: A dictionary following the NER response model (EntityResponse), containing the original text and the list of detected entities.
+            - list[list[str]]: A datatable-compatible list of lists, where each sublist represents an entity annotation and its attributes for display purposes.
+
+    """
+
     processor = get_medcat_processor(get_settings())
     input = ProcessAPIInputContent(text=input_text)
 
@@ -136,7 +155,7 @@ Please note this is a limited version of MedCAT and it is not trained or validat
 """  # noqa: E501
 
 io = gr.Interface(
-    fn=process_input,
+    fn=perform_named_entity_resolution,
     inputs="text",
     outputs=[
         gr.HighlightedText(label="Processed Text"),
