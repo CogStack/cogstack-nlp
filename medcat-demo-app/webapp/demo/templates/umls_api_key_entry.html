@@ -46,4 +46,23 @@
         You can find your API key by logging into your UMLS account and visiting your <a href="https://uts.nlm.nih.gov/uts/profile" target="_blank">UMLS Profile</a>.
     </p>
 </div>
+<div class="accordion mb-3" id="noApiKeyAccordion">
+    <div class="card">
+        <div class="card-header" id="noApiKeyHeading">
+            <h5 class="mb-0">
+                <button class="btn btn-link" type="button" data-toggle="collapse" data-target="#noApiKeyCollapse" aria-expanded="false" aria-controls="noApiKeyCollapse">
+                    <i class="fas fa-question-circle"></i> Cannot obtain an API key...
+                </button>
+            </h5>
+        </div>
+        <div id="noApiKeyCollapse" class="collapse" aria-labelledby="noApiKeyHeading" data-parent="#noApiKeyAccordion">
+            <div class="card-body">
+                If you are unable to obtain an API key due to your application for a UMLS license being unanswered,
+                please email us at <tt>open-resources@cogstack.org</tt> with proof
+                of an ongoing application.
+                We will subsequently be able to provide you access to the models.
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

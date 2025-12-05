@@ -24,7 +24,7 @@ jobs:
       image_version: ${{ steps.meta.outputs.version }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: 🧹 Free up disk space
         run: |
@@ -131,7 +131,7 @@ jobs:
     steps:
 
       - name: Check out code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Run Test with example model pack
         run: |

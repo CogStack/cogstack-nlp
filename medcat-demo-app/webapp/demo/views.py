@@ -15,6 +15,7 @@ from urllib.error import HTTPError
 #from medcat.meta_cat import MetaCAT
 from .models import *
 from .forms import DownloaderForm, UMLSApiKeyForm
+from .decorators import require_valid_api_key
 from functools import lru_cache
 
 AUTH_CALLBACK_SERVICE = 'https://medcat.rosalind.kcl.ac.uk/auth-callback'
@@ -201,11 +202,24 @@ def validate_umls_api_key(request):
                     'message': f'Error validating API key: {str(e)}'
                 }
 
+            context['medcat_version'] = medcat_version
             return render(request, 'umls_user_validation.html', context=context)
     else:
         form = UMLSApiKeyForm()
 
-    return render(request, 'umls_api_key_entry.html', {'form': form})
+    return render(request, 'umls_api_key_entry.html',
+                  {'form': form, 'medcat_version': medcat_version})
+
+
+@require_valid_api_key
+def model_after_api_key(request):
+    context = {
+        'is_valid': True,
+        'message': f'Manually obtained API key is being used',
+        'downloader_form': DownloaderForm(MedcatModel.objects.all())
+    }
+    context['medcat_version'] = medcat_version
+    return render(request, 'umls_user_validation.html', context=context)
 
 
 def download_model(request):

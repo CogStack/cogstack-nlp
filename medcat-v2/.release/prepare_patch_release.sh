@@ -169,20 +169,6 @@ for HASH in "${CHERRYPICK_HASHES[@]-}"; do
     fi
 done
 
-
-# Update version in pyproject.toml
-if [[ "$(uname)" == "Darwin" ]]; then
-    # macOS (BSD sed)
-    run_or_echo sed -i \'\' \'s/^version = \".*\"/version = \"\'$VERSION\'\"/\' pyproject.toml
-else
-    # Linux (GNU sed)
-    run_or_echo sed -i \'s/^version = \".*\"/version = \"\'$VERSION\'\"/\' pyproject.toml
-fi
-
-# add and commit changes
-run_or_echo git add pyproject.toml
-run_or_echo git commit -m \"Bump version to $VERSION\" --allow-empty
-
 # now do the tagging
 # NOTE: can force since without the `--force` flag we would have checked
 #       for existing tag

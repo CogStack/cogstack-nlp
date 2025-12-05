@@ -213,6 +213,10 @@ _DEFAULT_LINKING: dict[str, tuple[str, str]] = {
     "medcat2_embedding_linker": (
         "medcat.components.linking.embedding_linker",
         "Linker.create_new_component"),
+    # primary name only
+    "primary_name_only_linker": (
+        "medcat.components.linking.only_primary_name_linker",
+        "PrimNameLinker.create_new_component"),
 }
 
 

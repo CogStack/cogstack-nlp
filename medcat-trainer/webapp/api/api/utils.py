@@ -155,14 +155,6 @@ def get_create_cdb_infos(cdb, concept, cui, cui_info_prop, code_prop, desc_prop,
     return model_clazz.objects.filter(code__in=codes)
 
 
-def _remove_overlap(project, document, start, end):
-    anns = AnnotatedEntity.objects.filter(project=project, document=document)
-
-    for ann in anns:
-        if (start <= ann.start_ind <= end) or (start <= ann.end_ind <= end):
-            logger.debug("Removed %s ", str(ann))
-            ann.delete()
-
 
 def create_annotation(source_val: str, selection_occurrence_index: int, cui: str, user: User,
                       project: ProjectAnnotateEntities, document, cat: CAT):
@@ -180,9 +172,8 @@ def create_annotation(source_val: str, selection_occurrence_index: int, cui: str
     start = all_occurrences_start_idxs[selection_occurrence_index]
 
     if start is not None and len(source_val) > 0 and len(cui) > 0:
-        # Remove overlaps
+        # Allow overlapping annotations - removed overlap constraint
         end = start + len(source_val)
-        _remove_overlap(project, document, start, end)
 
         cnt = Entity.objects.filter(label=cui).count()
         if cnt == 0:
