@@ -32,7 +32,9 @@ jobs:
 
       - name: Pre-download models
         run: |
+          df -h
           uv run python tests/other/download_all_transformers_models.py
+          df -h
 
       - name: Upload HF cache
         uses: actions/upload-artifact@v4
