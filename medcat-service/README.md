@@ -347,6 +347,38 @@ Example:
 DOCKER_SHM_SIZE=8g
 ```
 
+### Telemetry
+MedCAT Service supports exporting traces using Opentelemetry
+To enable distributed tracing and telemetry in the MedCAT Service, several environment variables must be set. These can be configured in your environment files or exported in your startup scripts (see `start_service_debug.sh` and related files):
+
+| Environment Variable                       | Description                                                                                       | Example Value                         |
+|--------------------------------------------|---------------------------------------------------------------------------------------------------|---------------------------------------|
+| `APP_ENABLE_TRACING`                       | Enable OpenTelemetry tracing in the application.                                                  | `True`                                |
+| `OTEL_TRACES_EXPORTER`                     | Exporter to use for traces (commonly `otlp`).                                                     | `otlp`                                |
+| `OTEL_SERVICE_NAME`                        | Logical service name for your traces.                                                             | `medcat-service`                      |
+| `OTEL_EXPORTER_OTLP_ENDPOINT`              | URL for your OpenTelemetry collector.                                                             | `http://localhost:4317`               |
+| `OTEL_EXPORTER_OTLP_PROTOCOL`              | Protocol to use for OTLP exporter.                                                                | `grpc`                                |
+| `OTEL_METRICS_EXPORTER`                    | Set to `none` to disable metrics export, or another value if metrics are enabled.                 | `none`                                |
+| `OTEL_PYTHON_FASTAPI_EXCLUDED_URLS`        | Comma-separated list of URLs to exclude from tracing and metrics (e.g., health/metrics endpoints).| `/api/health,/metrics`                |
+| `OTEL_EXPERIMENTAL_RESOURCE_DETECTORS`     | Additional resource detectors to use (comma-separated).                                           | `containerid,os`                      |
+
+**Example:**
+
+Add these lines to your `env/app.env` or export them before starting the service:
+
+```env
+APP_ENABLE_TRACING=True
+OTEL_EXPORTER_OTLP_ENDPOINT="http://localhost:4317"
+OTEL_TRACES_EXPORTER=otlp
+OTEL_SERVICE_NAME=medcat-service
+OTEL_EXPORTER_OTLP_PROTOCOL="grpc"
+OTEL_METRICS_EXPORTER=none
+OTEL_PYTHON_FASTAPI_EXCLUDED_URLS="/api/health,/metrics"
+OTEL_EXPERIMENTAL_RESOURCE_DETECTORS="containerid,os"
+```
+
+See https://opentelemetry-python.readthedocs.io/en/latest/sdk/environment_variables.html for the full list of opentelemetry environment variables.
+
 ## Performance Tuning
 
 Theres a range of factors that might impact the performance of this service, the most obvious being the size of the processed documents (amount of text per document) as well as the resources of the machine on which the service operates.

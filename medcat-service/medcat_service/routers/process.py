@@ -12,7 +12,7 @@ log = logging.getLogger("API")
 
 router = APIRouter(tags=["Process"])
 
-tracer = trace.get_tracer(__name__)
+tracer = trace.get_tracer("medcat_service")
 
 
 @router.post("/api/process")

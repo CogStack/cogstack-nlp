@@ -170,16 +170,15 @@ class MedCatProcessor:
         start_time_ns = time.time_ns()
 
         if self.service_settings.deid_mode and isinstance(self.cat, DeIdModel):
-            entities = self.cat.get_entities(text)
-            text = self.cat.deid_text(text, redact=self.service_settings.deid_redact)
-        else:
-            if text is not None and len(text.strip()) > 0:
+            with tracer.start_as_current_span("cat.deid_text"):
+                text = self.cat.deid_text(text, redact=self.service_settings.deid_redact)
+            with tracer.start_as_current_span("cat.get_entities"):
                 entities = self.cat.get_entities(text)
-            else:
-                entities = []
+        else:
+            with tracer.start_as_current_span("cat.get_entities"):
+                entities = self.cat.get_entities(text)
 
         elapsed_time = (time.time_ns() - start_time_ns) / 10e8  # nanoseconds to seconds
-
         meta_anns_filters = kwargs.get("meta_anns_filters")
         if meta_anns_filters:
             if isinstance(entities, dict):
@@ -229,26 +228,18 @@ class MedCatProcessor:
             text_input = MedCatProcessor._generate_input_doc(content, invalid_doc_ids)
             if self.service_settings.deid_mode and isinstance(self.cat, DeIdModel):
                 text_to_deid_from_tuple = (x[1] for x in text_input)
-                with tracer.start_as_current_span("deid_multi_texts") as span:
-                    ann_res = self.cat.deid_multi_texts(
-                        list(text_to_deid_from_tuple),
-                        redact=self.service_settings.deid_redact,
-                        n_process=self.service_settings.bulk_nproc,
-                    )
+
+                ann_res = self.cat.deid_multi_texts(
+                    list(text_to_deid_from_tuple),
+                    redact=self.service_settings.deid_redact,
+                    n_process=self.service_settings.bulk_nproc,
+                )
             elif isinstance(self.cat, CAT):
-
-                def traced_gen():
-                    for item in self.cat.get_entities_multi_texts(
-                        text_input, n_process=self.service_settings.bulk_nproc, batch_size=1, batch_size_chars=-1
-                    ):
-                        with tracer.start_as_current_span("cat.get_entities_multi_texts_item"):
-                            yield item
-
                 ann_res = {
                     ann_id: res for ann_id, res in
-                    traced_gen()
+                    self.cat.get_entities_multi_texts(
+                        text_input, n_process=self.service_settings.bulk_nproc)
                 }
-
         except Exception as e:
             self.log.error("Unable to process data", exc_info=e)
 

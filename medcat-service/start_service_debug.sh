@@ -14,11 +14,3 @@ fi
 export APP_ENABLE_METRICS=${APP_ENABLE_METRICS:-True}
 
 fastapi dev medcat_service/main.py 
-
-export OTEL_TRACES_EXPORTER=otlp
-export OTEL_SERVICE_NAME=medcat-service
-export OTEL_EXPORTER_OTLP_ENDPOINT="http://host.docker.internal:4318"
-export OTEL_EXPORTER_OTLP_PROTOCOL="http/protobuf"
-export OTEL_METRICS_EXPORTER=none
-export OTEL_PYTHON_DISABLED_INSTRUMENTATIONS="jinja2"
-opentelemetry-instrument fastapi dev medcat_service/main.py
