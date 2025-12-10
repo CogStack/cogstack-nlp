@@ -170,13 +170,16 @@ class MedCatProcessor:
         start_time_ns = time.time_ns()
 
         if self.service_settings.deid_mode and isinstance(self.cat, DeIdModel):
+            with tracer.start_as_current_span("cat.get_entities"):
+                entities = self.cat.get_entities(text)
             with tracer.start_as_current_span("cat.deid_text"):
                 text = self.cat.deid_text(text, redact=self.service_settings.deid_redact)
-            with tracer.start_as_current_span("cat.get_entities"):
-                entities = self.cat.get_entities(text)
         else:
-            with tracer.start_as_current_span("cat.get_entities"):
-                entities = self.cat.get_entities(text)
+            if text is not None and len(text.strip()) > 0:
+                with tracer.start_as_current_span("cat.get_entities"):
+                    entities = self.cat.get_entities(text)
+            else:
+                entities = []
 
         elapsed_time = (time.time_ns() - start_time_ns) / 10e8  # nanoseconds to seconds
         meta_anns_filters = kwargs.get("meta_anns_filters")
