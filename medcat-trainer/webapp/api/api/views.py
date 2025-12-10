@@ -291,8 +291,6 @@ def prepare_documents(request):
                         deid = DeIdModel(cat)
                         spacy_doc = deid(document.text)
 
-                    spacy_doc = cat(document.text)
-
                     add_annotations(spacy_doc=spacy_doc,
                                     user=user,
                                     project=project,

@@ -57,10 +57,6 @@ def add_annotations(spacy_doc, user, project, document, existing_annotations, ca
         metataskvals2obj = {}
         pass
 
-    def check_ents(ent):
-        return any((ea[0] < ent.start_char_index < ea[1]) or
-                   (ea[0] < ent.end_char_index < ea[1]) for ea in existing_annos_intervals)
-
     def check_filters(cui, filters):
         if cui in filters.cuis or not filters.cuis:
             return cui not in filters.cuis_exclude
@@ -68,15 +64,8 @@ def add_annotations(spacy_doc, user, project, document, existing_annotations, ca
             return False
 
     for ent in spacy_doc.linked_ents:
-        if not check_ents(ent) and check_filters(ent.cui, cat.config.components.linking.filters):
-            to_add = True
-            for tkn in ent:
-                if tkn in tkns_in:
-                    to_add = False
-            if to_add:
-                for tkn in ent:
-                    tkns_in.append(tkn)
-                ents.append(ent)
+        if check_filters(ent.cui, cat.config.components.linking.filters):
+            ents.append(ent)
 
     logger.debug('Found %s annotations to store', len(ents))
     for ent in ents:
@@ -93,6 +82,7 @@ def add_annotations(spacy_doc, user, project, document, existing_annotations, ca
 
         ann_ent = AnnotatedEntity.objects.filter(project=project,
                                                   document=document,
+                                                  entity=entity,
                                                   start_ind=ent.start_char_index,
                                                   end_ind=ent.end_char_index).first()
         if ann_ent is None:

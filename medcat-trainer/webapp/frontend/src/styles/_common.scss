@@ -67,27 +67,6 @@ $blur-radius: 10px;
       border-radius: 2px;
       color: white;
     }
-
-    // Stack underlines when nested - each nested level gets a larger offset with clear spacing
-    [class^="highlight-task-"] {
-      text-underline-offset: 7px; // Second level underline (4px spacing from first, moved down 1px)
-    }
-
-    [class^="highlight-task-"] [class^="highlight-task-"] {
-      text-underline-offset: 11px; // Third level underline (4px spacing from second, moved down 1px)
-      // Increase line height for 3+ levels to prevent overlap with next line
-      line-height: 2.2;
-      padding-bottom: 4px;
-      display: inline-block;
-    }
-
-    [class^="highlight-task-"] [class^="highlight-task-"] [class^="highlight-task-"] {
-      text-underline-offset: 15px; // Fourth level underline (4px spacing from third, moved down 1px)
-      // Further increase line height for 4+ levels
-      line-height: 2.4;
-      padding-bottom: 6px;
-      display: inline-block;
-    }
   }
 }
 
