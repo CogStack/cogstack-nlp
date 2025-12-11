@@ -170,10 +170,8 @@ class MedCatProcessor:
         start_time_ns = time.time_ns()
 
         if self.service_settings.deid_mode and isinstance(self.cat, DeIdModel):
-            with tracer.start_as_current_span("cat.get_entities"):
-                entities = self.cat.get_entities(text)
             with tracer.start_as_current_span("cat.deid_text"):
-                text = self.cat.deid_text(text, redact=self.service_settings.deid_redact)
+                text, entities = self.cat.deid_text_with_entities(text, redact=self.service_settings.deid_redact)
         else:
             if text is not None and len(text.strip()) > 0:
                 with tracer.start_as_current_span("cat.get_entities"):
