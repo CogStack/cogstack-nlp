@@ -17,7 +17,11 @@ import tempfile
 # default implementations
 
 
-class NoInitNER(types.AbstractCoreComponent):
+class MyTestNER(types.AbstractCoreComponent):
+    pass
+
+
+class NoInitNER(MyTestNER):
     name = 'no-init-ner'
 
     def __call__(self, doc):
@@ -31,7 +35,7 @@ class NoInitNER(types.AbstractCoreComponent):
         return cls()
 
 
-class WithInitNER(types.AbstractCoreComponent):
+class WithInitNER(MyTestNER):
     name = 'with-init-ner'
 
     def __init__(self, tokenizer: BaseTokenizer,
@@ -66,6 +70,48 @@ class RegisteredCompBaseTests(unittest.TestCase):
         # unregister component
         types._CORE_REGISTRIES[cls.TYPE].unregister_component(
             cls.TO_REGISTR_CLS.name)
+
+
+class LazyRegisteredCompBaseTests(unittest.TestCase):
+    TYPE = types.CoreComponentType.ner
+    COMP_NAME = WithInitNER.name
+    TO_REGISTER_MODULE = "tests.components.test_registration"
+    TO_REGISTER_INIT = "WithInitNER.create_new_component"
+
+    @classmethod
+    def setUpClass(cls):
+        types.lazy_register_core_componet(
+            cls.TYPE, cls.COMP_NAME,
+            cls.TO_REGISTER_MODULE, cls.TO_REGISTER_INIT)
+
+    @classmethod
+    def tearDownClass(cls):
+        # unregister component (lazy or not)
+        try:
+            types._CORE_REGISTRIES[cls.TYPE].unregister_component(
+                cls.COMP_NAME)
+        except types.MedCATRegistryException:
+            pass
+        try:
+            types._CORE_REGISTRIES[cls.TYPE].unregister_component_lazy(
+                cls.COMP_NAME)
+        except types.MedCATRegistryException:
+            pass
+
+
+class CoreCompNoInitLazyRegistrationTests(LazyRegisteredCompBaseTests):
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+
+    def register_args(self):
+        return None, None, None, None, None
+
+    def test_can_create_component(self):
+        comp = types.create_core_component(self.TYPE, self.COMP_NAME,
+                                           *self.register_args())
+        self.assertIsInstance(comp, MyTestNER)
 
 
 class CoreCompNoInitRegistrationTests(RegisteredCompBaseTests):
