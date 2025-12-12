@@ -83,6 +83,7 @@ class LazyRegisteredCompBaseTests(unittest.TestCase):
         types.lazy_register_core_componet(
             cls.TYPE, cls.COMP_NAME,
             cls.TO_REGISTER_MODULE, cls.TO_REGISTER_INIT)
+        cls.expected_type = eval(cls.TO_REGISTER_INIT.split(".")[0])
 
     @classmethod
     def tearDownClass(cls):
@@ -111,7 +112,7 @@ class CoreCompNoInitLazyRegistrationTests(LazyRegisteredCompBaseTests):
     def test_can_create_component(self):
         comp = types.create_core_component(self.TYPE, self.COMP_NAME,
                                            *self.register_args())
-        self.assertIsInstance(comp, MyTestNER)
+        self.assertIsInstance(comp, self.expected_type)
 
 
 class CoreCompNoInitRegistrationTests(RegisteredCompBaseTests):
