@@ -1,7 +1,7 @@
 from medcat.components import types
 
 from medcat.tokenizing.tokens import BaseDocument, MutableDocument
-from medcat.utils.registry import MedCATRegistryException
+from medcat.utils.registry import MedCATRegistryException, Registry
 
 import unittest
 
@@ -90,5 +90,5 @@ class TypesRegistrationTests(unittest.TestCase):
         self.assertEqual(len(comps), 1 + self._DEF_COMPS)
         self.assertTrue(any(comp_name == self.COMP_NAME
                             for comp_name, _ in comps))
-        self.assertTrue(any(comp_cls == self.BCC.__name__
+        self.assertTrue(any(comp_cls == Registry.translate_name(self.BCC)
                             for _, comp_cls in comps))
