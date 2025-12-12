@@ -144,6 +144,28 @@ class Registry(Generic[P]):
                      component_name)
         return self._components.pop(component_name)
 
+    def unregister_component_lazy(
+            self, component_name: str
+            ) -> tuple[str, str]:
+        """Unregister a lazy component.
+
+        Args:
+            component_name (str): The component name.
+
+        Raises:
+            MedCATRegistryException: If no component by the name specified
+                had been registered.
+
+        Returns:
+            tuple[str, str]: The component module and init method.
+        """
+        if component_name not in self._lazy_defaults:
+            raise MedCATRegistryException(
+                f"No such lazy component: {component_name}")
+        logger.debug("Unregistering lazy %s '%s'", self._type.__name__,
+                     component_name)
+        return self._lazy_defaults.pop(component_name)
+
     def unregister_all_components(self) -> None:
         """Unregister all components."""
         for comp_name in list(self._components):
