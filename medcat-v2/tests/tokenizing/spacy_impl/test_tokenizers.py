@@ -4,6 +4,7 @@ from medcat.tokenizing import tokenizers
 from medcat.tokenizing.spacy_impl.tokenizers import SpacyTokenizer
 from medcat.tokenizing.regex_impl.tokenizer import RegexTokenizer
 from medcat.config import Config
+from medcat.utils.registry import Registry
 
 import unittest
 
@@ -18,13 +19,16 @@ class DefaultTokenizerInitTests(unittest.TestCase):
     def setUpClass(cls):
         cls.cnf = Config()
 
+    def def_creator_name(self) -> str:
+        return Registry.translate_name(self.default_creator)
+
     def test_has_default(self):
         avail_tokenizers = tokenizers.list_available_tokenizers()
         self.assertEqual(len(avail_tokenizers), self.exp_num_def_tokenizers)
         name, cls_name = [(t_name, t_cls) for t_name, t_cls in avail_tokenizers
                           if t_name == self.default_provider][0]
         self.assertEqual(name, self.default_provider)
-        self.assertIs(cls_name, self.default_creator.__name__)
+        self.assertEqual(cls_name, self.def_creator_name())
 
     def test_can_create_def_tokenizer(self):
         tokenizer = tokenizers.create_tokenizer(
