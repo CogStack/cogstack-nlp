@@ -109,10 +109,28 @@ class CoreCompNoInitLazyRegistrationTests(LazyRegisteredCompBaseTests):
     def register_args(self):
         return None, None, None, None, None
 
+    def test_can_get_creator_of_type(self):
+        creator = types.get_component_creator(self.TYPE, self.COMP_NAME)
+        self.assertIs(creator.__self__, self.expected_type)
+
     def test_can_create_component(self):
         comp = types.create_core_component(self.TYPE, self.COMP_NAME,
                                            *self.register_args())
         self.assertIsInstance(comp, self.expected_type)
+
+
+class LazyRegistrationNameTests(LazyRegisteredCompBaseTests):
+
+    def test_names_same_after_unlazy(self):
+        names_before = sorted(
+            types.get_registered_components(self.TYPE),
+            key=lambda kv: kv[0])
+        # get creator -> move to not lazy
+        types.get_component_creator(self.TYPE, self.COMP_NAME)
+        names_after = sorted(
+            types.get_registered_components(self.TYPE),
+            key=lambda kv: kv[0])
+        self.assertEqual(names_before, names_after)
 
 
 class CoreCompNoInitRegistrationTests(RegisteredCompBaseTests):
