@@ -64,12 +64,12 @@ class TypesRegistrationTests(unittest.TestCase):
         ]:
             for comp_name, comp_info in def_lazy.items():
                 # unregister if already fully registered
-                if comp_name not in registry._lazy_defaults:
+                if comp_name not in registry._lazy_components:
                     # i.e removed from lazy defaults
                     registry.unregister_component(comp_name)
                     # and only register if not already registered
                     # as lazy default
-                    registry._lazy_defaults[comp_name] = comp_info
+                    registry._lazy_components[comp_name] = comp_info
 
     def test_registered_is_core_component(self):
         self.assertIsInstance(self.registered, types.CoreComponent)
