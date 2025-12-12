@@ -110,7 +110,20 @@ class Registry(Generic[P]):
         for comp_name in list(self._lazy_components):
             self._ensure_lazy_default(comp_name)
 
-    def _translate_name(self, initialiser: Callable[..., P]) -> str:
+    @classmethod
+    def translate_name(cls, initialiser: Callable[..., P]) -> str:
+        """Translate creator / initialiser name.
+
+        This method will return the method name.
+        Or this is a bound method, it'll return the class name
+        along with the method name (Class.method)
+
+        Args:
+            initialiser (Callable[..., P]): The initialiser
+
+        Returns:
+            str: The resulting name
+        """
         if isinstance(initialiser, type):
             # type / dunder init
             return initialiser.__name__
@@ -131,7 +144,7 @@ class Registry(Generic[P]):
             list[tuple[str, str]]: The list of the names and class names
                 for each registered componetn.
         """
-        comps = [(comp_name, self._translate_name(comp))
+        comps = [(comp_name, self.translate_name(comp))
                  for comp_name, comp in self._components.items()]
         for lazy_def_name, (_, lazy_def_class) in self._lazy_components.items():
             comps.append((lazy_def_name, lazy_def_class))
