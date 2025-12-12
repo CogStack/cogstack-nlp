@@ -274,8 +274,8 @@ def lazy_register_core_componet(
         comp_module (str): The path to the component module.
         comp_cls_and_init (str): The component class and init method.
     """
-    _CORE_REGISTRIES[comp_type].register
-
+    _CORE_REGISTRIES[comp_type].register_lazy(
+        comp_name, comp_module, comp_cls_and_init)
 
 
 def get_core_registry(comp_type: CoreComponentType) -> Registry[CoreComponent]:
