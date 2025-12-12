@@ -24,6 +24,43 @@ class Registry(Generic[P]):
                 f"Component '{component_name}' already registered: {prev}")
         self._components[component_name] = creator
 
+    def register_lazy(self, component_name: str, module_path: str,
+                      creator_name: str) -> None:
+        """Register the component lazily.
+
+        This allows registration without the need to load component internals.
+        However, we do not do any prior way of checking to make sure that these
+        paths are correct.
+
+        For instance if your class `MySpecialNER` is in the module
+        `my_addon.my_module` and uses the class method
+        `create_new_component` to initialise (thus the complete path is
+        `my_addon.my_module.MySpecialNER.create_new_component`) we
+        would expect the following arguments:
+            component_name="my_special_ner",
+            module_path="my_addon.my_module",
+            creator_name="MySpecialNER.create_new_component"
+
+        Args:
+            component_name (str): The component name.
+            module_path (str): The module name.
+            creator_name (str): The creator path.
+
+        Raises:
+            MedCATRegistryException: If a component by this name has
+                already been registered.
+        """
+        if component_name in self._components:
+            prev = self._components[component_name]
+            raise MedCATRegistryException(
+                f"Component '{component_name}' already registered: {prev}")
+        if component_name in self._lazy_defaults:
+            prev = self._components[component_name]
+            raise MedCATRegistryException(
+                "Component '{component_name}' already registered (lazily):"
+                f" {prev}")
+        self._lazy_defaults[component_name] = (module_path, creator_name)
+
     def get_component(self, component_name: str
                       ) -> Callable[..., P]:
         """Get the component that's registered.
