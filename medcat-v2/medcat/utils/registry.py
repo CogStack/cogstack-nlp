@@ -110,6 +110,20 @@ class Registry(Generic[P]):
         for comp_name in list(self._lazy_components):
             self._ensure_lazy_default(comp_name)
 
+    def _translate_name(self, initialiser: Callable[..., P]) -> str:
+        if isinstance(initialiser, type):
+            # type / dunder init
+            return initialiser.__name__
+        try:
+            # probably a bound method
+            return (
+                initialiser.__self__.__name__ +  # type: ignore
+                "." + initialiser.__name__)
+        except AttributeError as err:
+            logger.warning("Could not translate component name: %s",
+                           initialiser, exc_info=err)
+            return initialiser.__name__
+
     def list_components(self) -> list[tuple[str, str]]:
         """List all available component names and class names.
 
@@ -117,7 +131,7 @@ class Registry(Generic[P]):
             list[tuple[str, str]]: The list of the names and class names
                 for each registered componetn.
         """
-        comps = [(comp_name, comp.__name__)
+        comps = [(comp_name, self._translate_name(comp))
                  for comp_name, comp in self._components.items()]
         for lazy_def_name, (_, lazy_def_class) in self._lazy_components.items():
             comps.append((lazy_def_name, lazy_def_class))
