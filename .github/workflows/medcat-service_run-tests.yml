@@ -22,7 +22,7 @@ jobs:
 
       - name: Cache MedMen Model
         id: cache-medmen
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: models/medmen
           key: medmen-${{ hashFiles('medcat-service/scripts/download_medmen.sh') }}
