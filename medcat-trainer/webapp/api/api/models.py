@@ -458,15 +458,24 @@ class ProjectAnnotateEntitiesFields(models.Model):
                                              'if a model pack is used for the project')
     relations = models.ManyToManyField('Relation', blank=True, default=None,
                                        help_text='Relations that will be available for this project')
+    use_model_service = models.BooleanField(default=False,
+                                            help_text='Use a remote MedCAT service API for document processing instead of local models'\
+                                                      '(note: interim model training is not supported for remote model service projects)')
+    model_service_url = models.CharField(max_length=500, blank=True, null=True,
+                                         help_text='URL of the remote MedCAT service API (e.g., http://medcat-service:8003)')
 
     def save(self, *args, **kwargs):
-        if self.model_pack is None and (self.concept_db is None or self.vocab is None):
-            raise ValidationError('Must set at least the ModelPack or a Concept Database and Vocab Pair')
-        if self.model_pack and (self.concept_db is not None or self.vocab is not None):
-            raise ValidationError('Cannot set model pack and ConceptDB or a Vocab. You must use one or the other.')
-        if self.deid_model_annotation and self.model_pack is None:
-            raise ValidationError('Must set a DeID ModelPack for De-ID Model Annotation, cannot only set a cdb / vocab pair as'
-                                  ' not be a DeId model')
+        # If using remote model service, skip local model validation
+        if not self.use_model_service:
+            if self.model_pack is None and (self.concept_db is None or self.vocab is None):
+                raise ValidationError('Must set at least the ModelPack or a Concept Database and Vocab Pair')
+            if self.model_pack and (self.concept_db is not None or self.vocab is not None):
+                raise ValidationError('Cannot set model pack and ConceptDB or a Vocab. You must use one or the other.')
+            if self.deid_model_annotation and self.model_pack is None:
+                raise ValidationError('Must set a DeID ModelPack for De-ID Model Annotation, cannot only set a cdb / vocab pair as'
+                                      ' not be a DeId model')
+        elif self.use_model_service and not self.model_service_url:
+            raise ValidationError('When using model service, model_service_url must be set')
         super().save(*args, **kwargs)
 
 
