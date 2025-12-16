@@ -248,7 +248,7 @@ def register_core_component(comp_type: CoreComponentType,
     _CORE_REGISTRIES[comp_type].register(comp_name, comp_clazz)
 
 
-def lazy_register_core_componet(
+def lazy_register_core_component(
         comp_type: CoreComponentType,
         comp_name: str,
         comp_module: str,
