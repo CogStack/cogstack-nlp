@@ -28,7 +28,7 @@ from medcat.tokenizing.tokens import MutableDocument, MutableEntity
 from medcat.tokenizing.tokenizers import SaveableTokenizer, TOKENIZER_PREFIX
 from medcat.data.entities import Entity, Entities, OnlyCUIEntities
 from medcat.data.model_card import ModelCard
-from medcat.components.types import AbstractCoreComponent, HashableComponet
+from medcat.components.types import AbstractCoreComponent, HashableComponent
 from medcat.components.addons.addons import AddonComponent
 from medcat.utils.legacy.identifier import is_legacy_model_pack
 from medcat.utils.defaults import avoid_legacy_conversion
@@ -731,7 +731,7 @@ class CAT(AbstractSerialisable):
         logger.debug("Hashing the CDB")
         hasher.update(self.cdb.get_hash())
         for component in self._pipeline.iter_all_components():
-            if isinstance(component, HashableComponet):
+            if isinstance(component, HashableComponent):
                 logger.debug("Hashing for component %s",
                              type(component).__name__)
                 hasher.update(component.get_hash())

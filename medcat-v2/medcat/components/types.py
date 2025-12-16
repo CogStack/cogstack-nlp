@@ -155,10 +155,14 @@ class AbstractEntityProvidingComponent(AbstractCoreComponent):
 
 
 @runtime_checkable
-class HashableComponet(Protocol):
+class HashableComponent(Protocol):
 
     def get_hash(self) -> str:
         pass
+
+
+# keep typo'd name!
+HashableComponet = HashableComponent
 
 
 @runtime_checkable
