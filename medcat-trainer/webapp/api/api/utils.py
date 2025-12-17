@@ -348,7 +348,7 @@ def prep_docs(project_id: List[int], doc_ids: List[int], user_id: int):
         logger.info('Using remote model service in bg process for project: %s', project.id)
         filters = SimpleFilters(cuis=cuis)
         for doc in docs:
-            logger.info(f'Running remote MedCAT service for project {project.id}:{project.name} over doc: {doc.id}')
+            logger.info('Running remote MedCAT service for project %s:%s over doc: %s', project.id, project.name, doc.id)
             spacy_doc = call_remote_model_service(project.model_service_url, doc.text)
             anns = AnnotatedEntity.objects.filter(document=doc).filter(project=project)
             with transaction.atomic():
@@ -370,7 +370,7 @@ def prep_docs(project_id: List[int], doc_ids: List[int], user_id: int):
         cat.config.components.linking.filters.cuis = cuis
 
         for doc in docs:
-            logger.info(f'Running MedCAT model for project {project.id}:{project.name} over doc: {doc.id}')
+            logger.info('Running MedCAT model for project %s:%s over doc: %s', project.id, project.name, doc.id)
             if not project.deid_model_annotation:
                 spacy_doc = cat(doc.text)
             else:

@@ -480,10 +480,14 @@ def import_cdb_concepts(request):
 
 
 def _submit_document(project: ProjectAnnotateEntities, document: Document):
-    if project.train_model_on_submit and not project.use_model_service:
-        # interim model training not supported for remote model service projects
-        cat = get_medcat(project=project)
-        train_medcat(cat, project, document)
+    if project.train_model_on_submit:
+        if project.use_model_service:
+            # TODO: Implement this, already available in CMS / gateway instances.
+            # interim model training not supported for remote model service projects
+           logger.warning('Interim model training is not supported for remote model service projects')
+        else:
+            cat = get_medcat(project=project)
+            train_medcat(cat, project, document)
 
     # Add cuis to filter if they did not exist
     cuis = []
