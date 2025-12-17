@@ -4,6 +4,7 @@ import os
 from io import BytesIO
 
 import shutil
+from tempfile import TemporaryDirectory
 
 from diskcache import Cache
 
@@ -114,7 +115,9 @@ class LocalCache:
             # and then cache it locally
             base_name = os.path.basename(cat_path)
             model_hash = base_name.removesuffix(".zip")
-            self[model_hash] = cat_path
+            with open(cat_path, "rb") as f:
+                model_bytes = f.read()
+            self.insert_raw(model_hash, model_bytes)
 
         den._push_model_from_file = push_wrapper  # type: ignore
         # wrap fetch_model to check cache first
@@ -128,8 +131,16 @@ class LocalCache:
                     model_path, model_info=model_info))
             cat = orig_fetch(model_info)
             # cache it
-            model_path = f"{model_hash}.zip"
-            self[model_hash] = model_path
+            with TemporaryDirectory() as tmpdir:
+                model_path = cat.save_model_pack(
+                    tmpdir,
+                    pack_name=model_hash,
+                    add_hash_to_pack_name=False,
+                    force_save_local=True
+                ) + ".zip"
+                with open(model_path, "rb") as f:
+                    model_bytes = f.read()
+                self.insert_raw(model_hash, model_bytes)
             return cat
 
         den.fetch_model = fetch_wrapper  # type: ignore

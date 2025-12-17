@@ -23,7 +23,10 @@ class ObservabilitySettings(BaseSettings):
     model_config = SettingsConfigDict(frozen=True, env_prefix="APP_")
 
     enable_metrics: bool = Field(
-        default=False, description="Enable prometheus metrics collection served on the path /metrics")
+        default=False, description="Enable prometheus metrics collection served on the path /metrics"
+    )
+
+    enable_tracing: bool = Field(default=False, description="Enable tracing with opentelemetry-instrumentation")
 
 
 class Settings(BaseSettings):

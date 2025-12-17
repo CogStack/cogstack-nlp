@@ -1,7 +1,7 @@
 from medcat.components import types
 
 from medcat.tokenizing.tokens import BaseDocument, MutableDocument
-from medcat.utils.registry import MedCATRegistryException
+from medcat.utils.registry import MedCATRegistryException, Registry
 
 import unittest
 
@@ -64,12 +64,12 @@ class TypesRegistrationTests(unittest.TestCase):
         ]:
             for comp_name, comp_info in def_lazy.items():
                 # unregister if already fully registered
-                if comp_name not in registry._lazy_defaults:
+                if comp_name not in registry._lazy_components:
                     # i.e removed from lazy defaults
                     registry.unregister_component(comp_name)
                     # and only register if not already registered
                     # as lazy default
-                    registry._lazy_defaults[comp_name] = comp_info
+                    registry._lazy_components[comp_name] = comp_info
 
     def test_registered_is_core_component(self):
         self.assertIsInstance(self.registered, types.CoreComponent)
@@ -90,5 +90,5 @@ class TypesRegistrationTests(unittest.TestCase):
         self.assertEqual(len(comps), 1 + self._DEF_COMPS)
         self.assertTrue(any(comp_name == self.COMP_NAME
                             for comp_name, _ in comps))
-        self.assertTrue(any(comp_cls == self.BCC.__name__
+        self.assertTrue(any(comp_cls == Registry.translate_name(self.BCC)
                             for _, comp_cls in comps))

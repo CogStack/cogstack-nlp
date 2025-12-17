@@ -248,6 +248,36 @@ def register_core_component(comp_type: CoreComponentType,
     _CORE_REGISTRIES[comp_type].register(comp_name, comp_clazz)
 
 
+def lazy_register_core_componet(
+        comp_type: CoreComponentType,
+        comp_name: str,
+        comp_module: str,
+        comp_cls_and_init: str) -> None:
+    """Register a new core component in a lazy way.
+
+    This avoid importing the registered component and its
+    transitive imports unless the component is actually used.
+
+    For instance if your NER providing class `MySpecialNER`
+    is in the module `my_addon.my_module` and uses the class method
+    `create_new_component` to initialise (thus the complete path is
+    `my_addon.my_module.MySpecialNER.create_new_component`) we
+    would expect the following arguments:
+        comp_type=CoreComponentType.ner,
+        comp_name="my_special_ner",
+        comp_module="my_addon.my_module",
+        comp_cls_and_init="MySpecialNER.create_new_component"
+
+    Args:
+        comp_type (CoreComponentType): The component type.
+        comp_name (str): The component name.
+        comp_module (str): The path to the component module.
+        comp_cls_and_init (str): The component class and init method.
+    """
+    _CORE_REGISTRIES[comp_type].register_lazy(
+        comp_name, comp_module, comp_cls_and_init)
+
+
 def get_core_registry(comp_type: CoreComponentType) -> Registry[CoreComponent]:
     """Get the registry for a core component type.
 

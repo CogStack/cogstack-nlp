@@ -4,6 +4,8 @@ from importlib.metadata import PackageNotFoundError as __PackageNotFoundError
 from medcat.utils.check_for_updates import (
     check_for_updates as __check_for_updates)
 
+from medcat.addons import load_addons as __load_addons
+
 try:
     __version__ = __version_method("medcat")
 except __PackageNotFoundError:
@@ -13,3 +15,6 @@ except __PackageNotFoundError:
 # NOTE: this will not always actually do the check
 #       it will only (by default) check once a week
 __check_for_updates("medcat", __version__)
+
+# load / init addons
+__load_addons()

@@ -2,8 +2,6 @@ import os
 import json
 import logging
 
-import torch
-
 from medcat.cdb import CDB
 from medcat.components.addons.relation_extraction.rel_cat import (
     RelCAT, RelCATAddon)
@@ -12,6 +10,13 @@ from medcat.components.addons.relation_extraction.base_component import (
 from medcat.config.config_rel_cat import ConfigRelCAT
 from medcat.tokenizing.tokenizers import BaseTokenizer, create_tokenizer
 from medcat.utils.legacy.helpers import fix_old_style_cnf
+
+# NOTE: needs to be before torch since default doesn't include torch
+from medcat.utils.import_utils import ensure_optional_extras_installed
+_EXTRA_NAME = "rel-cat"
+ensure_optional_extras_installed("medcat", _EXTRA_NAME)
+
+import torch  # noqa
 
 
 logger = logging.getLogger(__name__)

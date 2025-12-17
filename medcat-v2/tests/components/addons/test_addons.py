@@ -101,7 +101,7 @@ class AddonsRegistrationTests(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         addons._ADDON_REGISTRY.unregister_all_components()
-        addons._ADDON_REGISTRY._lazy_defaults.update(addons._DEFAULT_ADDONS)
+        addons._ADDON_REGISTRY._lazy_components.update(addons._DEFAULT_ADDONS)
 
     def creator_args(self):
         return (
@@ -148,7 +148,7 @@ class AddonUsageTests(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         addons._ADDON_REGISTRY.unregister_all_components()
-        addons._ADDON_REGISTRY._lazy_defaults.update(addons._DEFAULT_ADDONS)
+        addons._ADDON_REGISTRY._lazy_components.update(addons._DEFAULT_ADDONS)
 
     def test_can_create_cat_with_addon(self):
         self.assertIsInstance(self.cat, CAT)

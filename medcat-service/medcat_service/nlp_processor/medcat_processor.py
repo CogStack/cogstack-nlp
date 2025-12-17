@@ -15,9 +15,12 @@ from medcat.config import Config
 from medcat.config.config_meta_cat import ConfigMetaCAT
 from medcat.config.config_rel_cat import ConfigRelCAT
 from medcat.vocab import Vocab
+from opentelemetry import trace
 
 from medcat_service.config import Settings
 from medcat_service.types import HealthCheckResponse, ModelCardInfo, ProcessErrorsResult, ProcessResult, ServiceInfo
+
+tracer = trace.get_tracer("medcat_service")
 
 
 class MedCatProcessor:
@@ -25,7 +28,7 @@ class MedCatProcessor:
     MedCAT Processor class is wrapper over MedCAT that implements annotations extractions functionality
     (both single and bulk processing) that can be easily exposed for an API.
     """
-
+    @tracer.start_as_current_span("initialise_medcat_processor")
     def __init__(self, settings: Settings):
 
         self.service_settings = settings
@@ -132,6 +135,7 @@ class MedCatProcessor:
 
         yield entities
 
+    @tracer.start_as_current_span("process_content")
     def process_content(self, content, *args, **kwargs):
         """Processes a single document extracting the annotations.
 
@@ -166,16 +170,16 @@ class MedCatProcessor:
         start_time_ns = time.time_ns()
 
         if self.service_settings.deid_mode and isinstance(self.cat, DeIdModel):
-            entities = self.cat.get_entities(text)
-            text = self.cat.deid_text(text, redact=self.service_settings.deid_redact)
+            with tracer.start_as_current_span("cat.deid_text"):
+                text, entities = self.cat.deid_text_with_entities(text, redact=self.service_settings.deid_redact)
         else:
             if text is not None and len(text.strip()) > 0:
-                entities = self.cat.get_entities(text)
+                with tracer.start_as_current_span("cat.get_entities"):
+                    entities = self.cat.get_entities(text)
             else:
                 entities = []
 
         elapsed_time = (time.time_ns() - start_time_ns) / 10e8  # nanoseconds to seconds
-
         meta_anns_filters = kwargs.get("meta_anns_filters")
         if meta_anns_filters:
             if isinstance(entities, dict):
@@ -203,6 +207,7 @@ class MedCatProcessor:
 
         return nlp_result
 
+    @tracer.start_as_current_span("process_content_bulk")
     def process_content_bulk(self, content):
         """Processes an array of documents extracting the annotations.
 
