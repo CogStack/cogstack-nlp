@@ -419,13 +419,13 @@ class Linker(AbstractEntityProvidingComponent):
             return allowed_mask
 
         # Collect all name indices to exclude
-        all_name_indices: list[np.ndarray] = []
+        _all_name_indices: list[np.ndarray] = []
         for cui_idx in exclude_cui_idxs:
             if cui_idx in self._cui_idx_to_name_idxs:
-                all_name_indices.append(self._cui_idx_to_name_idxs[cui_idx])
+                _all_name_indices.append(self._cui_idx_to_name_idxs[cui_idx])
 
-        if all_name_indices:
-            all_name_indices = np.unique(np.concatenate(all_name_indices))
+        if _all_name_indices:
+            all_name_indices = np.unique(np.concatenate(_all_name_indices))
             allowed_mask[torch.from_numpy(all_name_indices).to(self.device)] = False
 
         return allowed_mask
