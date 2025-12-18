@@ -85,8 +85,9 @@ class Linker(AbstractEntityProvidingComponent):
             ]
             for name in self._name_keys
         ]
+        self._initialize_filter_structures()
 
-    def create_embeddings(self, 
+    def create_embeddings(self,
                           embedding_model_name: Optional[str] = None,
                           max_length: Optional[int] = None,
                           ):
@@ -302,107 +303,109 @@ class Linker(AbstractEntityProvidingComponent):
             dtype=torch.bool,
         )
 
-    def _get_include_filters_1cui(
-            self, cui: str, use_precomputed: bool, n: int) -> Tensor:
-        if use_precomputed and cui in self._cui_to_name_mask:
-            allowed_mask = self._cui_to_name_mask[cui].clone()
-        elif cui in self._cui_to_idx:
-            cui_idx = self._cui_to_idx[cui]
-            allowed_mask = torch.tensor(
-                [cui_idx in name_cui_idxs
-                 for name_cui_idxs in self._name_to_cui_idxs],
+    def _initialize_filter_structures(self) -> None:
+        """Call once during initialization for efficient lookup."""
+        # Convert _name_to_cui_idxs to sets for O(1) lookup instead of lists
+        if not hasattr(self, '_name_to_cui_idxs_sets'):
+            self._name_to_cui_idxs_sets = [
+                set(cui_idxs) for cui_idxs in self._name_to_cui_idxs
+            ]
+
+        # Cache _has_cuis_all
+        if not hasattr(self, '_has_cuis_all_cached'):
+            self._has_cuis_all_cached = torch.tensor(
+                [bool(self.cdb.name2info[name]["per_cui_status"])
+                 for name in self._name_keys],
+                device=self.device,
                 dtype=torch.bool,
-                device=self.device
             )
+
+    def _get_include_filters_1cui(
+            self, cui: str, n: int) -> Tensor:
+        if cui not in self._cui_to_idx:
+            return torch.zeros(n, dtype=torch.bool, device=self.device)
+
+        cui_idx = self._cui_to_idx[cui]
+        # Use sets for O(1) membership test instead of lists
+        if hasattr(self, '_name_to_cui_idxs_sets'):
+            mask_list = [cui_idx in name_cui_idxs
+                         for name_cui_idxs in self._name_to_cui_idxs_sets]
         else:
-            allowed_mask = torch.zeros(
-                n, dtype=torch.bool, device=self.device)
-        return allowed_mask
+            mask_list = [cui_idx in name_cui_idxs
+                         for name_cui_idxs in self._name_to_cui_idxs]
+
+        return torch.tensor(mask_list, dtype=torch.bool, device=self.device)
 
     def _get_include_filters_multi_cui(
-            self, include_set: set[str],
-            use_precomputed: bool, n: int) -> Tensor:
-        # Multiple CUIs: combine pre-computed masks with OR
-        if use_precomputed:
-            valid_cuis = [cui for cui in include_set
-                            if cui in self._cui_to_name_mask]
-            if valid_cuis:
-                allowed_mask = self._cui_to_name_mask[
-                    valid_cuis[0]].clone()
-                for cui in valid_cuis[1:]:
-                    allowed_mask |= self._cui_to_name_mask[cui]
-            else:
-                allowed_mask = torch.zeros(
-                    n, dtype=torch.bool, device=self.device)
-        else:
-            include_cui_idxs = {
-                self._cui_to_idx[cui] for cui in include_set
-                if cui in self._cui_to_idx
-            }
-            if include_cui_idxs:
-                allowed_mask = torch.tensor(
-                    [any(cui in include_cui_idxs
-                         for cui in name_cui_idxs)
-                        for name_cui_idxs in self._name_to_cui_idxs],
-                    dtype=torch.bool,
-                    device=self.device
-                )
-            else:
-                allowed_mask = torch.zeros(
-                    n, dtype=torch.bool, device=self.device)
-        return allowed_mask
+            self, include_set: set[str], n: int) -> Tensor:
+        include_cui_idxs = {
+            self._cui_to_idx[cui] for cui in include_set
+            if cui in self._cui_to_idx
+        }
+        if not include_cui_idxs:
+            return torch.zeros(n, dtype=torch.bool, device=self.device)
 
-    def _get_include_filters(self, include_set: set[str],
-                             use_precomputed: bool, n: int) -> Tensor:
+        # Use sets for faster membership testing
+        if hasattr(self, '_name_to_cui_idxs_sets'):
+            # With sets, intersection is much faster
+            mask_list = [bool(name_cui_idxs & include_cui_idxs)
+                         for name_cui_idxs in self._name_to_cui_idxs_sets]
+        else:
+            mask_list = [any(cui in include_cui_idxs for cui in name_cui_idxs)
+                         for name_cui_idxs in self._name_to_cui_idxs]
+
+        return torch.tensor(mask_list, dtype=torch.bool, device=self.device)
+
+    def _get_include_filters(
+            self, include_set: set[str], n: int) -> Tensor:
         # Fast path for single CUI (very common case)
         if len(include_set) == 1:
             cui = next(iter(include_set))
-            return self._get_include_filters_1cui(cui, use_precomputed, n)
+            return self._get_include_filters_1cui(cui, n)
         else:
             return self._get_include_filters_multi_cui(
-                include_set, use_precomputed, n)
+                include_set, n)
 
-    def _get_exclude_filters_1cui(self, allowed_mask: Tensor, cui: str,
-                                  use_precomputed: bool, n: int) -> Tensor:
-        if use_precomputed and cui in self._cui_to_name_mask:
-            allowed_mask &= ~self._cui_to_name_mask[cui]
-        elif cui in self._cui_to_idx:
-            cui_idx = self._cui_to_idx[cui]
-            exclude_mask = torch.tensor(
-                [cui_idx in name_cui_idxs
-                    for name_cui_idxs in self._name_to_cui_idxs],
-                dtype=torch.bool,
-                device=self.device
-            )
-            allowed_mask &= ~exclude_mask
-        return allowed_mask
+    def _get_exclude_filters_1cui(
+            self, allowed_mask: Tensor, cui: str) -> Tensor:
+        if cui not in self._cui_to_idx:
+            return allowed_mask
+
+        cui_idx = self._cui_to_idx[cui]
+        if hasattr(self, '_name_to_cui_idxs_sets'):
+            exclude_list = [cui_idx in name_cui_idxs
+                            for name_cui_idxs in self._name_to_cui_idxs_sets]
+        else:
+            exclude_list = [cui_idx in name_cui_idxs
+                            for name_cui_idxs in self._name_to_cui_idxs]
+
+        exclude_mask = torch.tensor(
+            exclude_list, dtype=torch.bool, device=self.device)
+        return allowed_mask & ~exclude_mask
 
     def _get_exclude_filters_multi_cui(
-            self, allowed_mask: Tensor, exclude_set: set[str],
-            use_precomputed: bool, n: int) -> Tensor:
-        # Multiple CUIs to exclude
-        if use_precomputed:
-            for cui in exclude_set:
-                if cui in self._cui_to_name_mask:
-                    allowed_mask &= ~self._cui_to_name_mask[cui]
-        else:
-            exclude_cui_idxs = {
-                self._cui_to_idx[cui] for cui in exclude_set
-                if cui in self._cui_to_idx
-            }
-            if exclude_cui_idxs:
-                exclude_mask = torch.tensor(
-                    [any(ci in exclude_cui_idxs
-                         for ci in name_cui_idxs)
-                        for name_cui_idxs in self._name_to_cui_idxs],
-                    dtype=torch.bool,
-                    device=self.device
-                )
-                allowed_mask &= ~exclude_mask
-        return allowed_mask
+            self, allowed_mask: Tensor, exclude_set: set[str]) -> Tensor:
+        exclude_cui_idxs = {
+            self._cui_to_idx[cui] for cui in exclude_set
+            if cui in self._cui_to_idx
+        }
+        if not exclude_cui_idxs:
+            return allowed_mask
 
-    def _get_exclude_filters(self, exclude_set: set[str],
-                             use_precomputed: bool, n: int) -> Tensor:
+        # Use sets for faster membership testing
+        if hasattr(self, '_name_to_cui_idxs_sets'):
+            exclude_list = [bool(name_cui_idxs & exclude_cui_idxs)
+                            for name_cui_idxs in self._name_to_cui_idxs_sets]
+        else:
+            exclude_list = [any(ci in exclude_cui_idxs for ci in name_cui_idxs)
+                            for name_cui_idxs in self._name_to_cui_idxs]
+
+        exclude_mask = torch.tensor(
+            exclude_list, dtype=torch.bool, device=self.device)
+        return allowed_mask & ~exclude_mask
+
+    def _get_exclude_filters(
+            self, exclude_set: set[str], n: int) -> Tensor:
         # Start with all allowed
         allowed_mask = torch.ones(n, dtype=torch.bool, device=self.device)
 
@@ -412,10 +415,10 @@ class Linker(AbstractEntityProvidingComponent):
         if len(exclude_set) == 1:
             cui = next(iter(exclude_set))
             return self._get_exclude_filters_1cui(
-                allowed_mask, cui, use_precomputed, n)
+                allowed_mask, cui)
         else:
             return self._get_exclude_filters_multi_cui(
-                allowed_mask, exclude_set, use_precomputed, n)
+                allowed_mask, exclude_set)
 
     def _set_filters(self) -> None:
         include_set = self.cnf_l.filters.cuis
@@ -432,16 +435,12 @@ class Linker(AbstractEntityProvidingComponent):
 
         n = len(self._name_keys)
 
-        # Use pre-computed mappings if available,
-        # otherwise fall back to on-the-fly computation
-        use_precomputed = hasattr(self, '_cui_to_name_mask')
-
         if include_set:
             allowed_mask = self._get_include_filters(
-                include_set, use_precomputed, n)
+                include_set, n)
         else:
             allowed_mask = self._get_exclude_filters(
-                exclude_set, use_precomputed, n)
+                exclude_set, n)
 
         self._valid_names = self._has_cuis_all_cached & allowed_mask
         self._last_include_set = set(include_set) if include_set is not None else None
