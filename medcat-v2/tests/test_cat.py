@@ -1366,3 +1366,67 @@ class TestModelCardEnhancements(unittest.TestCase):
             # NOTE: tuples get loaded as lists
             self.assertEqual(loaded_model_card["Required Plugins"], [{"name": "TestPluginDisk", "provides": [["ner", "test_ner_disk"]], "author": "Test Author Disk", "url": "http://test-disk.com"}])
 
+    @unittest.mock.patch("medcat.cat.deserialise")
+    @unittest.mock.patch('importlib.util.find_spec')
+    def test_load_model_pack_with_missing_plugin_raises_error(self, mock_find_spec, mock_deserialise):
+        mock_find_spec.return_value = None  # Simulate plugin not found
+        mock_deserialise.side_effect = ImportError
+        with tempfile.TemporaryDirectory() as temp_dir:
+            model_card_path = os.path.join(temp_dir, "model_card.json")
+            model_card_content = {
+                "Required Plugins": [{
+                    "name": "MissingPlugin",
+                    "provides": [["core", "test_core_comp"]],
+                    "author": "Missing Author",
+                    "url": "http://missing.com"
+                }]
+            }
+            # overwrite model card
+            with open(model_card_path, "w") as f:
+                json.dump(model_card_content, f)
+
+            with self.assertRaises(cat.MissingPluginError) as cm:
+                cat.CAT.load_model_pack(temp_dir)
+
+            self.assertEqual(len(cm.exception.missing_plugins), 1)
+            self.assertEqual(cm.exception.missing_plugins[0]["name"], "MissingPlugin")
+            self.assertIn("MissingPlugin", str(cm.exception))
+
+    @unittest.mock.patch('importlib.util.find_spec')
+    def test_load_model_pack_with_available_plugin_succeeds(self, mock_find_spec):
+        mock_find_spec.return_value = MagicMock()  # Simulate plugin found
+        with tempfile.TemporaryDirectory() as temp_dir:
+            model_card_path = os.path.join(temp_dir, "model_card.json")
+            model_card_content = {
+                "Required Plugins": [{
+                    "name": "AvailablePlugin",
+                    "provides": [["core", "test_core_comp"]],
+                    "author": "Available Author",
+                    "url": "http://available.com"
+                }]
+            }
+            with open(model_card_path, "w") as f:
+                json.dump(model_card_content, f)
+
+            # Mock deserialise to return a valid CAT object to avoid deeper loading issues
+            with unittest.mock.patch('medcat.cat.deserialise') as mock_deserialise:
+                mock_deserialise.return_value = self.mock_cat
+                loaded_cat = cat.CAT.load_model_pack(temp_dir)
+                self.assertIs(loaded_cat, self.mock_cat)
+
+    @unittest.mock.patch('importlib.util.find_spec')
+    def test_load_model_pack_with_no_required_plugins_succeeds(self, mock_find_spec):
+        mock_find_spec.return_value = None  # Should not be called if no required plugins
+        with tempfile.TemporaryDirectory() as temp_dir:
+            model_card_path = os.path.join(temp_dir, "model_card.json")
+            model_card_content = {
+                "Required Plugins": []
+            }
+            with open(model_card_path, "w") as f:
+                json.dump(model_card_content, f)
+
+            with unittest.mock.patch('medcat.cat.deserialise') as mock_deserialise:
+                mock_deserialise.return_value = self.mock_cat
+                loaded_cat = cat.CAT.load_model_pack(temp_dir)
+                self.assertIs(loaded_cat, self.mock_cat)
+
