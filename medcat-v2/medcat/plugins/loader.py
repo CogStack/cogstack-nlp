@@ -26,7 +26,7 @@ def _get_changes(before_load_components: RegisteredComponents,
         diff = set(components) - set(before_load_components["core"].get(comp_type, []))
         if diff:
             newly_registered["core"][comp_type] = list(diff)
-    
+
     diff = set(after_load_components["addons"]) - set(
         before_load_components["addons"])
     if diff:
@@ -49,8 +49,12 @@ def _load_plugin(ep: EntryPoint) -> None:
         before_load_components, after_load_components)
 
     # Extract package metadata
-    pkg_metadata = metadata(ep.name)
-    plugin_name = pkg_metadata.get("Name", ep.name)
+    # The entry point name is not necessarily the distribution name, so we use ep.dist.name
+    # if available (Python 3.10+). Otherwise, we fall back to ep.name.
+    # See: https://docs.python.org/3/library/importlib.metadata.html#entry-points
+    distribution_name = ep.dist.name if hasattr(ep, 'dist') and ep.dist else ep.name
+    pkg_metadata = metadata(distribution_name)
+    plugin_name = pkg_metadata.get("Name", distribution_name)
     plugin_version = pkg_metadata.get("Version")
     plugin_author = pkg_metadata.get("Author")
     plugin_url = pkg_metadata.get("Home-page")
