@@ -1255,7 +1255,7 @@ class TestModelCardEnhancements(unittest.TestCase):
 
         self.assertIn(CoreComponentType.ner.name, pipeline_desc["core"])
         self.assertEqual(pipeline_desc["core"][CoreComponentType.ner.name]["name"], "my_ner_component")
-        self.assertEqual(pipeline_desc["core"][CoreComponentType.ner.name]["provider"], "?") # as per current implementation
+        self.assertEqual(pipeline_desc["core"][CoreComponentType.ner.name]["provider"], "medcat")
 
     def test_describe_pipeline_addons(self):
         mock_addon_comp = MagicMock(spec=AddonComponent)
@@ -1269,7 +1269,7 @@ class TestModelCardEnhancements(unittest.TestCase):
 
         self.assertEqual(len(pipeline_desc["addons"]), 1)
         self.assertEqual(pipeline_desc["addons"][0]["name"], "my_addon_component")
-        self.assertEqual(pipeline_desc["addons"][0]["provider"], "?") # as per current implementation
+        self.assertEqual(pipeline_desc["addons"][0]["provider"], "medcat")
 
     def test_get_required_plugins(self):
         # Mock a plugin in the registry
@@ -1309,13 +1309,13 @@ class TestModelCardEnhancements(unittest.TestCase):
     @unittest.mock.patch('medcat.cat.CAT.describe_pipeline')
     @unittest.mock.patch('medcat.cat.CAT.get_required_plugins')
     def test_get_model_card_with_pipeline_and_plugins(self, mock_get_required_plugins, mock_describe_pipeline):
-        mock_describe_pipeline.return_value = {"core": {CoreComponentType.ner.name: {"name": "test_ner", "provider": "?"}}, "addons": []}
+        mock_describe_pipeline.return_value = {"core": {CoreComponentType.ner.name: {"name": "test_ner", "provider": "medcat"}}, "addons": []}
         mock_get_required_plugins.return_value = [{"name": "TestPlugin", "provides": [("ner", "test_ner")]}]
 
         model_card = self.mock_cat.get_model_card(as_dict=True)
 
         self.assertIn("Pipeline Description", model_card)
-        self.assertEqual(model_card["Pipeline Description"], {"core": {CoreComponentType.ner.name: {"name": "test_ner", "provider": "?"}}, "addons": []})
+        self.assertEqual(model_card["Pipeline Description"], {"core": {CoreComponentType.ner.name: {"name": "test_ner", "provider": "medcat"}}, "addons": []})
         self.assertIn("Required Plugins", model_card)
         self.assertEqual(model_card["Required Plugins"], [{"name": "TestPlugin", "provides": [("ner", "test_ner")]}])
 
@@ -1323,7 +1323,7 @@ class TestModelCardEnhancements(unittest.TestCase):
     @unittest.mock.patch('medcat.cat.CAT.get_required_plugins')
     def test_model_card_saved_and_loaded_from_disk(self, mock_get_required_plugins, mock_describe_pipeline):
         # Setup mocks for content to be in the model card
-        mock_describe_pipeline.return_value = {"core": {CoreComponentType.ner.name: {"name": "test_ner_disk", "provider": "?"}}, "addons": []}
+        mock_describe_pipeline.return_value = {"core": {CoreComponentType.ner.name: {"name": "test_ner_disk", "provider": "medcat"}}, "addons": []}
         mock_get_required_plugins.return_value = [{"name": "TestPluginDisk", "provides": [("ner", "test_ner_disk")]}]
 
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -1335,7 +1335,7 @@ class TestModelCardEnhancements(unittest.TestCase):
             loaded_model_card = cat.CAT.load_model_card_off_disk(temp_dir, as_dict=True)
 
             self.assertIn("Pipeline Description", loaded_model_card)
-            self.assertEqual(loaded_model_card["Pipeline Description"], {"core": {CoreComponentType.ner.name: {"name": "test_ner_disk", "provider": "?"}}, "addons": []})
+            self.assertEqual(loaded_model_card["Pipeline Description"], {"core": {CoreComponentType.ner.name: {"name": "test_ner_disk", "provider": "medcat"}}, "addons": []})
             self.assertIn("Required Plugins", loaded_model_card)
             # NOTE: tuples get loaded as lists
             self.assertEqual(loaded_model_card["Required Plugins"], [{"name": "TestPluginDisk", "provides": [["ner", "test_ner_disk"]]}])

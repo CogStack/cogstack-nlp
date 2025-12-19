@@ -30,7 +30,7 @@ from medcat.data.entities import Entity, Entities, OnlyCUIEntities
 from medcat.data.model_card import ModelCard, PipelineDescription
 from medcat.data.model_card import RequiredPluginDescription
 from medcat.components.types import AbstractCoreComponent, HashableComponent
-from medcat.components.types import CoreComponent
+from medcat.components.types import CoreComponent, BaseComponent
 from medcat.components.addons.addons import AddonComponent
 from medcat.utils.legacy.identifier import is_legacy_model_pack
 from medcat.utils.defaults import avoid_legacy_conversion
@@ -38,7 +38,7 @@ from medcat.utils.defaults import doing_legacy_conversion_message
 from medcat.utils.defaults import LegacyConversionDisabledError
 from medcat.utils.usage_monitoring import UsageMonitor, _NoDelUM
 from medcat.utils.import_utils import MissingDependenciesError
-from medcat.plugins.registry import plugin_registry
+from medcat.plugins.registry import plugin_registry, PluginInfo
 
 
 
@@ -958,20 +958,62 @@ class CAT(AbstractSerialisable):
             return model_card
         return json.dumps(model_card, indent=2, sort_keys=False)
 
+    def _find_provider(self, component: BaseComponent,
+                       all_plugins: dict[str, PluginInfo]) -> str:
+        provider = "medcat"  # Default provider
+        component_identifier = ""
+        if component.is_core():
+            core_comp = cast(CoreComponent, component)
+            component_type = core_comp.get_type().name
+            component_name = component.name
+            component_identifier = f"core:{component_type}:{component_name}"
+        else:
+            component_name = component.name
+            component_identifier = f"addon:{component_name}"
+
+        # Check if this component is provided by a plugin
+        for plugin_info in all_plugins.values():
+            found = False
+            # Check core components registered by the plugin
+            for c_type, registered_comps in plugin_info.registered_components["core"].items():
+                for reg_comp_name, _ in registered_comps:
+                    if component_identifier == f"core:{c_type}:{reg_comp_name}":
+                        provider = plugin_info.name
+                        found = True
+                        break
+                if found:
+                    break
+            if found:
+                break
+
+            # If not found in core, check addon components registered by the plugin
+            if not found:
+                for reg_comp_name, _ in plugin_info.registered_components["addons"]:
+                    if component_identifier == f"addon:{reg_comp_name}":
+                        provider = plugin_info.name
+                        found = True
+                        break
+            if found:
+                break
+        return provider
+
     def describe_pipeline(self) -> PipelineDescription:
         pipeline_description: PipelineDescription = {"core": {}, "addons": []}
+        all_plugins = plugin_registry.get_all_plugins()
+
         for component in self._pipeline.iter_all_components():
+            provider = self._find_provider(component, all_plugins)
+
             if component.is_core():
-                # implicitly needs to be
                 core_comp = cast(CoreComponent, component)
                 pipeline_description["core"][core_comp.get_type().name] = {
                     "name": component.name,
-                    "provider": "?",
+                    "provider": provider,
                 }
             else:
                 pipeline_description["addons"].append({
                     "name": component.name,
-                    "provider": "?",
+                    "provider": provider,
                 })
         return pipeline_description
 
