@@ -14,6 +14,19 @@ CDBInfo = TypedDict(
     }
 )
 
+class ComponentDescription(TypedDict):
+    name: str
+    provider: str
+
+class PipelineDescription(TypedDict):
+    core: dict[str, ComponentDescription]
+    addons: list[ComponentDescription]
+
+
+class RequiredPluginDescription(TypedDict):
+    name: str
+    provides: list[tuple[str, str]]
+
 
 ModelCard = TypedDict(
     "ModelCard", {
@@ -23,6 +36,8 @@ ModelCard = TypedDict(
         'Description': str,
         'Source Ontology': list[str],
         'Location': str,
+        'Pipeline Description': PipelineDescription,
+        'Required Plugins': list[RequiredPluginDescription],
         'MetaCAT models': list[dict],
         'Basic CDB Stats': CDBInfo,
         'Performance': dict[str, Any],

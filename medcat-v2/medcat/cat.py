@@ -27,8 +27,10 @@ from medcat.pipeline import Pipeline
 from medcat.tokenizing.tokens import MutableDocument, MutableEntity
 from medcat.tokenizing.tokenizers import SaveableTokenizer, TOKENIZER_PREFIX
 from medcat.data.entities import Entity, Entities, OnlyCUIEntities
-from medcat.data.model_card import ModelCard
+from medcat.data.model_card import ModelCard, PipelineDescription
+from medcat.data.model_card import RequiredPluginDescription
 from medcat.components.types import AbstractCoreComponent, HashableComponent
+from medcat.components.types import CoreComponent
 from medcat.components.addons.addons import AddonComponent
 from medcat.utils.legacy.identifier import is_legacy_model_pack
 from medcat.utils.defaults import avoid_legacy_conversion
@@ -36,6 +38,8 @@ from medcat.utils.defaults import doing_legacy_conversion_message
 from medcat.utils.defaults import LegacyConversionDisabledError
 from medcat.utils.usage_monitoring import UsageMonitor, _NoDelUM
 from medcat.utils.import_utils import MissingDependenciesError
+from medcat.plugins.registry import plugin_registry
+
 
 
 logger = logging.getLogger(__name__)
@@ -924,6 +928,13 @@ class CAT(AbstractSerialisable):
         else:
             met_cat_model_cards = []
         cdb_info = self.cdb.get_basic_info()
+
+        # Pipeline Description
+        pipeline_description = self.describe_pipeline()
+
+        # Required Plugins
+        required_plugins = self.get_required_plugins()
+
         model_card: ModelCard = {
             'Model ID': self.config.meta.hash,
             'Last Modified On': self.config.meta.last_saved.isoformat(),
@@ -931,6 +942,8 @@ class CAT(AbstractSerialisable):
             'Description': self.config.meta.description,
             'Source Ontology': self.config.meta.ontology,
             'Location': self.config.meta.location,
+            'Pipeline Description': pipeline_description,
+            'Required Plugins': required_plugins,
             'MetaCAT models': met_cat_model_cards,
             'Basic CDB Stats': cdb_info,
             'Performance': {},  # TODO
@@ -942,6 +955,60 @@ class CAT(AbstractSerialisable):
         if as_dict:
             return model_card
         return json.dumps(model_card, indent=2, sort_keys=False)
+
+    def describe_pipeline(self) -> PipelineDescription:
+        pipeline_description: PipelineDescription = {"core": {}, "addons": []}
+        for component in self._pipeline.iter_all_components():
+            if component.is_core():
+                # implicitly needs to be
+                core_comp = cast(CoreComponent, component)
+                pipeline_description["core"][core_comp.get_type().name] = {
+                    "name": component.name,
+                    "provider": "?",
+                }
+            else:
+                pipeline_description["addons"].append({
+                    "name": component.name,
+                    "provider": "?",
+                })
+        return pipeline_description
+
+    def get_required_plugins(self) -> list[RequiredPluginDescription]:
+        # Collect active component identifiers from the pipeline
+        active_pipe_comps = set()
+        for component in self._pipeline.iter_all_components():
+            if component.is_core():
+                # implicitly needs to be
+                core_comp = cast(CoreComponent, component)
+                active_pipe_comps.add(f"core:{core_comp.get_type().name}:{component.name}")
+            else:
+                # Assuming AddonComponent.name is what is registered in the plugin
+                active_pipe_comps.add(f"addon:{component.name}")
+
+        required_plugins: list[RequiredPluginDescription] = []
+        all_plugins = plugin_registry.get_all_plugins()
+
+        for plugin_info in all_plugins.values():
+            comps_provided: list[tuple[str, str]] = []
+            
+            # Check core components provided by the plugin
+            core_comps = plugin_info.registered_components["core"].items()
+            for comp_type, registered_comps in core_comps:
+                for reg_comp_name, _ in registered_comps:
+                    if f"core:{comp_type}:{reg_comp_name}" in active_pipe_comps:
+                        comps_provided.append((comp_type, reg_comp_name))
+            
+            # Check addon components provided by the plugin
+            for reg_comp_name, _ in plugin_info.registered_components["addons"]:
+                if f"addon:{reg_comp_name}" in active_pipe_comps:
+                    comps_provided.append(("addon", reg_comp_name))
+
+            if comps_provided:
+                required_plugins.append({
+                    "name": plugin_info.name,
+                    "provides": comps_provided,
+                })
+        return required_plugins
 
     @overload
     @classmethod
