@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any
 import torch
 
 
@@ -6,7 +6,7 @@ class CollateAndPadNER(object):
     def __init__(self, pad_id):
         self.pad_id = pad_id
 
-    def __call__(self, features: List[Any]) -> Dict[str, torch.Tensor]:
+    def __call__(self, features: list[Any]) -> dict[str, torch.Tensor]:
         batch = {}
 
         max_len = max([len(f['input_ids']) for f in features])
