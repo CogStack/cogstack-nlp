@@ -975,7 +975,8 @@ class CAT(AbstractSerialisable):
         for plugin_info in all_plugins.values():
             found = False
             # Check core components registered by the plugin
-            for c_type, registered_comps in plugin_info.registered_components["core"].items():
+            core_comps = plugin_info.registered_components["core"].items()
+            for c_type, registered_comps in core_comps:
                 for reg_comp_name, _ in registered_comps:
                     if component_identifier == f"core:{c_type}:{reg_comp_name}":
                         provider = plugin_info.name
@@ -1051,6 +1052,8 @@ class CAT(AbstractSerialisable):
                 required_plugins.append({
                     "name": plugin_info.name,
                     "provides": comps_provided,
+                    "author": plugin_info.author,
+                    "url": plugin_info.url,
                 })
         return required_plugins
 

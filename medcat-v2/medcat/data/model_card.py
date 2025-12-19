@@ -26,6 +26,8 @@ class PipelineDescription(TypedDict):
 class RequiredPluginDescription(TypedDict):
     name: str
     provides: list[tuple[str, str]]
+    author: str | None
+    url: str | None
 
 
 ModelCard = TypedDict(
