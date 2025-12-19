@@ -39,6 +39,8 @@ from medcat.utils.defaults import LegacyConversionDisabledError
 from medcat.utils.usage_monitoring import UsageMonitor, _NoDelUM
 from medcat.utils.import_utils import MissingDependenciesError
 from medcat.plugins.registry import plugin_registry, PluginInfo
+import importlib.util
+from medcat.utils.exceptions import MissingPluginError, MissingPluginInfo
 
 
 
@@ -784,6 +786,33 @@ class CAT(AbstractSerialisable):
         return model_pack_path
 
     @classmethod
+    def _get_missing_plugins(cls, model_pack_path: str) -> list[MissingPluginInfo]:
+        model_card = cls.load_model_card_off_disk(model_pack_path, as_dict=True)
+        required_plugins: list[
+            RequiredPluginDescription] = model_card.get("Required Plugins", [])
+        missing_plugins: list[MissingPluginInfo] = []
+
+        for plugin_info in required_plugins:
+            # Check if the plugin module can be imported
+            if importlib.util.find_spec(plugin_info["name"]) is None:
+                # Cast to str for safety
+                provided = [(str(p[0]), str(p[1])) for p in plugin_info["provides"]]
+                missing_plugins.append(MissingPluginInfo(
+                    name=plugin_info["name"],
+                    provides=provided,
+                    author=plugin_info.get("author"),
+                    url=plugin_info.get("url"),
+                ))
+
+        if missing_plugins:
+            logger.warning(
+                "Missing required plugins for this model pack. "
+                "Attempting to load anyway, but it may fail. "
+                f"Missing: {[p['name'] for p in missing_plugins]}"
+            )
+        return missing_plugins
+
+    @classmethod
     def load_model_pack(cls, model_pack_path: str,
                         config_dict: Optional[dict] = None,
                         addon_config_dict: Optional[dict[str, dict]] = None
@@ -802,6 +831,7 @@ class CAT(AbstractSerialisable):
 
         Raises:
             ValueError: If the saved data does not represent a model pack.
+            MissingPluginError: If required plugins are missing for this model pack.
 
         Returns:
             CAT: The loaded model pack.
@@ -818,22 +848,32 @@ class CAT(AbstractSerialisable):
             return Converter(model_pack_path, None).convert()
         elif is_legacy and avoid_legacy:
             raise LegacyConversionDisabledError("CAT")
-        # NOTE: ignoring addons since they will be loaded later / separately
-        cat = deserialise(model_pack_path, model_load_path=model_pack_path,
-                          ignore_folders_prefix={
-                            AddonComponent.NAME_PREFIX,
-                            # NOTE: will be loaded manually
-                            AbstractCoreComponent.NAME_PREFIX,
-                            # tokenizer stuff internals are loaded separately
-                            # if appropraite
-                            TOKENIZER_PREFIX,
-                            # components will be loaded semi-manually
-                            # within the creation of pipe
-                            COMPONENTS_FOLDER,
-                            # ignore hidden files/folders
-                            '.'},
-                          config_dict=config_dict,
-                          addon_config_dict=addon_config_dict)
+
+        # Load model card to check for required plugins
+        missing_plugins = cls._get_missing_plugins(model_pack_path)
+
+        try:
+            # NOTE: ignoring addons since they will be loaded later / separately
+            cat = deserialise(model_pack_path, model_load_path=model_pack_path,
+                              ignore_folders_prefix={
+                                AddonComponent.NAME_PREFIX,
+                                # NOTE: will be loaded manually
+                                AbstractCoreComponent.NAME_PREFIX,
+                                # tokenizer stuff internals are loaded separately
+                                # if appropraite
+                                TOKENIZER_PREFIX,
+                                # components will be loaded semi-manually
+                                # within the creation of pipe
+                                COMPONENTS_FOLDER,
+                                # ignore hidden files/folders
+                                '.'},
+                              config_dict=config_dict,
+                              addon_config_dict=addon_config_dict)
+        except ImportError as e:
+            if missing_plugins:
+                raise MissingPluginError(missing_plugins) from e
+            raise # Re-raise if not related to missing plugins
+
         # NOTE: deserialising of components that need serialised
         #       will be dealt with upon pipeline creation automatically
         if not isinstance(cat, CAT):
