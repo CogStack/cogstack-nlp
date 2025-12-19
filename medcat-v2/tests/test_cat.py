@@ -1117,6 +1117,12 @@ class CATSaveTests(CATIncludingTests):
             with self.subTest(f"Core component {cct.name}"):
                 self.assertIn(cct.name, core_descr)
 
+    def test_model_card_has_empty_required_plugins_setion(self):
+        with open(self.model_card_path) as f:
+            mc = json.load(f)
+        self.assertIn('Required Plugins', mc)
+        self.assertFalse(mc['Required Plugins'])
+
 
 class BatchingTests(unittest.TestCase):
     NUM_TEXTS = 100
