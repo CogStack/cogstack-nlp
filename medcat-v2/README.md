@@ -108,6 +108,14 @@ Below is a table of the environmental variables that govern the version checking
 
 The MedCAT v2 demo web app is available [here](https://medcat.sites.er.kcl.ac.uk/).
 
+## Key Concepts
+
+- **Components**: The building blocks of MedCAT (NER, Entity Linking, preprocessing, etc.)
+- **Addons**: Components that extend the core NER+EL pipeline with additional processing stages
+- **Plugins**: External packages that provide new component implementations or other functionality via entry points
+
+See [Architecture Documentation](docs/architecture.md) for detailed information.
+
 ## Tutorials
 A guide on how to use MedCAT v2 is available at [MedCATv2 Tutorials](../medcat-v2-tutorials).
 However, the tutorials are a bit of a work in progress at this point in time.
