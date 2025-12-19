@@ -1248,7 +1248,6 @@ class TestModelCardEnhancements(unittest.TestCase):
         mock_core_comp.get_type.return_value = CoreComponentType.ner
         mock_core_comp.name = "my_ner_component"
         mock_core_comp.full_name = "core:ner:my_ner_component"
-        # mock_core_comp.config.model_dump.return_value = {"param1": "value1"}
 
         self.mock_pipeline.iter_all_components.return_value = [mock_core_comp]
 
@@ -1263,7 +1262,6 @@ class TestModelCardEnhancements(unittest.TestCase):
         mock_addon_comp.is_core.return_value = False
         mock_addon_comp.name = "my_addon_component"
         mock_addon_comp.full_name = "addon:my_addon_component"
-        # mock_addon_comp.config.model_dump.return_value = {"addon_param": "addon_value"}
 
         self.mock_pipeline.iter_all_components.return_value = [mock_addon_comp]
 
