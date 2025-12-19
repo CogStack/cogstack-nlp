@@ -659,6 +659,11 @@ class CAT(AbstractSerialisable):
             self._trainer = Trainer(self.cdb, self.__call__, self._pipeline)
         return self._trainer
 
+    def save_model_card(self, model_card_path: str) -> None:
+        model_card: str = self.get_model_card(as_dict=False)
+        with open(model_card_path, 'w') as f:
+            f.write(model_card)
+
     def save_model_pack(
             self, target_folder: str, pack_name: str = DEFAULT_PACK_NAME,
             serialiser_type: Union[str, AvailableSerialisers] = 'dill',
@@ -709,10 +714,7 @@ class CAT(AbstractSerialisable):
             self.config.general.nlp.modelname = internals_path
         # serialise
         serialise(serialiser_type, self, model_pack_path)
-        model_card: str = self.get_model_card(as_dict=False)
-        model_card_path = os.path.join(model_pack_path, "model_card.json")
-        with open(model_card_path, 'w') as f:
-            f.write(model_card)
+        self.save_model_card(os.path.join(model_pack_path, "model_card.json"))
         # components
         components_folder = os.path.join(
             model_pack_path, COMPONENTS_FOLDER)
