@@ -1087,6 +1087,7 @@ class CATSaveTests(CATIncludingTests):
         cls.temp_folder = tempfile.TemporaryDirectory()
         cls.saved_path = cls.cat.save_model_pack(
             cls.temp_folder.name, change_description=cls.DESCRIPTION)
+        cls.model_card_path = os.path.join(cls.saved_path, "model_card.json")
 
     @classmethod
     def tearDownClass(cls):
@@ -1098,6 +1099,23 @@ class CATSaveTests(CATIncludingTests):
 
     def test_model_adds_description(self):
         self.assertIn(self.DESCRIPTION, self.cat.config.meta.description)
+
+    def test_saved_has_model_card(self):
+        self.assertTrue(os.path.exists(self.model_card_path))
+
+    def test_model_card_is_json(self):
+        with open(self.model_card_path) as f:
+            mc = json.load(f)
+        self.assertIsInstance(mc, dict)
+
+    def test_model_card_has_pipe_description(self):
+        with open(self.model_card_path) as f:
+            mc = json.load(f)
+        self.assertIn('Pipeline Description', mc)
+        core_descr = mc["Pipeline Description"]["core"]
+        for cct in CoreComponentType:
+            with self.subTest(f"Core component {cct.name}"):
+                self.assertIn(cct.name, core_descr)
 
 
 class BatchingTests(unittest.TestCase):
