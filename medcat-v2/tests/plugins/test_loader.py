@@ -67,3 +67,51 @@ class TestPluginLoader(unittest.TestCase):
                          [("mock_ner", "mock_module.MockNER.create")])
         self.assertEqual(newly_registered["addons"],
                          [("mock_addon", "mock_addon_module.MockAddon.create")])
+
+    @patch('medcat.plugins.loader.metadata')
+    @patch('medcat.plugins.loader.EntryPoint.load')
+    @patch('medcat.plugins.loader._get_changes')
+    def test_load_plugin_with_different_entrypoint_and_distribution_name(
+            self,
+            mock_get_changes,
+            mock_ep_load,
+            mock_metadata):
+        mock_get_changes.return_value = {
+            "core": {
+                "ner": [("test_ner_comp", "test_module.TestNER.create")]
+            },
+            "addons": [("test_addon_comp", "test_module.TestAddon.create")]}
+
+        # Mock EntryPoint with different name and dist.name
+        mock_ep = MagicMock(spec=EntryPoint)
+        mock_ep.name = "my-plugin-entrypoint"
+        mock_ep.value = "my_plugin.module:load_func"
+        mock_ep.group = ENTRY_POINT_PATH
+        mock_ep.dist.name = "my-plugin-package"  # Actual distribution name
+
+        # Mock metadata to return info for the distribution name
+        mock_metadata.return_value = {
+            "Name": "My Awesome Plugin",
+            "Version": "0.0.1",
+            "Author": "Plugin Author",
+            "Home-page": "http://plugin.com"
+        }
+
+        _load_plugin(mock_ep)
+
+        # Assert metadata was called with the distribution name
+        mock_metadata.assert_called_once_with("my-plugin-package")
+
+        # Assert the plugin was registered correctly
+        all_plugins = plugin_registry.get_all_plugins()
+        self.assertEqual(len(all_plugins), 1)
+        registered_plugin = all_plugins["My Awesome Plugin"]
+
+        self.assertEqual(registered_plugin.name, "My Awesome Plugin")
+        self.assertEqual(registered_plugin.version, "0.0.1")
+        self.assertEqual(registered_plugin.author, "Plugin Author")
+        self.assertEqual(registered_plugin.url, "http://plugin.com")
+        self.assertIn(("test_ner_comp", "test_module.TestNER.create"),
+                      registered_plugin.registered_components["core"][CoreComponentType.ner.name])
+        self.assertIn(("test_addon_comp", "test_module.TestAddon.create"),
+                      registered_plugin.registered_components["addons"])
