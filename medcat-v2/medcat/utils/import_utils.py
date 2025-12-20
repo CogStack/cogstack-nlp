@@ -14,7 +14,8 @@ class KeyDefaultDict(dict):
 # Map the project name to the package needed to be imported where appropraite.
 # Default to the package name itself.
 _DEP_NAME_MAPPER = KeyDefaultDict({
-    "pyahocorasick": "ahocorasick"
+    "pyahocorasick": "ahocorasick",
+    "scikit-learn": "sklearn",
 })
 
 
