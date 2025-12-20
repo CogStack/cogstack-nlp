@@ -89,10 +89,10 @@ def ensure_optional_extras_installed(package_name: str, extra_name: str):
         MissingDependenciesError: If the extra dependency isn't provided.
     """
     installed = get_installed_extra_dependencies(package_name, extra_name)
-    if not installed:
-        req = get_required_extra_deps(package_name, extra_name)
-        if not req:
-            raise IncorrectExtraComponent(package_name, extra_name)
+    req = get_required_extra_deps(package_name, extra_name)
+    if not req:
+        raise IncorrectExtraComponent(package_name, extra_name)
+    if len(installed) != len(req):
         missing = [requirement for requirement in req
                    if requirement not in installed]
         raise MissingDependenciesError(package_name, extra_name, missing)
