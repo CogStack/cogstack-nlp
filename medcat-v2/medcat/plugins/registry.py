@@ -17,6 +17,7 @@ class PluginInfo:
     version: str | None = None
     author: str | None = None
     url: str | None = None
+    module_paths: list[str] = field(default_factory=list)
     registered_components: RegisteredComponents = field(
         default_factory=create_empty_reg_comps)
     metadata: dict[str, Any] = field(default_factory=dict)

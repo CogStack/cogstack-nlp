@@ -14,8 +14,22 @@ class KeyDefaultDict(dict):
 # Map the project name to the package needed to be imported where appropraite.
 # Default to the package name itself.
 _DEP_NAME_MAPPER = KeyDefaultDict({
-    "pyahocorasick": "ahocorasick"
+    "pyahocorasick": "ahocorasick",
+    "scikit-learn": "sklearn",
 })
+
+
+def get_module_base_name(entry_point_value: str) -> str:
+    """Extracts the base module name from an entry point value string.
+
+    Args:
+        entry_point_value (str): The value string of an EntryPoint object,
+            e.g., "my_plugin.module:load_func".
+
+    Returns:
+        str: The base module name, e.g., "my_plugin.module".
+    """
+    return entry_point_value.split(':')[0]
 
 
 def get_all_extra_deps_raw(package_name: str) -> list[str]:

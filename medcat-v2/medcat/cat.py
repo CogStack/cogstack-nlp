@@ -1011,7 +1011,7 @@ class CAT(AbstractSerialisable):
             component_name = component.name
             component_identifier = f"addon:{component_name}"
 
-        # Check if this component is provided by a plugin
+        # Check if this component is provided by a plugin via direct registration
         for plugin_info in all_plugins.values():
             found = False
             # Check core components registered by the plugin
@@ -1036,6 +1036,17 @@ class CAT(AbstractSerialisable):
                         break
             if found:
                 break
+
+        # Fallback: If not found by explicit registration, check module paths
+        if provider == "medcat":
+            component_module = component.__class__.__module__
+            for plugin_info in all_plugins.values():
+                for module_path in plugin_info.module_paths:
+                    if component_module.startswith(module_path):
+                        provider = plugin_info.name
+                        break
+                if provider != "medcat": # If a provider was found, break outer loop
+                    break
         return provider
 
     def describe_pipeline(self) -> PipelineDescription:
@@ -1059,43 +1070,33 @@ class CAT(AbstractSerialisable):
         return pipeline_description
 
     def get_required_plugins(self) -> list[RequiredPluginDescription]:
-        # Collect active component identifiers from the pipeline
-        active_pipe_comps = set()
-        for component in self._pipeline.iter_all_components():
-            if component.is_core():
-                # implicitly needs to be
-                core_comp = cast(CoreComponent, component)
-                active_pipe_comps.add(f"core:{core_comp.get_type().name}:{component.name}")
-            else:
-                # Assuming AddonComponent.name is what is registered in the plugin
-                active_pipe_comps.add(f"addon:{component.name}")
-
-        required_plugins: list[RequiredPluginDescription] = []
-        all_plugins = plugin_registry.get_all_plugins()
-
-        for plugin_info in all_plugins.values():
-            comps_provided: list[tuple[str, str]] = []
-            
-            # Check core components provided by the plugin
-            core_comps = plugin_info.registered_components["core"].items()
-            for comp_type, registered_comps in core_comps:
-                for reg_comp_name, _ in registered_comps:
-                    if f"core:{comp_type}:{reg_comp_name}" in active_pipe_comps:
-                        comps_provided.append((comp_type, reg_comp_name))
-            
-            # Check addon components provided by the plugin
-            for reg_comp_name, _ in plugin_info.registered_components["addons"]:
-                if f"addon:{reg_comp_name}" in active_pipe_comps:
-                    comps_provided.append(("addon", reg_comp_name))
-
-            if comps_provided:
-                required_plugins.append({
-                    "name": plugin_info.name,
-                    "provides": comps_provided,
+        # get plugins based on pipe
+        req_plugins: dict[str, list[tuple[str, str]]] = {}
+        pipe_descr = self.describe_pipeline()
+        core_comps = list(pipe_descr["core"].items())
+        addons = [("addon", addon) for addon in pipe_descr["addons"]]
+        for comp_type, comp in core_comps + addons:
+            provider = comp["provider"]
+            if provider == "medcat":
+                continue
+            if provider not in req_plugins:
+                req_plugins[provider] = []
+            req_plugins[provider].append((comp_type, comp["name"]))
+        # map to plugin info
+        out_plugins: list[RequiredPluginDescription] = []
+        for plugin_name, comp_names in req_plugins.items():
+            plugin_info = plugin_registry.get_plugin_info(plugin_name)
+            if plugin_info is None:
+                continue
+            out_plugins.append(
+                {
+                    "name": plugin_name,
+                    "provides": comp_names,
                     "author": plugin_info.author,
                     "url": plugin_info.url,
-                })
-        return required_plugins
+                }
+            )
+        return out_plugins
 
     @overload
     @classmethod

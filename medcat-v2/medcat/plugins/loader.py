@@ -4,6 +4,7 @@ from medcat.plugins.registry import PluginInfo, plugin_registry, RegisteredCompo
 from medcat.plugins.registry import create_empty_reg_comps
 from medcat.components.types import get_registered_components, CoreComponentType
 from medcat.components.addons.addons import get_registered_addons
+from medcat.utils.import_utils import get_module_base_name
 
 
 ENTRY_POINT_PATH = "medcat.plugins"
@@ -49,7 +50,8 @@ def _load_plugin(ep: EntryPoint) -> None:
         before_load_components, after_load_components)
 
     # Extract package metadata
-    # The entry point name is not necessarily the distribution name, so we use ep.dist.name
+    # The entry point name is not necessarily the distribution name,
+    # so we use ep.dist.name
     # if available (Python 3.10+). Otherwise, we fall back to ep.name.
     # See: https://docs.python.org/3/library/importlib.metadata.html#entry-points
     distribution_name = ep.dist.name if hasattr(ep, 'dist') and ep.dist else ep.name
@@ -69,6 +71,7 @@ def _load_plugin(ep: EntryPoint) -> None:
         version=plugin_version,
         author=plugin_author,
         url=plugin_url,
+        module_paths=[get_module_base_name(ep.value)],
         registered_components=newly_registered,
         metadata={key: pkg_metadata[key] for key in pkg_metadata},
     )
