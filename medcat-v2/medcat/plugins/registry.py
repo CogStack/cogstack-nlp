@@ -1,8 +1,11 @@
 from typing import Any, TypedDict, cast
 from dataclasses import dataclass, field
+import logging
 
 from medcat.components.types import BaseComponent, CoreComponent
 
+
+logger = logging.getLogger(__name__)
 
 class RegisteredComponents(TypedDict):
     core: dict[str, list[tuple[str, str]]]
@@ -40,6 +43,34 @@ class PluginRegistry:
 
 
 plugin_registry = PluginRegistry()
+
+
+def _late_register(component: BaseComponent, plugin_info: PluginInfo):
+    module_name = component.__module__
+    cls_name = component.__class__.__name__
+    create_new_component = component.create_new_component.__name__
+    comp_descr = (module_name, f"{cls_name}.{create_new_component}")
+    logger.warning(
+        "Registering %s component '%s' (%s, %s) for plugin %s "
+        "during a later stage when plugin registrations are expected "
+        "to have already been done. This is most likely because the "
+        "component registration was done outside the loading of the "
+        "plugin by the core library. Normally it is better to import "
+        "medcat before registration so that things can be kept track "
+        "of consisetntly.",
+        "core" if component.is_core() else 'addon',
+        component.full_name, *comp_descr, plugin_info.name,
+    )
+    if component.is_core():
+        core_comp = cast(CoreComponent, component)
+        component_type = core_comp.get_type().name
+        if component_type not in plugin_info.registered_components["core"]:
+            plugin_info.registered_components["core"][component_type] = []
+        plugin_info.registered_components[
+            "core"][component_type].append(comp_descr)
+    else:
+        plugin_info.registered_components[
+            "addons"].append(comp_descr)
 
 
 def find_provider(component: BaseComponent) -> str:
@@ -88,6 +119,8 @@ def find_provider(component: BaseComponent) -> str:
             for module_path in plugin_info.module_paths:
                 if component_module.startswith(module_path):
                     provider = plugin_info.name
+                    # register component with plugin
+                    _late_register(component, plugin_info)
                     break
             if provider != "medcat":  # If a provider was found, break outer loop
                 break
