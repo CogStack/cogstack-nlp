@@ -872,7 +872,7 @@ class CAT(AbstractSerialisable):
         except ImportError as e:
             if missing_plugins:
                 raise MissingPluginError(missing_plugins) from e
-            raise # Re-raise if not related to missing plugins
+            raise
 
         # NOTE: deserialising of components that need serialised
         #       will be dealt with upon pipeline creation automatically
