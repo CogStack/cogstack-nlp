@@ -20,7 +20,7 @@ from medcat.components.addons.meta_cat import MetaCATAddon
 from medcat.utils.defaults import AVOID_LEGACY_CONVERSION_ENVIRON
 from medcat.utils.defaults import LegacyConversionDisabledError
 from medcat.utils.config_utils import temp_changed_config
-from medcat.plugins.registry import plugin_registry, PluginInfo
+from medcat.plugins.registry import create_empty_reg_comps, plugin_registry, PluginInfo
 from medcat.components.types import CoreComponentType, AbstractCoreComponent
 from medcat.components.addons.addons import AddonComponent
 
@@ -1365,6 +1365,36 @@ class TestModelCardEnhancements(unittest.TestCase):
             self.assertIn("Required Plugins", loaded_model_card)
             # NOTE: tuples get loaded as lists
             self.assertEqual(loaded_model_card["Required Plugins"], [{"name": "TestPluginDisk", "provides": [["ner", "test_ner_disk"]], "author": "Test Author Disk", "url": "http://test-disk.com"}])
+
+    def test_describe_pipeline_with_module_path_fallback(self):
+        # Define a mock component class with a specific module path
+        class MockComponentWithModule(AbstractCoreComponent):
+            def is_core(self): return True
+            def get_type(self): return CoreComponentType.ner
+            name = "fallback_ner_component"
+            full_name = "core:ner:fallback_ner_component"
+            __module__ = "my_plugin_package.some_module"
+
+        # Register a plugin with a matching module path, but no explicit registration
+        mock_plugin_info = PluginInfo(
+            name="MyPluginPackage",
+            version="1.0",
+            author="Module Author",
+            url="http://module-plugin.com",
+            module_paths=["my_plugin_package"],
+            registered_components=create_empty_reg_comps(),
+        )
+        plugin_registry.register_plugin(mock_plugin_info)
+
+        # Mock the pipeline to return an instance of our component
+        mock_comp_instance = MockComponentWithModule()
+        self.mock_pipeline.iter_all_components.return_value = [mock_comp_instance]
+
+        pipeline_desc = self.mock_cat.describe_pipeline()
+
+        self.assertIn(CoreComponentType.ner.name, pipeline_desc["core"])
+        self.assertEqual(pipeline_desc["core"][CoreComponentType.ner.name]["name"], "fallback_ner_component")
+        self.assertEqual(pipeline_desc["core"][CoreComponentType.ner.name]["provider"], "MyPluginPackage")
 
     @unittest.mock.patch("medcat.cat.deserialise")
     @unittest.mock.patch('importlib.util.find_spec')
