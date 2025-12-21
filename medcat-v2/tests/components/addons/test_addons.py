@@ -62,6 +62,7 @@ class FakeAddonWithInit:
         self._cdb = cdb
         self.config = cnf
 
+    @property
     def is_core(self) -> bool:
         return False
 
