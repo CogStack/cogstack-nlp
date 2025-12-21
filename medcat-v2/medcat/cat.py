@@ -1001,10 +1001,9 @@ class CAT(AbstractSerialisable):
 
     def describe_pipeline(self) -> PipelineDescription:
         pipeline_description: PipelineDescription = {"core": {}, "addons": []}
-        all_plugins = plugin_registry.get_all_plugins()
 
         for component in self._pipeline.iter_all_components():
-            provider = find_provider(component, all_plugins)
+            provider = find_provider(component)
 
             if component.is_core():
                 core_comp = cast(CoreComponent, component)

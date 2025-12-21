@@ -42,8 +42,8 @@ class PluginRegistry:
 plugin_registry = PluginRegistry()
 
 
-def find_provider(component: BaseComponent,
-                  all_plugins: dict[str, PluginInfo]) -> str:
+def find_provider(component: BaseComponent) -> str:
+    all_plugins = plugin_registry.get_all_plugins()
     provider = "medcat"  # Default provider
     component_identifier = ""
     if component.is_core():
