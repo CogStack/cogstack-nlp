@@ -57,6 +57,8 @@ def _load_plugin(ep: EntryPoint) -> None:
     plugin_name = pkg_metadata.get("Name", distribution_name)
     plugin_version = pkg_metadata.get("Version")
     plugin_author = pkg_metadata.get("Author")
+    if plugin_author is None:
+        plugin_author = pkg_metadata.get("Author-email")
     plugin_url = pkg_metadata.get("Home-page")
     if plugin_url is None:
         plugin_url = pkg_metadata.get("Project-URL")
