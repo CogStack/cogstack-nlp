@@ -58,6 +58,8 @@ def _load_plugin(ep: EntryPoint) -> None:
     plugin_version = pkg_metadata.get("Version")
     plugin_author = pkg_metadata.get("Author")
     plugin_url = pkg_metadata.get("Home-page")
+    if plugin_url is None:
+        plugin_url = pkg_metadata.get("Project-URL")
 
     # Create PluginInfo and register
     plugin_info = PluginInfo(
