@@ -56,14 +56,16 @@ def _load_plugin(ep: EntryPoint) -> None:
     # See: https://docs.python.org/3/library/importlib.metadata.html#entry-points
     distribution_name = ep.dist.name if hasattr(ep, 'dist') and ep.dist else ep.name
     pkg_metadata = metadata(distribution_name)
-    plugin_name = pkg_metadata.get("Name", distribution_name)
-    plugin_version = pkg_metadata.get("Version")
-    plugin_author = pkg_metadata.get("Author")
+    # NOTE: the .get method isn't visible to mypy prior to 3.12 though it is
+    #       available (from Message) so just ignoring the typing stuff for now
+    plugin_name = pkg_metadata.get("Name", distribution_name)  # type: ignore
+    plugin_version = pkg_metadata.get("Version")  # type: ignore
+    plugin_author = pkg_metadata.get("Author")  # type: ignore
     if plugin_author is None:
-        plugin_author = pkg_metadata.get("Author-email")
-    plugin_url = pkg_metadata.get("Home-page")
+        plugin_author = pkg_metadata.get("Author-email")  # type: ignore
+    plugin_url = pkg_metadata.get("Home-page")  # type: ignore
     if plugin_url is None:
-        plugin_url = pkg_metadata.get("Project-URL")
+        plugin_url = pkg_metadata.get("Project-URL")  # type: ignore
 
     # Create PluginInfo and register
     plugin_info = PluginInfo(
