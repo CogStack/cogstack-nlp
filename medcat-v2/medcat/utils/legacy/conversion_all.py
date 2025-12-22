@@ -69,7 +69,8 @@ class Converter:
             CAT: The model pack.
         """
         cdb = get_cdb_from_old(
-            os.path.join(self.old_model_folder, self.cdb_name))
+            os.path.join(self.old_model_folder, self.cdb_name),
+            fix_spacy_model_name=False)
         vocab_path = os.path.join(self.old_model_folder, self.vocab_name)
         if os.path.exists(vocab_path):
             vocab = get_vocab_from_old(vocab_path)
