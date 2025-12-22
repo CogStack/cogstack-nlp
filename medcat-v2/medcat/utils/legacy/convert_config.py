@@ -8,6 +8,7 @@ from medcat.config import Config
 
 from medcat.utils.legacy.helpers import fix_old_style_cnf
 from medcat.config.config import SerialisableBaseModel
+from medcat.tokenizing.tokenizers import BaseTokenizer
 
 
 logger = logging.getLogger(__name__)
@@ -126,8 +127,8 @@ def _relocate(cnf: Config, old_data: dict) -> Config:
         orig_val = cast(Any, orig_val)
         target_model = cast(BaseModel, target_model)
         fname = new_path.split(".")[-1]
-        logger.info("Relocating from %s to %s (%s)", orig_path, new_path,
-                    type(orig_val).__name__)
+        logger.info("Relocating from %s to %s (%s) [%s]", orig_path, new_path,
+                    type(orig_val).__name__, orig_val)
         _safe_setattr(target_model, fname, orig_val)
     return cnf
 
@@ -167,13 +168,25 @@ def get_config_from_nested_dict(old_data: dict) -> Config:
     # but we now default to regex
     cnf.general.nlp.provider = 'spacy'
     cnf = _make_changes(cnf, old_data)
+    return cnf
+
+
+def fix_spacy_model_name(
+        cnf: Config,
+        tokenizer: BaseTokenizer | None = None) -> None:
     if cnf.general.nlp.modelname in ('spacy_model', 'en_core_sci_md',
                                      'en_core_sci_lg'):
         logger.info("Fixing spacy model. "
                     "Moving from '%s' to 'en_core_web_md'!",
                     cnf.general.nlp.modelname)
         cnf.general.nlp.modelname = 'en_core_web_md'
-    return cnf
+        # NOTE: the tokenizer uses an internally cached name that we need to
+        #       fix here as well so that the name of the subsequently saved
+        #       files is more descriptive than just 'spacy_model'
+        if tokenizer:
+            from medcat.tokenizing.spacy_impl.tokenizers import SpacyTokenizer
+            cast(SpacyTokenizer,
+                 tokenizer)._spacy_model_name = cnf.general.nlp.modelname
 
 
 def get_config_from_old(path: str) -> Config:
