@@ -1,9 +1,11 @@
 import os
+import sys
 
 import pandas as pd
 import requests
 from time import sleep
 import json
+
 
 def get_keycloak_access_token():
     print('Getting Keycloak access token...')
@@ -27,6 +29,7 @@ def get_keycloak_access_token():
     resp.raise_for_status()
     return resp.json()["access_token"]
 
+
 def main(port=8000,
          model_pack_tmp_file='/home/model_pack.zip',
          dataset_tmp_file='/home/ds.csv',
@@ -39,11 +42,13 @@ def main(port=8000,
         return
 
     print('Found Env Var LOAD_EXAMPLES, waiting 15 seconds for API to be ready...')
-    URL = f'http://localhost:{port}/api/'
+    URL = os.environ.get('API_URL', f'http://localhost:{port}/api/')
     sleep(initial_wait)
 
     print('Checking for default projects / datasets / CDBs / Vocabs')
-    while True:
+    max_retries = 60 # 60 retries = 5 minutes
+    retry_count = 0
+    while retry_count < max_retries:
         try:
             # check API is available
             if requests.get(URL).status_code == 200:
@@ -80,7 +85,8 @@ def main(port=8000,
                     print("Found No Objects. Populating Example: Model Pack, Dataset and Project...")
                     # download example model pack and dataset
                     print("Downloading example model pack...")
-                    model_pack_file = requests.get('https://trainer-example-data.s3.eu-north-1.amazonaws.com/medcat2_model_pack_0f66077250cc2957.zip')
+                    model_pack_file = requests.get(
+                        'https://trainer-example-data.s3.eu-north-1.amazonaws.com/medcat2_model_pack_0f66077250cc2957.zip')
                     with open(model_pack_tmp_file, 'wb') as f:
                         f.write(model_pack_file.content)
 
@@ -93,7 +99,6 @@ def main(port=8000,
                     create_example_project(URL, headers, model_pack_tmp_file, 'M-IV_NeuroNotes', ds_dict,
                                            'Example Project - Model Pack (Diseases / Symptoms / Findings)')
 
-
                     # clean up temp files
                     os.remove(model_pack_tmp_file)
                     os.remove(dataset_tmp_file)
@@ -102,13 +107,22 @@ def main(port=8000,
                     print('Found at least one object amongst model packs, datasets & projects. Skipping example creation')
                     break
         except ConnectionRefusedError:
-            print(f'Connection refused to {URL}. Retrying in 5 seconds...')
-            sleep(5)
+            retry_count += 1
+            if retry_count < max_retries:
+                print(f'Loading examples - Connection refused to {URL}. Retrying in 5 seconds... (attempt {retry_count}/{max_retries})')
+                sleep(5)
             continue
         except requests.exceptions.ConnectionError:
-            print(f'Connection error to {URL}. Retrying in 5 seconds...')
-            sleep(5)
+            retry_count += 1
+            if retry_count < max_retries:
+                print(f'Loading examples - Connection error to {URL}. Retrying in 5 seconds... (attempt {retry_count}/{max_retries})')
+                sleep(5)
             continue
+
+    # If we exited the loop due to max retries, exit with error code
+    if retry_count >= max_retries:
+        print(f'FATAL - Error loading examples. Max retries ({max_retries}) reached. Exiting with code 1.')
+        sys.exit(1)
 
 
 def create_example_project(url, headers, model_pack, ds_name, ds_dict, project_name):
@@ -122,7 +136,7 @@ def create_example_project(url, headers, model_pack, ds_name, ds_dict, project_n
     payload = {
         'dataset_name': ds_name,
         'dataset': ds_dict,
-        'description': f'Clinical texts from MIMIC-IV'
+        'description': 'Clinical texts from MIMIC-IV'
     }
     resp = requests.post(f'{url}create-dataset/', json=payload, headers=headers)
     ds_id = json.loads(resp.text)['dataset_id']
@@ -146,5 +160,5 @@ def create_example_project(url, headers, model_pack, ds_name, ds_dict, project_n
 
 if __name__ == '__main__':
     main(port=8001, initial_wait=3,
-            model_pack_tmp_file='/Users/foooo/Downloads/model_pack.zip',
-            dataset_tmp_file='/Users/fooo/Downloads/ds.csv')
+         model_pack_tmp_file='/Users/foooo/Downloads/model_pack.zip',
+         dataset_tmp_file='/Users/fooo/Downloads/ds.csv')
