@@ -13,8 +13,8 @@ class ImportUtilsTests(unittest.TestCase):
             self,
             mock_get_required_extra_deps,
             mock_get_installed_extra_dependencies):
-        mock_get_installed_extra_dependencies.return_value = ["A", "B"]
-        mock_get_required_extra_deps.return_value = ["A", "B", "C"]
+        mock_get_installed_extra_dependencies.return_value = {"A", "B"}
+        mock_get_required_extra_deps.return_value = {"A", "B", "C"}
         with self.assertRaises(import_utils.MissingDependenciesError):
             import_utils.ensure_optional_extras_installed("medcat", "WHATEVER")
 
@@ -25,8 +25,8 @@ class ImportUtilsTests(unittest.TestCase):
             self,
             mock_get_required_extra_deps,
             mock_get_installed_extra_dependencies):
-        mock_get_installed_extra_dependencies.return_value = []
-        mock_get_required_extra_deps.return_value = ["A", "B", "C"]
+        mock_get_installed_extra_dependencies.return_value = set()
+        mock_get_required_extra_deps.return_value = {"A", "B", "C"}
         with self.assertRaises(import_utils.MissingDependenciesError):
             import_utils.ensure_optional_extras_installed("medcat", "WHATEVER")
 
@@ -37,7 +37,7 @@ class ImportUtilsTests(unittest.TestCase):
             self,
             mock_get_required_extra_deps,
             mock_get_installed_extra_dependencies):
-        mock_get_installed_extra_dependencies.return_value = ["A", "B", "C"]
-        mock_get_required_extra_deps.return_value = ["A", "B", "C"]
+        mock_get_installed_extra_dependencies.return_value = {"A", "B", "C"}
+        mock_get_required_extra_deps.return_value = {"A", "B", "C"}
         # NOTE: just no raise
         import_utils.ensure_optional_extras_installed("medcat", "WHATEVER")
