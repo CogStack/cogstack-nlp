@@ -39,7 +39,7 @@ dev = [
 ]
 
 # entry-points to add onto medcat
-[project.entry-points."medcat.addons"]
+[project.entry-points."medcat.plugins"]
 ner_gliner = "medcat_gliner"
 
 [project.urls]
