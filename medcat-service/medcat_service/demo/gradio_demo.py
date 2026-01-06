@@ -129,7 +129,7 @@ def perform_named_entity_resolution(input_text: str):
     annotations_as_display_format = convert_entity_dict_to_display_model(result.annotations)
     response_datatable_format = convert_display_model_to_list_of_lists(annotations_as_display_format)
 
-    response: EntityResponse = EntityResponse(entities=entity_ner_format, text=input_text)
+    response: EntityResponse = EntityResponse(entities=entity_ner_format, text=result.text)
     return response.model_dump(), response_datatable_format
 
 
