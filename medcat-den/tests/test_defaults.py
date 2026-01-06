@@ -1,6 +1,6 @@
 from medcat_den.den import get_default_den
 from medcat_den.backend import DenType
-from medcat_den.den_impl.file_den import LocalFileDen
+from medcat_den.backend_impl.file_den import LocalFileDen
 
 
 def test_defaults_to_local():

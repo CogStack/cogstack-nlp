@@ -7,7 +7,7 @@ from medcat.cat import CAT
 from medcat_den.den import Den
 from medcat_den.config import LocalDenConfig
 from medcat_den.backend import DenType
-from medcat_den.den_impl import LocalFileDen
+from medcat_den.backend_impl import LocalFileDen
 from medcat_den.base import ModelInfo, ModelCard
 from medcat_den.wrappers import CannotSaveOnDiskException
 

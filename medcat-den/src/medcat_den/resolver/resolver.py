@@ -10,7 +10,7 @@ from medcat_den.backend import (
     DenType, get_registered_remote_den, has_registered_remote_den)
 from medcat_den.den import DenBackend
 
-from medcat_den.den_impl.file_den import LocalFileDen
+from medcat_den.backend_impl.file_den import LocalFileDen
 from medcat_den.cache import LocalCache
 from medcat_den.cache.local_cache import (
     DEFAULT_EXPIRATION_TIME, DEFAULT_MAX_SIZE, DEFAULT_EVICTION_POLICY)

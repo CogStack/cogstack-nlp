@@ -5,7 +5,7 @@ from medcat.cat import CAT
 
 from medcat_den.resolver import resolve, resolve_from_config
 from medcat_den.backend import DenType
-from medcat_den.den_impl.file_den import LocalFileDen
+from medcat_den.backend_impl.file_den import LocalFileDen
 from medcat_den.cache.local_cache import has_local_cache, LocalCache
 from medcat_den.config import LocalDenConfig
 

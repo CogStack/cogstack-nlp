@@ -5,7 +5,7 @@ from medcat_den.injection import injected_den
 from medcat_den.wrappers import CATWrapper, CannotSendToRemoteException
 from medcat_den.wrappers import NotAllowedToFineTuneLocallyException
 from medcat_den.den import Den
-from medcat_den.den_impl.file_den import LocalFileDen
+from medcat_den.backend_impl.file_den import LocalFileDen
 from medcat_den.base import ModelInfo
 
 from medcat.cat import CAT
