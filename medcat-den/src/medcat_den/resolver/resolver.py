@@ -121,37 +121,38 @@ def _resolve_multi_backend(
         multi_backend_config_path: str,
         local_cache_path: Optional[str],
         ) -> tuple[dict[str, DenBackend], str]:
-    with open(multi_backend_config_path) as f:
-        config = json.load(f)
+    try:
+        with open(multi_backend_config_path) as f:
+            config = json.load(f)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Invalid JSON for {multi_backend_config_path}: {e}")
     # common local cache path
     common_local_cache = config.get("local_cache_path") or local_cache_path
     default_backend_name = config.get("default_backend", "default")
     multi_backend_config = config["backends"]
-    try:
-        backends: dict[str, DenBackend] = {}
+    backends: dict[str, DenBackend] = {}
 
-        for backend_name, backend_args in multi_backend_config.items():
-            backend_type = DenType(backend_args.get("type", DenType.LOCAL_USER))
-            # resolve each individual backend
-            backends[backend_name] = resolve(
-                type_=backend_type,
-                location=backend_args.get("location"),
-                host=backend_args.get("host"),
-                credentials=backend_args.get("credentials"),
-                local_cache_path=backend_args.get("local_cache_path", None) or common_local_cache,
-                expiration_time=backend_args.get("expiration_time", None),
-                max_size=backend_args.get("max_size", None),
-                eviction_policy=backend_args.get("eviction_policy", None),
-                remote_allow_local_fine_tune=backend_args.get("remote_allow_local_fine_tune"),
-                remote_allow_push_fine_tuned=backend_args.get("remote_allow_push_fine_tuned"),
-            )[0]["default"]
-        if default_backend_name not in backends:
-            raise ValueError(
-                f"Default backend '{default_backend_name}' not found in {multi_backend_config_path}")
+    for backend_name, backend_args in multi_backend_config.items():
+        backend_type = DenType(backend_args.get("type", DenType.LOCAL_USER))
+        # resolve each individual backend
+        backends[backend_name] = resolve(
+            type_=backend_type,
+            location=backend_args.get("location"),
+            host=backend_args.get("host"),
+            credentials=backend_args.get("credentials"),
+            local_cache_path=backend_args.get("local_cache_path", None) or common_local_cache,
+            expiration_time=backend_args.get("expiration_time", None),
+            max_size=backend_args.get("max_size", None),
+            eviction_policy=backend_args.get("eviction_policy", None),
+            remote_allow_local_fine_tune=backend_args.get("remote_allow_local_fine_tune"),
+            remote_allow_push_fine_tuned=backend_args.get("remote_allow_push_fine_tuned"),
+            allow_multi_backend=False,
+        )[0]["default"]
+    if default_backend_name not in backends:
+        raise ValueError(
+            f"Default backend '{default_backend_name}' not found in {multi_backend_config_path}")
 
-        return backends, default_backend_name
-    except json.JSONDecodeError as e:
-        raise ValueError(f"Invalid JSON for {multi_backend_config_path}: {e}")
+    return backends, default_backend_name
 
 
 def resolve(
@@ -165,10 +166,11 @@ def resolve(
     eviction_policy: Optional[str] = None,
     remote_allow_local_fine_tune: Optional[str] = None,
     remote_allow_push_fine_tuned: Optional[str] = None,
+    allow_multi_backend: bool = True,
 ) -> tuple[dict[str, DenBackend], str]:
     # Check for multi-backend setup from environment variables
     multi_backend_config_path = os.getenv(MEDCAT_DEN_BACKENDS_JSON)
-    if multi_backend_config_path:
+    if multi_backend_config_path and allow_multi_backend:
         return _resolve_multi_backend(multi_backend_config_path, local_cache_path)
     # Existing single-backend resolution logic
     den_cnf = _init_den_cnf(type_, location, host, credentials,
