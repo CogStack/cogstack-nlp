@@ -281,10 +281,11 @@ def get_default_den(
     """
     # NOTE: doing dynamic import to avoid circular imports
     from medcat_den.resolver import resolve
-    backend = resolve(type_, location, host, credentials, local_cache_path,
-                      expiration_time, max_size, eviction_policy,
-                      remote_allow_local_fine_tune, remote_allow_push_fine_tuned)
-    return Den(backends={"default": backend}, default_backend_name="default")
+    backends, default_backage_name = resolve(
+        type_, location, host, credentials, local_cache_path,
+        expiration_time, max_size, eviction_policy,
+        remote_allow_local_fine_tune, remote_allow_push_fine_tuned)
+    return Den(backends=backends, default_backend_name=default_backage_name)
 
 
 def get_default_user_local_den(
