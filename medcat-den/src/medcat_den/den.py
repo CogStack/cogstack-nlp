@@ -9,7 +9,7 @@ from medcat_den.backend import DenType
 
 
 @runtime_checkable
-class Den(Protocol):
+class DenBackend(Protocol):
 
     @property
     def den_type(self) -> DenType:
@@ -20,45 +20,62 @@ class Den(Protocol):
         """
         pass
 
-    def list_available_models(self) -> list[ModelInfo]:
+    def list_available_models(
+            self, backend_name: Optional[str] = None) -> list[ModelInfo]:
         """List all available models.
+
+        Args:
+            backend_name (Optional[str]): The backend name for multi-back end dens.
+                Defaults to None.
 
         Returns:
             list[ModelInfo]: The list of models.
         """
         pass
 
-    def list_available_base_models(self) -> list[ModelInfo]:
+    def list_available_base_models(
+            self, backend_name: Optional[str] = None) -> list[ModelInfo]:
         """List all available base models.
+
+        Args:
+            backend_name (Optional[str]): The backend name for multi-back end dens.
+                Defaults to None.
 
         Returns:
             list[ModelInfo]: The available base models.
         """
         pass
 
-    def list_available_derivative_models(self, model: ModelInfo
+    def list_available_derivative_models(self, model: ModelInfo,
+                                         backend_name: Optional[str] = None
                                          ) -> list[ModelInfo]:
         """List the available derivative models for the given model info.
 
         Args:
             model (ModelInof): The base model.
+            backend_name (Optional[str]): The backend name for multi-back end dens.
+                Defaults to None.
 
         Returns:
             list[ModelInfo]: The available deriative models.
         """
 
-    def fetch_model(self, model_info: ModelInfo) -> CATWrapper:
+    def fetch_model(self, model_info: ModelInfo,
+                    backend_name: Optional[str] = None) -> CATWrapper:
         """Fetch the specified model.
 
         Args:
             model_info (ModelInfo): The model info.
+            backend_name (Optional[str]): The backend name for multi-back end dens.
+                Defaults to None.
 
         Returns:
             CAT: The model pack.
         """
         pass
 
-    def push_model(self, cat: CAT, description: str) -> None:
+    def push_model(self, cat: CAT, description: str,
+                   backend_name: Optional[str] = None) -> None:
         """Push the model pack back to the remote.
 
         This may be able to take advantage of the initial model info
@@ -69,13 +86,16 @@ class Den(Protocol):
         Args:
             cat (CAT): The model pack.
             description (str): The description of the changes.
+            backend_name (Optional[str]): The backend name for multi-back end dens.
+                Defaults to None.
 
         Raises:
             DuplicateModelException: If the model by this ID already exists.
         """
         pass
 
-    def _push_model_from_file(self, file_path: str, description: str) -> None:
+    def _push_model_from_file(self, file_path: str, description: str,
+                              backend_name: Optional[str] = None) -> None:
         """Internal method to push a model from a file.
 
         Normally, if you're pushhing to a remote den, the file needs to
@@ -87,10 +107,13 @@ class Den(Protocol):
         Args:
             file_path (str): The file path.
             description (str): The description of the changes.
+            backend_name (Optional[str]): The backend name for multi-back end dens.
+                Defaults to None.
         """
 
     def delete_model(self, model_info: ModelInfo,
-                     allow_delete_base_models: bool = False) -> None:
+                     allow_delete_base_models: bool = False,
+                     backend_name: Optional[str] = None) -> None:
         """Delete the specified model from the den.
 
         Unless `allow_delete_base_models=True` is provided,
@@ -100,11 +123,14 @@ class Den(Protocol):
             model_info (ModelInfo): The model info for the model to delete.
             allow_delete_base_models (bool): Whether to allow base models to
                 be deleted. Defaults to False.
+            backend_name (Optional[str]): The backend name for multi-back end dens.
+                Defaults to None.
         """
         pass
 
     def finetune_model(self, model_info: ModelInfo,
-                       data: Union[list[str], MedCATTrainerExport]
+                       data: Union[list[str], MedCATTrainerExport],
+                       backend_name: Optional[str] = None
                        ) -> ModelInfo:
         """Finetune the model on the remote den.
 
@@ -119,6 +145,8 @@ class Den(Protocol):
             model_info (ModelInfo): The model info
             data (Union[list[str], MedCATTrainerExport]): The list of project
                 ids (already on remote) or the trainer export to train on.
+            backend_name (Optional[str]): The backend name for multi-back end dens.
+                Defaults to None.
 
         Returns:
             ModelInfo: The resulting model.
@@ -128,7 +156,8 @@ class Den(Protocol):
         """
 
     def evaluate_model(self, model_info: ModelInfo,
-                       data: Union[list[str], MedCATTrainerExport]) -> dict:
+                       data: Union[list[str], MedCATTrainerExport],
+                       backend_name: Optional[str] = None) -> dict:
         """Evaluate model on remote den.
 
         This is an optional API that is (generally) only available
@@ -142,11 +171,64 @@ class Den(Protocol):
             model_info (ModelInfo): The model info.
             data (Union[list[str], MedCATTrainerExport]): The list of project
                 ids (already on remote) or the trainer export to train on.
+            backend_name (Optional[str]): The backend name for multi-back end dens.
+                Defaults to None.
 
         Returns:
             dict: The resulting metrics.
         """
         pass
+
+
+class Den(DenBackend):
+
+    def __init__(self, backends: dict[str, DenBackend], default_backend_name: str):
+        if not backends:
+            raise ValueError("Must provide at least one backend")
+        if default_backend_name not in backends:
+            raise ValueError(f"Default backend '{default_backend_name}' not found in provided backends")
+
+        self._backends = backends
+        self._default_backend_name = default_backend_name
+        self._default_backend = self._backends[self._default_backend_name]
+
+    def _get_backend(self, backend_name: Optional[str] = None) -> DenBackend:
+        if backend_name is None:
+            return self._default_backend
+        if backend_name not in self._backends:
+            raise ValueError(f"Backend '{backend_name}' not found")
+        return self._backends[backend_name]
+
+    @property
+    def den_type(self) -> DenType:
+        return DenType.MULTI_BACKEND
+
+    def list_available_models(self, backend_name: Optional[str] = None) -> list[ModelInfo]:
+        return self._get_backend(backend_name).list_available_models()
+
+    def list_available_base_models(self, backend_name: Optional[str] = None) -> list[ModelInfo]:
+        return self._get_backend(backend_name).list_available_base_models()
+
+    def list_available_derivative_models(self, model: ModelInfo, backend_name: Optional[str] = None) -> list[ModelInfo]:
+        return self._get_backend(backend_name).list_available_derivative_models(model)
+
+    def fetch_model(self, model_info: ModelInfo, backend_name: Optional[str] = None) -> CATWrapper:
+        return self._get_backend(backend_name).fetch_model(model_info)
+
+    def push_model(self, cat: CAT, description: str, backend_name: Optional[str] = None) -> None:
+        self._get_backend(backend_name).push_model(cat, description)
+
+    def _push_model_from_file(self, file_path: str, description: str, backend_name: Optional[str] = None) -> None:
+        self._get_backend(backend_name)._push_model_from_file(file_path, description)
+
+    def delete_model(self, model_info: ModelInfo, allow_delete_base_models: bool = False, backend_name: Optional[str] = None) -> None:
+        self._get_backend(backend_name).delete_model(model_info, allow_delete_base_models)
+
+    def finetune_model(self, model_info: ModelInfo, data: Union[list[str], MedCATTrainerExport], backend_name: Optional[str] = None) -> ModelInfo:
+        return self._get_backend(backend_name).finetune_model(model_info, data)
+
+    def evaluate_model(self, model_info: ModelInfo, data: Union[list[str], MedCATTrainerExport], backend_name: Optional[str] = None) -> dict:
+        return self._get_backend(backend_name).evaluate_model(model_info, data)
 
 
 class UnsupportedAPIException(ValueError):
@@ -199,9 +281,10 @@ def get_default_den(
     """
     # NOTE: doing dynamic import to avoid circular imports
     from medcat_den.resolver import resolve
-    return resolve(type_, location, host, credentials, local_cache_path,
-                   expiration_time, max_size, eviction_policy,
-                   remote_allow_local_fine_tune, remote_allow_push_fine_tuned)
+    backend = resolve(type_, location, host, credentials, local_cache_path,
+                      expiration_time, max_size, eviction_policy,
+                      remote_allow_local_fine_tune, remote_allow_push_fine_tuned)
+    return Den(backends={"default": backend}, default_backend_name="default")
 
 
 def get_default_user_local_den(

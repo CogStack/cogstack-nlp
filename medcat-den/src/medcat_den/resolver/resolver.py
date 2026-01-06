@@ -8,7 +8,7 @@ from platformdirs import user_data_dir, site_data_dir
 
 from medcat_den.backend import (
     DenType, get_registered_remote_den, has_registered_remote_den)
-from medcat_den.den import Den
+from medcat_den.den import DenBackend
 
 from medcat_den.den_impl.file_den import LocalFileDen
 from medcat_den.cache import LocalCache
@@ -126,7 +126,7 @@ def resolve(
     eviction_policy: Optional[str] = None,
     remote_allow_local_fine_tune: Optional[str] = None,
     remote_allow_push_fine_tuned: Optional[str] = None,
-) -> Den:
+) -> DenBackend:
     den_cnf = _init_den_cnf(type_, location, host, credentials,
                             remote_allow_local_fine_tune,
                             remote_allow_push_fine_tuned)
@@ -150,13 +150,13 @@ def _resolve_local(config: LocalDenConfig) -> LocalFileDen:
 # NOTE: caching on model json
 #       so cannot use @lru_cache directly
 @cache_on_model
-def resolve_from_config(config: DenConfig) -> Den:
+def resolve_from_config(config: DenConfig) -> DenBackend:
     if isinstance(config, LocalDenConfig):
         return _resolve_local(config)
     elif has_registered_remote_den(config.type):
         den_cls = get_registered_remote_den(config.type)
         den = den_cls(cnf=config)
-        if not isinstance(den, Den):
+        if not isinstance(den, DenBackend):
             raise ValueError(
                 f"Registered den class for {config.type} is not a Den. "
                 f"Got {type(den)}: {den}")
@@ -193,7 +193,7 @@ def _init_lc_cnf(local_cache_path: Optional[str],
     )
 
 
-def _add_local_cache(den: Den, lc_cnf: LocalCacheConfig) -> None:
+def _add_local_cache(den: DenBackend, lc_cnf: LocalCacheConfig) -> None:
     if not os.path.exists(lc_cnf.path):
         os.makedirs(lc_cnf.path, exist_ok=True)
     cache = LocalCache(lc_cnf)
