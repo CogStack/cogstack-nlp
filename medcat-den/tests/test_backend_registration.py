@@ -39,6 +39,11 @@ def test_can_register_backend(avoid_adding_extra_backends):
 
 
 def test_can_resolve_registered_backend(with_added_backend):
-    den = resolve(DenType.MEDCATTERY, host="example.com",
-                  credentials={"Hello": "World"})
+    backends, def_backend_name = resolve(
+        DenType.MEDCATTERY, host="example.com",
+        credentials={"Hello": "World"})
+    assert backends
+    assert def_backend_name in backends
+    assert len(backends) == 1
+    den = backends[def_backend_name]
     assert isinstance(den, FakeDen)

@@ -3,7 +3,8 @@ import os
 
 from medcat.cat import CAT
 
-from medcat_den.resolver import resolve, resolve_from_config
+from medcat_den.den import DenBackend
+from medcat_den.resolver import resolve as _resolve, resolve_from_config
 from medcat_den.backend import DenType
 from medcat_den.backend_impl.file_den import LocalFileDen
 from medcat_den.cache.local_cache import has_local_cache, LocalCache
@@ -19,6 +20,11 @@ os_name = platform.system()
 IS_LINUX = os_name == "Linux"
 IS_MACOS = os_name == "Darwin"
 IS_WINDOWS = os_name == "Windows"
+
+
+def resolve(*args, **kwargs) -> DenBackend:
+    backends, name = _resolve(*args, **kwargs)
+    return backends[name]
 
 
 def test_defaults_to_user_local():
