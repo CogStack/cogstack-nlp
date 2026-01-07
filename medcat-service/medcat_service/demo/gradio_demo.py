@@ -1,6 +1,7 @@
 import gradio as gr
 from pydantic import BaseModel
 
+from medcat_service.demo.header import custom_header_html
 from medcat_service.dependencies import get_medcat_processor, get_settings
 from medcat_service.types import ProcessAPIInputContent
 from medcat_service.types_entities import Entity
@@ -158,17 +159,23 @@ contact@cogstack.com for more information.
 Please note this is a limited version of MedCAT and it is not trained or validated by clinicans.
 """  # noqa: E501
 
-io = gr.Interface(
-    fn=perform_named_entity_resolution,
-    inputs="text",
-    outputs=[
-        gr.HighlightedText(label="Processed Text"),
-        gr.Dataframe(label="Annotations", headers=headers, interactive=False),
-    ],
-    examples=[short_example, long_example],
-    preload_example=0,
-    title="MedCAT Demo",
-    description="Enter some text and click Annotate.",
-    flagging_mode="never",
-    article=article_footer,
-)
+
+theme = gr.themes.Default(primary_hue="blue", secondary_hue="teal")
+
+io = gr.Blocks(title="MedCAT Demo", theme=theme)
+with io:
+    gr.HTML(custom_header_html)
+
+    gr.Interface(
+        fn=perform_named_entity_resolution,
+        inputs="text",
+        outputs=[
+            gr.HighlightedText(label="Processed Text"),
+            gr.Dataframe(label="Annotations", headers=headers, interactive=False),
+        ],
+        examples=[short_example, long_example],
+        preload_example=0,
+        description="Enter some text and click Submit.",
+        flagging_mode="never",
+        article=article_footer,
+    )
