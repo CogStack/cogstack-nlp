@@ -3,6 +3,7 @@ import os
 import traceback
 from smtplib import SMTPException
 from tempfile import NamedTemporaryFile
+from typing import Any
 
 from background_task.models import Task, CompletedTask
 from django.contrib.auth.views import PasswordResetView
@@ -781,7 +782,8 @@ def metrics_jobs(request):
                 'projects': task.verbose_name.split('-')[1].split('_'),
                 'created_user': task.creator.username,
                 'create_time': task.run_at.strftime(dt_fmt),
-                'status': state
+                'error_msg': '\n'.join(task.last_error.split('\n')[-2:]),
+                'status': state,
             }
         running_reports = [serialize_task(t, 'running') for t in running_metrics_tasks_qs]
         for r, t in zip(running_reports, running_metrics_tasks_qs):
@@ -790,6 +792,8 @@ def metrics_jobs(request):
 
         comp_reports = [serialize_task(t, 'complete') for t in completed_metrics_tasks]
         for comp_task, comp_rep in zip(completed_metrics_tasks, comp_reports):
+            if comp_task.has_error():
+                comp_rep['status'] = 'Failed'
             pm_obj = ProjectMetrics.objects.filter(report_name_generated=comp_task.verbose_name).first()
             if pm_obj is not None and pm_obj.report_name is not None:
                 comp_rep['report_name'] = pm_obj.report_name

@@ -5,7 +5,18 @@
                   :hover="true"
                   @click:row="loadMetrics"
                   hide-default-footer
-                  :items-per-page="-1">
+                  :items-per-page="-1"
+                  :row-props="getRowProps">
+      <template #item.report_id="{ item }">
+        <v-tooltip v-if="item.status === 'Failed' && item.error_msg" location="top">
+          <template #activator="{ props }">
+            <span v-bind="props" class="failed-row-tooltip-trigger">{{ item.report_id }}</span>
+          </template>
+          <span>{{ item.error_msg }}</span>
+        </v-tooltip>
+        <span v-else>{{ item.report_id }}</span>
+      </template>
+
       <template #item.projects="{ item }" >
         <div @click.stop>
           <v-runtime-template :template="projectsFormatter(item.projects)"></v-runtime-template>
@@ -21,6 +32,17 @@
         </span>
         <span v-if="item.status === 'complete'">Complete
           <font-awesome-icon icon="check" class="status-icon success"></font-awesome-icon>
+        </span>
+        <v-tooltip v-if="item.status === 'Failed' && item.error_msg" location="top">
+          <template #activator="{ props }">
+            <span v-bind="props" class="failed-row-tooltip-trigger">Failed
+              <font-awesome-icon icon="times-circle" class="status-icon error"></font-awesome-icon>
+            </span>
+          </template>
+          <span>{{ item.error_msg }}</span>
+        </v-tooltip>
+        <span v-else-if="item.status === 'Failed'">Failed
+          <font-awesome-icon icon="times-circle" class="status-icon error"></font-awesome-icon>
         </span>
       </template>
       <template #item.cleanup="{ item }">
@@ -48,6 +70,10 @@
         </div>
         <div v-if="confDeleteReportModal.status === 'complete'">
           Confirm complete metrics report deletion. To regenerate the report reselect the projects on the
+          home screen and select metrics.
+        </div>
+        <div v-if="confDeleteReportModal.status === 'Failed'">
+          Confirm failed metrics report deletion. To regenerate the report reselect the projects on the
           home screen and select metrics.
         </div>
       </template>
@@ -116,12 +142,23 @@ export default {
       })
     },
     loadMetrics (_, { item }) {
+      // Don't navigate if the report has failed
+      if (item.status === 'Failed') {
+        return
+      }
       this.$router.push({
         name: 'metrics',
         params: {
           reportId: item.report_id
         }
       })
+    },
+    getRowProps (data) {
+      // Apply disabled-row class to failed reports
+      if (data.item.status === 'Failed') {
+        return { class: 'disabled-row' }
+      }
+      return { class: '' }
     },
     confRemoval () {
       const item = this.confDeleteReportModal
@@ -166,8 +203,35 @@ export default {
   padding-left: 3px;
 }
 
+.status-icon.error {
+  color: $danger;
+}
+
+:deep(.v-table > .v-table__wrapper > table > tbody > tr.disabled-row) {
+  pointer-events: none;
+  opacity: 0.6;
+  cursor: not-allowed !important;
+}
+
+:deep(.v-table > .v-table__wrapper > table > tbody > tr.disabled-row:hover) {
+  background-color: inherit !important;
+}
+
+:deep(.v-table > .v-table__wrapper > table > tbody > tr.disabled-row > td) {
+  pointer-events: none;
+}
+
+:deep(.v-table > .v-table__wrapper > table > tbody > tr.disabled-row > td > div) {
+  pointer-events: auto;
+}
+
+:deep(.v-table > .v-table__wrapper > table > tbody > tr.disabled-row .failed-row-tooltip-trigger) {
+  pointer-events: auto;
+  cursor: help;
+}
+
 .project-links {
-  color: #005EB8;
+  color: $primary-alt;
 
   &:hover {
     color: #fff;

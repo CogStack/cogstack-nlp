@@ -52,45 +52,61 @@ class ModelPack(models.Model):
 
         # Process the model pack
         logger.info('Loading model pack: %s', self.model_pack)
-        model_pack_name = str(self.model_pack).replace(".zip", "")
+        model_pack_path = self.model_pack.path
+
         try:
-            CAT.attempt_unpack(self.model_pack.path)
+            CAT.attempt_unpack(model_pack_path)
         except BadZipFile as exc:
             # potential for CRC-32 errors in Trainer process - ignore and still use
             logger.warning(f'Possibly corrupt cdb.dat decompressing {self.model_pack}\nFull Exception: {exc}')
-        unpacked_model_pack_path = self.model_pack.path.replace('.zip', '')
-        # attempt to load cdb
+
+        unpacked_model_pack_path = model_pack_path.replace('.zip', '')
+        unpacked_file_name = self.model_pack.file.name.replace('.zip', '')
+
+        # attempt to load cdb - use absolute paths for file existence checks
         try:
-            CAT.load_cdb(unpacked_model_pack_path)
+            # Check for v2 (directory) first
+            cdb_path_abs = os.path.join(unpacked_model_pack_path, 'cdb')
+            if os.path.exists(cdb_path_abs) and os.path.isdir(cdb_path_abs):
+                # v2: CDB is a directory
+                cdb_path_rel = os.path.join(unpacked_file_name, 'cdb')
+            else:
+                # v1: CDB is a file
+                cdb_path_abs = os.path.join(unpacked_model_pack_path, 'cdb.dat')
+                cdb_path_rel = os.path.join(unpacked_file_name, 'cdb.dat')
+                if not os.path.exists(cdb_path_abs):
+                    raise FileNotFoundError(f'CDB not found in model pack: {unpacked_model_pack_path}')
+
+            # Validate CDB can be loaded
+            CDB.load(cdb_path_abs)
+
+            # Create ConceptDB model with relative path (to MEDIA_ROOT)
             concept_db = ConceptDB()
-            unpacked_file_name = self.model_pack.file.name.replace('.zip', '')
-            # cdb path for v2
-            cdb_path = os.path.join(unpacked_file_name, 'cdb')
-            if not os.path.exists(cdb_path):
-                # cdb path for v1
-                cdb_path = os.path.join(unpacked_file_name, 'cdb.dat')
-            concept_db.cdb_file.name = cdb_path
+            concept_db.cdb_file.name = cdb_path_rel
             concept_db.name = f'{self.name}_CDB'
             concept_db.save(skip_load=True)
             self.concept_db = concept_db
         except Exception as exc:
             raise FileNotFoundError(f'Error loading the CDB from this model pack: {self.model_pack.path}') from exc
 
-        # Load Vocab, v2
-        vocab_path = os.path.join(unpacked_model_pack_path, "vocab")
-        if not os.path.exists(vocab_path):
+        # Load Vocab, v2 (directory) or v1 (file)
+        vocab_path_abs = os.path.join(unpacked_model_pack_path, "vocab")
+        vocab_path_rel = os.path.join(unpacked_file_name, "vocab")
+        if not os.path.exists(vocab_path_abs):
             # v1
-            vocab_path = os.path.join(unpacked_model_pack_path, "vocab.dat")
-        if os.path.exists(vocab_path):
-            Vocab.load(vocab_path)
+            vocab_path_abs = os.path.join(unpacked_model_pack_path, "vocab.dat")
+            vocab_path_rel = os.path.join(unpacked_file_name, "vocab.dat")
+        if os.path.exists(vocab_path_abs):
+            Vocab.load(vocab_path_abs)
             vocab = Vocabulary()
-            vocab.vocab_file.name = vocab_path.replace(f'{MEDIA_ROOT}/', '')
+            # Use relative path for saving to model
+            vocab.vocab_file.name = vocab_path_rel
             vocab.save(skip_load=True)
             self.vocab = vocab
         else:
             # DeID model packs do not have a vocab.dat file
             logger.warn('Error loading the Vocab from this model pack - '
-                        f'if this is a DeID model pack, this is expected: {vocab_path}')
+                        f'if this is a DeID model pack, this is expected: {vocab_path_abs}')
 
         # load MetaCATs
         try:
@@ -462,7 +478,7 @@ class ProjectAnnotateEntitiesFields(models.Model):
                                             help_text='Use a remote MedCAT service API for document processing instead of local models'\
                                                       '(note: interim model training is not supported for remote model service projects)')
     model_service_url = models.CharField(max_length=500, blank=True, null=True,
-                                         help_text='URL of the remote MedCAT service API (e.g., http://medcat-service:8003)')
+                                         help_text='URL of the remote MedCAT service API (e.g., http://medcat-service:8000)')
 
     def save(self, *args, **kwargs):
         # If using remote model service, skip local model validation
