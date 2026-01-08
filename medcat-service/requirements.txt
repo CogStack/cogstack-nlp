@@ -9,7 +9,7 @@ requests==2.32.4
 fastapi[standard]==0.115.2
 pydantic>=2.11.10,<2.12.5
 pydantic-settings==2.10.1
-gradio[mcp]==5.38.0
+gradio[mcp]==6.2.0
 prometheus-fastapi-instrumentator==7.1.0
 opentelemetry-distro[otlp]==0.60b0
 opentelemetry-instrumentation==0.60b0
