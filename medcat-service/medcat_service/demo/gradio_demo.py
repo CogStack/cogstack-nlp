@@ -139,12 +139,21 @@ def perform_named_entity_resolution(input_text: str):
 settings = get_settings()
 
 
+# CSS to set max height with scrollbar for HighlightedText output
+# Target the component container and its content
+highlighted_text_css = """
+#highlighted-text-output {
+    max-height: 460px;
+    overflow-y: auto;
+}
+"""
+
 if settings.deid_mode:
     io = gr.Interface(
         fn=perform_named_entity_resolution,
-        inputs=gr.Textbox(label="Input Text", lines=6, placeholder="Enter some text and click Annotate..."),
+        inputs=gr.Textbox(label="Input Text", lines=3, placeholder="Enter some text and click Annotate..."),
         outputs=[
-            gr.HighlightedText(label="Processed Text"),
+            gr.HighlightedText(label="Processed Text", elem_id="highlighted-text-output"),
             gr.Dataframe(label="Annotations", headers=headers, interactive=False),
         ],
         examples=[demo_content.short_example, demo_content.anoncat_example],
@@ -158,7 +167,7 @@ else:
         fn=perform_named_entity_resolution,
         inputs=gr.Textbox(label="Input Text", lines=6, placeholder="Enter some text and click Annotate..."),
         outputs=[
-            gr.HighlightedText(label="Processed Text"),
+            gr.HighlightedText(label="Processed Text", elem_id="highlighted-text-output"),
             gr.Dataframe(label="Annotations", headers=headers, interactive=False),
         ],
         examples=[demo_content.short_example, demo_content.long_example],
@@ -167,3 +176,15 @@ else:
         article=demo_content.article_footer,
         submit_btn="Annotate",
     )
+
+
+def mount_gradio_app(app, path: str = "/demo") -> None:
+    """
+    Mount the Gradio interface to the FastAPI app with a custom theme.
+
+    Args:
+        app: The FastAPI application instance
+        path: The path at which to mount the Gradio app (default: "/demo")
+    """
+    theme = gr.themes.Default(primary_hue="blue", secondary_hue="teal")
+    gr.mount_gradio_app(app, io, path=path, theme=theme, css=highlighted_text_css)
