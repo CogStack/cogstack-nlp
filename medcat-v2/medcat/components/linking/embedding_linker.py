@@ -283,27 +283,6 @@ class Linker(AbstractEntityProvidingComponent):
             texts.append(text)
         return self._embed(texts, self.device)
 
-    def _initialize_cui_name_mapping(self) -> None:
-        """Call this once during initialization to pre-compute CUI->name."""
-        self._cui_to_name_mask = {}
-
-        for cui, cui_idx in self._cui_to_idx.items():
-            mask = torch.tensor(
-                [cui_idx in name_cui_idxs
-                 for name_cui_idxs in self._name_to_cui_idxs],
-                dtype=torch.bool,
-                device=self.device
-            )
-            self._cui_to_name_mask[cui] = mask
-
-        # Cache _has_cuis_all as well
-        self._has_cuis_all_cached = torch.tensor(
-            [bool(self.cdb.name2info[name]["per_cui_status"])
-             for name in self._name_keys],
-            device=self.device,
-            dtype=torch.bool,
-        )
-
     def _initialize_filter_structures(self) -> None:
         """Call once during initialization to create efficient lookup structures."""
         # Build an inverted index: cui_idx -> list of name indices that contain it
