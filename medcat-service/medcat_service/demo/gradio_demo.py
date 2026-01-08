@@ -136,16 +136,34 @@ def perform_named_entity_resolution(input_text: str):
     return response.model_dump(), response_datatable_format
 
 
-io = gr.Interface(
-    fn=perform_named_entity_resolution,
-    inputs=gr.Textbox(label="Input Text", lines=6, placeholder="Enter some text and click Annotate..."),
-    outputs=[
-        gr.HighlightedText(label="Processed Text"),
-        gr.Dataframe(label="Annotations", headers=headers, interactive=False),
-    ],
-    examples=[demo_content.short_example, demo_content.long_example],
-    title="MedCAT Demo",
-    flagging_mode="never",
-    article=demo_content.article_footer,
-    submit_btn="Annotate",
-)
+settings = get_settings()
+
+
+if settings.deid_mode:
+    io = gr.Interface(
+        fn=perform_named_entity_resolution,
+        inputs=gr.Textbox(label="Input Text", lines=6, placeholder="Enter some text and click Annotate..."),
+        outputs=[
+            gr.HighlightedText(label="Processed Text"),
+            gr.Dataframe(label="Annotations", headers=headers, interactive=False),
+        ],
+        examples=[demo_content.short_example, demo_content.anoncat_example],
+        title="AnonCAT Demo",
+        flagging_mode="never",
+        article=demo_content.anoncat_help_content,
+        submit_btn="Deidentify",
+    )
+else:
+    io = gr.Interface(
+        fn=perform_named_entity_resolution,
+        inputs=gr.Textbox(label="Input Text", lines=6, placeholder="Enter some text and click Annotate..."),
+        outputs=[
+            gr.HighlightedText(label="Processed Text"),
+            gr.Dataframe(label="Annotations", headers=headers, interactive=False),
+        ],
+        examples=[demo_content.short_example, demo_content.long_example],
+        title="MedCAT Demo",
+        flagging_mode="never",
+        article=demo_content.article_footer,
+        submit_btn="Annotate",
+    )
