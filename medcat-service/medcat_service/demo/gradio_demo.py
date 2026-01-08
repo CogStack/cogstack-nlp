@@ -118,6 +118,8 @@ def perform_named_entity_resolution(input_text: str):
               entity annotation and its attributes for display purposes.
 
     """
+    if not input_text or not input_text.strip():
+        return None, None
 
     processor = get_medcat_processor(get_settings())
     input = ProcessAPIInputContent(text=input_text)
@@ -136,8 +138,7 @@ def perform_named_entity_resolution(input_text: str):
 short_example = "John had been diagnosed with acute Kidney Failure the week before"
 
 
-long_example = """
-Description: Intracerebral hemorrhage (very acute clinical changes occurred immediately).
+long_example = """Description: Intracerebral hemorrhage (very acute clinical changes occurred immediately).
 CC: Left hand numbness on presentation; then developed lethargy later that day.
 
 HX: On the day of presentation, this 72 y/o RHM suddenly developed generalized weakness and lightheadedness, and could not rise from a chair. Four hours later he experienced sudden left hand numbness lasting two hours. There were no other associated symptoms except for the generalized weakness and lightheadedness. He denied vertigo.
@@ -160,15 +161,14 @@ Please note this is a limited version of MedCAT and it is not trained or validat
 
 io = gr.Interface(
     fn=perform_named_entity_resolution,
-    inputs="text",
+    inputs=gr.Textbox(label="Input Text", lines=6, placeholder="Enter some text and click Annotate..."),
     outputs=[
         gr.HighlightedText(label="Processed Text"),
         gr.Dataframe(label="Annotations", headers=headers, interactive=False),
     ],
     examples=[short_example, long_example],
-    preload_example=0,
     title="MedCAT Demo",
-    description="Enter some text and click Annotate.",
     flagging_mode="never",
     article=article_footer,
+    submit_btn="Annotate",
 )

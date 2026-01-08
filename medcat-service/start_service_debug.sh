@@ -13,4 +13,10 @@ fi
 
 export APP_ENABLE_METRICS=${APP_ENABLE_METRICS:-True}
 
-fastapi dev medcat_service/main.py 
+if HOT_MODULE_RELOADING=True; then
+  # Experimental: Hot module reloading. Need to `pip install -r requirements-dev.txt`
+  echo "Running medcat-service with hot module reloading"
+  uvicorn-hmr medcat_service/main:app --refresh --reload-include 'medcat_service'
+else
+  fastapi dev medcat_service/main.py 
+fi
