@@ -1,6 +1,7 @@
 import gradio as gr
 from pydantic import BaseModel
 
+import medcat_service.demo.demo_content as demo_content
 from medcat_service.dependencies import get_medcat_processor, get_settings
 from medcat_service.types import ProcessAPIInputContent
 from medcat_service.types_entities import Entity
@@ -135,30 +136,6 @@ def perform_named_entity_resolution(input_text: str):
     return response.model_dump(), response_datatable_format
 
 
-short_example = "John had been diagnosed with acute Kidney Failure the week before"
-
-
-long_example = """Description: Intracerebral hemorrhage (very acute clinical changes occurred immediately).
-CC: Left hand numbness on presentation; then developed lethargy later that day.
-
-HX: On the day of presentation, this 72 y/o RHM suddenly developed generalized weakness and lightheadedness, and could not rise from a chair. Four hours later he experienced sudden left hand numbness lasting two hours. There were no other associated symptoms except for the generalized weakness and lightheadedness. He denied vertigo.
-
-He had been experiencing falling spells without associated LOC up to several times a month for the past year.
-
-MEDS: procardia SR, Lasix, Ecotrin, KCL, Digoxin, Colace, Coumadin.
-
-PMH: 1)8/92 evaluation for presyncope (Echocardiogram showed: AV fibrosis/calcification, AV stenosis/insufficiency, MV stenosis with annular calcification and regurgitation, moderate TR, Decreased LV systolic function, severe LAE. MRI brain: focal areas of increased T2 signal in the left cerebellum and in the brainstem probably representing microvascular ischemic disease. IVG (MUGA scan)revealed: global hypokinesis of the LV and biventricular dysfunction, RV ejection Fx 45% and LV ejection Fx 39%. He was subsequently placed on coumadin severe valvular heart disease), 2)HTN, 3)Rheumatic fever and heart disease, 4)COPD, 5)ETOH abuse, 6)colonic polyps, 7)CAD, 8)CHF, 9)Appendectomy, 10)Junctional tachycardia.
-"""  # noqa: E501
-
-article_footer = """
-## Disclaimer
-This software is intended solely for the testing purposes and non-commercial use. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED.
-
-contact@cogstack.com for more information.
-
-Please note this is a limited version of MedCAT and it is not trained or validated by clinicans.
-"""  # noqa: E501
-
 io = gr.Interface(
     fn=perform_named_entity_resolution,
     inputs=gr.Textbox(label="Input Text", lines=6, placeholder="Enter some text and click Annotate..."),
@@ -166,9 +143,9 @@ io = gr.Interface(
         gr.HighlightedText(label="Processed Text"),
         gr.Dataframe(label="Annotations", headers=headers, interactive=False),
     ],
-    examples=[short_example, long_example],
+    examples=[demo_content.short_example, demo_content.long_example],
     title="MedCAT Demo",
     flagging_mode="never",
-    article=article_footer,
+    article=demo_content.article_footer,
     submit_btn="Annotate",
 )

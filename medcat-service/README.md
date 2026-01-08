@@ -389,3 +389,17 @@ The main settings that can be used to improve the performance when querying larg
 MedCAT parameters are defined in selected `envs/medcat*`  file.
 
 For details on available MedCAT parameters please refer to [the official GitHub repository](https://github.com/CogStack/cogstack-nlp/blob/main/medcat-v2/).
+
+## Local development
+
+For local development, set up a Python virtual environment, install dependencies with pip, and make sure to also install the local MedCAT core library (the `medcat-v2` folder) in editable mode. 
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt -r requirements-dev.txt
+SETUPTOOLS_SCM_PRETEND_VERSION="2.4.0-dev0" pip install -e "../medcat-v2[meta-cat,spacy]"
+bash start_service_debug.sh
+
+# Service will run on localhost:8000
+```
