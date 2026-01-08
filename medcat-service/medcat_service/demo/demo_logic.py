@@ -6,11 +6,15 @@ NER highlighting). Use these definitions and helper functions to bridge
 MedCAT's annotation results and Gradio's interactive demo expectations.
 """
 
+import logging
+
 from pydantic import BaseModel
 
 from medcat_service.dependencies import get_medcat_processor, get_settings
 from medcat_service.types import ProcessAPIInputContent
 from medcat_service.types_entities import Entity
+
+logger = logging.getLogger(__name__)
 
 
 class EntityAnnotation(BaseModel):
@@ -89,7 +93,7 @@ def convert_entity_dict_to_annotations(entity_dict_list: list[dict[str, Entity]]
 
 
 def convert_entity_dict_to_display_model(entity_dict_list: list[dict[str, Entity]]) -> list[EntityAnnotationDisplay]:
-    annotations: list[EntityAnnotationDisplay] = []
+    logger.debug("Converting entity dict to display model")   annotations: list[EntityAnnotationDisplay] = []
     for entity_dict in entity_dict_list:
         for key, entity in entity_dict.items():
             annotations.append(convert_annotation_to_display_model(entity))
@@ -97,7 +101,10 @@ def convert_entity_dict_to_display_model(entity_dict_list: list[dict[str, Entity
 
 
 def convert_display_model_to_list_of_lists(entity_display_model: list[EntityAnnotationDisplay]) -> list[list[str]]:
-    return [[str(getattr(entity, field)) for field in entity.model_fields] for entity in entity_display_model]
+    return [
+        [str(getattr(entity, field)) for field in EntityAnnotationDisplay.model_fields]
+        for entity in entity_display_model
+    ]
 
 
 def perform_named_entity_resolution(input_text: str):
@@ -125,6 +132,7 @@ def perform_named_entity_resolution(input_text: str):
               entity annotation and its attributes for display purposes.
 
     """
+    logger.debug("Performing named entity resolution")
     if not input_text or not input_text.strip():
         return None, None
 
@@ -135,8 +143,11 @@ def perform_named_entity_resolution(input_text: str):
 
     entity_ner_format: list[EntityAnnotation] = convert_entity_dict_to_annotations(result.annotations)
 
+    logger.debug("Converting entity dict to display model")
     annotations_as_display_format = convert_entity_dict_to_display_model(result.annotations)
     response_datatable_format = convert_display_model_to_list_of_lists(annotations_as_display_format)
 
     response: EntityResponse = EntityResponse(entities=entity_ner_format, text=input_text)
-    return response.model_dump(), response_datatable_format
+    result = response.model_dump(), response_datatable_format
+    logger.debug("Returning final result")
+    return result

@@ -17,33 +17,66 @@ highlighted_text_css = """
 settings = get_settings()
 
 if settings.deid_mode:
-    io = gr.Interface(
-        fn=perform_named_entity_resolution,
-        inputs=gr.Textbox(label="Input Text", lines=3, placeholder="Enter some text and click Annotate..."),
-        outputs=[
-            gr.HighlightedText(label="Processed Text", elem_id="highlighted-text-output"),
-            gr.Dataframe(label="Annotations", headers=headers, interactive=False),
-        ],
-        examples=[demo_content.short_example, demo_content.anoncat_example],
-        title="AnonCAT Demo",
-        flagging_mode="never",
-        article=demo_content.anoncat_help_content,
-        submit_btn="Deidentify",
-    )
+    with gr.Blocks(title="AnonCAT Demo", fill_width=True) as io:
+        gr.Markdown("# AnonCAT Demo")
+        with gr.Row():
+            with gr.Column():
+                input_text = gr.Textbox(
+                    label="Input Text",
+                    lines=3,
+                    placeholder="Enter some text and click Deidentify..."
+                )
+                examples = gr.Examples(
+                    examples=[demo_content.short_example, demo_content.anoncat_example],
+                    inputs=input_text,
+                )
+                with gr.Row():
+                    clear_btn = gr.Button("Clear", variant="secondary")
+                    deid_btn = gr.Button("Deidentify", variant="primary")
+
+            with gr.Column():
+                highlighted = gr.HighlightedText(label="Processed Text", elem_id="highlighted-text-output")
+                dataframe = gr.Dataframe(label="Annotations", headers=headers, interactive=False, max_chars=4)
+        deid_btn.click(
+            perform_named_entity_resolution,
+            inputs=input_text,
+            outputs=[highlighted, dataframe]
+        )
+        clear_btn.click(
+            lambda: ("", None, None),
+            outputs=[input_text, highlighted, dataframe]
+        )
+        gr.Markdown(demo_content.anoncat_help_content)
 else:
-    io = gr.Interface(
-        fn=perform_named_entity_resolution,
-        inputs=gr.Textbox(label="Input Text", lines=6, placeholder="Enter some text and click Annotate..."),
-        outputs=[
-            gr.HighlightedText(label="Processed Text", elem_id="highlighted-text-output"),
-            gr.Dataframe(label="Annotations", headers=headers, interactive=False),
-        ],
-        examples=[demo_content.short_example, demo_content.long_example],
-        title="MedCAT Demo",
-        flagging_mode="never",
-        article=demo_content.article_footer,
-        submit_btn="Annotate",
-    )
+    with gr.Blocks(title="MedCAT Demo", fill_width=True) as io:
+        gr.Markdown("# MedCAT Demo")
+        with gr.Row():
+            with gr.Column():
+                input_text = gr.Textbox(
+                    label="Input Text",
+                    lines=6,
+                    placeholder="Enter some text and click Annotate..."
+                )
+                examples = gr.Examples(
+                    examples=[demo_content.short_example, demo_content.long_example],
+                    inputs=input_text,
+                )
+                with gr.Row():
+                    clear_btn = gr.Button("Clear", variant="secondary")
+                    annotate_btn = gr.Button("Annotate", variant="primary")
+            with gr.Column():
+                highlighted = gr.HighlightedText(label="Processed Text", elem_id="highlighted-text-output")
+                dataframe = gr.Dataframe(label="Annotations", headers=headers, interactive=False, max_chars=50)
+        annotate_btn.click(
+            perform_named_entity_resolution,
+            inputs=input_text,
+            outputs=[highlighted, dataframe]
+        )
+        clear_btn.click(
+            lambda: ("", None, None),
+            outputs=[input_text, highlighted, dataframe]
+        )
+        gr.Markdown(demo_content.article_footer)
 
 
 def mount_gradio_app(app, path: str = "/demo") -> None:
