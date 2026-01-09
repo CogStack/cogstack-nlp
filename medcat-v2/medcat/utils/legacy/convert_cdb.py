@@ -5,6 +5,8 @@ from medcat.cdb import CDB
 from medcat.config import Config
 from medcat.cdb.concepts import get_new_cui_info, get_new_name_info, TypeInfo
 from medcat.utils.legacy.convert_config import get_config_from_nested_dict
+from medcat.utils.legacy.convert_config import (
+    fix_spacy_model_name as apply_spacy_model_fix)
 
 
 logger = logging.getLogger(__name__)
@@ -209,11 +211,14 @@ def update_names(cdb: CDB, data: dict):
         setattr(cdb, name_to, data[name_from])
 
 
-def convert_data(all_data: dict) -> CDB:
+def convert_data(all_data: dict, fix_spacy_model_name: bool = True) -> CDB:
     """Convert the raw v1 data into a CDB.
 
     Args:
         all_data (dict): The raw v1 data off disk.
+        fix_spacy_model_name (bool): Whether to fix the spacy model name.
+            Older models may have unsuported spacy model names. So these
+            may sometimes need to be fixed. Defaults to True.
 
     Returns:
         CDB: The v2 CDB.
@@ -226,17 +231,23 @@ def convert_data(all_data: dict) -> CDB:
     if 'config' in all_data:
         logger.info("Loading old style CDB with config included.")
         cdb.config = get_config_from_nested_dict(all_data['config'])
+        if fix_spacy_model_name:
+            apply_spacy_model_fix(cdb.config)
     return cdb
 
 
-def get_cdb_from_old(old_path: str) -> CDB:
+def get_cdb_from_old(old_path: str,
+                     fix_spacy_model_name: bool = True) -> CDB:
     """Get the v2 CDB from a v1 CDB path.
 
     Args:
         old_path (str): The v1 CDB path.
+        fix_spacy_model_name (bool): Whether to fix the spacy model name.
+            Older models may have unsuported spacy model names. So these
+            may sometimes need to be fixed. Defaults to True.
 
     Returns:
         CDB: The v2 CDB.
     """
     data = load_old_raw_data(old_path)
-    return convert_data(data)
+    return convert_data(data, fix_spacy_model_name)
