@@ -33,7 +33,7 @@ def get_module_base_name(entry_point_value: str) -> str:
 
 
 def get_all_extra_deps_raw(package_name: str) -> list[str]:
-    """Get all the dependencies for a pcakge that are for an extra component.
+    """Get all the dependencies for a package that are for an extra component.
 
     The output will include extra information such as the extra it's tied to.
 
