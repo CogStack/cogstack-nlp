@@ -45,10 +45,14 @@ class ModelPack(models.Model):
     last_modified_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, default=None, null=True)
 
     @transaction.atomic
-    def save(self, *args, **kwargs):
+    def save(self, *args, skip_load=False, **kwargs):
         is_new = self._state.adding
         if is_new:
             super().save(*args, **kwargs)
+
+        if skip_load:
+            super().save(*args, **kwargs)
+            return
 
         # Process the model pack
         logger.info('Loading model pack: %s', self.model_pack)

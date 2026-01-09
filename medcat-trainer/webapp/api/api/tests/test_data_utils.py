@@ -172,26 +172,14 @@ class UploadProjectsExportTestCase(TestCase):
             # Mock all file operations
             mock_exists.return_value = False
             mock_load_addons.return_value = []
-            # Create a model pack - the save will be mocked to avoid actual file operations
+            # Create a model pack - use skip_load to avoid file validation
             from django.core.files.uploadedfile import SimpleUploadedFile
             modelpack = ModelPack(
                 name='test_modelpack',
                 model_pack=SimpleUploadedFile('test_modelpack.zip', b'fake zip')
             )
-            # Save with mocked file operations - it will fail on file loading but that's ok
-            try:
-                modelpack.save()
-            except (FileNotFoundError, Exception):
-                # If save fails, create it directly in the database
-                from django.utils import timezone
-                ModelPack.objects.filter(name='test_modelpack').delete()
-                modelpack = ModelPack.objects.create(
-                    name='test_modelpack',
-                    model_pack='test_modelpack.zip'
-                )
-                # Manually set the file field to avoid save() being called again
-                ModelPack.objects.filter(id=modelpack.id).update(model_pack='test_modelpack.zip')
-                modelpack.refresh_from_db()
+            # Save with skip_load=True to skip file validation
+            modelpack.save(skip_load=True)
 
             # Call the function
             upload_projects_export(
