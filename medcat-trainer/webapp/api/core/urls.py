@@ -60,6 +60,8 @@ urlpatterns = [
     path('api/generate-concept-filter-json/', api.views.generate_concept_filter_flat_json),
     path('api/generate-concept-filter/', api.views.generate_concept_filter),
     path('api/cuis-to-concepts/', api.views.cuis_to_concepts),
+    path('api/batch-concept-details/', api.views.batch_concept_details),
+    path('api/batch-meta-annotations/', api.views.batch_meta_annotations),
     path('reset_password/', api.views.ResetPasswordView.as_view(), name='reset_password'),
     path('reset_password_sent/', pw_views.PasswordResetDoneView.as_view(), name='password_reset_done'),
     path('reset/<uidb64>/<token>', pw_views.PasswordResetConfirmView.as_view(), name='password_reset_confirm'),

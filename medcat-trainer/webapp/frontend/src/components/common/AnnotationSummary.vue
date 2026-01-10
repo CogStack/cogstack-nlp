@@ -6,8 +6,6 @@
           <th>Annotated Text</th>
           <th>Concept ID</th>
           <th>Concept Name</th>
-          <th v-if="showInfoCol('icd10')">ICD-10</th>
-          <th v-if="showInfoCol('opcs4')">OPCS-4</th>
           <th v-for="task in tasks" :key="task.id">{{task.name}}</th>
         </tr>
       </thead>
@@ -20,13 +18,24 @@
           </td>
           <td>{{concept.cui}}</td>
           <td>{{concept.pretty_name}}</td>
-          <td v-if="showInfoCol('icd10')" class="cui-info">
-            <div v-for="code of concept.icd10" :key="code.code">{{`${code.code} | ${code.desc}`}}</div>
-          </td>
-          <td v-if="showInfoCol('opcs4')" class="cui-info">
-          </td>
-          <td v-for="task in metaAnnos[concept.id]" :key="task.id">
-            <span>{{taskMaps[task.id][task.value]}}</span>
+          <td v-for="task in tasks" :key="task.id">
+            <template v-if="concept.metaAnnos && concept.metaAnnos.length">
+              <template v-if="concept.metaAnnos.find(ma => (ma.id === task.id || ma.meta_task === task.id))">
+                <span>
+                  {{
+                    taskMaps[task.id][
+                      (concept.metaAnnos.find(ma => (ma.id === task.id || ma.meta_task === task.id)) || {}).value
+                    ]
+                  }}
+                </span>
+              </template>
+              <template v-else>
+                <span class="na-cell">na</span>
+              </template>
+            </template>
+            <template v-else>
+              <span class="na-cell">na</span>
+            </template>
           </td>
         </tr>
       </tbody>
@@ -69,5 +78,9 @@ export default {
   &::after {
     content: "*";
   }
+}
+
+.na-cell {
+  color: #999;
 }
 </style>

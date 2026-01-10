@@ -1,9 +1,12 @@
+import json
 import logging
 import os
 import traceback
 from smtplib import SMTPException
 from tempfile import NamedTemporaryFile
+from urllib.parse import quote
 
+import requests
 from background_task.models import Task, CompletedTask
 from django.contrib.auth.views import PasswordResetView
 from django.core.exceptions import ObjectDoesNotExist
@@ -24,10 +27,12 @@ from .admin import download_projects_with_text, download_projects_without_text, 
 from .data_utils import upload_projects_export
 from .metrics import calculate_metrics
 from .model_cache import get_medcat, get_cached_cdb, VOCAB_MAP, clear_cached_medcat, CAT_MAP, CDB_MAP, is_model_loaded
+from .models import Entity, ConceptDB, MetaAnnotation
 from .permissions import *
 from .serializers import *
 from .solr_utils import collections_available, search_collection, ensure_concept_searchable
 from .utils import add_annotations, remove_annotations, train_medcat, create_annotation, prep_docs
+from core.settings import SOLR_HOST, SOLR_PORT
 
 # For local testing, put envs
 """
@@ -985,3 +990,166 @@ def project_progress(request):
         out[p] = {'validated_count': val_docs, 'dataset_count': ds_doc_count}
 
     return Response(out)
+
+
+@api_view(http_method_names=['POST'])
+def batch_concept_details(request):
+    """
+    Batch fetch concept details for multiple annotations.
+    Expects: {
+        'annotations': [{'id': int, 'entity': int}, ...],
+        'cdb_search_index': str
+    }
+    Returns: {
+        'results': {
+            annotation_id: {
+                'cui': str,
+                'desc': str,
+                'type_ids': list,
+                'pretty_name': str,
+                'synonyms': list,
+                'icd10': list,
+                'opcs4': list
+            }
+        }
+    }
+    """
+    annotations = request.data.get('annotations', [])
+    cdb_search_index = request.data.get('cdb_search_index')
+
+    if not annotations or not cdb_search_index:
+        return HttpResponseBadRequest('Missing required fields: annotations and cdb_search_index')
+
+    # Extract entity IDs and create mapping
+    entity_ids = [ann['entity'] for ann in annotations if 'entity' in ann]
+    annotation_id_map = {ann['id']: ann['entity'] for ann in annotations if 'id' in ann and 'entity' in ann}
+
+    # Fetch entities
+    entities = Entity.objects.filter(id__in=entity_ids)
+    entity_map = {e.id: e for e in entities}
+
+    # Extract unique CUIs
+    cuis = [e.label for e in entities]
+    unique_cuis = list(set(cuis))
+
+    if not unique_cuis:
+        return Response({'results': {}})
+
+    # Parse cdb_search_index (format: collection_name like "name_id_123" or just CDB ID)
+    try:
+        # Try to extract CDB ID from collection name (format: "name_id_123")
+        if '_id_' in str(cdb_search_index):
+            cdb_id = int(str(cdb_search_index).split('_id_')[-1])
+            collection_name = str(cdb_search_index)
+            # Verify the CDB exists
+            ConceptDB.objects.get(id=cdb_id)
+        else:
+            # Assume it's a CDB ID, construct collection name
+            cdb_id = int(cdb_search_index)
+            cdb_model = ConceptDB.objects.get(id=cdb_id)
+            collection_name = f'{cdb_model.name}_id_{cdb_model.id}'
+    except (ValueError, AttributeError, ConceptDB.DoesNotExist) as e:
+        logger.error(f'Error parsing cdb_search_index {cdb_search_index}: {e}')
+        return HttpResponseBadRequest(f'Invalid cdb_search_index format: {cdb_search_index}')
+
+    # Build OR query for all CUIs
+    cui_query = ' OR '.join([f'cui:{cui}' for cui in unique_cuis])
+    encoded_query = quote(cui_query)
+    solr_url = f'http://{SOLR_HOST}:{SOLR_PORT}/solr/{collection_name}/select?q={encoded_query}&rows={len(unique_cuis)}'
+
+    try:
+        resp = requests.get(solr_url)
+        if resp.status_code != 200:
+            logger.error(f'Error querying Solr: {resp.text}')
+            return HttpResponseServerError('Error querying concept search index')
+
+        solr_data = json.loads(resp.text)
+        concept_map = {}
+
+        if 'response' in solr_data and 'docs' in solr_data['response']:
+            for doc in solr_data['response']['docs']:
+                cui = str(doc['cui'][0]) if isinstance(doc['cui'], list) else str(doc['cui'])
+                concept_map[cui] = {
+                    'cui': cui,
+                    'desc': doc.get('desc', [''])[0] if isinstance(doc.get('desc'), list) else doc.get('desc', ''),
+                    'type_ids': doc.get('type_ids', []),
+                    'pretty_name': doc['pretty_name'][0] if isinstance(doc['pretty_name'], list) else doc['pretty_name'],
+                    'synonyms': doc.get('synonyms', [])
+                }
+
+        # Build results by annotation ID
+        results = {}
+        for ann_id, entity_id in annotation_id_map.items():
+            entity = entity_map.get(entity_id)
+            if entity:
+                cui = entity.label
+                concept = concept_map.get(cui, {})
+                results[ann_id] = {
+                    'cui': cui,
+                    'desc': concept.get('desc', ''),
+                    'type_ids': concept.get('type_ids', []),
+                    'pretty_name': concept.get('pretty_name', ''),
+                    'synonyms': concept.get('synonyms', []),
+                    'icd10': [],  # These would need separate queries if ICDCode/OPCSCode models exist
+                    'opcs4': []
+                }
+
+        return Response({'results': results})
+    except Exception as e:
+        logger.error(f'Error in batch_concept_details: {e}', exc_info=e)
+        return HttpResponseServerError(f'Error fetching concept details: {str(e)}')
+
+
+@api_view(http_method_names=['POST'])
+def batch_meta_annotations(request):
+    """
+    Batch fetch meta annotations for multiple annotated entities.
+    Expects: {
+        'annotated_entity_ids': [int, ...]
+    }
+    Returns: {
+        'results': {
+            annotated_entity_id: [
+                {
+                    'id': int,
+                    'meta_task': int,
+                    'meta_task_value': int,
+                    'predicted_meta_task_value': int,
+                    'validated': bool,
+                    'acc': float
+                },
+                ...
+            ]
+        }
+    }
+    """
+    annotated_entity_ids = request.data.get('annotated_entity_ids', [])
+
+    if not annotated_entity_ids:
+        return HttpResponseBadRequest('Missing required field: annotated_entity_ids')
+
+    # Fetch all meta annotations for the given entities
+    meta_annotations = MetaAnnotation.objects.filter(annotated_entity_id__in=annotated_entity_ids)
+
+    # Group by annotated_entity_id
+    results = {}
+    for meta_anno in meta_annotations:
+        entity_id = meta_anno.annotated_entity_id
+        if entity_id not in results:
+            results[entity_id] = []
+
+        results[entity_id].append({
+            'id': meta_anno.id,
+            'meta_task': meta_anno.meta_task_id,
+            'meta_task_value': meta_anno.meta_task_value_id,
+            'predicted_meta_task_value': meta_anno.predicted_meta_task_value_id,
+            'validated': meta_anno.validated,
+            'acc': meta_anno.acc
+        })
+
+    # Ensure all requested entity IDs are in results (even if empty)
+    for entity_id in annotated_entity_ids:
+        if entity_id not in results:
+            results[entity_id] = []
+
+    return Response({'results': results})
