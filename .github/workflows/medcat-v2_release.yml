@@ -42,8 +42,11 @@ jobs:
           # set version tag as output for later use
           echo "version_tag=$VERSION_TAG" >> $GITHUB_OUTPUT
 
+          # Convert to lowercase first, then strip
+          VERSION_TAG_LOWER="${VERSION_TAG,,}"
+
           # only the version (no medcat/v prefix)
-          VERSION_ONLY="${VERSION_TAG#medcat/v}"
+          VERSION_ONLY="${VERSION_TAG_LOWER#medcat/v}"
           echo "version_only=$VERSION_ONLY" >> $GITHUB_OUTPUT
 
           # Check out the corresponding release branch (e.g., medcat/v0.1)
