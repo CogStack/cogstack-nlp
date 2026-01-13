@@ -1,8 +1,17 @@
 # Cogstack NLP
 
 [![Build Status](https://github.com/CogStack/cogstack-nlp/actions/workflows/medcat-v2_main.yml/badge.svg?branch=main)](https://github.com/CogStack/cogstack-nlp/actions/workflows/medcat-v2_main.yml/badge.svg?branch=main)
+[![medcat-trainer CI](https://github.com/CogStack/cogstack-nlp/actions/workflows/medcat-trainer_ci.yml/badge.svg?branch=main)](https://github.com/CogStack/cogstack-nlp/actions/workflows/medcat-trainer_ci.yml)
+[![medcat-den](https://github.com/CogStack/cogstack-nlp/actions/workflows/medcat-den_main.yml/badge.svg?branch=main)](https://github.com/CogStack/cogstack-nlp/actions/workflows/medcat-den_main.yml)
+[![medcat-service](https://github.com/CogStack/cogstack-nlp/actions/workflows/medcat-service_run-tests.yml/badge.svg?branch=main)](https://github.com/CogStack/cogstack-nlp/actions/workflows/medcat-service_run-tests.yml)
 [![Documentation Status](https://readthedocs.org/projects/cogstack-nlp/badge/?version=latest)](https://readthedocs.org/projects/cogstack-nlp/badge/?version=latest)
-[![Latest release](https://img.shields.io/github/v/release/CogStack/cogstack-nlp?filter=medcat/*)](https://github.com/CogStack/cogstack-nlp/releases/latest)
+
+## Latest Releases
+
+[![medcat-v2](https://img.shields.io/github/v/release/CogStack/cogstack-nlp?filter=medcat/*&label=medcat-v2)](https://github.com/CogStack/cogstack-nlp/releases/latest)
+[![medcat-den](https://img.shields.io/github/v/release/CogStack/cogstack-nlp?filter=medcat-den/*&label=medcat-den)](https://github.com/CogStack/cogstack-nlp/releases/latest)
+[![medcat-trainer](https://img.shields.io/github/v/release/CogStack/cogstack-nlp?filter=medcat-trainer/*&label=medcat-trainer)](https://github.com/CogStack/cogstack-nlp/releases/latest)
+[![medcat-service](https://img.shields.io/github/v/release/CogStack/cogstack-nlp?filter=medcat-service/*&label=medcat-service)](https://github.com/CogStack/cogstack-nlp/releases/latest)
 <!-- [![pypi Version](https://img.shields.io/pypi/v/medcat.svg?style=flat-square&logo=pypi&logoColor=white)](https://pypi.org/project/medcat/) -->
 
 CogStack Natural Language Processing offers tools to process and extract information from clinical text and documents in Electronic Health Records (EHRs).
