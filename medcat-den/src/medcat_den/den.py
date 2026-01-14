@@ -220,7 +220,7 @@ class Den(DenBackend):
 
     def push_model(self, cat: CAT, description: str, backend_name: Optional[str] = None,
                    push_unchanged: bool = False) -> None:
-        self._get_backend(backend_name).push_model(cat, description, push_unchanged)
+        self._get_backend(backend_name).push_model(cat, description, push_unchanged=push_unchanged)
 
     def _push_model_from_file(self, file_path: str, description: str, backend_name: Optional[str] = None) -> None:
         self._get_backend(backend_name)._push_model_from_file(file_path, description)
