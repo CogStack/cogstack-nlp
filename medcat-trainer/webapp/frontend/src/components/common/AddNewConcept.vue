@@ -45,7 +45,7 @@
               @click="addConcept">
         <font-awesome-icon v-if="!loading" icon="plus"></font-awesome-icon>
         <font-awesome-icon v-if="loading" icon="spinner" spin size="xs" />
-        {{ loading ? 'Caching model...' : 'Add Concept' }}
+        Add Concept
       </button>
     </div>
     <div class="alert alert-info" role="alert" v-if="loading">

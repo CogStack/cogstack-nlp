@@ -472,10 +472,7 @@ def add_concept(request):
                            document=document)
 
     # ensure new concept detail is available in SOLR search service
-    concept_db_model = project.concept_db
-    if concept_db_model is None:
-        concept_db_model = project.model_pack.concept_db
-    ensure_concept_searchable(cui, cat.cdb, concept_db_model)
+    ensure_concept_searchable(cui, cat.cdb, project.cdb_search_filter.first())
 
     # add to project cuis if required.
     if (project.cuis or project.cuis_file) and project.restrict_concept_lookup:
