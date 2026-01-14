@@ -93,6 +93,22 @@ def test_empty_den_returns_no_model(den: Den, def_model_info: ModelInfo):
         den.fetch_model(model_info=def_model_info)
 
 
+def _get_comparable_model_card(cat: CAT) -> ModelCard:
+    card = cat.get_model_card(as_dict=True)
+    # this may be modified upon save
+    card["Last Modified On"] = 'N/A'
+    # if loaded off some other version this will change
+    card['MedCAT Version'] = '2.x.y'
+    return card
+
+
+def test_den_can_add_new_model_without_changes(den: Den, def_model_pack: CAT):
+    model_card_before = _get_comparable_model_card(def_model_pack)
+    den.push_model(def_model_pack, description='', push_unchanged=True)
+    model_card_after = _get_comparable_model_card(def_model_pack)
+    assert model_card_before == model_card_after
+
+
 # test den with item
 
 
