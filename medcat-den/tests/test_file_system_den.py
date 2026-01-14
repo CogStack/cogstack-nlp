@@ -109,6 +109,13 @@ def test_den_can_add_new_model_without_changes(den: Den, def_model_pack: CAT):
     assert model_card_before == model_card_after
 
 
+def test_den_normally_adds_new_model_with_changes(den: Den, def_model_pack: CAT):
+    model_card_before = _get_comparable_model_card(def_model_pack)
+    den.push_model(def_model_pack, description='Some changes were made')
+    model_card_after = _get_comparable_model_card(def_model_pack)
+    assert model_card_before != model_card_after
+
+
 # test den with item
 
 
