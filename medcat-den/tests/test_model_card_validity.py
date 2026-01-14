@@ -23,13 +23,17 @@ MODEL_CARD_NO_NEW_KEYS = {
     "MedCAT Version": "2.0.0",
 }
 
-
-MODEL_CARD_WITH_NEW_KEYS = {
-    **MODEL_CARD_NO_NEW_KEYS,
+NEW_KV = {
     "Pipeline Description": {
         "core": {}, "addons": []
     },
     "Required Plugins": []
+}
+
+
+MODEL_CARD_WITH_NEW_KEYS = {
+    **MODEL_CARD_NO_NEW_KEYS,
+    **NEW_KV
 }
 
 
@@ -53,3 +57,16 @@ def test_validates_with_new_format():
         model_num=1,
     )
     assert isinstance(model, ModelInfo)
+
+
+def test_new_format_keeps_values():
+    model = ModelInfo(
+        model_id="test_id",
+        model_card=MODEL_CARD_WITH_NEW_KEYS,
+            base_model=None,
+        model_name="test_model",
+        model_num=1,
+    )
+    mc = model.model_card
+    for key, exp_value in NEW_KV.items():
+        assert exp_value == mc[key]
