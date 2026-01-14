@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 from medcat.cat import CAT
@@ -26,3 +26,16 @@ class ModelInfo(BaseModel):
             model_card=mc,
             base_model=bm,
         )
+
+    @field_validator('model_card', mode='before')
+    @classmethod
+    def make_permissive(cls, v: dict) -> dict:
+        """Accept dict even if it's missing new optional fields"""
+        if isinstance(v, dict):
+            defaults = {
+                'Pipeline Description': {"core": {}, "addons": []},
+                'Required Plugins': [],
+            }
+            return {**defaults, **v}  # v overwrites defaults
+        return v
+
