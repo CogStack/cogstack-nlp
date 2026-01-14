@@ -172,7 +172,8 @@ class LocalFileDen(Den):
                                        den_cnf=self._cnf))
 
     def push_model(self, cat: CAT, description: str,
-                   backend_name: Optional[str] = None) -> None:
+                   backend_name: Optional[str] = None,
+                   push_unchanged: bool = False) -> None:
         if isinstance(cat, CATWrapper):
             model_info = cat._model_info
         else:
@@ -184,6 +185,7 @@ class LocalFileDen(Den):
             # NOTE: if there's no model in databae, treat as new one
             raise DuplicateModelException(
                 "Duplicate model: ", model_info)
+        model_description = None if push_unchanged else description
         zip_name = self._get_model_zip_name(new_hash)
         kwargs: dict[Any, Any] = {}
         if isinstance(cat, CATWrapper):
@@ -192,7 +194,7 @@ class LocalFileDen(Den):
             self._models_folder,
             pack_name=zip_name.removesuffix(".zip"),
             add_hash_to_pack_name=False,
-            change_description=description,
+            change_description=model_description,
             **kwargs)
         # NOTE: the updated one should have the updated history and the like
         updated_mi = ModelInfo.from_model_pack(cat)
