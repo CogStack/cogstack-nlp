@@ -36,6 +36,9 @@ class ModelInfo(BaseModel):
                 'Pipeline Description': {"core": {}, "addons": []},
                 'Required Plugins': [],
             }
-            return {**defaults, **v}  # v overwrites defaults
+            out_dict = {**defaults, **v}  # v overwrites defaults
+            if out_dict.get("Source Ontology") is None:
+                out_dict['Source Ontology'] = ['Unknown']
+            return out_dict
         return v
 
