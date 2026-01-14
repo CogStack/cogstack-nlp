@@ -10,6 +10,7 @@ from medcat_den.backend import DenType
 from medcat_den.backend_impl import LocalFileDen
 from medcat_den.base import ModelInfo, ModelCard
 from medcat_den.wrappers import CannotSaveOnDiskException
+from copy import deepcopy
 
 import pytest
 
@@ -109,11 +110,26 @@ def test_den_can_add_new_model_without_changes(den: Den, def_model_pack: CAT):
     assert model_card_before == model_card_after
 
 
-def test_den_normally_adds_new_model_with_changes(den: Den, def_model_pack: CAT):
+@pytest.fixture
+def model_cards_before_after_normal_push(den: Den, def_model_pack: CAT):
     model_card_before = _get_comparable_model_card(def_model_pack)
     den.push_model(def_model_pack, description='Some changes were made')
     model_card_after = _get_comparable_model_card(def_model_pack)
+    return model_card_before, model_card_after
+
+
+def test_den_normally_adds_new_model_with_changes_model_card(model_cards_before_after_normal_push):
+    model_card_before, model_card_after = model_cards_before_after_normal_push
     assert model_card_before != model_card_after
+
+
+def test_den_normally_adds_new_model_with_only_description_changes(model_cards_before_after_normal_push):
+    # make copy for changes
+    model_card_before, model_card_after = deepcopy(model_cards_before_after_normal_push)
+    # change only in description
+    del model_card_before['Description']
+    del model_card_after['Description']
+    assert model_card_before == model_card_after
 
 
 # test den with item
