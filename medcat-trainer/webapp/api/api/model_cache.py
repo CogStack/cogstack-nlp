@@ -167,6 +167,9 @@ def get_medcat(project,
                cdb_map: Dict[str, CDB]=CDB_MAP,
                vocab_map: Dict[str, Vocab]=VOCAB_MAP,
                cat_map: Dict[str, CAT]=CAT_MAP):
+    cat = get_cached_medcat(project, cat_map)
+    if cat is not None:
+        return cat
     try:
         if project.model_pack is None:
             cat = get_medcat_from_cdb_vocab(project, cdb_map, vocab_map, cat_map)
