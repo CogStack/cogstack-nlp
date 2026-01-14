@@ -75,7 +75,8 @@ class DenBackend(Protocol):
         pass
 
     def push_model(self, cat: CAT, description: str,
-                   backend_name: Optional[str] = None) -> None:
+                   backend_name: Optional[str] = None,
+                   push_unchanged: bool = False) -> None:
         """Push the model pack back to the remote.
 
         This may be able to take advantage of the initial model info
@@ -88,6 +89,8 @@ class DenBackend(Protocol):
             description (str): The description of the changes.
             backend_name (Optional[str]): The backend name for multi-back end dens.
                 Defaults to None.
+            push_unchanged (bool). Whether to push with no canges. This can be useful
+                when moving models between backends (i.e syncing). Defaults to False.
 
         Raises:
             DuplicateModelException: If the model by this ID already exists.
@@ -215,8 +218,9 @@ class Den(DenBackend):
     def fetch_model(self, model_info: ModelInfo, backend_name: Optional[str] = None) -> CATWrapper:
         return self._get_backend(backend_name).fetch_model(model_info)
 
-    def push_model(self, cat: CAT, description: str, backend_name: Optional[str] = None) -> None:
-        self._get_backend(backend_name).push_model(cat, description)
+    def push_model(self, cat: CAT, description: str, backend_name: Optional[str] = None,
+                   push_unchanged: bool = False) -> None:
+        self._get_backend(backend_name).push_model(cat, description, push_unchanged)
 
     def _push_model_from_file(self, file_path: str, description: str, backend_name: Optional[str] = None) -> None:
         self._get_backend(backend_name)._push_model_from_file(file_path, description)
