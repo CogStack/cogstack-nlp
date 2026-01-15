@@ -1,4 +1,5 @@
 from functools import lru_cache
+from pyexpat import model
 from typing import cast
 import os
 
@@ -115,6 +116,10 @@ def test_only_model_is_base_model(den: Den, tiny_cat: CAT):
     assert base_models
     all_models = den.list_available_models()
     assert all_models == base_models
+    deriv_models = [
+        model for bm in base_models
+        for model in den.list_available_derivative_models(bm)]
+    assert not deriv_models
 
 
 # test den with item
