@@ -216,6 +216,23 @@ class DenBackend(Protocol):
         pass
 
 
+    def sync_backend(self, origin: str, destination: str) -> None:
+        """Sync models from one backend to another.
+
+        This method is designed to only work with multiple back end and will likely
+        raise an exception if used on a specific back end.
+
+        Raises:
+            NoSuchBackendException: If one of the back ends does not exist.
+            UnsupportedAPIException: If called on a specific back end.
+
+        Args:
+            origin (str): The origin back end.
+            destination (str): The destination back end.
+        """
+        pass
+
+
 class Den(DenBackend):
 
     def __init__(self, backends: dict[str, DenBackend], default_backend_name: str):
@@ -284,6 +301,18 @@ class Den(DenBackend):
         model = self.fetch_model(model_info, backend_name=origin)
         logger.info("Pushing model %s to %s ...", model_info.model_id, destination)
         self.push_model(model, "Base model", backend_name=destination)
+
+    def sync_backend(self, origin: str, destination: str) -> None:
+        if origin not in self._backends:
+            raise NoSuchBackendException(f"No backend: '{origin}'")
+        if destination not in self._backends:
+            raise NoSuchBackendException(f"No backend: '{destination}'")
+        dest_model_ids = {model.model_id for model in
+                          self.list_available_models(destination)}
+        for model in self.list_available_models(origin):
+            if model.model_id in dest_model_ids:
+                continue
+            self.move_model(model, origin, destination)
 
 
 class NoSuchBackendException(ValueError):
