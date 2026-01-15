@@ -196,7 +196,7 @@ class DenBackend(Protocol):
         """
         pass
 
-    def move_model(den, model_info: ModelInfo, origin: str, destination: str) -> None:
+    def move_model(self, model_info: ModelInfo, origin: str, destination: str) -> None:
         """Move a model from the origin to the destination.
 
         This method is designed to only work with multiple back end and will likely
