@@ -255,6 +255,8 @@ class Den(DenBackend):
     def move_model(self, model_info: ModelInfo, origin: str, destination: str) -> None:
         if origin not in self._backends:
             raise NoSuchBackendException(f"No backend: '{origin}'")
+        if destination not in self._backends:
+            raise NoSuchBackendException(f"No backend: '{destination}'")
         # TODO: implement and uncomment
         # if not self.has_model(model_info, backend_name=origin):
         #     raise NoSuchModel(model_info, origin)
