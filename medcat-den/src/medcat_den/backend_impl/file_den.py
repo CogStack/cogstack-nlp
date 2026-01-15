@@ -152,6 +152,10 @@ class LocalFileDen(Den):
                                          ) -> list[ModelInfo]:
         return self._sqlite.list_derivatives(model.model_id)
 
+    def has_model(self, model: ModelInfo,
+                  backend_name: Optional[str] = None) -> bool:
+        return bool(self._sqlite.get_model(model.model_id))
+
     def _get_model_zip_name(self, model_hash: str) -> str:
         return f"{model_hash}.zip"
 

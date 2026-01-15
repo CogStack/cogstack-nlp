@@ -63,6 +63,20 @@ class DenBackend(Protocol):
             list[ModelInfo]: The available deriative models.
         """
 
+    def has_model(self, model: ModelInfo,
+                  backend_name: Optional[str] = None) -> bool:
+        """Whether the back end in question has the specified model.
+
+        This method generally only compares the model ID / hash.
+
+        Args:
+            model (ModelInfo): The model info.
+            backend_name (Optional[str]): The back end name. Defaults to None.
+
+        Returns:
+            bool: Whether the model is in the back end or not.
+        """
+
     def fetch_model(self, model_info: ModelInfo,
                     backend_name: Optional[str] = None) -> CATWrapper:
         """Fetch the specified model.
@@ -234,6 +248,10 @@ class Den(DenBackend):
     def list_available_derivative_models(self, model: ModelInfo, backend_name: Optional[str] = None) -> list[ModelInfo]:
         return self._get_backend(backend_name).list_available_derivative_models(model)
 
+    def has_model(self, model: ModelInfo,
+                  backend_name: Optional[str] = None) -> bool:
+        return self._get_backend(backend_name).has_model(model)
+
     def fetch_model(self, model_info: ModelInfo, backend_name: Optional[str] = None) -> CATWrapper:
         return self._get_backend(backend_name).fetch_model(model_info)
 
@@ -257,12 +275,11 @@ class Den(DenBackend):
             raise NoSuchBackendException(f"No backend: '{origin}'")
         if destination not in self._backends:
             raise NoSuchBackendException(f"No backend: '{destination}'")
-        # TODO: implement and uncomment
-        # if not self.has_model(model_info, backend_name=origin):
-        #     raise NoSuchModel(model_info, origin)
-        # if self.has_model(model_info, backend_name=destination):
-        #     raise DuplicateModelException(
-        #         "Model %s already exists in %s", model_info.model_id, destination)
+        if not self.has_model(model_info, backend_name=origin):
+            raise NoSuchModel(model_info, origin)
+        if self.has_model(model_info, backend_name=destination):
+            raise DuplicateModelException(
+                "Model %s already exists in %s", model_info.model_id, destination)
         logger.info("Fetching model %s from %s ...", model_info.model_id, origin)
         model = self.fetch_model(model_info, backend_name=origin)
         logger.info("Pushing model %s to %s ...", model_info.model_id, destination)
