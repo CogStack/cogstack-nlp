@@ -93,6 +93,10 @@ def test_empty_den_returns_no_model(den: Den, def_model_info: ModelInfo):
         den.fetch_model(model_info=def_model_info)
 
 
+def test_empty_den_has_no_model(den: Den, def_model_info: ModelInfo):
+    assert not den.has_model(def_model_info)
+
+
 # test den with item
 
 
@@ -137,6 +141,16 @@ def test_den_returns_same_model(den_with_item: Den, def_model_pack: CAT):
     smc = model.model_card
     rmc = def_model_pack.get_model_card(True)
     assert smc == rmc
+
+
+def test_den_has_model_by_info(den_with_item: Den):
+    model = den_with_item.list_available_models()[0]
+    assert den_with_item.has_model(model)
+
+
+def test_den_does_not_have_model_with_wrong_details(
+        den_with_item: Den, def_model_info: ModelInfo):
+    assert not den_with_item.has_model(def_model_info)
 
 
 def test_den_returned_model_cannot_be_saved(den_with_item: Den):
