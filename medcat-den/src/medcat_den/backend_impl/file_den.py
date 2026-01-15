@@ -171,6 +171,13 @@ class LocalFileDen(Den):
             CATWrapper.load_model_pack(model_path, model_info=model_info,
                                        den_cnf=self._cnf))
 
+    def has_model(self, model_info: ModelInfo) -> bool:
+        # TODO: improve! Is there an API endpoint to call?
+        for model in self.list_available_base_models():
+            if model.model_id == model_info.model_id:
+                return True
+        return False
+
     def push_model(self, cat: CAT, description: str,
                    backend_name: Optional[str] = None) -> None:
         if isinstance(cat, CATWrapper):
@@ -196,6 +203,8 @@ class LocalFileDen(Den):
             **kwargs)
         # NOTE: the updated one should have the updated history and the like
         updated_mi = ModelInfo.from_model_pack(cat)
+        if updated_mi.base_model is not None and not self.has_model(updated_mi.base_model):
+            updated_mi.base_model = None
         if isinstance(cat, CATWrapper):
             cat._model_info = updated_mi
         self._sqlite.insert_model(updated_mi)
