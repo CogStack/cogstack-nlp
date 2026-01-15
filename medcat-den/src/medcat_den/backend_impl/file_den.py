@@ -213,6 +213,24 @@ class LocalFileDen(Den):
         # NOTE: for local file den this is not needed, but will still be called
         pass
 
+    def move_model(den, model_info: ModelInfo, origin: str, destination: str) -> None:
+        """Move a model from the origin to the destination.
+
+        This method is designed to only work with multiple back end and will likely
+        raise an exception if used on a specific back end.
+
+        Raises:
+            NoSuchModel: If the model does not exist at the origin.
+
+        Args:
+            model_info (ModelInfo): The model in question.
+            origin (str): The origin back end.
+            destination (str): The destination back end.
+        """
+        raise UnsupportedAPIException(
+            "The move_model method can only be called on a multi-backend den "
+            "not the individidual back ends")
+
     def delete_model(self, model_info: ModelInfo,
                      allow_delete_base_models: bool = False,
                      backend_name: Optional[str] = None):
