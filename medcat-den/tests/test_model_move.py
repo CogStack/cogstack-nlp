@@ -82,7 +82,8 @@ def test_cannot_move_model_not_exist_in_origin(mbe_den: Den, tiny_cat: CAT):
 
 
 def test_cannot_move_model_duplicate_in_destination(mbe_den: Den, tiny_cat: CAT):
-    mi = ModelInfo.from_model_pack(tiny_cat)
+    mbe_den.push_model(tiny_cat, "msg", 'den1')
     mbe_den.push_model(tiny_cat, "msg", 'den2')
+    mi = ModelInfo.from_model_pack(tiny_cat)
     with pytest.raises(DuplicateModelException):
         mbe_den.move_model(mi, 'den1', 'den2')
