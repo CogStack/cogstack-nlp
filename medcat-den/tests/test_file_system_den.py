@@ -92,6 +92,30 @@ def test_empty_den_returns_no_model(den: Den, def_model_info: ModelInfo):
     with pytest.raises(ValueError):
         den.fetch_model(model_info=def_model_info)
 
+# push to empty den
+
+@pytest.fixture
+def tiny_cat() -> CAT:
+    from medcat.config import Config
+    from medcat.cdb import CDB
+    from medcat.vocab import Vocab
+    cnf = Config()
+    # fake history
+    cnf.meta.history.append("1234abcd")
+    cnf.meta.history.append("abcd1234")
+    # create components
+    cdb = CDB(cnf)
+    vocab = Vocab()
+    return CAT(cdb, vocab, cnf)
+
+
+def test_only_model_is_base_model(den: Den, tiny_cat: CAT):
+    den.push_model(tiny_cat, "BASE MODEL")
+    base_models = den.list_available_base_models()
+    assert base_models
+    all_models = den.list_available_models()
+    assert all_models == base_models
+
 
 # test den with item
 
