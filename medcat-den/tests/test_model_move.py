@@ -91,6 +91,11 @@ def test_cannot_move_model_duplicate_in_destination(mbe_den: Den, tiny_cat: CAT)
     with pytest.raises(DuplicateModelException):
         mbe_den.move_model(mi, 'den1', 'den2')
 
+
+def test_move_fails_on_specific_backend(mbe_den: Den):
+    with pytest.raises(UnsupportedAPIException):
+        mbe_den._get_backend('den1').move_model(None, 'den1', 'den2')
+
 # sync
 
 
