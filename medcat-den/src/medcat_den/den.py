@@ -192,6 +192,7 @@ class DenBackend(Protocol):
             NoSuchBackendException: If one of the back ends does not exist.
             NoSuchModel: If the model does not exist at the origin.
             UnsupportedAPIException: If called on a specific back end.
+            DuplicateModelException: If the destination already has the model.
 
         Args:
             model_info (ModelInfo): The model in question.
