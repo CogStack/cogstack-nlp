@@ -165,7 +165,7 @@ def drop_collection(cdb_model: ConceptDB):
 
 def ensure_concept_searchable(cui, cdb: CDB, cdb_model: ConceptDB):
     """
-    Adds a single cui and associated metadata is available in the assocaited solr search index.
+    Adds a single cui and associated metadata is available in the associated solr search index.
     Args:
         cui: concept unique identifier of the concept to make searchable
         cdb: the MedCAT CDB where the cui can be found
