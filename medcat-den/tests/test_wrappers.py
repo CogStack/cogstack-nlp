@@ -15,3 +15,4 @@ def test_wrapper_saves_as_CAT(tmpdir, def_model_pack):
     mpp = cat.save_model_pack(tmpdir, force_save_local=True)
     loaded = CAT.load_model_pack(mpp)
     assert isinstance(loaded, CAT)
+    assert not isinstance(loaded, wrappers.CATWrapper)
