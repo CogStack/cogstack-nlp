@@ -125,7 +125,7 @@ export default {
         cui: this.selectedCUI.cui
       }
       this.loading = true
-      this.$http.get(`/api/cache-model/${this.project.id}/`).then(_ => {
+      this.$http.get(`/api/cache-project-model/${this.project.id}/`).then(_ => {
         this.loading = false
         this.$http.post('/api/add-annotation/', payload).then(resp => {
           this.$emit('request:addAnnotationComplete', resp.data.id)
@@ -134,7 +134,7 @@ export default {
       }).catch(err => {
         this.errorMessage = err.response.data.message || 'Error loading model.'
       })
-      
+
     },
     cancel () {
       this.$emit('request:addAnnotationComplete')

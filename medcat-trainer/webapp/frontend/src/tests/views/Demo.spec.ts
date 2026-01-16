@@ -4,30 +4,62 @@ import Demo from '@/views/Demo.vue'
 
 describe('Demo.vue', () => {
   it('posts to /api/annotate-text/ with correct payload when annotate is clicked', async () => {
+    vi.useFakeTimers()
     const mockPost = vi.fn().mockResolvedValue({ data: { entities: [], message: 'annotated!' } })
-    const mockGet = vi.fn().mockResolvedValue({ data: { count: 1, results: [{ id: 42, name: 'Test Project', cdb_search_filter: [] }], next: null } })
+    const mockGet = vi.fn((url: string) => {
+      if (url === '/api/project-annotate-entities/') {
+        return Promise.resolve({
+          data: {
+            count: 1,
+            results: [{ id: 42, name: 'Test Project', model_pack: 7, cdb_search_filter: [] }],
+            next: null
+          }
+        })
+      }
+      if (url === '/api/modelpacks/') {
+        return Promise.resolve({
+          data: {
+            count: 1,
+            results: [{ id: 7, name: 'Test ModelPack' }],
+            next: null
+          }
+        })
+      }
+      if (url === '/api/cache-modelpack/7/') {
+        return Promise.resolve({ data: 'success' })
+      }
+      return Promise.resolve({ data: { count: 0, results: [], next: null } })
+    })
     const wrapper = mount(Demo, {
       global: {
         mocks: {
           $http: { get: mockGet, post: mockPost }
         },
-        stubs: ['clinical-text', 'concept-summary']
+        stubs: {
+          'clinical-text': true,
+          'concept-summary': true,
+          'concept-picker': true,
+          'meta-annotations-summary': true
+        }
       }
     })
     await flushPromises()
-    // Set up form values
-    await wrapper.setData({
-      selectedProject: { id: 42, name: 'Test Project', cdb_search_filter: [] },
-      exampleText: 'Some text to annotate',
-      cuiFilters: 'C1234,C5678'
-    })
-    // Find and click the annotate button
-    await wrapper.find('button.btn-primary').trigger('click')
+    // Paste CUIs (optional box) still drives payload
+    await wrapper.setData({ cuiFilters: 'C1234,C5678' })
+
+    // Enter message in the annotate component textarea
+    const textarea = wrapper.find('textarea[name="message"]')
+    expect(textarea.exists()).toBe(true)
+    await textarea.setValue('Some text to annotate')
+    // Debounced auto-annotate after 1500ms of inactivity
+    vi.advanceTimersByTime(1500)
     await flushPromises()
-    expect(mockPost).toHaveBeenCalledWith('/api/annotate-text/', {
-      project_id: 42,
+    expect(mockPost).toHaveBeenCalledWith('/api/annotate-text/', expect.objectContaining({
+      modelpack_id: 7,
       message: 'Some text to annotate',
-      cuis: 'C1234,C5678'
-    })
+      cuis: 'C1234,C5678',
+      include_sub_concepts: false
+    }))
+    vi.useRealTimers()
   })
 })

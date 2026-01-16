@@ -492,7 +492,7 @@ export default {
         this.fetchEntities()
       } else {
         this.loadingMsg = "Loading MedCAT model..."
-        this.$http.get(`/api/cache-model/${this.project.id}/`).then(_ => {
+        this.$http.get(`/api/cache-project-model/${this.project.id}/`).then(_ => {
           this.loadingMsg = "Preparing Document..."
           let payload = {
             project_id: this.project.id,
