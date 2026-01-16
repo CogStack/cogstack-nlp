@@ -69,7 +69,8 @@ class CATWrapper(CAT):
                 "See `Den.finetune_model` for details or set the config "
                 "option of `allow_push_fine_tuned` to True"
             )
-        return super().save_model_pack(
+        return CAT.save_model_pack(
+            self,
             target_folder, pack_name, serialiser_type, make_archive,
             only_archive, add_hash_to_pack_name, change_description)
 
