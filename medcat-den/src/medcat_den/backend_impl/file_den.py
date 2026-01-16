@@ -175,13 +175,6 @@ class LocalFileDen(Den):
             CATWrapper.load_model_pack(model_path, model_info=model_info,
                                        den_cnf=self._cnf))
 
-    def has_model(self, model_info: ModelInfo) -> bool:
-        # TODO: improve! Is there an API endpoint to call?
-        for model in self.list_available_base_models():
-            if model.model_id == model_info.model_id:
-                return True
-        return False
-
     def push_model(self, cat: CAT, description: str,
                    backend_name: Optional[str] = None,
                    push_unchanged: bool = False) -> None:
