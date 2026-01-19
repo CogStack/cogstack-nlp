@@ -77,18 +77,19 @@ You'll need to `docker stop` the running containers if you have already run the 
 
 You can enable OIDC (OpenID Connect) authentication for the MedCAT Trainer. To do so, you must configure the following environment variables:
 
-| Variable                                | 	Used by	            | Description                                                    |
-|-----------------------------------------|-------------------------|----------------------------------------------------------------|
-| USE_OIDC                                | 	Backend	            | Enable OIDC login flow (1 (true) / 0 (false)).                 |
-| VITE_USE_OIDC                           | 	Frontend            | 	Exposed version of USE_OIDC for Vue.                          |
-| VITE_API_URL                            | 	Frontend            | 	Base API URL for frontend calls.                              |
-| VITE_KEYCLOAK_URL                       | 	Frontend            | 	Keycloak base URL (e.g. http://keycloak.cogstack.localhost/). |
-| VITE_KEYCLOAK_REALM                     | 	Frontend            | 	Keycloak realm name.                                          |
-| VITE_KEYCLOAK_CLIENT_ID                 | 	Frontend            | 	Keycloak client ID for this app.                              |
-| VITE_KEYCLOAK_TOKEN_REFRESH_INTERVAL_MS | 	Frontend            | 	Token refresh frequency in ms.                                |
-| VITE_KEYCLOAK_TOKEN_MIN_VALIDITY_SECS   | 	Frontend            | 	Minimum token validity before refresh.                        |
-| VITE_LOGOUT_REDIRECT_URI                | 	Frontend            | 	Where to send user after logout.                              |
-| NGINX_HOST                              | Backend              | Host alias used by reverse proxy (Traefik )                    |
+| Variable                   | 	Used by	            | Description                                                   |
+|----------------------------|------------------------|---------------------------------------------------------------|
+| USE_OIDC                   | 	Backend	            | Enable OIDC login flow (1 (true) / 0 (false)).                |
+| OIDC_HOST                  | 	Backend	            | Keycloak base URL                                             |
+| OIDC_REALM                 | 	Backend	            | Keycloak realm name                                           |
+| OIDC_FRONTEND_CLIENT_ID    | 	Backend	            | Keycloak ID for the frontend client (for token validation).   |
+| OIDC_BACKEND_CLIENT_ID     | 	Backend	            | Keycloak ID for the backend client.                           |
+| OIDC_BACKEND_CLIENT_SECRET | 	Backend	            | Keycloak secret for the backend client.                       |
+| VITE_USE_OIDC              | 	Frontend            | Exposed version of USE_OIDC for Vue.                          |
+| VITE_KEYCLOAK_URL          | 	Frontend            | Keycloak base URL (e.g. http://keycloak.cogstack.localhost/). |
+| VITE_KEYCLOAK_REALM        | 	Frontend            | Keycloak realm name.                                          |
+| VITE_KEYCLOAK_CLIENT_ID    | 	Frontend            | Keycloak client ID for this app.                              |
+| VITE_LOGOUT_REDIRECT_URI   | 	Frontend            | Where to send user after logout.                              |
 
 You can either use the Gateway Auth stack available in cogstack-ops or deploy your own Keycloak instance.
 If you deploy your own Keycloak instance, make sure to configure the network accordingly.

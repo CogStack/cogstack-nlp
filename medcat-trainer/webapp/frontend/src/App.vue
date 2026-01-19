@@ -51,8 +51,7 @@
 <script>
 import Login from '@/components/common/Login.vue'
 import EventBus from '@/event-bus'
-
-const USE_OIDC = import.meta.env.VITE_USE_OIDC === '1'
+import { isOidcEnabled, getRuntimeConfig } from './runtimeConfig';
 
 export default {
   name: 'App',
@@ -62,7 +61,7 @@ export default {
       loginModal: false,
       uname: null,
       version: '',
-      useOidc: USE_OIDC,
+      useOidc: isOidcEnabled(),
     }
   },
   methods: {
@@ -105,7 +104,7 @@ export default {
 
       if (this.useOidc && this.$keycloak && this.$keycloak.authenticated) {
         this.$keycloak.logout({
-          redirectUri: import.meta.env.VITE_LOGOUT_REDIRECT_URI || 'http://home.cogstack.localhost/'
+          redirectUri: getRuntimeConfig().LOGOUT_REDIRECT_URI
         })
       } else {
         if (this.$route.name !== 'home') {

@@ -9,6 +9,8 @@ export RESUBMIT_ALL_ON_STARTUP=0
 
 # Collect static files and migrate if needed
 python /home/api/manage.py collectstatic --noinput
+# Generate runtime config.json from environment variables (must run after collectstatic)
+/home/scripts/nginx-entrypoint.sh
 python /home/api/manage.py makemigrations --noinput
 python /home/api/manage.py makemigrations api --noinput
 python /home/api/manage.py migrate --noinput
