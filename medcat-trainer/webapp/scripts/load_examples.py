@@ -30,7 +30,7 @@ def get_keycloak_access_token():
     return resp.json()["access_token"]
 
 
-def main(port=8000,
+def main(port=8001,
          model_pack_tmp_file='/home/model_pack.zip',
          dataset_tmp_file='/home/ds.csv',
          initial_wait=15):
@@ -46,13 +46,13 @@ def main(port=8000,
     sleep(initial_wait)
 
     print('Checking for default projects / datasets / CDBs / Vocabs')
-    max_retries = 60 # 60 retries = 5 minutes
+    max_retries = 60  # 60 retries = 5 minutes
     retry_count = 0
     while retry_count < max_retries:
         try:
             # check API is available
             if requests.get(URL).status_code == 200:
-
+                
                 use_oidc = os.environ.get('USE_OIDC')
                 print('Checking for environment variable USE_OIDC...')
                 if use_oidc is not None and use_oidc in ('1', 'true', 't', 'y'):
@@ -109,13 +109,15 @@ def main(port=8000,
         except ConnectionRefusedError:
             retry_count += 1
             if retry_count < max_retries:
-                print(f'Loading examples - Connection refused to {URL}. Retrying in 5 seconds... (attempt {retry_count}/{max_retries})')
+                print(
+                    f'Loading examples - Connection refused to {URL}. Retrying in 5 seconds... (attempt {retry_count}/{max_retries})')
                 sleep(5)
             continue
         except requests.exceptions.ConnectionError:
             retry_count += 1
             if retry_count < max_retries:
-                print(f'Loading examples - Connection error to {URL}. Retrying in 5 seconds... (attempt {retry_count}/{max_retries})')
+                print(
+                    f'Loading examples - Connection error to {URL}. Retrying in 5 seconds... (attempt {retry_count}/{max_retries})')
                 sleep(5)
             continue
 
@@ -123,6 +125,7 @@ def main(port=8000,
     if retry_count >= max_retries:
         print(f'FATAL - Error loading examples. Max retries ({max_retries}) reached. Exiting with code 1.')
         sys.exit(1)
+    print('Successfully loaded examples')
 
 
 def create_example_project(url, headers, model_pack, ds_name, ds_dict, project_name):
@@ -159,6 +162,4 @@ def create_example_project(url, headers, model_pack, ds_name, ds_dict, project_n
 
 
 if __name__ == '__main__':
-    main(port=8001, initial_wait=3,
-         model_pack_tmp_file='/Users/foooo/Downloads/model_pack.zip',
-         dataset_tmp_file='/Users/fooo/Downloads/ds.csv')
+    main()
