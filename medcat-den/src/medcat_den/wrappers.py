@@ -26,6 +26,12 @@ class CATWrapper(CAT):
         self._delegate = cat
 
     def __getattr__(self, attr: str) -> None:
+        if attr == "_trainer":
+            # when generating the trainer
+            tr = self._delegate.trainer
+            if isinstance(tr, WrappedTrainer):
+                return tr
+            return WrappedTrainer(self._den_cnf, tr)
         return getattr(self._delegate, attr)
 
     # NOTE: __setattr__ should never be used in normal opration
@@ -80,11 +86,6 @@ class CATWrapper(CAT):
         return self._delegate.save_model_pack(
             target_folder, pack_name, serialiser_type, make_archive,
             only_archive, add_hash_to_pack_name, change_description)
-
-    @property
-    def trainer(self) -> Trainer:
-        tr = super().trainer
-        return WrappedTrainer(self._den_cnf, tr)
 
     @classmethod
     def load_model_pack(cls, model_pack_path: str,
