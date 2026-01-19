@@ -18,8 +18,7 @@ from .test_file_system_den import def_model_pack, den, UNSUP_TRAIN_EXAMPLE  # no
 def get_wrapped_model_pack(
         in_model_pack: CAT, cnf: RemoteDenConfig) -> CATWrapper:  # noqa
     # make it a wrapper
-    in_model_pack.__class__ = CATWrapper
-    model_pack = cast(CATWrapper, in_model_pack)
+    model_pack = CATWrapper(in_model_pack)
     # set required stuff, mostly the config
     model_pack._den_cnf = cnf
     # set model info
