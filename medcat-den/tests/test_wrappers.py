@@ -13,6 +13,7 @@ import pytest
 def wrap(cat: CAT) -> wrappers.CATWrapper:
     wrapped = wrappers.CATWrapper(cat)
     wrapped._model_info = "ABC"
+    wrapped._den_cnf = 'BBC'
     return wrapped
 
 
@@ -49,3 +50,19 @@ def test_wrapper_gets_methods(def_model_pack: CAT):
     cat = wrap(def_model_pack)
     text = "Kidney disease causes autism and fever in diabetes patients"
     assert cat.get_entities(text) == def_model_pack.get_entities(text)
+
+
+def test_wrapper_gets_wrapper_defined_attribute(def_model_pack: CAT):
+    cat = wrap(def_model_pack)
+    assert cat._model_info
+
+
+def test_wrapper_gets_wrapped_property(def_model_pack: CAT):
+    cat = wrap(def_model_pack)
+    assert isinstance(cat.trainer, wrappers.WrappedTrainer)
+
+
+def test_wrapper_calls_wrapped_method(def_model_pack: CAT):
+    cat = wrap(def_model_pack)
+    with pytest.raises(wrappers.CannotSaveOnDiskException):
+        cat.save_model_pack("SOME-PATH-NOT_EXIST")
