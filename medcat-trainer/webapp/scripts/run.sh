@@ -1,4 +1,5 @@
 #!/bin/sh
+echo "Starting medcat trainer"
 
 # run db backup script before doing anything
 /home/scripts/backup_db.sh
@@ -24,7 +25,7 @@ if not User.objects.filter(username='admin').exists():
 
 if [ $LOAD_EXAMPLES ]; then 
   echo "Loading examples..."
-  python -u /home/scripts/load_examples.py >> /dev/stdout 2>> /dev/stderr &
+  python /home/scripts/load_examples.py >> /dev/sdout 2>> /dev/stderr &
 fi
 
 # Creating a default user group that can manage projects and annotate but not delete

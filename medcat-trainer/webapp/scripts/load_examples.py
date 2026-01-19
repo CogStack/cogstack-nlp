@@ -11,8 +11,7 @@ import json
 pid = os.getpid()
 logging.basicConfig(
     level=logging.INFO,
-    format=f'[load_examples.py pid:{pid}] %(message)s',
-    stream=sys.stdout
+    format=f'[load_examples.py pid:{pid}] %(message)s'
 )
 logger = logging.getLogger(__name__)
 
