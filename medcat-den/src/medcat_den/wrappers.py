@@ -28,6 +28,8 @@ class CATWrapper(CAT):
     def __getattr__(self, attr: str) -> None:
         return getattr(self._delegate, attr)
 
+    # NOTE: __setattr__ should never be used in normal opration
+
     _model_info: ModelInfo
     _den_cnf: DenConfig
 
