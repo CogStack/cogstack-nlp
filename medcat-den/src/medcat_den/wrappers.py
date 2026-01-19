@@ -1,4 +1,4 @@
-from typing import Union, Optional, cast
+from typing import Union, Optional
 
 from medcat.cat import CAT
 from medcat.utils.defaults import DEFAULT_PACK_NAME
@@ -21,6 +21,12 @@ class CATWrapper(CAT):
     In order to save the model to disk, you need to explicitly pass
     `force_save_local=True`. But that is generally not advised.
     """
+
+    def __init__(self, cat: CAT) -> None:
+        self._delegate = cat
+
+    def __getattr__(self, attr: str) -> None:
+        return getattr(self._delegate, attr)
 
     _model_info: ModelInfo
     _den_cnf: DenConfig
@@ -69,8 +75,7 @@ class CATWrapper(CAT):
                 "See `Den.finetune_model` for details or set the config "
                 "option of `allow_push_fine_tuned` to True"
             )
-        return CAT.save_model_pack(
-            self,
+        return self._delegate.save_model_pack(
             target_folder, pack_name, serialiser_type, make_archive,
             only_archive, add_hash_to_pack_name, change_description)
 
@@ -115,9 +120,7 @@ class CATWrapper(CAT):
         """
         _cat = super().load_model_pack(
             model_pack_path, config_dict, addon_config_dict)
-        cat = cast(CATWrapper, _cat)
-        if not isinstance(cat, CATWrapper):
-            cat.__class__ = CATWrapper
+        cat = cls(_cat)
         if model_info is None:
             raise CannotWrapModel("Model info must be provided")
         if den_cnf is None:
