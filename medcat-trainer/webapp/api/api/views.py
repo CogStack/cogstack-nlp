@@ -650,9 +650,9 @@ def annotate_text(request):
         try:
             cat = get_medcat_from_model_pack_id(int(modelpack_id))
         except (ValueError, TypeError):
-            return HttpResponseBadRequest('Invalid modelpack_id')
+            return HttpResponseBadRequest(f'Invalid modelpack_id:{modelpack_id} for project:{p_id}')
         except ModelPack.DoesNotExist:
-            return HttpResponseBadRequest('ModelPack does not exist')
+            return HttpResponseBadRequest(f'ModelPack does not exist:{modelpack_id} for project:{p_id}')
     else:
         project = ProjectAnnotateEntities.objects.get(id=p_id)
         cat = get_medcat(project=project)
@@ -676,8 +676,10 @@ def annotate_text(request):
                 logger.warning(f'Failed to get children for CUI {parent_cui}: {e}')
         cuis_set = expanded_cuis
 
+    curr_cuis = cat.config.components.linking.filters
     cat.config.components.linking.filters.cuis = cuis_set
     spacy_doc = cat(message)
+    cat.config.components.linking.filters = curr_cuis
 
     ents = []
     anno_tkns = []
