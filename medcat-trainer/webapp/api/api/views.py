@@ -650,9 +650,11 @@ def annotate_text(request):
         try:
             cat = get_medcat_from_model_pack_id(int(modelpack_id))
         except (ValueError, TypeError):
-            return HttpResponseBadRequest(f'Invalid modelpack_id:{modelpack_id} for project:{p_id}')
+            logger.warning(f'Invalid modelpack_id received for project:{p_id}')
+            return HttpResponseBadRequest('Invalid modelpack_id for project')
         except ModelPack.DoesNotExist:
-            return HttpResponseBadRequest(f'ModelPack does not exist:{modelpack_id} for project:{p_id}')
+            logger.warning(f'ModelPack does not exist received for project:{p_id}')
+            return HttpResponseBadRequest('ModelPack does not exist for project')
     else:
         project = ProjectAnnotateEntities.objects.get(id=p_id)
         cat = get_medcat(project=project)
