@@ -36,10 +36,10 @@ MedCAT Trainer uses a **two-client architecture** for OIDC:
 ```json
 {
   "USE_OIDC": "1",
-  "KEYCLOAK_URL": "https://cogstack-auth.sites.er.kcl.ac.uk",
+  "KEYCLOAK_URL": "https://auth.cogstack.example.site",
   "KEYCLOAK_REALM": "cogstack",
   "KEYCLOAK_CLIENT_ID": "cogstack-medcattrainer-frontend",
-  "LOGOUT_REDIRECT_URI": "https://cogstack-launchpad.sites.er.kcl.ac.uk/"
+  "LOGOUT_REDIRECT_URI": "https://launchpad.cogstack.example.site/"
 }
 ```
 
@@ -57,164 +57,13 @@ MedCAT Trainer uses a **two-client architecture** for OIDC:
 **Configuration:**
 ```python
 # Backend settings
-OIDC_HOST = "https://cogstack-auth.sites.er.kcl.ac.uk"
+OIDC_HOST = "https://auth.cogstack.example.site"
 OIDC_REALM = "cogstack"
 OIDC_FRONTEND_CLIENT_ID = "cogstack-medcattrainer-frontend"
 OIDC_BACKEND_CLIENT_ID = "cogstack-medcattrainer-backend"
 OIDC_BACKEND_CLIENT_SECRET = "***secret***"
 ```
-
 ---
-
-## Authentication Flow
-
-### Step-by-Step Process
-
-```
-┌──────────┐                 ┌──────────────┐                 ┌──────────┐
-│  User    │                 │   Keycloak   │                 │ MedCAT   │
-│ Browser  │                 │  (Identity   │                 │ Trainer  │
-│          │                 │   Provider)  │                 │ Backend  │
-└──────────┘                 └──────────────┘                 └──────────┘
-     │                               │                               │
-     │ 1. Visit MedCATtrainer        │                               │
-     ├──────────────────────────────────────────────────────────────>│
-     │                               │                               │
-     │ 2. Redirect to Keycloak login │                               │
-     │<──────────────────────────────────────────────────────────────┤
-     │                               │                               │
-     │ 3. Show login page            │                               │
-     ├──────────────────────────────>│                               │
-     │                               │                               │
-     │ 4. Enter credentials          │                               │
-     ├──────────────────────────────>│                               │
-     │                               │                               │
-     │ 5. Validate & generate token  │                               │
-     │<──────────────────────────────┤                               │
-     │                               │                               │
-     │ 6. Redirect back with token   │                               │
-     │<──────────────────────────────┤                               │
-     │                               │                               │
-     │ 7. API request with token     │                               │
-     ├──────────────────────────────────────────────────────────────>│
-     │                               │                               │
-     │                               │ 8. Validate token             │
-     │                               │<──────────────────────────────┤
-     │                               │                               │
-     │                               │ 9. Token valid + user info    │
-     │                               │──────────────────────────────>│
-     │                               │                               │
-     │                               │    10. Create/update user     │
-     │                               │        Extract roles          │
-     │                               │                               │
-     │ 11. Return API response       │                               │
-     │<──────────────────────────────────────────────────────────────┤
-```
-
-### Detailed Steps
-
-1. **User visits MedCAT Trainer**
-   - Frontend loads `/static/config.json` to check if OIDC is enabled
-   - If `USE_OIDC=1`, initializes Keycloak adapter
-
-2. **Redirect to Keycloak**
-   - Frontend redirects to: `https://keycloak.../realms/cogstack/protocol/openid-connect/auth`
-   - Includes: client ID, redirect URI, scopes
-
-3. **User authenticates**
-   - Keycloak shows login page
-   - User enters username/password
-   - Keycloak validates credentials
-
-4. **Token generation**
-   - Keycloak generates ID token, access token, refresh token
-   - Tokens contain user info (email, name, roles)
-
-5. **Redirect back to app**
-   - Keycloak redirects to: `http://medcattrainer.../`
-   - Includes authorization code in URL
-
-6. **Token exchange**
-   - Frontend exchanges code for tokens
-   - Stores tokens in browser memory (not localStorage for security)
-
-7. **API requests**
-   - Frontend includes token in `Authorization: Bearer <token>` header
-   - Every API call includes this header
-
-8. **Backend validates token**
-   - Django REST Framework receives request
-   - `BearerTokenAuthentication` extracts token
-   - Validates token signature using Keycloak's public key
-   - Checks token expiration and audience claims
-
-9. **User creation/update**
-   - `oidc_utils.get_user_by_email()` called
-   - Extracts user info from token
-   - Creates Django user if new, updates if existing
-   - Applies roles (superuser/staff based on Keycloak roles)
-
-10. **Request processed**
-    - User authenticated and authorized
-    - API endpoint processes request
-    - Returns response
-
----
-
-## Configuration
-
-### Environment Variables
-
-#### Frontend (Runtime Config - `/static/config.json`)
-
-| Variable | Example | Description |
-|----------|---------|-------------|
-| `VITE_USE_OIDC` | `1` | Enable OIDC (1=enabled, 0=traditional auth) |
-| `VITE_KEYCLOAK_URL` | `https://cogstack-auth.sites.er.kcl.ac.uk` | Keycloak base URL |
-| `VITE_KEYCLOAK_REALM` | `cogstack` | Keycloak realm name |
-| `VITE_KEYCLOAK_CLIENT_ID` | `cogstack-medcattrainer-frontend` | Public client ID |
-| `VITE_LOGOUT_REDIRECT_URI` | `https://cogstack-launchpad.sites.er.kcl.ac.uk/` | Where to go after logout |
-
-#### Backend (Django Settings)
-
-| Variable | Example | Description |
-|----------|---------|-------------|
-| `USE_OIDC` | `1` | Enable OIDC validation |
-| `OIDC_HOST` | `https://cogstack-auth.sites.er.kcl.ac.uk` | Keycloak base URL (for backend) |
-| `OIDC_REALM` | `cogstack` | Realm name |
-| `OIDC_FRONTEND_CLIENT_ID` | `cogstack-medcattrainer-frontend` | Frontend client ID (for token validation) |
-| `OIDC_BACKEND_CLIENT_ID` | `cogstack-medcattrainer-backend` | Backend client ID |
-| `OIDC_BACKEND_CLIENT_SECRET` | `***secret***` | Backend client secret |
-
-### Runtime Configuration Generation
-
-The frontend configuration is generated at container startup:
-
-1. **Template**: `/home/frontend/dist/config.template.json`
-   ```json
-   {
-     "USE_OIDC": "${VITE_USE_OIDC}",
-     "KEYCLOAK_URL": "${VITE_KEYCLOAK_URL}",
-     ...
-   }
-   ```
-
-2. **Script**: `/home/scripts/nginx-entrypoint.sh`
-   - Validates required environment variables
-   - Substitutes values using `envsubst`
-   - Generates `/home/api/static/config.json`
-
-3. **Frontend loads**: Fetches `/static/config.json` at startup
-   ```javascript
-   // main.ts
-   await loadRuntimeConfig();
-   if (isOidcEnabled()) {
-     await authPlugin.install(app);
-   }
-   ```
-
----
-
 ## Key Files
 
 ### Frontend
@@ -238,104 +87,6 @@ The frontend configuration is generated at container startup:
 
 ---
 
-## Role Mapping
-
-### Keycloak Roles → Django Permissions
-
-The backend checks for specific Keycloak realm roles and maps them to Django permissions:
-
-```python
-# In oidc_utils.py
-roles = id_token.get('roles', [])
-
-is_superuser = 'medcattrainer_superuser' in roles
-is_staff = 'medcattrainer_staff' in roles
-```
-
-| Keycloak Role | Django Permission | Capabilities |
-|---------------|-------------------|--------------|
-| `medcattrainer_superuser` | `is_superuser=True`, `is_staff=True` | Full admin access, Django admin, all projects |
-| `medcattrainer_staff` | `is_staff=True` | Staff-level access, can manage assigned projects |
-| (no role) | Regular user | Can only access assigned projects, no admin |
-
-### Token Structure
-
-Example token payload:
-```json
-{
-  "sub": "c924cc03-c1d4-444c-a6ba-2f0553438a14",
-  "email": "jocelyne@cogstack.org",
-  "email_verified": false,
-  "name": "Jocelyne Holdbrook",
-  "preferred_username": "jocelyneholdbrook",
-  "given_name": "Jocelyne",
-  "family_name": "Holdbrook",
-  "roles": [
-    "medcattrainer_superuser",
-    "medcattrainer_staff",
-    "default-roles-cogstack-realm",
-    "offline_access",
-    "uma_authorization"
-  ],
-  "group_memberships": [
-    "/medcattery-users",
-    "/medcattrainer-users"
-  ],
-  "aud": ["account", "cogstack-medcattrainer-frontend"],
-  "iss": "https://cogstack-auth.sites.er.kcl.ac.uk/realms/cogstack"
-}
-```
-
----
-
-## Token Validation
-
-### Backend Token Validation Process
-
-1. **Extract token** from `Authorization: Bearer <token>` header
-
-2. **Verify signature**
-   - Fetch Keycloak's public keys from `/.well-known/jwks.json`
-   - Verify JWT signature using public key
-
-3. **Validate claims**
-   ```python
-   # settings.py
-   'OIDC_CLAIMS_OPTIONS': {
-       'aud': {
-           'values': [
-               'account',
-               'cogstack-medcattrainer-backend',
-               'cogstack-medcattrainer-frontend'  # ← Important!
-           ],
-           'essential': True,
-       },
-       'iss': {
-           'values': [
-               'https://cogstack-auth.../realms/cogstack'
-           ],
-           'essential': True,
-       },
-   }
-   ```
-
-4. **Check expiration**
-   - Tokens have `exp` claim (typically 5-15 minutes)
-   - Expired tokens are rejected
-
-5. **Resolve user**
-   - Call `oidc_utils.get_user_by_email()`
-   - Create or update Django user
-   - Apply roles
-
-### Why Frontend Client ID Must Be in Audience
-
-The frontend client obtains the token, so the token's `aud` (audience) claim contains `cogstack-medcattrainer-frontend`. The backend must accept this audience, otherwise validation fails with "Token is not active" error.
-
-This is why `OIDC_FRONTEND_CLIENT_ID` is **required** in backend settings.
-
----
-
 ## User Lifecycle
 
 ### First Login
@@ -347,11 +98,11 @@ This is why `OIDC_FRONTEND_CLIENT_ID` is **required** in backend settings.
 5. Django user created:
    ```python
    User.objects.get_or_create(
-       email='jocelyne@cogstack.org',
+       email='john@cogstack.org',
        defaults={
-           "username": "jocelyneholdbrook",
-           "first_name": "Jocelyne",
-           "last_name": "Holdbrook",
+           "username": "johndoe",
+           "first_name": "John",
+           "last_name": "Doe",
            "is_active": True,
            "password": secrets.token_urlsafe(32),  # Random, unused
            "is_superuser": False,  # Set based on roles
@@ -383,42 +134,6 @@ If a user's Keycloak roles change:
 3. New token includes updated roles
 4. Backend updates Django user permissions
 5. User immediately has new access level
-
----
-
-## Security Considerations
-
-### Token Storage
-
-- ✅ **Good**: Frontend stores tokens in memory (Keycloak adapter default)
-- ❌ **Bad**: Don't store in localStorage (vulnerable to XSS)
-
-### Token Transmission
-
-- ✅ All communication over HTTPS in production
-- ✅ Tokens included in `Authorization` header (not URL)
-- ✅ Tokens have short expiration (refresh automatically)
-
-### Audience Validation
-
-The backend validates the `aud` claim to ensure tokens are intended for this application:
-
-```python
-'aud': {
-    'values': [
-        'account',
-        'cogstack-medcattrainer-backend',
-        'cogstack-medcattrainer-frontend'  # Tokens from frontend client
-    ],
-    'essential': True,
-}
-```
-
-### CORS and CSRF
-
-- OIDC flow uses redirects, not AJAX, avoiding CORS issues
-- Django CSRF protection disabled for OIDC endpoints
-- Token validation provides sufficient security
 
 ---
 
@@ -507,9 +222,8 @@ print(f'is_staff: {user.is_staff}')
 - "Signature verification failed"
 
 **Causes:**
-1. Clock skew between servers
-2. Keycloak public key changed
-3. Wrong OIDC_HOST configuration
+1. Keycloak public key changed
+2. Wrong OIDC_HOST configuration
 
 **Solutions:**
 ```bash
@@ -587,24 +301,9 @@ VITE_LOGOUT_REDIRECT_URI=http://home.cogstack.localhost/
 
 ---
 
-## Comparison: Traditional Auth vs OIDC
-
-| Feature | Traditional Auth | OIDC Auth |
-|---------|------------------|-----------|
-| User storage | Django database | Keycloak (centralized) |
-| Password management | Per-app | Centralized in Keycloak |
-| Login UI | Custom form in app | Keycloak-hosted |
-| Single Sign-On | No | Yes (across all apps) |
-| Role management | Django admin | Keycloak admin |
-| Password reset | Email-based | Keycloak handles |
-| 2FA/MFA | Manual implementation | Keycloak built-in |
-| Audit logging | Limited | Full Keycloak audit |
-
----
-
 ## References
 
 - [OpenID Connect Specification](https://openid.net/specs/openid-connect-core-1_0.html)
 - [Keycloak Documentation](https://www.keycloak.org/documentation)
 - [Django REST Framework Token Authentication](https://www.django-rest-framework.org/api-guide/authentication/)
-- [mozilla-django-oidc](https://mozilla-django-oidc.readthedocs.io/) (similar library for reference)
+- [drf-oidc-auth](https://github.com/ByteInternet/drf-oidc-auth)
