@@ -592,6 +592,8 @@ class RelCAT(PipeRunner):
                             pred_rel_logits, dim=0).max(0)
                         predicted_label_id = int(confidence[1].item())
 
+
+
                         doc._.relations.append({"relation": self.component.relcat_config.general.idx2labels[predicted_label_id],
                                                 "label_id": predicted_label_id,
                                                 "ent1_text": predict_rel_dataset.dataset["output_relations"][rel_idx][
@@ -599,8 +601,10 @@ class RelCAT(PipeRunner):
                                                 "ent2_text": predict_rel_dataset.dataset["output_relations"][rel_idx][
                                                     3],
                                                 "confidence": float("{:.3f}".format(confidence[0])),
-                                                "start_ent_pos": "",
-                                                "end_ent_pos": "",
+                                                "start_ent1_char_pos": predict_rel_dataset.dataset["output_relations"][rel_idx][18],
+                                                "end_ent1_char_pos": predict_rel_dataset.dataset["output_relations"][rel_idx][19],
+                                                "start_ent2_char_pos": predict_rel_dataset.dataset["output_relations"][rel_idx][20],
+                                                "end_ent2_char_pos": predict_rel_dataset.dataset["output_relations"][rel_idx][21],
                                                 "start_entity_id":
                                                     predict_rel_dataset.dataset["output_relations"][rel_idx][8],
                                                 "end_entity_id":
@@ -638,6 +642,8 @@ class RelCAT(PipeRunner):
 
         Span.set_extension('id', default=0, force=True)
         Span.set_extension('cui', default=None, force=True)
+        Span.set_extension('start', default=None, force=True)
+        Span.set_extension('end', default=None, force=True)
         Doc.set_extension('ents', default=[], force=True)
         Doc.set_extension('relations', default=[], force=True)
         nlp = spacy.blank(self.component.relcat_config.general.language)
@@ -647,10 +653,13 @@ class RelCAT(PipeRunner):
             tkn_idx = []
             for ind, word in enumerate(doc):
                 end_char = word.idx + len(word.text)
+                # identify token index by checking against ann char position
                 if end_char <= ann['end'] and end_char > ann['start']:
                     tkn_idx.append(ind)
             entity = Span(doc, min(tkn_idx), max(tkn_idx) + 1, label=ann["value"])
             entity._.cui = ann["cui"]
+            entity._.start = ann["start"]
+            entity._.end = ann["end"]            
             doc._.ents.append(entity)
 
         doc = self(doc)

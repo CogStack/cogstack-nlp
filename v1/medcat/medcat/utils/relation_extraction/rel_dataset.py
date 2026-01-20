@@ -213,6 +213,9 @@ class RelData(Dataset):
         ent1_token: Union[str, Span] = tmp_doc_text[ent1_start_char_pos: ent1_end_char_pos]
         ent2_token: Union[str, Span] = tmp_doc_text[ent2_start_char_pos: ent2_end_char_pos]
 
+        annotation_token_text = self.tokenizer.hf_tokenizers.convert_ids_to_tokens(
+                                self.config.general.annotation_schema_tag_ids)
+
         if abs(ent2_start_char_pos - ent1_start_char_pos) <= self.config.general.window_size and \
              ent1_token != ent2_token:
 
@@ -240,20 +243,13 @@ class RelData(Dataset):
 
             if is_spacy_doc or is_mct_export:
                 tmp_doc_text = text
-                _pre_e1 = tmp_doc_text[0: (ent1_start_char_pos)]
-                _e1_s2 = tmp_doc_text[ent1_end_char_pos: ent2_start_char_pos - 1]
-                _e2_end = tmp_doc_text[ent2_end_char_pos + 1: text_length]
-                ent2_token_end_pos = (ent2_token_end_pos + 2)
 
-                annotation_token_text = self.tokenizer.hf_tokenizers.convert_ids_to_tokens(
-                                        self.config.general.annotation_schema_tag_ids)
+                s1,e1,s2,e2 = annotation_token_text
 
-                tmp_doc_text = str(_pre_e1) + " " + \
-                                annotation_token_text[0] + " " + \
-                                str(ent1_token) + " " + \
-                                annotation_token_text[1] + " " + str(_e1_s2) + " " + \
-                                annotation_token_text[2] + " " + str(ent2_token) + " " + \
-                                annotation_token_text[3] + " " + str(_e2_end)
+                tmp_doc_text = tmp_doc_text[:ent2_end_char_pos]   + e2 + tmp_doc_text[ent2_end_char_pos:]
+                tmp_doc_text = tmp_doc_text[:ent2_start_char_pos] + s2 + tmp_doc_text[ent2_start_char_pos:]
+                tmp_doc_text = tmp_doc_text[:ent1_end_char_pos]   + e1 + tmp_doc_text[ent1_end_char_pos:]
+                tmp_doc_text = tmp_doc_text[:ent1_start_char_pos] + s1 + tmp_doc_text[ent1_start_char_pos:]
 
                 ann_tag_token_len = len(annotation_token_text[0])
 
@@ -262,8 +258,10 @@ class RelData(Dataset):
                     else _left_context_start_char_pos
 
                 _right_context_start_end_pos = right_context_end_char_pos + (ann_tag_token_len * 4) + 8  # 8 for spces
-                right_context_end_char_pos = len(tmp_doc_text) + 1 if right_context_end_char_pos >= len(tmp_doc_text) or \
-                    _right_context_start_end_pos >= len(tmp_doc_text) else _right_context_start_end_pos
+                right_context_end_char_pos = len(tmp_doc_text) if (
+                    right_context_end_char_pos >= len(tmp_doc_text)
+                    or _right_context_start_end_pos >= len(tmp_doc_text)
+                ) else _right_context_start_end_pos
 
                 # reassign the new text with added tags
                 text_length = len(tmp_doc_text)
@@ -272,6 +270,9 @@ class RelData(Dataset):
             # take care when using window_size > 300, we want to make sure both entities are included at least... otherwise the relation
             # is considered invalid
             window_tokenizer_data = self.tokenizer(tmp_doc_text[left_context_start_char_pos:right_context_end_char_pos], truncation=True)
+
+            #if len(window_tokenizer_data["input_ids"]) > self.tokenizer.hf_tokenizers.model_max_length:
+            #    return []
 
             if self.config.general.annotation_schema_tag_ids:
                 try:
@@ -287,10 +288,7 @@ class RelData(Dataset):
                     _ent2_token_end_pos = \
                         window_tokenizer_data["input_ids"].index(
                             self.config.general.annotation_schema_tag_ids[3])
-                    assert ent1_token_start_pos
-                    assert ent2_token_start_pos
-                    assert _ent1_token_end_pos
-                    assert _ent2_token_end_pos
+
                 except Exception as exception:
                     self.log.error("document id : " + str(doc_id) + " failed to process relation")
                     self.log.info(exception)
@@ -303,12 +301,17 @@ class RelData(Dataset):
                 ent2_token_start_pos += ent1_token_start_pos
 
             ent1_ent2_new_start = (ent1_token_start_pos, ent2_token_start_pos)
-            en1_start, en1_end = window_tokenizer_data["offset_mapping"][ent1_token_start_pos]
-            en2_start, en2_end = window_tokenizer_data["offset_mapping"][ent2_token_start_pos]
+
+            s1_start, s1_end = window_tokenizer_data["offset_mapping"][ent1_token_start_pos]
+            e1_start, e1_end = window_tokenizer_data["offset_mapping"][_ent1_token_end_pos]
+
+            s2_start, s2_end = window_tokenizer_data["offset_mapping"][ent2_token_start_pos]
+            e2_start, e2_end = window_tokenizer_data["offset_mapping"][_ent2_token_end_pos]
 
             return [window_tokenizer_data["input_ids"], ent1_ent2_new_start, ent1_token, ent2_token, "UNK", self.config.model.padding_idx,
                                             None, None, None, None, None, None, doc_id, "",
-                                            en1_start, en1_end, en2_start, en2_end]
+                                            s1_start, e1_end, s2_start, e2_end,
+                                            ent1_start_char_pos, ent1_end_char_pos, ent2_start_char_pos, ent2_end_char_pos]
         return []
 
     def create_base_relations_from_doc(self, doc: Union[Doc, str], doc_id: str, ent1_ent2_tokens_start_pos: Union[List, Tuple] = (-1, -1)) -> Dict:
