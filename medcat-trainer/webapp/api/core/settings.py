@@ -200,7 +200,7 @@ REST_FRAMEWORK = {
 }
 
 if USE_OIDC:
-    print("Using OIDC authentication")
+    log.info("Using OIDC authentication")
     REST_FRAMEWORK["DEFAULT_AUTHENTICATION_CLASSES"] = [
         'oidc_auth.authentication.JSONWebTokenAuthentication',
         'oidc_auth.authentication.BearerTokenAuthentication',
@@ -236,8 +236,7 @@ if USE_OIDC:
         'OIDC_CLIENT_SECRET': OIDC_BACKEND_CLIENT_SECRET,
     }
 
-    print(f"OIDC endpoint: {OIDC_AUTH['OIDC_ENDPOINT']}")
-    print(f"Accepted audience claims: {OIDC_AUTH['OIDC_CLAIMS_OPTIONS']['aud']['values']}")
+    log.info("OIDC authentication configuration initialised")
 
 # Internationalization
 # https://docs.djangoproject.com/en/2.2/topics/i18n/
