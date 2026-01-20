@@ -659,8 +659,7 @@ class RelCAT(PipeRunner):
             entity = Span(doc, min(tkn_idx), max(tkn_idx) + 1, label=ann["value"])
             entity._.cui = ann["cui"]
             entity._.start = ann["start"]
-            entity._.end = ann["end"]
-            
+            entity._.end = ann["end"]            
             doc._.ents.append(entity)
 
         doc = self(doc)

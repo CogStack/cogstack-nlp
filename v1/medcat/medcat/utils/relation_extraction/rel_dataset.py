@@ -215,7 +215,7 @@ class RelData(Dataset):
 
         annotation_token_text = self.tokenizer.hf_tokenizers.convert_ids_to_tokens(
                                 self.config.general.annotation_schema_tag_ids)
-        
+
         if abs(ent2_start_char_pos - ent1_start_char_pos) <= self.config.general.window_size and \
              ent1_token != ent2_token:
 
