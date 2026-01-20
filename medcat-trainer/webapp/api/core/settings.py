@@ -236,7 +236,6 @@ if USE_OIDC:
         'OIDC_CLIENT_SECRET': OIDC_BACKEND_CLIENT_SECRET,
     }
 
-    log.info("OIDC authentication configuration initialised")
 
 # Internationalization
 # https://docs.djangoproject.com/en/2.2/topics/i18n/

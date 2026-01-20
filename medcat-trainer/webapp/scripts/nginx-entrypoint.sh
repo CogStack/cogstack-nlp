@@ -40,6 +40,10 @@ fi
 envsubst < "$TEMPLATE_FILE" > /home/frontend/dist/config.json
 
 # Copy to static directory for web access
+if [ ! -d "/home/api/static" ]; then
+  mkdir -p -v /home/api/static
+fi
+
 cp /home/frontend/dist/config.json /home/api/static/config.json
 echo "Generated /home/api/static/config.json: "
 cat /home/api/static/config.json
