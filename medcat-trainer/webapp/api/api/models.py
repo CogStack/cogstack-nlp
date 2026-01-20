@@ -132,7 +132,12 @@ class ModelPack(models.Model):
         except Exception as exc:
             raise MedCATLoadException(f'Failure loading MetaCAT models - {unpacked_model_pack_path}') from exc
 
-        super().save(*args, **kwargs)
+        if not is_new:
+            super().save(*args, **kwargs)
+        else:
+            # For new objects, just update the FK fields without full save
+            # Fixes psycopg.errors.UniqueViolation: duplicate key value violates unique constraint "api_modelpack_pkey" 
+            super().save(update_fields=['concept_db', 'vocab'])
 
     def __str__(self):
         return self.name
