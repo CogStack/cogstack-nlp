@@ -10,6 +10,9 @@ RUN apt-get install -y vim
 # install supervisor
 RUN apt-get install -y supervisor
 
+# install gettext for envsubst (used to generate runtime config)
+RUN apt-get install -y gettext
+
 # install cron - and remove any default tabs
 RUN apt-get install -y cron && which cron && rm -rf /etc/cron.*/*
 
@@ -26,6 +29,7 @@ COPY ./ .
 
 # copy backup crontab and chmod scripts
 RUN chmod u+x /home/scripts/entry.sh && chmod u+x /home/scripts/crontab && cp /home/scripts/crontab /etc/crontab
+RUN chmod u+x /home/scripts/nginx-entrypoint.sh
 
 # Build frontend
 WORKDIR /home/frontend

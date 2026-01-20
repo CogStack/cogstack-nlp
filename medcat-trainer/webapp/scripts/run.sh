@@ -15,6 +15,9 @@ python /home/api/manage.py makemigrations api --noinput
 python /home/api/manage.py migrate --noinput
 python /home/api/manage.py migrate api --noinput
 
+# Generates the runtime configuration for the web app and copies it to the static directory for web access
+/home/scripts/nginx-entrypoint.sh
+
 # create a new super user, with username and password 'admin'
 # also create a user group `user_group` that prevents users from deleting models
 echo "from django.contrib.auth import get_user_model

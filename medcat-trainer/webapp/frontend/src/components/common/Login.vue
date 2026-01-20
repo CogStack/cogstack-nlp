@@ -26,6 +26,7 @@
 import Modal from '@/components/common/Modal.vue'
 import EventBus from '@/event-bus'
 import axios from 'axios'
+import { isOidcEnabled } from '@/runtimeConfig.ts';
 
 const instance = axios.create({
   baseURL: axios.baseURL,
@@ -51,7 +52,7 @@ export default {
       failed: false,
       failedAdminStatusCheck: false,
       reset_pw: import.meta.env.VITE_APP_EMAIL === '1',
-      useOidc: import.meta.env.VITE_USE_OIDC === '1'
+      useOidc: isOidcEnabled()
     }
   },
   methods: {
