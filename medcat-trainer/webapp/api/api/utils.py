@@ -237,7 +237,6 @@ def get_create_cdb_infos(cdb, concept, cui, cui_info_prop, code_prop, desc_prop,
     return model_clazz.objects.filter(code__in=codes)
 
 
-
 def create_annotation(source_val: str, selection_occurrence_index: int, cui: str, user: User,
                       project: ProjectAnnotateEntities, document: Document):
     text = document.text

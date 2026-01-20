@@ -435,30 +435,44 @@ def add_concept(request):
 
     cat = get_medcat(project=project)
 
-    if cui in cat.cdb.cui2names:
-        err_msg = f'Cannot add a concept "{name}" with cui:{cui}. CUI already linked to {cat.cdb.cui2names[cui]}'
+    if cui in cat.cdb.cui2info:
+        err_msg = f'Cannot add a concept "{name}" with cui:{cui}. CUI already linked to {cat.cdb.cui2info[cui]["preferred_name"]}'
         logger.error(err_msg)
         return Response({'err': err_msg}, 400)
 
     spacy_doc = cat(document.text)
     spacy_entity = None
     if source_val in spacy_doc.text:
-        start = spacy_doc.text.index(source_val)
-        end = start + len(source_val)
-        spacy_entity = [tkn for tkn in spacy_doc if tkn.idx >= start and tkn.idx <= end]
+        # Find all occurrences of source_val in the text
+        all_occurrences_start_idxs = []
+        idx = 0
+        while idx != -1:
+            idx = spacy_doc.text.find(source_val, idx)
+            if idx != -1:
+                all_occurrences_start_idxs.append(idx)
+                idx += len(source_val)
 
+        # Use selection_idx to get the correct occurrence
+        if sel_occur_idx < len(all_occurrences_start_idxs):
+            start = all_occurrences_start_idxs[sel_occur_idx]
+            end = start + len(source_val)
+            # Find tokens that overlap with the span [start, end)
+            # A token overlaps if: token_start < end AND token_end > start
+            spacy_entity = [tkn for tkn in spacy_doc if tkn.char_index < end and (tkn.char_index + len(tkn.text)) > start]
+    # if len(spacy_entity) == 0:
+    #     spacy_entity = None
     cat.trainer.add_and_train_concept(cui=cui, name=name, name_status='P', mut_doc=spacy_doc, mut_entity=spacy_entity)
+
 
     id = create_annotation(source_val=source_val,
                            selection_occurrence_index=sel_occur_idx,
                            cui=cui,
                            user=user,
                            project=project,
-                           document=document,
-                           cat=cat)
+                           document=document)
 
     # ensure new concept detail is available in SOLR search service
-    ensure_concept_searchable(cui, cat.cdb, project.concept_db)
+    ensure_concept_searchable(cui, cat.cdb, project.cdb_search_filter.first())
 
     # add to project cuis if required.
     if (project.cuis or project.cuis_file) and project.restrict_concept_lookup:

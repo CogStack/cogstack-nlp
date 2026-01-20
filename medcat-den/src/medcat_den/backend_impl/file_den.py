@@ -152,6 +152,10 @@ class LocalFileDen(Den):
                                          ) -> list[ModelInfo]:
         return self._sqlite.list_derivatives(model.model_id)
 
+    def has_model(self, model: ModelInfo,
+                  backend_name: Optional[str] = None) -> bool:
+        return bool(self._sqlite.get_model(model.model_id))
+
     def _get_model_zip_name(self, model_hash: str) -> str:
         return f"{model_hash}.zip"
 
@@ -172,7 +176,8 @@ class LocalFileDen(Den):
                                        den_cnf=self._cnf))
 
     def push_model(self, cat: CAT, description: str,
-                   backend_name: Optional[str] = None) -> None:
+                   backend_name: Optional[str] = None,
+                   push_unchanged: bool = False) -> None:
         if isinstance(cat, CATWrapper):
             model_info = cat._model_info
         else:
@@ -184,6 +189,7 @@ class LocalFileDen(Den):
             # NOTE: if there's no model in databae, treat as new one
             raise DuplicateModelException(
                 "Duplicate model: ", model_info)
+        model_description = None if push_unchanged else description
         zip_name = self._get_model_zip_name(new_hash)
         kwargs: dict[Any, Any] = {}
         if isinstance(cat, CATWrapper):
@@ -192,10 +198,12 @@ class LocalFileDen(Den):
             self._models_folder,
             pack_name=zip_name.removesuffix(".zip"),
             add_hash_to_pack_name=False,
-            change_description=description,
+            change_description=model_description,
             **kwargs)
         # NOTE: the updated one should have the updated history and the like
         updated_mi = ModelInfo.from_model_pack(cat)
+        if updated_mi.base_model is not None and not self.has_model(updated_mi.base_model):
+            updated_mi.base_model = None
         if isinstance(cat, CATWrapper):
             cat._model_info = updated_mi
         self._sqlite.insert_model(updated_mi)
@@ -212,6 +220,16 @@ class LocalFileDen(Den):
                               backend_name: Optional[str] = None) -> None:
         # NOTE: for local file den this is not needed, but will still be called
         pass
+
+    def move_model(den, model_info: ModelInfo, origin: str, destination: str) -> None:
+        raise UnsupportedAPIException(
+            "The move_model method can only be called on a multi-backend den "
+            "not the individidual back ends")
+
+    def sync_backend(self, origin: str, destination: str) -> None:
+        raise UnsupportedAPIException(
+            "The move_model method can only be called on a multi-backend den "
+            "not the individidual back ends")
 
     def delete_model(self, model_info: ModelInfo,
                      allow_delete_base_models: bool = False,

@@ -1,4 +1,5 @@
 #!/bin/sh
+echo "Starting medcat trainer"
 
 # run db backup script before doing anything
 /home/scripts/backup_db.sh
