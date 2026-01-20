@@ -2,7 +2,7 @@
  * Runtime Configuration Helper
  *
  * This module provides safe access to runtime configuration loaded from /config.json.
- * It uses the window object to store config, which is standard practice for SPAs.
+ * It uses the window object to store config.
  */
 
 export interface RuntimeConfig {

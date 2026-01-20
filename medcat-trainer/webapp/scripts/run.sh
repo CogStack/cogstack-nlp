@@ -9,12 +9,13 @@ export RESUBMIT_ALL_ON_STARTUP=0
 
 # Collect static files and migrate if needed
 python /home/api/manage.py collectstatic --noinput
-# Generate runtime config.json from environment variables (must run after collectstatic)
-/home/scripts/nginx-entrypoint.sh
 python /home/api/manage.py makemigrations --noinput
 python /home/api/manage.py makemigrations api --noinput
 python /home/api/manage.py migrate --noinput
 python /home/api/manage.py migrate api --noinput
+
+# Generates the runtime configuration for the web app and copies it to the static directory for web access
+/home/scripts/nginx-entrypoint.sh
 
 # create a new super user, with username and password 'admin'
 # also create a user group `user_group` that prevents users from deleting models

@@ -200,43 +200,44 @@ REST_FRAMEWORK = {
 }
 
 if USE_OIDC:
-    log.info("Using OIDC authentication")
-    log.info(f"OIDC endpoint: {os.environ.get('OIDC_HOST', '')}/realms/{os.environ.get('OIDC_REALM', 'cogstack-realm')}")
-    log.info(f"Accepted audience claims: account, {os.environ.get('OIDC_BACKEND_CLIENT_ID', 'cogstack-medcattrainer-backend')}, {os.environ.get('OIDC_FRONTEND_CLIENT_ID', 'cogstack-medcattrainer-frontend')}")
+    print("Using OIDC authentication")
     REST_FRAMEWORK["DEFAULT_AUTHENTICATION_CLASSES"] = [
         'oidc_auth.authentication.JSONWebTokenAuthentication',
         'oidc_auth.authentication.BearerTokenAuthentication',
     ]
 
-OIDC_HOST = os.environ.get('OIDC_HOST', '')
-OIDC_REALM = os.environ.get('OIDC_REALM', default='cogstack-realm')
-OIDC_BACKEND_CLIENT_ID = os.environ.get('OIDC_BACKEND_CLIENT_ID', default='cogstack-medcattrainer-backend')
-OIDC_BACKEND_CLIENT_SECRET = os.environ.get('OIDC_BACKEND_CLIENT_SECRET', default='')
-OIDC_FRONTEND_CLIENT_ID = os.environ.get('OIDC_FRONTEND_CLIENT_ID', default='cogstack-medcattrainer-frontend')
-OIDC_AUTH = {
-    'OIDC_ENDPOINT': f"{OIDC_HOST}/realms/{OIDC_REALM}",
-    'OIDC_CLAIMS_OPTIONS': {
-        'aud': {
-            'values': [
-                'account',
-                OIDC_BACKEND_CLIENT_ID,
-                OIDC_FRONTEND_CLIENT_ID
-            ],
-            'essential': True,
+    OIDC_HOST = os.environ.get('OIDC_HOST', '')
+    OIDC_REALM = os.environ.get('OIDC_REALM', default='cogstack-realm')
+    OIDC_BACKEND_CLIENT_ID = os.environ.get('OIDC_BACKEND_CLIENT_ID', default='cogstack-medcattrainer-backend')
+    OIDC_BACKEND_CLIENT_SECRET = os.environ.get('OIDC_BACKEND_CLIENT_SECRET', default='')
+    OIDC_FRONTEND_CLIENT_ID = os.environ.get('OIDC_FRONTEND_CLIENT_ID', default='cogstack-medcattrainer-frontend')
+    OIDC_AUTH = {
+        'OIDC_ENDPOINT': f"{OIDC_HOST}/realms/{OIDC_REALM}",
+        'OIDC_CLAIMS_OPTIONS': {
+            'aud': {
+                'values': [
+                    'account',
+                    OIDC_BACKEND_CLIENT_ID,
+                    OIDC_FRONTEND_CLIENT_ID
+                ],
+                'essential': True,
+            },
+            'iss': {
+                'values': [
+                    f"{OIDC_HOST}/realms/{OIDC_REALM}"
+                ],
+                'essential': True,
+            },
         },
-        'iss': {
-            'values': [
-                f"{OIDC_HOST}/realms/{OIDC_REALM}"
-            ],
-            'essential': True,
-        },
-    },
-    'USERINFO_ENDPOINT': f"{OIDC_HOST}/realms/{OIDC_REALM}/protocol/openid-connect/userinfo",
-    'OIDC_CREATE_USER': True,
-    'OIDC_RESOLVE_USER_FUNCTION': 'api.oidc_utils.get_user_by_email',
-    'OIDC_CLIENT_ID': OIDC_BACKEND_CLIENT_ID,
-    'OIDC_CLIENT_SECRET': OIDC_BACKEND_CLIENT_SECRET,
-}
+        'USERINFO_ENDPOINT': f"{OIDC_HOST}/realms/{OIDC_REALM}/protocol/openid-connect/userinfo",
+        'OIDC_CREATE_USER': True,
+        'OIDC_RESOLVE_USER_FUNCTION': 'api.oidc_utils.get_user_by_email',
+        'OIDC_CLIENT_ID': OIDC_BACKEND_CLIENT_ID,
+        'OIDC_CLIENT_SECRET': OIDC_BACKEND_CLIENT_SECRET,
+    }
+
+    print(f"OIDC endpoint: {OIDC_AUTH['OIDC_ENDPOINT']}")
+    print(f"Accepted audience claims: {OIDC_AUTH['OIDC_CLAIMS_OPTIONS']['aud']['values']}")
 
 # Internationalization
 # https://docs.djangoproject.com/en/2.2/topics/i18n/

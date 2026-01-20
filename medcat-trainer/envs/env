@@ -46,23 +46,3 @@ EMAIL_USER=example@cogstack.org
 EMAIL_PASS="to be changed"
 EMAIL_HOST=mail.cogstack.org
 EMAIL_PORT=465
-
-# Backend auth
-USE_OIDC=1
-
-# Traefik
-NGINX_HOST=medcattrainer.cogstack.localhost
-
-# Frontend OIDC settings (Runtime Config - for browser)
-VITE_USE_OIDC=1
-VITE_KEYCLOAK_URL=http://keycloak.cogstack.localhost
-VITE_KEYCLOAK_REALM=cogstack-realm
-VITE_KEYCLOAK_CLIENT_ID=cogstack-medcattrainer-frontend
-VITE_LOGOUT_REDIRECT_URI=http://launch.cogstack.localhost/
-
-# Backend OIDC settings (for API token validation)
-OIDC_HOST=http://keycloak:8080
-OIDC_REALM=cogstack-realm
-OIDC_FRONTEND_CLIENT_ID=cogstack-medcattrainer-frontend
-OIDC_BACKEND_CLIENT_ID=cogstack-medcattrainer-backend
-OIDC_BACKEND_CLIENT_SECRET=***

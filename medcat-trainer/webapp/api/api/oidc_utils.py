@@ -8,17 +8,7 @@ def get_user_by_email(request, id_token):
     User = get_user_model()
     email = id_token.get('email')
     username = id_token.get('preferred_username')
-    print(id_token)
-
-    # Get roles from token - check both possible locations
-    roles = []
-    if 'roles' in id_token:
-        # Roles directly in token (Keycloak with audience mapper)
-        roles = id_token.get('roles', [])
-    elif 'realm_access' in id_token:
-        # Roles in realm_access (standard Keycloak)
-        roles = id_token['realm_access'].get('roles', [])
-
+    roles = id_token.get('roles', [])
     is_superuser = 'medcattrainer_superuser' in roles
     is_staff = 'medcattrainer_staff' in roles
 

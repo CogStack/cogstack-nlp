@@ -77,7 +77,7 @@ You'll need to `docker stop` the running containers if you have already run the 
 
 You can enable OIDC (OpenID Connect) authentication for the MedCAT Trainer. To do so, you must configure the following environment variables:
 
-#### Frontend (Runtime Config - `/static/config.json`)
+#### Frontend (Runtime Config)
 
 | Variable | Example | Description |
 |----------|---------|-------------|
