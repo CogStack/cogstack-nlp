@@ -133,6 +133,7 @@ export default {
         this.loading = false
         this.errorMessage = err.response.data.message || 'Error loading model.'
       })
+
     },
     cancel () {
       this.$emit('request:addAnnotationComplete')

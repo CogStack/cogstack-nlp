@@ -11,7 +11,7 @@ from medcat.cdb import CDB
 from medcat.vocab import Vocab
 from medcat.utils.legacy.convert_cdb import get_cdb_from_old
 
-from api.models import ConceptDB
+from api.models import ConceptDB, ModelPack
 
 """
 Module level caches for CDBs, Vocabs and CAT instances.
@@ -163,6 +163,22 @@ def get_medcat_from_model_pack(project, cat_map: Dict[str, CAT]=CAT_MAP) -> CAT:
     return cat
 
 
+def get_medcat_from_model_pack_id(modelpack_id: int, cat_map: Dict[str, CAT]=CAT_MAP) -> CAT:
+    """
+    Load (and cache) a MedCAT model pack directly from a ModelPack id.
+    """
+    cat_id = f'mp{modelpack_id}'
+    if cat_id in cat_map:
+        return cat_map[cat_id]
+
+    model_pack_obj = ModelPack.objects.get(id=modelpack_id)
+    logger.info('Loading model pack from:%s', model_pack_obj.model_pack.path)
+    cat = CAT.load_model_pack(model_pack_obj.model_pack.path)
+    cat_map[cat_id] = cat
+    _clear_models(cat_map=cat_map)
+    return cat
+
+
 def get_medcat(project,
                cdb_map: Dict[str, CDB]=CDB_MAP,
                vocab_map: Dict[str, Vocab]=VOCAB_MAP,
@@ -200,6 +216,16 @@ def clear_cached_medcat(project, cat_map: Dict[str, CAT]=CAT_MAP):
         clear_cached_cdb(cdb_id)
         clear_cached_vocab(vocab_id)
         cat_id = str(cdb_id) + "-" + str(vocab_id)
+    if cat_id in cat_map:
+        del cat_map[cat_id]
+
+
+def is_model_pack_loaded(modelpack_id: int, cat_map: Dict[str, CAT]=CAT_MAP) -> bool:
+    return f'mp{modelpack_id}' in cat_map
+
+
+def clear_cached_medcat_by_model_pack_id(modelpack_id: int, cat_map: Dict[str, CAT]=CAT_MAP) -> None:
+    cat_id = f'mp{modelpack_id}'
     if cat_id in cat_map:
         del cat_map[cat_id]
 

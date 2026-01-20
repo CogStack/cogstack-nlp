@@ -24,7 +24,7 @@ from .admin import download_projects_with_text, download_projects_without_text, 
     import_concepts_from_cdb
 from .data_utils import upload_projects_export
 from .metrics import calculate_metrics
-from .model_cache import get_medcat, get_cached_cdb, VOCAB_MAP, clear_cached_medcat, CAT_MAP, CDB_MAP, is_model_loaded
+from .model_cache import get_medcat, get_medcat_from_model_pack_id, get_cached_cdb, VOCAB_MAP, clear_cached_medcat, clear_cached_medcat_by_model_pack_id, is_model_pack_loaded, CAT_MAP, CDB_MAP, is_model_loaded
 from .permissions import *
 from .serializers import *
 from .solr_utils import collections_available, search_collection, ensure_concept_searchable
@@ -637,17 +637,51 @@ def update_meta_annotation(request):
 
 @api_view(http_method_names=['POST'])
 def annotate_text(request):
-    p_id = request.data['project_id']
-    message = request.data['message']
-    cuis = request.data['cuis']
-    if message is None or p_id is None:
+    message = request.data.get('message')
+    cuis = request.data.get('cuis', [])
+    p_id = request.data.get('project_id')
+    modelpack_id = request.data.get('modelpack_id')
+    include_sub_concepts = request.data.get('include_sub_concepts', False)
+
+    if message is None or (p_id is None and modelpack_id is None):
         return HttpResponseBadRequest('No message to annotate')
 
-    project = ProjectAnnotateEntities.objects.get(id=p_id)
+    if modelpack_id is not None:
+        try:
+            cat = get_medcat_from_model_pack_id(int(modelpack_id))
+        except (ValueError, TypeError):
+            logger.warning(f'Invalid modelpack_id received for project:{p_id}')
+            return HttpResponseBadRequest('Invalid modelpack_id for project')
+        except ModelPack.DoesNotExist:
+            logger.warning(f'ModelPack does not exist received for project:{p_id}')
+            return HttpResponseBadRequest('ModelPack does not exist for project')
+    else:
+        project = ProjectAnnotateEntities.objects.get(id=p_id)
+        cat = get_medcat(project=project)
 
-    cat = get_medcat(project=project)
-    cat.config.components.linking.filters.cuis = set(cuis)
+    # Normalise cuis to a set[str]
+    if isinstance(cuis, str):
+        cuis_set = {c.strip() for c in cuis.split(',') if c.strip()}
+    elif isinstance(cuis, (list, tuple, set)):
+        cuis_set = {str(c).strip() for c in cuis if str(c).strip()}
+    else:
+        cuis_set = set()
+
+    # Expand CUIs to include sub-concepts if requested
+    if include_sub_concepts and cuis_set and cat.cdb:
+        expanded_cuis = set(cuis_set)
+        for parent_cui in cuis_set:
+            try:
+                child_cuis = get_all_ch(parent_cui, cat.cdb)
+                expanded_cuis.update(child_cuis)
+            except Exception as e:
+                logger.warning(f'Failed to get children for CUI {parent_cui}: {e}')
+        cuis_set = expanded_cuis
+
+    curr_cuis = cat.config.components.linking.filters
+    cat.config.components.linking.filters.cuis = cuis_set
     spacy_doc = cat(message)
+    cat.config.components.linking.filters = curr_cuis
 
     ents = []
     anno_tkns = []
@@ -655,6 +689,26 @@ def annotate_text(request):
         cnt = Entity.objects.filter(label=ent.cui).count()
         inc_ent = all(tkn not in anno_tkns for tkn in ent)
         if inc_ent and cnt != 0:
+            meta_annotations = []
+            if 'meta_cat_meta_anns' in ent.get_available_addon_paths():
+                meta_anns = ent.get_addon_data('meta_cat_meta_anns')
+                for meta_ann_task, pred in meta_anns.items():
+                    # Extract value and confidence from pred
+                    # pred can be a dict, object, or string
+                    if isinstance(pred, dict):
+                        pred_value = pred.get('value', str(pred))
+                        pred_confidence = pred.get('confidence', None)
+                    elif hasattr(pred, 'value'):
+                        pred_value = pred.value
+                        pred_confidence = getattr(pred, 'confidence', None)
+                    else:
+                        pred_value = str(pred)
+                        pred_confidence = None
+                    meta_annotations.append({
+                        'task': meta_ann_task,
+                        'value': pred_value,
+                        'confidence': pred_confidence
+                    })
             anno_tkns.extend([tkn for tkn in ent])
             entity = Entity.objects.get(label=ent.cui)
             ents.append({
@@ -662,7 +716,8 @@ def annotate_text(request):
                 'value': ent.base.text,
                 'start_ind': ent.base.start_char_index,
                 'end_ind': ent.base.end_char_index,
-                'acc': ent.context_similarity
+                'acc': ent.context_similarity,
+                'meta_annotations': meta_annotations
             })
 
     ents.sort(key=lambda e: e['start_ind'])
@@ -752,7 +807,7 @@ def upload_deployment(request):
 
 
 @api_view(http_method_names=['GET', 'DELETE'])
-def cache_model(request, project_id):
+def cache_project_model(request, project_id):
     try:
         project = ProjectAnnotateEntities.objects.get(id=project_id)
         is_loaded = is_model_loaded(project)
@@ -768,6 +823,24 @@ def cache_model(request, project_id):
             return Response(f'Invalid method', 404)
     except ProjectAnnotateEntities.DoesNotExist:
         return Response(f'Project with id:{project_id} does not exist', 404)
+    except Exception as e:
+        return Response({'message': f'{str(e)}'}, 500)
+
+
+@api_view(http_method_names=['GET', 'DELETE'])
+def cache_modelpack(request, modelpack_id: int):
+    try:
+        if request.method == 'GET':
+            if not is_model_pack_loaded(modelpack_id):
+                get_medcat_from_model_pack_id(modelpack_id)
+            return Response('success', 200)
+        elif request.method == 'DELETE':
+            clear_cached_medcat_by_model_pack_id(modelpack_id)
+            return Response('success', 200)
+        else:
+            return Response(f'Invalid method', 404)
+    except ModelPack.DoesNotExist:
+        return Response(f'ModelPack with id:{modelpack_id} does not exist', 404)
     except Exception as e:
         return Response({'message': f'{str(e)}'}, 500)
 

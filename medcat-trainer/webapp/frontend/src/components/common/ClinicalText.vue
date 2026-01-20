@@ -160,9 +160,10 @@ export default {
           styleClass = `highlight-task-${btnIndex}`
         }
 
-        if (ent.id === this.currentRelStartEnt.id) {
+        // Only add relation markers if currentRelStartEnt/EndEnt have valid IDs
+        if (this.currentRelStartEnt && this.currentRelStartEnt.id && ent.id === this.currentRelStartEnt.id) {
           styleClass += ' current-rel-start'
-        } else if (ent.id === this.currentRelEndEnt.id) {
+        } else if (this.currentRelEndEnt && this.currentRelEndEnt.id && ent.id === this.currentRelEndEnt.id) {
           styleClass += ' current-rel-end'
         }
 
