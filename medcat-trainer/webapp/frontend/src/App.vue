@@ -17,6 +17,7 @@
             <!-- Navigation Links -->
             <div class="navigation-links">
               <router-link class="nav-link" to="/">Projects</router-link>
+              <router-link class="nav-link" to="/project-admin">Project Admin</router-link>
               <router-link class="nav-link" to="/metrics-reports">Metrics</router-link>
               <router-link class="nav-link" to="/model-explore">Concepts</router-link>
               <router-link class="nav-link" to="/demo">Try Model</router-link>

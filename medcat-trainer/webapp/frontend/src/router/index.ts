@@ -5,6 +5,7 @@ import Demo from '../views/Demo.vue'
 import Metrics from '../views/Metrics.vue'
 import MetricsHome from '../views/MetricsHome.vue'
 import ConceptDatabase from '../views/ConceptDatabase.vue'
+import ProjectAdmin from '../views/ProjectAdmin.vue'
 
 
 const router = createRouter({
@@ -37,6 +38,11 @@ const router = createRouter({
           path: '/model-explore',
           name: 'model-explore',
           component: ConceptDatabase
+      },
+      {
+          path: '/project-admin',
+          name: 'project-admin',
+          component: ProjectAdmin
       },
       {
           path: '/:pathMatch(.*)',

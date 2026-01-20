@@ -15,7 +15,7 @@ from django.utils import timezone
 from django_filters import rest_framework as drf
 
 from rest_framework import viewsets
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from medcat.components.ner.trf.deid import DeIdModel
 from medcat.utils.cdb_utils import ch2pt_from_pt2ch, get_all_ch, snomed_ct_concept_path
@@ -1003,3 +1003,140 @@ def project_progress(request):
         out[p] = {'validated_count': val_docs, 'dataset_count': ds_doc_count}
 
     return Response(out)
+
+
+@api_view(http_method_names=['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def project_admin_projects(request):
+    """
+    Get all projects where the user is a project admin.
+    """
+    user = request.user
+    projects = ProjectAnnotateEntities.objects.filter(members=user.id)
+
+    # Also include projects where user is admin of the project's group
+    group_admin_projects = ProjectAnnotateEntities.objects.filter(
+        group__administrators=user.id
+    )
+    projects = (projects | group_admin_projects).distinct()
+
+    serializer = ProjectAnnotateEntitiesSerializer(projects, many=True)
+    return Response(serializer.data)
+
+
+@api_view(http_method_names=['GET', 'PUT', 'DELETE'])
+@permission_classes([permissions.IsAuthenticated])
+def project_admin_detail(request, project_id):
+    """
+    Get, update, or delete a project (only if user is project admin).
+    """
+    try:
+        project = ProjectAnnotateEntities.objects.get(id=project_id)
+    except ProjectAnnotateEntities.DoesNotExist:
+        return Response({'error': 'Project not found'}, status=404)
+
+    # Check if user is project admin
+    from .permissions import is_project_admin
+    if not is_project_admin(request.user, project):
+        return Response({'error': 'You do not have permission to access this project'}, status=403)
+
+    if request.method == 'GET':
+        serializer = ProjectAnnotateEntitiesSerializer(project)
+        return Response(serializer.data)
+
+    elif request.method == 'PUT':
+        # Handle both JSON and FormData
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+
+        # Convert many-to-many fields from lists to proper format
+        if 'cdb_search_filter' in data and isinstance(data['cdb_search_filter'], list):
+            # Already a list, keep it
+            pass
+        elif 'cdb_search_filter' in request.data:
+            # FormData sends as multiple values with same key
+            data['cdb_search_filter'] = request.data.getlist('cdb_search_filter')
+
+        if 'members' in request.data:
+            if isinstance(request.data.get('members'), list):
+                data['members'] = request.data['members']
+            else:
+                data['members'] = request.data.getlist('members')
+
+        serializer = ProjectAnnotateEntitiesSerializer(project, data=data, partial=True)
+        if serializer.is_valid():
+            project = serializer.save()
+            # Handle many-to-many fields manually if needed
+            if 'cdb_search_filter' in data:
+                project.cdb_search_filter.set(data['cdb_search_filter'])
+            if 'members' in data:
+                project.members.set(data['members'])
+            return Response(ProjectAnnotateEntitiesSerializer(project).data)
+        return Response(serializer.errors, status=400)
+
+    elif request.method == 'DELETE':
+        project.delete()
+        return Response({'message': 'Project deleted successfully'}, status=200)
+
+
+@api_view(http_method_names=['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def project_admin_create(request):
+    """
+    Create a new project (user must be authenticated).
+    """
+    # Handle both JSON and FormData
+    data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+
+    # Convert many-to-many fields from FormData format
+    if 'cdb_search_filter' in request.data:
+        if isinstance(request.data.get('cdb_search_filter'), list):
+            data['cdb_search_filter'] = request.data['cdb_search_filter']
+        else:
+            data['cdb_search_filter'] = request.data.getlist('cdb_search_filter')
+
+    if 'members' in request.data:
+        if isinstance(request.data.get('members'), list):
+            data['members'] = request.data['members']
+        else:
+            data['members'] = request.data.getlist('members')
+
+    serializer = ProjectAnnotateEntitiesSerializer(data=data)
+    if serializer.is_valid():
+        project = serializer.save()
+        # Handle many-to-many fields manually
+        if 'cdb_search_filter' in data:
+            project.cdb_search_filter.set(data['cdb_search_filter'])
+        if 'members' in data:
+            project.members.set(data['members'])
+        # Add the creator as a member if not already included
+        if request.user not in project.members.all():
+            project.members.add(request.user)
+        return Response(ProjectAnnotateEntitiesSerializer(project).data, status=201)
+    return Response(serializer.errors, status=400)
+
+
+@api_view(http_method_names=['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def project_admin_reset(request, project_id):
+    """
+    Reset a project (clear all annotations) - only if user is project admin.
+    This is equivalent to the reset_project admin action.
+    """
+    try:
+        project = ProjectAnnotateEntities.objects.get(id=project_id)
+    except ProjectAnnotateEntities.DoesNotExist:
+        return Response({'error': 'Project not found'}, status=404)
+
+    # Check if user is project admin
+    from .permissions import is_project_admin
+    if not is_project_admin(request.user, project):
+        return Response({'error': 'You do not have permission to reset this project'}, status=403)
+
+    # Remove all annotations and cascade to meta anns
+    AnnotatedEntity.objects.filter(project=project).delete()
+
+    # Clear validated_documents and prepared_documents
+    project.validated_documents.clear()
+    project.prepared_documents.clear()
+
+    return Response({'message': 'Project reset successfully'}, status=200)
