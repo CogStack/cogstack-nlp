@@ -24,19 +24,15 @@ services:
       - ./envs/env
     environment:
       - MCT_VERSION=latest
-      # Frontend OIDC Settings (Public Client)
-      - VITE_USE_OIDC=1
-      - VITE_KEYCLOAK_URL=http://keycloak.cogstack.localhost
-      - VITE_KEYCLOAK_REALM=cogstack-realm
-      - VITE_KEYCLOAK_CLIENT_ID=cogstack-medcattrainer-frontend
-      - VITE_LOGOUT_REDIRECT_URI=http://launch.cogstack.localhost/
-      # Backend OIDC Settings (Confidential Client)
+      # OIDC Settings
       - USE_OIDC=1
-      - OIDC_HOST=http://keycloak:8080
-      - OIDC_REALM=cogstack-realm
-      - OIDC_FRONTEND_CLIENT_ID=cogstack-medcattrainer-frontend
-      - OIDC_BACKEND_CLIENT_ID=cogstack-medcattrainer-backend
-      - OIDC_BACKEND_CLIENT_SECRET=***
+      - KEYCLOAK_URL=http://keycloak.cogstack.localhost
+      - KEYCLOAK_REALM=cogstack-realm
+      - KEYCLOAK_FRONTEND_CLIENT_ID=cogstack-medcattrainer-frontend
+      - KEYCLOAK_LOGOUT_REDIRECT_URI=http://launch.cogstack.localhost/
+      - KEYCLOAK_INTERNAL_SERVICE_URL=http://keycloak:8080
+      - KEYCLOAK_BACKEND_CLIENT_ID=cogstack-medcattrainer-backend
+      - KEYCLOAK_BACKEND_CLIENT_SECRET=***
     command: /usr/bin/supervisord -c /etc/supervisord.conf
 
   nginx:

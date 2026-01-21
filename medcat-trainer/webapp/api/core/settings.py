@@ -200,40 +200,64 @@ REST_FRAMEWORK = {
 }
 
 if USE_OIDC:
-    log.info("Using OIDC authentication")
+    print("Using OIDC authentication")
     REST_FRAMEWORK["DEFAULT_AUTHENTICATION_CLASSES"] = [
         'oidc_auth.authentication.JSONWebTokenAuthentication',
         'oidc_auth.authentication.BearerTokenAuthentication',
     ]
 
-    OIDC_HOST = os.environ.get('OIDC_HOST', '')
-    OIDC_REALM = os.environ.get('OIDC_REALM', default='cogstack-realm')
-    OIDC_BACKEND_CLIENT_ID = os.environ.get('OIDC_BACKEND_CLIENT_ID', default='cogstack-medcattrainer-backend')
-    OIDC_BACKEND_CLIENT_SECRET = os.environ.get('OIDC_BACKEND_CLIENT_SECRET', default='')
-    OIDC_FRONTEND_CLIENT_ID = os.environ.get('OIDC_FRONTEND_CLIENT_ID', default='cogstack-medcattrainer-frontend')
+    # Load OIDC configuration from environment
+    KEYCLOAK_INTERNAL_SERVICE_URL = os.environ.get('KEYCLOAK_INTERNAL_SERVICE_URL')
+    KEYCLOAK_REALM = os.environ.get('KEYCLOAK_REALM')
+    KEYCLOAK_BACKEND_CLIENT_ID = os.environ.get('KEYCLOAK_BACKEND_CLIENT_ID')
+    KEYCLOAK_BACKEND_CLIENT_SECRET = os.environ.get('KEYCLOAK_BACKEND_CLIENT_SECRET')
+    KEYCLOAK_FRONTEND_CLIENT_ID = os.environ.get('KEYCLOAK_FRONTEND_CLIENT_ID')
+
+    # Validate required OIDC configuration
+    missing_vars = []
+    if not KEYCLOAK_INTERNAL_SERVICE_URL:
+        missing_vars.append('KEYCLOAK_INTERNAL_SERVICE_URL')
+    if not KEYCLOAK_REALM:
+        missing_vars.append('KEYCLOAK_REALM')
+    if not KEYCLOAK_BACKEND_CLIENT_ID:
+        missing_vars.append('KEYCLOAK_BACKEND_CLIENT_ID')
+    if not KEYCLOAK_BACKEND_CLIENT_SECRET:
+        missing_vars.append('KEYCLOAK_BACKEND_CLIENT_SECRET')
+    if not KEYCLOAK_FRONTEND_CLIENT_ID:
+        missing_vars.append('KEYCLOAK_FRONTEND_CLIENT_ID')
+
+    if missing_vars:
+        error_msg = (
+            f"OIDC is enabled (USE_OIDC=1) but the following required "
+            f"environment variables are missing or empty: {', '.join(missing_vars)}\n"
+            f"Please set these variables in your environment configuration."
+        )
+        log.error(error_msg)
+        sys.exit(error_msg)
+
     OIDC_AUTH = {
-        'OIDC_ENDPOINT': f"{OIDC_HOST}/realms/{OIDC_REALM}",
+        'OIDC_ENDPOINT': f"{KEYCLOAK_INTERNAL_SERVICE_URL}/realms/{KEYCLOAK_REALM}",
         'OIDC_CLAIMS_OPTIONS': {
             'aud': {
                 'values': [
                     'account',
-                    OIDC_BACKEND_CLIENT_ID,
-                    OIDC_FRONTEND_CLIENT_ID
+                    KEYCLOAK_BACKEND_CLIENT_ID,
+                    KEYCLOAK_FRONTEND_CLIENT_ID
                 ],
                 'essential': True,
             },
             'iss': {
                 'values': [
-                    f"{OIDC_HOST}/realms/{OIDC_REALM}"
+                    f"{KEYCLOAK_INTERNAL_SERVICE_URL}/realms/{KEYCLOAK_REALM}"
                 ],
                 'essential': True,
             },
         },
-        'USERINFO_ENDPOINT': f"{OIDC_HOST}/realms/{OIDC_REALM}/protocol/openid-connect/userinfo",
+        'USERINFO_ENDPOINT': f"{KEYCLOAK_INTERNAL_SERVICE_URL}/realms/{KEYCLOAK_REALM}/protocol/openid-connect/userinfo",
         'OIDC_CREATE_USER': True,
         'OIDC_RESOLVE_USER_FUNCTION': 'api.oidc_utils.get_user_by_email',
-        'OIDC_CLIENT_ID': OIDC_BACKEND_CLIENT_ID,
-        'OIDC_CLIENT_SECRET': OIDC_BACKEND_CLIENT_SECRET,
+        'OIDC_CLIENT_ID': KEYCLOAK_BACKEND_CLIENT_ID,
+        'OIDC_CLIENT_SECRET': KEYCLOAK_BACKEND_CLIENT_SECRET,
     }
 
 

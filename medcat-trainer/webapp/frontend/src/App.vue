@@ -104,7 +104,7 @@ export default {
 
       if (this.useOidc && this.$keycloak && this.$keycloak.authenticated) {
         this.$keycloak.logout({
-          redirectUri: getRuntimeConfig().LOGOUT_REDIRECT_URI
+          redirectUri: getRuntimeConfig().KEYCLOAK_LOGOUT_REDIRECT_URI
         })
       } else {
         if (this.$route.name !== 'home') {

@@ -77,31 +77,27 @@ You'll need to `docker stop` the running containers if you have already run the 
 
 You can enable OIDC (OpenID Connect) authentication for the MedCAT Trainer. To do so, you must configure the following environment variables:
 
-#### Frontend (Runtime Config)
+| Variable                          | Example                                   | Description                                        |
+|-----------------------------------|-------------------------------------------|----------------------------------------------------|
+| `USE_OIDC`                        | `1`                                       | Enable OIDC (1=enabled, 0=traditional auth)        |
+| `KEYCLOAK_URL`                    | `https://auth.example.org`                | Keycloak base URL                                  |
+| `KEYCLOAK_REALM`                  | `cogstack`                                | Keycloak realm name                                |
+| `KEYCLOAK_LOGOUT_REDIRECT_URI`    | `https://cogstack-launchpad.example.org/` | Where to go after logout                           |
+| `KEYCLOAK_INTERNAL_SERVICE_URL`   | `http://keycloak.8080`                    | Keycloak internal service URL                      |
+| `KEYCLOAK_FRONTEND_CLIENT_ID`     | `cogstack-medcattrainer-frontend`         | Keycloak Frontend client ID (for token validation) |
+| `KEYCLOAK_BACKEND_CLIENT_ID`      | `cogstack-medcattrainer-backend`          | Keycloak Backend client ID                         |
+| `KEYCLOAK_BACKEND_CLIENT_SECRET`  | `***secret***`                            | Keycloak Backend client secret                     |
 
-| Variable | Example | Description |
-|----------|---------|-------------|
-| `VITE_USE_OIDC` | `1` | Enable OIDC (1=enabled, 0=traditional auth) |
-| `VITE_KEYCLOAK_URL` | `https://cogstack-auth.sites.er.kcl.ac.uk` | Keycloak base URL |
-| `VITE_KEYCLOAK_REALM` | `cogstack` | Keycloak realm name |
-| `VITE_KEYCLOAK_CLIENT_ID` | `cogstack-medcattrainer-frontend` | Public client ID |
-| `VITE_LOGOUT_REDIRECT_URI` | `https://cogstack-launchpad.sites.er.kcl.ac.uk/` | Where to go after logout |
+#### Advanced Optional OIDC Settings
 
-#### Backend (Django Settings)
-
-| Variable | Example | Description |
-|----------|---------|-------------|
-| `USE_OIDC` | `1` | Enable OIDC validation |
-| `OIDC_HOST` | `https://cogstack-auth.sites.er.kcl.ac.uk` | Keycloak base URL (for backend) |
-| `OIDC_REALM` | `cogstack` | Realm name |
-| `OIDC_FRONTEND_CLIENT_ID` | `cogstack-medcattrainer-frontend` | Frontend client ID (for token validation) |
-| `OIDC_BACKEND_CLIENT_ID` | `cogstack-medcattrainer-backend` | Backend client ID |
-| `OIDC_BACKEND_CLIENT_SECRET` | `***secret***` | Backend client secret |
-
+| Variable                          | Default | Description                                                                       |
+|-----------------------------------|---------|-----------------------------------------------------------------------------------|
+| `KEYCLOAK_TOKEN_MIN_VALIDITY`     | `30`    | The interval in seconds between each refresh attempt                              |
+| `KEYCLOAK_TOKEN_REFRESH_INTERVAL` | `20`    | Minimum time in seconds the token should remain valid before triggering a refresh |
 
 You can either use the Gateway Auth stack available in cogstack-ops or deploy your own Keycloak instance.
-If you deploy your own Keycloak instance, make sure to configure the network accordingly.
 
+#### Roles
 Currently, there are two roles that can be assigned to users:
 
 | Keycloak Role | Django Permission | Capabilities |
