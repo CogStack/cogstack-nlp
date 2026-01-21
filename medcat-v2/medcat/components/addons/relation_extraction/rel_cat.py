@@ -843,8 +843,10 @@ class RelCAT:
                                 "ent2_text": out_rels[3],
                                 "confidence": float("{:.3f}".format(
                                     confidence[0])),
-                                "start_ent_pos": "",
-                                "end_ent_pos": "",
+                                "start_ent1_char_pos": out_rels[18],
+                                "end_ent1_char_pos": out_rels[19],
+                                "start_ent2_char_pos": out_rels[20],
+                                "end_ent2_char_pos": out_rels[21],
                                 "start_entity_id": out_rels[8],
                                 "end_entity_id": out_rels[9],
                             })
