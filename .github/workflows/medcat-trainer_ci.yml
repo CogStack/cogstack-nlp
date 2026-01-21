@@ -59,6 +59,7 @@ jobs:
       - name: Publish dev distribution to Test PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         if: github.ref == 'refs/heads/main'
+        continue-on-error: true
         with:
           repository_url: https://test.pypi.org/legacy/
           packages_dir: medcat-trainer/client/dist
@@ -66,6 +67,7 @@ jobs:
       - name: Publish production distribution to PyPI
         if: startsWith(github.ref, 'refs/tags') && ! github.event.release.prerelease
         uses: pypa/gh-action-pypi-publish@release/v1
+        continue-on-error: true
         with:
           packages_dir: medcat-trainer/client/dist
 
