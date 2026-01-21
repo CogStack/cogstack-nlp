@@ -246,6 +246,9 @@ class RelData(Dataset):
         ent2_token: Union[str, MutableEntity] = tmp_doc_text[
             ent2_start_char_pos: ent2_end_char_pos]
 
+        annotation_token_text = self.tokenizer.hf_tokenizers.convert_ids_to_tokens(
+            self.config.general.annotation_schema_tag_ids)
+
         if (abs(ent2_start_char_pos - ent1_start_char_pos
                 ) <= self.config.general.window_size and
                 ent1_token != ent2_token):
@@ -281,24 +284,20 @@ class RelData(Dataset):
 
             if is_spacy_doc or is_mct_export:
                 tmp_doc_text = text
-                _pre_e1 = tmp_doc_text[0: (ent1_start_char_pos)]
-                _e1_s2 = (
-                    tmp_doc_text[ent1_end_char_pos: ent2_start_char_pos - 1])
-                _e2_end = tmp_doc_text[ent2_end_char_pos + 1: text_length]
-                ent2_token_end_pos = (ent2_token_end_pos + 2)
-
-                annotation_token_text = (
-                    self.tokenizer.hf_tokenizers.convert_ids_to_tokens(
-                        self.config.general.annotation_schema_tag_ids))
+                s1, e1, s2, e2 = annotation_token_text
 
                 tmp_doc_text = (
-                    str(_pre_e1) + " " +
-                    annotation_token_text[0] + " " +
-                    str(ent1_token) + " " +
-                    annotation_token_text[1] + " " + str(_e1_s2) + " " +
-                    annotation_token_text[2] + " " + str(ent2_token) + " " +
-                    annotation_token_text[3] + " " + str(_e2_end)
-                )
+                    tmp_doc_text[:ent2_end_char_pos] +
+                    e2 + tmp_doc_text[ent2_end_char_pos:])
+                tmp_doc_text = (
+                    tmp_doc_text[:ent2_start_char_pos] +
+                    s2 + tmp_doc_text[ent2_start_char_pos:])
+                tmp_doc_text = (
+                    tmp_doc_text[:ent1_end_char_pos] +
+                    e1 + tmp_doc_text[ent1_end_char_pos:])
+                tmp_doc_text = (
+                    tmp_doc_text[:ent1_start_char_pos] +
+                    s1 + tmp_doc_text[ent1_start_char_pos:])
 
                 ann_tag_token_len = len(annotation_token_text[0])
 
@@ -309,11 +308,10 @@ class RelData(Dataset):
 
                 _right_context_start_end_pos = (  # 8 for spces
                     right_context_end_char_pos + (ann_tag_token_len * 4) + 8)
-                right_context_end_char_pos = (
-                    len(tmp_doc_text) + 1 if
-                    right_context_end_char_pos >= len(tmp_doc_text) or
-                    _right_context_start_end_pos >= len(tmp_doc_text)
-                    else _right_context_start_end_pos)
+                right_context_end_char_pos = len(tmp_doc_text) if (
+                    right_context_end_char_pos >= len(tmp_doc_text)
+                    or _right_context_start_end_pos >= len(tmp_doc_text)
+                ) else _right_context_start_end_pos
 
                 # reassign the new text with added tags
                 text_length = len(tmp_doc_text)
@@ -363,16 +361,20 @@ class RelData(Dataset):
                 ent2_token_start_pos += ent1_token_start_pos
 
             ent1_ent2_new_start = (ent1_token_start_pos, ent2_token_start_pos)
-            en1_start, en1_end = window_tokenizer_data[
-                "offset_mapping"][ent1_token_start_pos]
-            en2_start, en2_end = window_tokenizer_data[
-                "offset_mapping"][ent2_token_start_pos]
+            os_map = window_tokenizer_data["offset_mapping"]
+            s1_start, s1_end = os_map[ent1_token_start_pos]
+            e1_start, e1_end = os_map[_ent1_token_end_pos]
+
+            s2_start, s2_end = os_map[ent2_token_start_pos]
+            e2_start, e2_end = os_map[_ent2_token_end_pos]
 
             return [window_tokenizer_data["input_ids"], ent1_ent2_new_start,
                     ent1_token, ent2_token, "UNK",
                     self.config.model.padding_idx,
                     None, None, None, None, None, None, doc_id, "",
-                    en1_start, en1_end, en2_start, en2_end]
+                    s1_start, e1_end, s2_start, e2_end,
+                    ent1_start_char_pos, ent1_end_char_pos,
+                    ent2_start_char_pos, ent2_end_char_pos]
         return []
 
     def _get_token_type_and_start_end(
