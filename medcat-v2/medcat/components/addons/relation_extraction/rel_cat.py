@@ -833,27 +833,20 @@ class RelCAT:
 
                         relations: list = doc.get_addon_data(  # type: ignore
                             "relations")
+                        out_rels = predict_rel_dataset.dataset["output_relations"][rel_idx]
                         relations.append(
                             {
                                 "relation": rc_cnf.general.idx2labels[
                                     predicted_label_id],
                                 "label_id": predicted_label_id,
-                                "ent1_text": predict_rel_dataset.dataset[
-                                    "output_relations"][rel_idx][
-                                    2],
-                                "ent2_text": predict_rel_dataset.dataset[
-                                    "output_relations"][rel_idx][
-                                    3],
+                                "ent1_text": out_rels[2],
+                                "ent2_text": out_rels[3],
                                 "confidence": float("{:.3f}".format(
                                     confidence[0])),
                                 "start_ent_pos": "",
                                 "end_ent_pos": "",
-                                "start_entity_id":
-                                    predict_rel_dataset.dataset[
-                                        "output_relations"][rel_idx][8],
-                                "end_entity_id":
-                                    predict_rel_dataset.dataset[
-                                        "output_relations"][rel_idx][9]
+                                "start_entity_id": out_rels[8],
+                                "end_entity_id": out_rels[9],
                             })
                     pbar.update(len(token_ids))
             pbar.close()
