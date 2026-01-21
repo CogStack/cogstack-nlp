@@ -179,7 +179,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: ./medcat-trainer/webapp/
-          load: true
+          load: true # https://docs.docker.com/build/ci/github-actions/test-before-push/
           tags: cogstacksystems/medcat-trainer:test
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=registry,ref=cogstacksystems/medcat-trainer:buildcache
