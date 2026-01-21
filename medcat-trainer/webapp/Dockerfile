@@ -23,26 +23,36 @@ RUN apt install -y nodejs && apt install -y npm
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
 
-# Copy project
-WORKDIR /home
-COPY ./ .
-
-# copy backup crontab and chmod scripts
-RUN chmod u+x /home/scripts/entry.sh && chmod u+x /home/scripts/crontab && cp /home/scripts/crontab /etc/crontab
-RUN chmod u+x /home/scripts/nginx-entrypoint.sh
-
-# Build frontend
+# Copy dependency files first for better layer caching
 WORKDIR /home/frontend
-RUN npm install && npm run build
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm install
 
-# Install requirements for backend
-WORKDIR /home/
+# Install Python dependencies
+WORKDIR /home
+COPY requirements.txt ./
 RUN pip install pip --upgrade 
 RUN pip install --upgrade setuptools
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Download spaCy models (only requires spaCy, not application code)
 ARG SPACY_MODELS="en_core_web_md"
 RUN for SPACY_MODEL in ${SPACY_MODELS}; do python -m spacy download ${SPACY_MODEL}; done
 
+# Copy rest of project
+WORKDIR /home
+COPY ./ .
+
+# Build frontend
+WORKDIR /home/frontend
+RUN npm run build
+
+# copy backup crontab and chmod scripts
+RUN chmod u+x /home/scripts/entry.sh && \
+    chmod u+x /home/scripts/crontab && cp /home/scripts/crontab /etc/crontab && \
+    chmod a+x /home/scripts/run.sh && \
+    chmod a+x /home/scripts/run-bg-process.sh && \
+    chmod u+x /home/scripts/nginx-entrypoint.sh
+ 
 WORKDIR /home/api/
-RUN chmod a+x /home/scripts/run.sh
-RUN chmod a+x /home/scripts/run-bg-process.sh
+
