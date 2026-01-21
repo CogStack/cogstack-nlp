@@ -3,30 +3,40 @@ set -e
 
 echo "Generating runtime config.json from template..."
 
-# Verify required environment variables are set
-if [ -z "$VITE_USE_OIDC" ]; then
-  echo "ERROR: VITE_USE_OIDC environment variable is required"
-  exit 1
-fi
+# Set VITE_USE_OIDC to 0 if not provided (traditional auth mode)
+export VITE_USE_OIDC="${VITE_USE_OIDC:-0}"
 
-if [ -z "$VITE_KEYCLOAK_URL" ]; then
-  echo "ERROR: VITE_KEYCLOAK_URL environment variable is required"
-  exit 1
-fi
+# If OIDC is enabled, require all OIDC-related variables
+if [ "$VITE_USE_OIDC" = "1" ]; then
+  echo "OIDC mode enabled - validating OIDC environment variables..."
 
-if [ -z "$VITE_KEYCLOAK_REALM" ]; then
-  echo "ERROR: VITE_KEYCLOAK_REALM environment variable is required"
-  exit 1
-fi
+  if [ -z "$VITE_KEYCLOAK_URL" ]; then
+    echo "ERROR: VITE_KEYCLOAK_URL environment variable is required when VITE_USE_OIDC=1"
+    exit 1
+  fi
 
-if [ -z "$VITE_KEYCLOAK_CLIENT_ID" ]; then
-  echo "ERROR: VITE_KEYCLOAK_CLIENT_ID environment variable is required"
-  exit 1
-fi
+  if [ -z "$VITE_KEYCLOAK_REALM" ]; then
+    echo "ERROR: VITE_KEYCLOAK_REALM environment variable is required when VITE_USE_OIDC=1"
+    exit 1
+  fi
 
-if [ -z "$VITE_LOGOUT_REDIRECT_URI" ]; then
-  echo "ERROR: VITE_LOGOUT_REDIRECT_URI environment variable is required"
-  exit 1
+  if [ -z "$VITE_KEYCLOAK_CLIENT_ID" ]; then
+    echo "ERROR: VITE_KEYCLOAK_CLIENT_ID environment variable is required when VITE_USE_OIDC=1"
+    exit 1
+  fi
+
+  if [ -z "$VITE_LOGOUT_REDIRECT_URI" ]; then
+    echo "ERROR: VITE_LOGOUT_REDIRECT_URI environment variable is required when VITE_USE_OIDC=1"
+    exit 1
+  fi
+
+else
+  echo "Traditional auth mode enabled (VITE_USE_OIDC=0)"
+  # Traditional auth mode - set defaults for unused variables
+  export VITE_KEYCLOAK_URL="${VITE_KEYCLOAK_URL:-http://localhost}"
+  export VITE_KEYCLOAK_REALM="${VITE_KEYCLOAK_REALM:-default}"
+  export VITE_KEYCLOAK_CLIENT_ID="${VITE_KEYCLOAK_CLIENT_ID:-medcattrainer}"
+  export VITE_LOGOUT_REDIRECT_URI="${VITE_LOGOUT_REDIRECT_URI:-/}"
 fi
 
 # Check if template exists

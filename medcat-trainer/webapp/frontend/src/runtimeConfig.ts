@@ -28,12 +28,12 @@ declare global {
  */
 const DEFAULT_CONFIG: RuntimeConfig = {
   USE_OIDC: '0',
-  KEYCLOAK_URL: 'http://keycloak.cogstack.localhost/',
-  KEYCLOAK_REALM: 'cogstack-realm',
-  KEYCLOAK_CLIENT_ID: 'cogstack-medcattrainer-frontend',
-  LOGOUT_REDIRECT_URI: 'http://launch.cogstack.localhost/',
-  KEYCLOAK_TOKEN_MIN_VALIDITY: 10000,
-  KEYCLOAK_TOKEN_REFRESH_INTERVAL: 30
+  KEYCLOAK_URL: '',
+  KEYCLOAK_REALM: '',
+  KEYCLOAK_CLIENT_ID: '',
+  LOGOUT_REDIRECT_URI: '',
+  KEYCLOAK_TOKEN_MIN_VALIDITY: 0,
+  KEYCLOAK_TOKEN_REFRESH_INTERVAL: 0
 };
 
 /**
