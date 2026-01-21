@@ -115,20 +115,67 @@ jobs:
       - test-client
       - test-frontend
       - test-backend
+    outputs:
+      image_version: ${{ steps.meta.outputs.version }}
     steps:
       - name: Checkout main
         uses: actions/checkout@v6
         with:
           ref: ${{ github.ref }}
 
-      - name: Build
-        env:
-          IMAGE_TAG: ${{ env.RELEASE_VERSION }}
-        run: |
-          docker build -t cogstacksystems/medcat-trainer:dev-latest webapp/.
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract metadata (tags, labels) for Docker MedCATtrainer
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: cogstacksystems/medcat-trainer
+          tags: |
+            # set latest tag for default branch
+            type=raw,value=latest,enable={{is_default_branch}}
+            # Include all default tags
+            type=schedule
+            type=ref,event=branch
+            type=ref,event=tag
+            type=ref,event=pr
+            type=sha
+            # Create version tag based on tag prefix
+            type=match,pattern=medcat-trainer/v(\d+\.\d+\.\d+),group=1
+          flavor: latest=false
+
+      - name: Build Docker MedCATtrainer image for testing
+        id: docker_build
+        uses: docker/build-push-action@v6
+        with:
+          context: ./medcat-trainer/webapp/
+          load: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=cogstacksystems/medcat-trainer:buildcache
+          cache-to: type=registry,ref=cogstacksystems/medcat-trainer:buildcache,mode=max
+
       - name: Run Django Tests
-        env:
-          IMAGE_TAG: ${{ env.RELEASE_VERSION }}
         run: |
-          # run tests
-          docker run --rm cogstacksystems/medcat-trainer:dev-latest python manage.py test
+          # run tests using the built image
+          docker run --rm cogstacksystems/medcat-trainer@${{ steps.docker_build.outputs.digest }} python manage.py test
+
+      - name: Push Docker MedCATtrainer image
+        id: docker_build_push
+        uses: docker/build-push-action@v6
+        with:
+          context: ./medcat-trainer/webapp/
+          load: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=cogstacksystems/medcat-trainer:buildcache
+          cache-to: type=registry,ref=cogstacksystems/medcat-trainer:buildcache,mode=max
+
+      - name: Image digest
+        run: echo ${{ steps.docker_build.outputs.digest }}
