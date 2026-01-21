@@ -284,7 +284,7 @@ class RelData(Dataset):
 
             if is_spacy_doc or is_mct_export:
                 tmp_doc_text = text
-                s1,e1,s2,e2 = annotation_token_text
+                s1, e1, s2, e2 = annotation_token_text
 
                 tmp_doc_text = (
                     tmp_doc_text[:ent2_end_char_pos] +
