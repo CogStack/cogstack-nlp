@@ -26,7 +26,7 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 # Copy dependency files first for better layer caching
 WORKDIR /home/frontend
 COPY frontend/package.json frontend/package-lock.json ./
-RUN npm install && npm run build
+RUN npm install
 
 # Install Python dependencies
 WORKDIR /home
@@ -42,6 +42,10 @@ RUN for SPACY_MODEL in ${SPACY_MODELS}; do python -m spacy download ${SPACY_MODE
 # Copy rest of project
 WORKDIR /home
 COPY ./ .
+
+# Build frontend
+WORKDIR /home/frontend
+RUN npm run build
 
 # copy backup crontab and chmod scripts
 RUN chmod u+x /home/scripts/entry.sh && \
