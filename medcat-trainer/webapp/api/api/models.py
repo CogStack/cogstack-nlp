@@ -137,7 +137,8 @@ class ModelPack(models.Model):
         else:
             # For new objects, just update the FK fields without full save
             # Fixes psycopg.errors.UniqueViolation: duplicate key value violates unique constraint "api_modelpack_pkey" 
-            super().save(*args, update_fields=['concept_db', 'vocab'], **kwargs)
+            # Note without args or kwargs as these make the error "ValueError("Cannot force both insert and updating in model saving.")"
+            super().save(update_fields=['concept_db', 'vocab'])
 
     def __str__(self):
         return self.name
