@@ -836,7 +836,8 @@ class RelCAT:
 
                         relations: list = doc.get_addon_data(  # type: ignore
                             "relations")
-                        out_rels = predict_rel_dataset.dataset["output_relations"][rel_idx]
+                        out_rels = predict_rel_dataset.dataset[
+                            "output_relations"][rel_idx]
                         relations.append(
                             {
                                 "relation": rc_cnf.general.idx2labels[
