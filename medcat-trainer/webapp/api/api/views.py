@@ -19,6 +19,8 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from medcat.components.ner.trf.deid import DeIdModel
 from medcat.utils.cdb_utils import ch2pt_from_pt2ch, get_all_ch, snomed_ct_concept_path
+from medcat.utils.config_utils import temp_changed_config
+
 
 from .admin import download_projects_with_text, download_projects_without_text, \
     import_concepts_from_cdb
@@ -678,10 +680,8 @@ def annotate_text(request):
                 logger.warning(f'Failed to get children for CUI {parent_cui}: {e}')
         cuis_set = expanded_cuis
 
-    curr_cuis = cat.config.components.linking.filters
-    cat.config.components.linking.filters.cuis = cuis_set
-    spacy_doc = cat(message)
-    cat.config.components.linking.filters = curr_cuis
+    with temp_changed_config(cat.config.components.linking, 'filters', cuis_set):
+        spacy_doc = cat(message)
 
     ents = []
     anno_tkns = []
