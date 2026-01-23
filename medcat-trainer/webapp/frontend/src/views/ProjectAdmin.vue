@@ -56,10 +56,10 @@
             <template #item.actions="{ item }">
               <div class="action-buttons" @click.stop>
                 <button
-                  class="btn btn-sm btn-action btn-edit"
-                  @click="editProject(item)"
-                  :title="'Edit ' + item.name">
-                  <font-awesome-icon icon="edit"></font-awesome-icon>
+                  class="btn btn-sm btn-action btn-clone"
+                  @click="cloneProject(item)"
+                  :title="'Clone ' + item.name">
+                  <font-awesome-icon icon="copy"></font-awesome-icon>
                 </button>
                 <button
                   class="btn btn-sm btn-action btn-reset"
@@ -101,7 +101,7 @@
         </div>
         <div class="form-content">
           <form @submit.prevent="saveProject" class="project-form">
-
+            <div class="form-sections-wrapper">
             <div class="form-section form-section-horizontal">
               <h4>Basic Information</h4>
               <div class="form-row">
@@ -319,7 +319,7 @@
                 <small class="form-text text-muted">Hold Ctrl/Cmd to select multiple</small>
               </div>
             </div>
-
+            </div>
             <div class="form-actions">
               <button type="button" class="btn btn-secondary btn-cancel" @click="closeForm">
                 <span>Cancel</span>
@@ -366,6 +366,32 @@
           </div>
         </template>
       </modal>
+
+      <!-- Clone Project Modal -->
+      <modal v-if="projectToClone" :closable="true" @modal:close="closeCloneModal" class="confirm-modal">
+        <template #header>
+          <h3>Clone Project</h3>
+        </template>
+        <template #body>
+          <div class="confirm-content">
+            <p>Enter a name for the cloned project:</p>
+            <div class="form-group" style="margin-top: 16px;">
+              <input
+                v-model="cloneName"
+                type="text"
+                class="form-control"
+                placeholder="Enter project name"
+                @keyup.enter="performClone"
+                ref="cloneNameInput"
+              />
+            </div>
+            <div class="form-actions" style="margin-top: 20px;">
+              <button class="btn btn-secondary" @click="closeCloneModal">Cancel</button>
+              <button class="btn btn-success" @click="performClone" :disabled="!cloneName || cloneName.trim() === ''">Clone</button>
+            </div>
+          </div>
+        </template>
+      </modal>
     </div>
   </div>
 </template>
@@ -393,6 +419,8 @@ export default {
       editingProject: null,
       projectToDelete: null,
       projectToReset: null,
+      projectToClone: null,
+      cloneName: '',
       saving: false,
       useBackupOption: false,
       selectedCuiFilterConcepts: [],
@@ -478,8 +506,9 @@ export default {
       const response = await this.$http.get('/api/users/')
       this.users = response.data.results || response.data
     },
-    selectProject(project) {
-      this.editProject(project)
+    selectProject(event, { item }) {
+      // v-data-table click:row passes (event, { item })
+      this.editProject(item)
     },
     editProject(project) {
       this.editingProject = project
@@ -626,12 +655,24 @@ export default {
           if (key === 'cuis_file' && this.formData[key]) {
             formDataToSend.append(key, this.formData[key])
           } else if (key === 'cdb_search_filter' || key === 'members') {
-            // Handle arrays
-            this.formData[key].forEach(val => {
-              formDataToSend.append(key, val)
-            })
+            // Handle arrays - send empty array as empty (don't append anything for empty arrays)
+            if (Array.isArray(this.formData[key]) && this.formData[key].length > 0) {
+              this.formData[key].forEach(val => {
+                if (val !== null && val !== undefined) {
+                  formDataToSend.append(key, val)
+                }
+              })
+            }
+            // For empty arrays, don't send anything (backend will handle as empty)
           } else if (this.formData[key] !== null && this.formData[key] !== undefined) {
-            formDataToSend.append(key, this.formData[key])
+            // Convert null-like values to empty strings for optional fields
+            const value = this.formData[key]
+            // For boolean false, send as string 'false'
+            if (typeof value === 'boolean') {
+              formDataToSend.append(key, value.toString())
+            } else {
+              formDataToSend.append(key, value)
+            }
           }
         })
 
@@ -652,15 +693,70 @@ export default {
           )
         }
 
+        // If we get here, the request was successful
         this.$toast?.success(`Project ${this.editingProject ? 'updated' : 'created'} successfully`)
         this.closeForm()
         await this.fetchProjects()
       } catch (error) {
         console.error('Error saving project:', error)
-        const errorMsg = error.response?.data?.error || error.response?.data?.message || 'Failed to save project'
+        console.error('Error response:', error.response?.data)
+        let errorMsg = 'Failed to save project'
+        if (error.response?.data) {
+          if (typeof error.response.data === 'string') {
+            errorMsg = error.response.data
+          } else if (error.response.data.error) {
+            errorMsg = error.response.data.error
+          } else if (error.response.data.message) {
+            errorMsg = error.response.data.message
+          } else if (typeof error.response.data === 'object') {
+            // Try to format validation errors
+            const errors = Object.entries(error.response.data)
+              .map(([field, messages]) => {
+                const msg = Array.isArray(messages) ? messages.join(', ') : String(messages)
+                return `${field}: ${msg}`
+              })
+              .join('; ')
+            errorMsg = errors || errorMsg
+          }
+        }
         this.$toast?.error(errorMsg)
       } finally {
         this.saving = false
+      }
+    },
+    cloneProject(project) {
+      this.projectToClone = project
+      this.cloneName = `${project.name} (Clone)`
+      // Focus the input after modal opens
+      this.$nextTick(() => {
+        if (this.$refs.cloneNameInput) {
+          this.$refs.cloneNameInput.focus()
+          this.$refs.cloneNameInput.select()
+        }
+      })
+    },
+    closeCloneModal() {
+      this.projectToClone = null
+      this.cloneName = ''
+    },
+    async performClone() {
+      if (!this.cloneName || this.cloneName.trim() === '') {
+        this.$toast?.error('Please enter a project name')
+        return
+      }
+      try {
+        const response = await this.$http.post(
+          `/api/project-admin/projects/${this.projectToClone.id}/clone/`,
+          { name: this.cloneName.trim() },
+          { headers: { 'Content-Type': 'application/json' } }
+        )
+        this.$toast?.success(`Project "${this.cloneName}" cloned successfully`)
+        this.closeCloneModal()
+        await this.fetchProjects()
+      } catch (error) {
+        console.error('Error cloning project:', error)
+        const errorMsg = error.response?.data?.error || 'Failed to clone project'
+        this.$toast?.error(errorMsg)
       }
     },
     confirmDelete(project) {
@@ -752,7 +848,6 @@ export default {
 }
 
 .project-admin-header {
-  margin-bottom: 40px;
   padding-bottom: 20px;
   border-bottom: 2px solid var(--color-border);
 
@@ -929,12 +1024,12 @@ export default {
       transform: translateY(-1px);
     }
 
-    &.btn-edit {
-      color: $primary;
-      border-color: $primary;
+    &.btn-clone {
+      color: $success;
+      border-color: $success;
 
       &:hover {
-        background-color: $primary;
+        background-color: $success;
         color: white;
       }
     }
@@ -1044,8 +1139,8 @@ export default {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 200px);
-  min-height: 600px;
+  height: calc(100vh - 180px);
+  max-height: calc(100vh - 180px);
 
   .form-header {
     padding: 12px 20px;
@@ -1089,20 +1184,36 @@ export default {
 
   .form-content {
     flex: 1;
-    overflow-y: auto;
+    overflow: hidden;
     padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
   }
 
   .project-form {
     padding: 0;
     max-width: 1400px;
     margin: 0 auto;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .form-sections-wrapper {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 0;
+    padding-bottom: 20px;
   }
 
   .form-section {
     margin-bottom: 20px;
     padding-bottom: 16px;
     border-bottom: 1px solid var(--color-border);
+    flex-shrink: 0;
 
     &:last-child {
       border-bottom: none;
@@ -1358,9 +1469,10 @@ export default {
     display: flex;
     justify-content: flex-end;
     gap: 10px;
-    margin-top: 20px;
+    margin-top: auto;
     padding-top: 16px;
     border-top: 1px solid var(--color-border);
+    flex-shrink: 0;
 
     .btn {
       padding: 8px 20px;
@@ -1479,7 +1591,7 @@ export default {
 
   .project-form-section {
     height: calc(100vh - 150px);
-    min-height: 500px;
+    max-height: calc(100vh - 150px);
 
     .form-header {
       padding: 10px 16px;
