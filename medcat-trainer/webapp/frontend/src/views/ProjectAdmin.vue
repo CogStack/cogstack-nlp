@@ -160,7 +160,7 @@
               <div class="form-row">
                 <div class="form-group form-group-inline">
                   <label>Model Pack</label>
-                  <select v-model="formData.model_pack" class="form-control">
+                  <select v-model="formData.model_pack" class="form-control" :disabled="useBackupOption">
                     <option :value="null">None</option>
                     <option v-for="mp in modelPacks" :key="mp.id" :value="mp.id">{{ mp.name }}</option>
                   </select>
@@ -168,7 +168,7 @@
                 <div class="form-group checkbox-group form-group-inline">
                   <label class="checkbox-label">
                     <input v-model="useBackupOption" type="checkbox" class="checkbox-input" />
-                    <span class="checkbox-text">Use backup option</span>
+                    <span class="checkbox-text">Use Concept DB / Vocabulary pair</span>
                   </label>
                 </div>
               </div>
@@ -186,6 +186,21 @@
                     <option :value="null">None</option>
                     <option v-for="vocab in vocabs" :key="vocab.id" :value="vocab.id">{{ vocab.name }}</option>
                   </select>
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group checkbox-group form-group-inline">
+                  <label class="checkbox-label">
+                    <input v-model="formData.use_model_service" type="checkbox" class="checkbox-input" />
+                    <span class="checkbox-text">Use remote MedCAT service API for document processing instead of local models</span>
+                  </label>
+                </div>
+              </div>
+              <div v-if="formData.use_model_service" class="form-row">
+                <div class="form-group form-group-inline" style="flex: 1 1 100%;">
+                  <label>Remote Model Service URL</label>
+                  <input v-model="formData.model_service_url" type="url" class="form-control" placeholder="http://medcat-service:8000" />
+                  <small class="form-text text-muted">URL of the remote MedCAT service API (e.g., http://medcat-service:8000). Note: interim model training is not supported for remote model service projects.</small>
                 </div>
               </div>
             </div>
@@ -238,20 +253,60 @@
               </div>
             </div>
 
-            <div class="form-section form-section-horizontal">
+            <div class="form-section">
               <h4>Concept Filtering</h4>
-              <div class="form-row">
-                <div class="form-group form-group-inline">
-                  <label>CUIs (comma-separated)</label>
-                  <textarea v-model="formData.cuis" class="form-control" rows="2"
-                            placeholder="e.g., C1234567, C7654321"></textarea>
+              <div class="cui-filter-controls">
+                <label class="cui-filter-checkbox">
+                  <input type="checkbox" v-model="includeSubConcepts" />
+                  Incl. Sub-concepts
+                </label>
+                <button
+                  type="button"
+                  class="btn btn-link btn-sm cui-filter-paste-toggle"
+                  @click="showCuiFilterTextarea = !showCuiFilterTextarea"
+                >
+                  {{ showCuiFilterTextarea ? 'Hide box' : 'Paste CUIs (optional)' }}
+                </button>
+              </div>
+
+              <div class="cui-filter-row">
+                <div class="cui-filter-picker">
+                  <div v-if="!getConceptDbForPicker()" class="text-muted small">
+                    Please select a Model Pack or enable backup option with Concept DB.
+                  </div>
+                  <concept-picker
+                    v-else
+                    :key="`concept-picker-${getConceptDbForPicker()}`"
+                    :restrict_concept_lookup="false"
+                    :cui_filter="''"
+                    :cdb_search_filter="[]"
+                    :concept_db="getConceptDbForPicker()"
+                    :selection="''"
+                    @pickedResult:concept="addCuiToFilter"
+                  />
                 </div>
-                <div class="form-group form-group-inline">
+                <div class="cui-file-picker">
                   <label>CUI File</label>
                   <input type="file" @change="handleCuiFileChange" accept=".json" class="form-control file-input" />
                   <small class="form-text text-muted">JSON file containing array of CUI strings</small>
                 </div>
               </div>
+
+              <div v-if="selectedCuiFilterConcepts.length > 0" class="cui-pill-row">
+                <span class="cui-pill" v-for="item in selectedCuiFilterConcepts" :key="item.cui" :title="item.name || item.cui">
+                  <span class="cui-pill-text">{{ item.cui }} - {{ item.name }}</span>
+                  <button type="button" class="cui-pill-remove" @click="removeCuiFromFilter(item.cui)">×</button>
+                </span>
+              </div>
+
+              <textarea
+                v-if="showCuiFilterTextarea"
+                v-model="formData.cuis"
+                class="form-control"
+                rows="2"
+                placeholder="Optional: paste comma separated list e.g. 91175000, 84757009"
+                @blur="syncPillsFromCuiText"
+              ></textarea>
             </div>
 
             <div class="form-section">
@@ -317,11 +372,13 @@
 
 <script>
 import Modal from '@/components/common/Modal.vue'
+import ConceptPicker from '@/components/common/ConceptPicker.vue'
 
 export default {
   name: 'ProjectAdmin',
   components: {
-    Modal
+    Modal,
+    ConceptPicker
   },
   data() {
     return {
@@ -338,6 +395,9 @@ export default {
       projectToReset: null,
       saving: false,
       useBackupOption: false,
+      selectedCuiFilterConcepts: [],
+      includeSubConcepts: false,
+      showCuiFilterTextarea: false,
       formData: {
         name: '',
         description: '',
@@ -350,6 +410,8 @@ export default {
         vocab: null,
         model_pack: null,
         cdb_search_filter: [],
+        use_model_service: false,
+        model_service_url: '',
         require_entity_validation: true,
         train_model_on_submit: true,
         add_new_entities: false,
@@ -433,6 +495,8 @@ export default {
         vocab: project.vocab || null,
         model_pack: project.model_pack || null,
         cdb_search_filter: project.cdb_search_filter || [],
+        use_model_service: project.use_model_service || false,
+        model_service_url: project.model_service_url || '',
         require_entity_validation: project.require_entity_validation !== undefined ? project.require_entity_validation : true,
         train_model_on_submit: project.train_model_on_submit !== undefined ? project.train_model_on_submit : true,
         add_new_entities: project.add_new_entities || false,
@@ -446,12 +510,21 @@ export default {
       }
       // Show backup options if CDB or Vocab are set
       this.useBackupOption = !!(project.concept_db || project.vocab)
+      // Initialize CUI filter concepts from existing cuis
+      if (project.cuis) {
+        this.syncPillsFromCuiText()
+      } else {
+        this.selectedCuiFilterConcepts = []
+      }
       this.showCreateForm = true
     },
     closeForm() {
       this.showCreateForm = false
       this.editingProject = null
       this.useBackupOption = false
+      this.selectedCuiFilterConcepts = []
+      this.includeSubConcepts = false
+      this.showCuiFilterTextarea = false
       this.resetForm()
     },
     resetForm() {
@@ -467,6 +540,8 @@ export default {
         vocab: null,
         model_pack: null,
         cdb_search_filter: [],
+        use_model_service: false,
+        model_service_url: '',
         require_entity_validation: true,
         train_model_on_submit: true,
         add_new_entities: false,
@@ -479,6 +554,9 @@ export default {
         members: []
       }
       this.useBackupOption = false
+      this.selectedCuiFilterConcepts = []
+      this.includeSubConcepts = false
+      this.showCuiFilterTextarea = false
     },
     handleCuiFileChange(event) {
       const file = event.target.files[0]
@@ -486,10 +564,52 @@ export default {
         this.formData.cuis_file = file
       }
     },
+    parseCuis(text) {
+      if (!text) return []
+      return text
+        .split(/[,;\n\r\t]+/g)
+        .map(s => s.trim())
+        .filter(Boolean)
+    },
+    syncCuiTextFromPills() {
+      const cuis = this.selectedCuiFilterConcepts.map(c => c.cui).filter(Boolean)
+      this.formData.cuis = cuis.join(',')
+    },
+    syncPillsFromCuiText() {
+      const cuis = this.parseCuis(this.formData.cuis)
+      const existingByCui = Object.assign({}, ...this.selectedCuiFilterConcepts.map(item => ({ [item.cui]: item })))
+      this.selectedCuiFilterConcepts = cuis.map(cui => existingByCui[cui] || { cui })
+    },
+    addCuiToFilter(picked) {
+      if (!picked?.cui) return
+      if (!this.selectedCuiFilterConcepts.find(x => x.cui === picked.cui)) {
+        this.selectedCuiFilterConcepts.push({ cui: picked.cui, name: picked.name })
+        this.syncCuiTextFromPills()
+      }
+    },
+    removeCuiFromFilter(cui) {
+      this.selectedCuiFilterConcepts = this.selectedCuiFilterConcepts.filter(x => x.cui !== cui)
+      this.syncCuiTextFromPills()
+    },
+    getConceptDbForPicker() {
+      // If using backup option, use the selected concept_db
+      if (this.useBackupOption && this.formData.concept_db) {
+        return this.formData.concept_db
+      }
+      // Otherwise, try to get concept_db from selected model_pack
+      if (this.formData.model_pack) {
+        const modelPack = this.modelPacks.find(mp => mp.id === this.formData.model_pack)
+        return modelPack?.concept_db || null
+      }
+      return null
+    },
     async saveProject() {
       this.saving = true
       try {
         const formDataToSend = new FormData()
+
+        // Sync CUIs from pills before saving
+        this.syncCuiTextFromPills()
 
         // If not using backup option, clear CDB and Vocab
         if (!this.useBackupOption) {
@@ -600,6 +720,22 @@ export default {
     getDatasetName(datasetId) {
       const dataset = this.datasets.find(ds => ds.id === datasetId)
       return dataset ? dataset.name : 'N/A'
+    }
+  },
+  watch: {
+    'formData.cuis'(newVal) {
+      // Sync pills when cuis changes externally (e.g., from file upload)
+      if (newVal && this.selectedCuiFilterConcepts.length === 0) {
+        this.syncPillsFromCuiText()
+      }
+    },
+    'formData.model_pack'() {
+      // Clear pills when model pack changes to avoid confusion
+      // User can re-select concepts with the new model pack
+      if (!this.editingProject) {
+        this.selectedCuiFilterConcepts = []
+        this.formData.cuis = ''
+      }
     }
   }
 }
@@ -1033,6 +1169,12 @@ export default {
         box-shadow: 0 0 0 2px rgba(0, 114, 206, 0.1);
       }
 
+      &:disabled {
+        background-color: #f8f9fa;
+        cursor: not-allowed;
+        opacity: 0.6;
+      }
+
       &::placeholder {
         color: var(--color-text);
         opacity: 0.5;
@@ -1120,6 +1262,96 @@ export default {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
     gap: 8px;
+  }
+
+  // Concept Filtering Styles (from Demo.vue)
+  .cui-filter-controls {
+    margin: -4px 0 8px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .cui-filter-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    font-size: 0.9rem;
+    cursor: pointer;
+    font-weight: 400;
+    color: var(--color-text);
+  }
+
+  .cui-filter-paste-toggle {
+    padding: 0;
+    font-size: 0.85rem;
+  }
+
+  .cui-filter-row {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    margin: 6px 0 10px 0;
+  }
+
+  .cui-filter-picker {
+    flex: 0 0 50%;
+    max-width: 50%;
+  }
+
+  .cui-file-picker {
+    flex: 0 0 calc(50% - 16px);
+    max-width: calc(50% - 16px);
+
+    label {
+      display: block;
+      margin-bottom: 4px;
+      font-weight: 500;
+      color: var(--color-heading);
+      font-size: 0.9rem;
+    }
+  }
+
+  .cui-pill-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 6px 0 10px 0;
+  }
+
+  .cui-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    background: rgba(13, 110, 253, 0.08);
+    color: #0b5ed7;
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: 0.75rem;
+    line-height: 1;
+  }
+
+  .cui-pill-text {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  }
+
+  .cui-pill-remove {
+    border: none;
+    background: transparent;
+    color: inherit;
+    padding: 0;
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+
+    &:hover {
+      opacity: 1;
+    }
   }
 
   .form-actions {
@@ -1297,6 +1529,17 @@ export default {
 
   .checkbox-grid {
     grid-template-columns: 1fr;
+  }
+
+  .cui-filter-row {
+    flex-direction: column;
+    gap: 12px;
+
+    .cui-filter-picker,
+    .cui-file-picker {
+      flex: 1 1 100%;
+      max-width: 100%;
+    }
   }
 }
 </style>
