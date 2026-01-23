@@ -1121,30 +1121,50 @@ def project_admin_detail(request, project_id):
         # Handle both JSON and FormData
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
 
-        # Convert many-to-many fields from lists to proper format
-        if 'cdb_search_filter' in data and isinstance(data['cdb_search_filter'], list):
-            # Already a list, keep it
-            pass
-        elif 'cdb_search_filter' in request.data:
-            # FormData sends as multiple values with same key
-            data['cdb_search_filter'] = request.data.getlist('cdb_search_filter')
+        # Extract many-to-many fields before serializer validation
+        cdb_search_filter_ids = []
+        if 'cdb_search_filter' in request.data:
+            if isinstance(request.data.get('cdb_search_filter'), list):
+                cdb_search_filter_ids = request.data['cdb_search_filter']
+            else:
+                # FormData sends as multiple values with same key
+                cdb_search_filter_ids = request.data.getlist('cdb_search_filter')
+        # Remove from data dict so serializer doesn't try to validate it
+        data.pop('cdb_search_filter', None)
 
+        members_ids = []
         if 'members' in request.data:
             if isinstance(request.data.get('members'), list):
-                data['members'] = request.data['members']
+                members_ids = request.data['members']
             else:
-                data['members'] = request.data.getlist('members')
+                members_ids = request.data.getlist('members')
+        # Remove from data dict so serializer doesn't try to validate it
+        data.pop('members', None)
+
+        # Convert string booleans to actual booleans
+        boolean_fields = ['project_locked', 'annotation_classification', 'require_entity_validation',
+                         'train_model_on_submit', 'add_new_entities', 'restrict_concept_lookup',
+                         'terminate_available', 'irrelevant_available', 'enable_entity_annotation_comments',
+                         'use_model_service']
+        for field in boolean_fields:
+            if field in data:
+                if isinstance(data[field], str):
+                    data[field] = data[field].lower() in ('true', '1', 'yes', 'on')
 
         serializer = ProjectAnnotateEntitiesSerializer(project, data=data, partial=True)
         if serializer.is_valid():
-            project = serializer.save()
-            # Handle many-to-many fields manually if needed
-            if 'cdb_search_filter' in data:
-                project.cdb_search_filter.set(data['cdb_search_filter'])
-            if 'members' in data:
-                project.members.set(data['members'])
-            return Response(ProjectAnnotateEntitiesSerializer(project).data)
-        return Response(serializer.errors, status=400)
+            try:
+                project = serializer.save()
+                # Handle many-to-many fields manually after saving
+                project.cdb_search_filter.set(cdb_search_filter_ids)
+                project.members.set(members_ids)
+                return Response(ProjectAnnotateEntitiesSerializer(project).data)
+            except Exception as e:
+                logger.error(f"Error saving project {project_id}: {e}", exc_info=e)
+                return Response({'error': f'Failed to save project: {str(e)}'}, status=400)
+        else:
+            logger.warning(f"Validation errors for project {project_id}: {serializer.errors}")
+            return Response(serializer.errors, status=400)
 
     elif request.method == 'DELETE':
         project.delete()
@@ -1165,13 +1185,21 @@ def project_admin_create(request):
         if isinstance(request.data.get('cdb_search_filter'), list):
             data['cdb_search_filter'] = request.data['cdb_search_filter']
         else:
-            data['cdb_search_filter'] = request.data.getlist('cdb_search_filter')
+            cdb_filter_list = request.data.getlist('cdb_search_filter')
+            # Only include if list has items, otherwise set to empty list
+            data['cdb_search_filter'] = cdb_filter_list if cdb_filter_list else []
+    else:
+        data['cdb_search_filter'] = []
 
     if 'members' in request.data:
         if isinstance(request.data.get('members'), list):
             data['members'] = request.data['members']
         else:
-            data['members'] = request.data.getlist('members')
+            members_list = request.data.getlist('members')
+            # Only include if list has items
+            data['members'] = members_list if members_list else []
+    else:
+        data['members'] = []
 
     serializer = ProjectAnnotateEntitiesSerializer(data=data)
     if serializer.is_valid():
@@ -1186,6 +1214,52 @@ def project_admin_create(request):
             project.members.add(request.user)
         return Response(ProjectAnnotateEntitiesSerializer(project).data, status=201)
     return Response(serializer.errors, status=400)
+
+
+@api_view(http_method_names=['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def project_admin_clone(request, project_id):
+    """
+    Clone a project (user must be authenticated and have permission).
+    """
+    import copy
+    try:
+        project = ProjectAnnotateEntities.objects.get(id=project_id)
+    except ProjectAnnotateEntities.DoesNotExist:
+        return Response({'error': 'Project not found'}, status=404)
+
+    # Check if user is project admin
+    from .permissions import is_project_admin
+    if not is_project_admin(request.user, project):
+        return Response({'error': 'You do not have permission to clone this project'}, status=403)
+
+    try:
+        # Get custom name from request, or use default
+        custom_name = request.data.get('name', None) if hasattr(request.data, 'get') else None
+        if not custom_name:
+            custom_name = f'{project.name} (Clone)'
+
+        # Create a copy of the project
+        project_copy = copy.copy(project)
+        project_copy.id = None
+        project_copy.pk = None
+        project_copy.name = custom_name
+        project_copy.save()
+
+        # Copy many-to-many fields
+        for m in project.members.all():
+            project_copy.members.add(m)
+        for c in project.cdb_search_filter.all():
+            project_copy.cdb_search_filter.add(c)
+        for t in project.tasks.all():
+            project_copy.tasks.add(t)
+
+        project_copy.save()
+        serializer = ProjectAnnotateEntitiesSerializer(project_copy)
+        return Response(serializer.data, status=201)
+    except Exception as e:
+        logger.error(f"Failed to clone project: {e}", exc_info=e)
+        return Response({'error': f'Failed to clone project: {str(e)}'}, status=500)
 
 
 @api_view(http_method_names=['POST'])

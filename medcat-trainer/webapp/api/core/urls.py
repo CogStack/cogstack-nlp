@@ -63,6 +63,7 @@ urlpatterns = [
     path('api/cuis-to-concepts/', api.views.cuis_to_concepts),
     path('api/project-admin/projects/', api.views.project_admin_projects),
     path('api/project-admin/projects/<int:project_id>/', api.views.project_admin_detail),
+    path('api/project-admin/projects/<int:project_id>/clone/', api.views.project_admin_clone),
     path('api/project-admin/projects/<int:project_id>/reset/', api.views.project_admin_reset),
     path('api/project-admin/projects/create/', api.views.project_admin_create),
     path('reset_password/', api.views.ResetPasswordView.as_view(), name='reset_password'),
