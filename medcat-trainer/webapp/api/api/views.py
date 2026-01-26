@@ -199,6 +199,20 @@ class ModelPackViewSet(viewsets.ModelViewSet):
 
 
 class DatasetViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing datasets.
+    
+    File Schema Requirements:
+    - Format: .csv or .xlsx file
+    - Required columns:
+      * name: A unique identifier for each document
+      * text: The free-text content to annotate
+    
+    Example CSV:
+    name,text
+    doc001,"First document text"
+    doc002,"Second document text"
+    """
     permission_classes = [permissions.IsAuthenticated]
     http_method_names = ['get', 'post']
     queryset = Dataset.objects.all()

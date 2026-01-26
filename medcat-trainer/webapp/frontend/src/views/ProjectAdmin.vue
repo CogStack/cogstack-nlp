@@ -68,75 +68,16 @@
       <!-- Projects Tab -->
       <div v-if="activeTab === 'projects'">
       <!-- Project List View -->
-      <div v-if="!showCreateForm && !editingProject" class="project-list-section">
-        <div class="section-header">
-          <h3>
-            Your Projects
-            <span class="project-count">({{ projects.length }})</span>
-          </h3>
-        </div>
-
-        <div v-if="projects.length > 0" class="projects-table-container">
-          <v-data-table
-            :items="projects"
-            :headers="tableHeaders"
-            :hover="true"
-            @click:row="selectProject"
-            hide-default-footer
-            :items-per-page="-1"
-            class="projects-table"
-            item-class="project-row"
-            dense>
-            <template #item.name="{ item }">
-              <div class="project-name-cell">
-                <strong class="project-name">{{ item.name }}</strong>
-                <span v-if="item.description" class="project-description">{{ item.description }}</span>
-              </div>
-            </template>
-            <template #item.status="{ item }">
-              <span class="badge" :class="getStatusClass(item.project_status)">
-                {{ getStatusText(item.project_status) }}
-              </span>
-            </template>
-            <template #item.dataset="{ item }">
-              <span class="dataset-name">{{ getDatasetName(item.dataset) }}</span>
-            </template>
-            <template #item.actions="{ item }">
-              <div class="action-buttons" @click.stop>
-                <button
-                  class="btn btn-sm btn-action btn-clone"
-                  @click="cloneProject(item)"
-                  :title="'Clone ' + item.name">
-                  <font-awesome-icon icon="copy"></font-awesome-icon>
-                </button>
-                <button
-                  class="btn btn-sm btn-action btn-reset"
-                  @click="confirmReset(item)"
-                  :title="'Reset ' + item.name">
-                  <font-awesome-icon icon="undo"></font-awesome-icon>
-                </button>
-                <button
-                  class="btn btn-sm btn-action btn-delete"
-                  @click="confirmDelete(item)"
-                  :title="'Delete ' + item.name">
-                  <font-awesome-icon icon="trash"></font-awesome-icon>
-                </button>
-              </div>
-            </template>
-          </v-data-table>
-        </div>
-
-        <div v-else class="no-projects">
-          <div class="empty-state">
-            <h4>No Projects Yet</h4>
-            <p>You don't have any projects yet. Create one to get started!</p>
-            <button class="btn btn-primary btn-create-empty" @click="showCreateForm = true">
-              <font-awesome-icon icon="plus"></font-awesome-icon>
-              <span>Create Your First Project</span>
-            </button>
-          </div>
-        </div>
-      </div>
+      <projects-list
+        v-if="!showCreateForm && !editingProject"
+        :projects="projects"
+        :datasets="datasets"
+        @select-project="selectProject"
+        @clone-project="cloneProject"
+        @confirm-reset="confirmReset"
+        @confirm-delete="confirmDelete"
+        @create-project="showCreateForm = true"
+      />
 
       <!-- Project Form View (replaces list) -->
       <div v-else class="project-form-section">
@@ -445,271 +386,70 @@
 
       <!-- Model Packs Tab -->
       <div v-if="activeTab === 'modelpacks'" class="admin-section">
-        <div v-if="!showModelPackForm && !editingModelPack" class="list-section">
-          <div class="section-header">
-            <h3>Model Packs <span class="item-count">({{ modelPacks.length }})</span></h3>
-          </div>
-          <div v-if="modelPacks.length > 0" class="table-container">
-            <v-data-table
-              :items="modelPacks"
-              :headers="modelPackHeaders"
-              :hover="true"
-              @click:row="selectModelPack"
-              hide-default-footer
-              :items-per-page="-1"
-              class="admin-table"
-              dense>
-              <template #item.concept_db="{ item }">
-                <span>{{ getConceptDbName(item.concept_db) }}</span>
-              </template>
-              <template #item.vocab="{ item }">
-                <span>{{ getVocabName(item.vocab) }}</span>
-              </template>
-              <template #item.actions="{ item }">
-                <div class="action-buttons" @click.stop>
-                  <button class="btn btn-sm btn-action btn-edit" @click="editModelPack(item)" title="Edit">
-                    <font-awesome-icon icon="edit"></font-awesome-icon>
-                  </button>
-                  <button class="btn btn-sm btn-action btn-delete" @click="confirmDeleteModelPack(item)" title="Delete">
-                    <font-awesome-icon icon="trash"></font-awesome-icon>
-                  </button>
-                </div>
-              </template>
-            </v-data-table>
-          </div>
-          <div v-else class="empty-state">
-            <h4>No Model Packs</h4>
-            <p>Add a model pack to get started.</p>
-          </div>
-        </div>
+        <model-packs-list
+          v-if="!showModelPackForm && !editingModelPack"
+          :model-packs="modelPacks"
+          :concept-dbs="conceptDbs"
+          :vocabs="vocabs"
+          @select-model-pack="selectModelPack"
+          @edit-model-pack="editModelPack"
+          @confirm-delete-model-pack="confirmDeleteModelPack"
+        />
 
         <!-- Model Pack Form -->
-        <div v-else class="form-section">
-          <div class="form-header">
-            <button class="btn btn-back" @click="closeModelPackForm">
-              <font-awesome-icon icon="arrow-left"></font-awesome-icon>
-              <span>Back</span>
-            </button>
-            <h3>{{ editingModelPack ? 'Edit Model Pack' : 'Add Model Pack' }}</h3>
-          </div>
-          <div class="form-content">
-            <form @submit.prevent="saveModelPack" class="admin-form">
-              <div class="form-sections-wrapper">
-                <div class="form-section form-section-horizontal">
-                  <div class="form-group">
-                    <label>Name *</label>
-                    <input v-model="modelPackForm.name" type="text" class="form-control" required />
-                  </div>
-                  <div class="form-group">
-                    <label>Model Pack File *</label>
-                    <input type="file" @change="handleModelPackFileChange" accept=".zip" class="form-control" :required="!editingModelPack" />
-                    <small class="form-text text-muted">Upload a .zip file containing the model pack</small>
-                  </div>
-                </div>
-                <div class="form-section form-section-horizontal">
-                  <div class="form-group">
-                    <label>Concept DB</label>
-                    <select v-model="modelPackForm.concept_db" class="form-control">
-                      <option :value="null">None</option>
-                      <option v-for="cdb in conceptDbs" :key="cdb.id" :value="cdb.id">{{ cdb.name }}</option>
-                    </select>
-                  </div>
-                  <div class="form-group">
-                    <label>Vocabulary</label>
-                    <select v-model="modelPackForm.vocab" class="form-control">
-                      <option :value="null">None</option>
-                      <option v-for="vocab in vocabs" :key="vocab.id" :value="vocab.id">{{ vocab.name }}</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-              <div class="form-actions">
-                <button type="button" class="btn btn-secondary" @click="closeModelPackForm">Cancel</button>
-                <button type="submit" class="btn btn-primary" :disabled="saving">
-                  <font-awesome-icon v-if="saving" icon="spinner" spin></font-awesome-icon>
-                  <span>{{ saving ? 'Saving...' : 'Save' }}</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <model-pack-form
+          v-else
+          :editing="!!editingModelPack"
+          :model-pack="editingModelPack"
+          :concept-dbs="conceptDbs"
+          :vocabs="vocabs"
+          :saving="saving"
+          @close="closeModelPackForm"
+          @save="handleModelPackSave"
+        />
       </div>
       <!-- End Model Packs Tab -->
 
       <!-- Datasets Tab -->
       <div v-if="activeTab === 'datasets'" class="admin-section">
-        <div v-if="!showDatasetForm && !editingDataset" class="list-section">
-          <div class="section-header">
-            <h3>Datasets <span class="item-count">({{ datasets.length }})</span></h3>
-          </div>
-          <div v-if="datasets.length > 0" class="table-container">
-            <v-data-table
-              :items="datasets"
-              :headers="datasetHeaders"
-              :hover="true"
-              @click:row="selectDataset"
-              hide-default-footer
-              :items-per-page="-1"
-              class="admin-table"
-              dense>
-              <template #item.actions="{ item }">
-                <div class="action-buttons" @click.stop>
-                  <button class="btn btn-sm btn-action btn-edit" @click="editDataset(item)" title="Edit">
-                    <font-awesome-icon icon="edit"></font-awesome-icon>
-                  </button>
-                  <button class="btn btn-sm btn-action btn-delete" @click="confirmDeleteDataset(item)" title="Delete">
-                    <font-awesome-icon icon="trash"></font-awesome-icon>
-                  </button>
-                </div>
-              </template>
-            </v-data-table>
-          </div>
-          <div v-else class="empty-state">
-            <h4>No Datasets</h4>
-            <p>Add a dataset to get started.</p>
-          </div>
-        </div>
+        <datasets-list
+          v-if="!showDatasetForm && !editingDataset"
+          :datasets="datasets"
+          @select-dataset="selectDataset"
+          @edit-dataset="editDataset"
+          @confirm-delete-dataset="confirmDeleteDataset"
+        />
 
         <!-- Dataset Form -->
-        <div v-else class="form-section">
-          <div class="form-header">
-            <button class="btn btn-back" @click="closeDatasetForm">
-              <font-awesome-icon icon="arrow-left"></font-awesome-icon>
-              <span>Back</span>
-            </button>
-            <h3>{{ editingDataset ? 'Edit Dataset' : 'Add Dataset' }}</h3>
-          </div>
-          <div class="form-content">
-            <form @submit.prevent="saveDataset" class="admin-form">
-              <div class="form-sections-wrapper">
-                <div class="form-section form-section-horizontal">
-                  <div class="form-group">
-                    <label>Name *</label>
-                    <input v-model="datasetForm.name" type="text" class="form-control" required />
-                  </div>
-                  <div class="form-group">
-                    <label>Description</label>
-                    <textarea v-model="datasetForm.description" class="form-control" rows="2"></textarea>
-                  </div>
-                </div>
-                <div class="form-section">
-                  <div class="form-group">
-                    <label>Original File *</label>
-                    <input type="file" @change="handleDatasetFileChange" accept=".csv,.xlsx" class="form-control" :required="!editingDataset" />
-                    <small class="form-text text-muted">Upload a .csv or .xlsx file. Must contain 'name' and 'text' columns.</small>
-                  </div>
-                </div>
-              </div>
-              <div class="form-actions">
-                <button type="button" class="btn btn-secondary" @click="closeDatasetForm">Cancel</button>
-                <button type="submit" class="btn btn-primary" :disabled="saving">
-                  <font-awesome-icon v-if="saving" icon="spinner" spin></font-awesome-icon>
-                  <span>{{ saving ? 'Saving...' : 'Save' }}</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <dataset-form
+          v-else
+          :editing="!!editingDataset"
+          :dataset="editingDataset"
+          :saving="saving"
+          @close="closeDatasetForm"
+          @save="handleDatasetSave"
+        />
       </div>
       <!-- End Datasets Tab -->
 
       <!-- Users Tab -->
       <div v-if="activeTab === 'users'" class="admin-section">
-        <div v-if="!showUserForm && !editingUser" class="list-section">
-          <div class="section-header">
-            <h3>Users <span class="item-count">({{ users.length }})</span></h3>
-          </div>
-          <div v-if="users.length > 0" class="table-container">
-            <v-data-table
-              :items="users"
-              :headers="userHeaders"
-              :hover="true"
-              @click:row="selectUser"
-              hide-default-footer
-              :items-per-page="-1"
-              class="admin-table"
-              dense>
-              <template #item.is_staff="{ item }">
-                <span class="badge" :class="item.is_staff ? 'badge-success' : 'badge-secondary'">
-                  {{ item.is_staff ? 'Staff' : 'User' }}
-                </span>
-              </template>
-              <template #item.is_superuser="{ item }">
-                <span class="badge" :class="item.is_superuser ? 'badge-danger' : 'badge-secondary'">
-                  {{ item.is_superuser ? 'Admin' : 'Regular' }}
-                </span>
-              </template>
-              <template #item.actions="{ item }">
-                <div class="action-buttons" @click.stop>
-                  <button class="btn btn-sm btn-action btn-edit" @click="editUser(item)" title="Edit">
-                    <font-awesome-icon icon="edit"></font-awesome-icon>
-                  </button>
-                </div>
-              </template>
-            </v-data-table>
-          </div>
-          <div v-else class="empty-state">
-            <h4>No Users</h4>
-            <p>Add a user to get started.</p>
-          </div>
-        </div>
+        <users-list
+          v-if="!showUserForm && !editingUser"
+          :users="users"
+          @select-user="selectUser"
+          @edit-user="editUser"
+        />
 
         <!-- User Form -->
-        <div v-else class="form-section">
-          <div class="form-header">
-            <button class="btn btn-back" @click="closeUserForm">
-              <font-awesome-icon icon="arrow-left"></font-awesome-icon>
-              <span>Back</span>
-            </button>
-            <h3>{{ editingUser ? 'Edit User' : 'Add User' }}</h3>
-          </div>
-          <div class="form-content">
-            <form @submit.prevent="saveUser" class="admin-form">
-              <div class="form-sections-wrapper">
-                <div class="form-section form-section-horizontal">
-                  <div class="form-group">
-                    <label>Username *</label>
-                    <input v-model="userForm.username" type="text" class="form-control" required />
-                  </div>
-                  <div class="form-group">
-                    <label>Email</label>
-                    <input v-model="userForm.email" type="email" class="form-control" />
-                  </div>
-                </div>
-                <div v-if="!editingUser" class="form-section">
-                  <div class="form-group">
-                    <label>Password</label>
-                    <input v-model="userForm.password" type="password" class="form-control" />
-                    <small class="form-text text-muted">Note: Password cannot be set via API. Users should set their password through password reset or Django admin.</small>
-                  </div>
-                </div>
-                <div class="form-section">
-                  <div class="checkbox-grid">
-                    <div class="form-group checkbox-group">
-                      <label class="checkbox-label">
-                        <input v-model="userForm.is_staff" type="checkbox" class="checkbox-input" />
-                        <span class="checkbox-text">Staff</span>
-                      </label>
-                    </div>
-                    <div class="form-group checkbox-group">
-                      <label class="checkbox-label">
-                        <input v-model="userForm.is_superuser" type="checkbox" class="checkbox-input" />
-                        <span class="checkbox-text">Superuser (Admin)</span>
-                      </label>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="form-actions">
-                <button type="button" class="btn btn-secondary" @click="closeUserForm">Cancel</button>
-                <button type="submit" class="btn btn-primary" :disabled="saving">
-                  <font-awesome-icon v-if="saving" icon="spinner" spin></font-awesome-icon>
-                  <span>{{ saving ? 'Saving...' : 'Save' }}</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <user-form
+          v-else
+          :editing="!!editingUser"
+          :user="editingUser"
+          :saving="saving"
+          @close="closeUserForm"
+          @save="handleUserSave"
+        />
       </div>
       <!-- End Users Tab -->
 
@@ -749,12 +489,26 @@
 <script>
 import Modal from '@/components/common/Modal.vue'
 import ConceptPicker from '@/components/common/ConceptPicker.vue'
+import ProjectsList from '@/components/admin/ProjectsList.vue'
+import ModelPacksList from '@/components/admin/ModelPacksList.vue'
+import ModelPackForm from '@/components/admin/ModelPackForm.vue'
+import DatasetsList from '@/components/admin/DatasetsList.vue'
+import DatasetForm from '@/components/admin/DatasetForm.vue'
+import UsersList from '@/components/admin/UsersList.vue'
+import UserForm from '@/components/admin/UserForm.vue'
 
 export default {
   name: 'ProjectAdmin',
   components: {
     Modal,
-    ConceptPicker
+    ConceptPicker,
+    ProjectsList,
+    ModelPacksList,
+    ModelPackForm,
+    DatasetsList,
+    DatasetForm,
+    UsersList,
+    UserForm
   },
   data() {
     return {
@@ -781,31 +535,13 @@ export default {
       showModelPackForm: false,
       editingModelPack: null,
       modelPackToDelete: null,
-      modelPackForm: {
-        name: '',
-        model_pack: null,
-        concept_db: null,
-        vocab: null
-      },
       // Dataset management
       showDatasetForm: false,
       editingDataset: null,
       datasetToDelete: null,
-      datasetForm: {
-        name: '',
-        description: '',
-        original_file: null
-      },
       // User management
       showUserForm: false,
       editingUser: null,
-      userForm: {
-        username: '',
-        email: '',
-        password: '',
-        is_staff: false,
-        is_superuser: false
-      },
       formData: {
         name: '',
         description: '',
@@ -836,24 +572,6 @@ export default {
         { title: 'Description', value: 'description' },
         { title: 'Status', value: 'status' },
         { title: 'Dataset', value: 'dataset' },
-        { title: 'Actions', value: 'actions', sortable: false }
-      ],
-      modelPackHeaders: [
-        { title: 'Name', value: 'name' },
-        { title: 'Concept DB', value: 'concept_db' },
-        { title: 'Vocabulary', value: 'vocab' },
-        { title: 'Actions', value: 'actions', sortable: false }
-      ],
-      datasetHeaders: [
-        { title: 'Name', value: 'name' },
-        { title: 'Description', value: 'description' },
-        { title: 'Actions', value: 'actions', sortable: false }
-      ],
-      userHeaders: [
-        { title: 'Username', value: 'username' },
-        { title: 'Email', value: 'email' },
-        { title: 'Staff', value: 'is_staff' },
-        { title: 'Admin', value: 'is_superuser' },
         { title: 'Actions', value: 'actions', sortable: false }
       ]
     }
@@ -1221,71 +939,43 @@ export default {
       const dataset = this.datasets.find(ds => ds.id === datasetId)
       return dataset ? dataset.name : 'N/A'
     },
-    getConceptDbName(conceptDbId) {
-      if (!conceptDbId) return 'N/A'
-      const cdb = this.conceptDbs.find(c => c.id === (typeof conceptDbId === 'object' ? conceptDbId.id : conceptDbId))
-      return cdb ? cdb.name : 'N/A'
-    },
-    getVocabName(vocabId) {
-      if (!vocabId) return 'N/A'
-      const vocab = this.vocabs.find(v => v.id === (typeof vocabId === 'object' ? vocabId.id : vocabId))
-      return vocab ? vocab.name : 'N/A'
-    },
     // Model Pack methods
     selectModelPack(event, { item }) {
       this.editModelPack(item)
     },
     editModelPack(modelPack) {
       this.editingModelPack = modelPack
-      this.modelPackForm = {
-        name: modelPack.name || '',
-        model_pack: null,
-        concept_db: modelPack.concept_db || null,
-        vocab: modelPack.vocab || null
-      }
       this.showModelPackForm = true
     },
     closeModelPackForm() {
       this.showModelPackForm = false
       this.editingModelPack = null
-      this.modelPackForm = {
-        name: '',
-        model_pack: null,
-        concept_db: null,
-        vocab: null
-      }
     },
-    handleModelPackFileChange(event) {
-      const file = event.target.files[0]
-      if (file) {
-        this.modelPackForm.model_pack = file
-      }
-    },
-    async saveModelPack() {
+    async handleModelPackSave(formData) {
       this.saving = true
       try {
-        const formData = new FormData()
-        formData.append('name', this.modelPackForm.name)
-        if (this.modelPackForm.model_pack) {
-          formData.append('model_pack', this.modelPackForm.model_pack)
+        const formDataToSend = new FormData()
+        formDataToSend.append('name', formData.name)
+        if (formData.model_pack) {
+          formDataToSend.append('model_pack', formData.model_pack)
         }
-        if (this.modelPackForm.concept_db) {
-          formData.append('concept_db', this.modelPackForm.concept_db)
+        if (formData.concept_db) {
+          formDataToSend.append('concept_db', formData.concept_db)
         }
-        if (this.modelPackForm.vocab) {
-          formData.append('vocab', this.modelPackForm.vocab)
+        if (formData.vocab) {
+          formDataToSend.append('vocab', formData.vocab)
         }
 
         if (this.editingModelPack) {
           await this.$http.put(
             `/api/modelpacks/${this.editingModelPack.id}/`,
-            formData,
+            formDataToSend,
             { headers: { 'Content-Type': 'multipart/form-data' } }
           )
         } else {
           await this.$http.post(
             '/api/modelpacks/',
-            formData,
+            formDataToSend,
             { headers: { 'Content-Type': 'multipart/form-data' } }
           )
         }
@@ -1321,48 +1011,32 @@ export default {
     },
     editDataset(dataset) {
       this.editingDataset = dataset
-      this.datasetForm = {
-        name: dataset.name || '',
-        description: dataset.description || '',
-        original_file: null
-      }
       this.showDatasetForm = true
     },
     closeDatasetForm() {
       this.showDatasetForm = false
       this.editingDataset = null
-      this.datasetForm = {
-        name: '',
-        description: '',
-        original_file: null
-      }
     },
-    handleDatasetFileChange(event) {
-      const file = event.target.files[0]
-      if (file) {
-        this.datasetForm.original_file = file
-      }
-    },
-    async saveDataset() {
+    async handleDatasetSave(formData) {
       this.saving = true
       try {
-        const formData = new FormData()
-        formData.append('name', this.datasetForm.name)
-        formData.append('description', this.datasetForm.description || '')
-        if (this.datasetForm.original_file) {
-          formData.append('original_file', this.datasetForm.original_file)
+        const formDataToSend = new FormData()
+        formDataToSend.append('name', formData.name)
+        formDataToSend.append('description', formData.description || '')
+        if (formData.original_file) {
+          formDataToSend.append('original_file', formData.original_file)
         }
 
         if (this.editingDataset) {
           await this.$http.put(
             `/api/datasets/${this.editingDataset.id}/`,
-            formData,
+            formDataToSend,
             { headers: { 'Content-Type': 'multipart/form-data' } }
           )
         } else {
           await this.$http.post(
             '/api/datasets/',
-            formData,
+            formDataToSend,
             { headers: { 'Content-Type': 'multipart/form-data' } }
           )
         }
@@ -1398,34 +1072,20 @@ export default {
     },
     editUser(user) {
       this.editingUser = user
-      this.userForm = {
-        username: user.username || '',
-        email: user.email || '',
-        password: '',
-        is_staff: user.is_staff || false,
-        is_superuser: user.is_superuser || false
-      }
       this.showUserForm = true
     },
     closeUserForm() {
       this.showUserForm = false
       this.editingUser = null
-      this.userForm = {
-        username: '',
-        email: '',
-        password: '',
-        is_staff: false,
-        is_superuser: false
-      }
     },
-    async saveUser() {
+    async handleUserSave(formData) {
       this.saving = true
       try {
         const data = {
-          username: this.userForm.username,
-          email: this.userForm.email || '',
-          is_staff: this.userForm.is_staff,
-          is_superuser: this.userForm.is_superuser
+          username: formData.username,
+          email: formData.email || '',
+          is_staff: formData.is_staff,
+          is_superuser: formData.is_superuser
         }
 
         // Note: Password is not included in UserSerializer, so it cannot be set via API
@@ -1975,12 +1635,16 @@ export default {
       }
     }
 
+    input[type="file"].form-control,
     .file-input {
       padding: 8px;
       cursor: pointer;
       border: 1px solid #d0d0d0;
       border-radius: 8px;
       background: white;
+      display: block;
+      width: 100%;
+      min-height: 38px;
 
       &:hover {
         border-color: #b0b0b0;
@@ -1995,11 +1659,20 @@ export default {
         cursor: pointer;
         transition: all 0.2s ease;
         font-size: 0.85rem;
+        display: inline-block;
+        visibility: visible;
+        opacity: 1;
 
         &:hover {
           background: #e9ecef;
           border-color: #b0b0b0;
         }
+      }
+
+      // Ensure the file input text is visible
+      &::before {
+        content: '';
+        display: inline-block;
       }
     }
 
@@ -2009,6 +1682,71 @@ export default {
       font-size: 0.85rem;
       color: var(--color-text);
       opacity: 0.7;
+    }
+
+    .schema-guide {
+      margin-top: 12px;
+      padding: 16px;
+      background: #f8f9fa;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+
+      .form-text {
+        margin-top: 0;
+        margin-bottom: 8px;
+        font-weight: 500;
+        opacity: 1;
+        color: var(--color-heading);
+      }
+
+      .schema-list {
+        margin: 8px 0 12px 0;
+        padding-left: 20px;
+        color: var(--color-text);
+        font-size: 0.9rem;
+        line-height: 1.6;
+
+        li {
+          margin-bottom: 6px;
+
+          code {
+            background: #e9ecef;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            color: #d63384;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+          }
+
+          ul {
+            margin-top: 4px;
+            margin-bottom: 4px;
+            padding-left: 20px;
+          }
+        }
+      }
+
+      .example-text {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid #e0e0e0;
+        display: block;
+        font-size: 0.85rem;
+        line-height: 1.8;
+
+        code {
+          display: block;
+          background: #f1f3f5;
+          padding: 8px 12px;
+          border-radius: 6px;
+          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+          font-size: 0.85em;
+          color: #495057;
+          margin-top: 4px;
+          white-space: pre;
+          overflow-x: auto;
+        }
+      }
     }
   }
 
@@ -2472,8 +2210,8 @@ export default {
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 250px);
-    min-height: 600px;
+    max-height: calc(100vh - 200px);
+    min-height: auto;
   }
 
   .admin-form {

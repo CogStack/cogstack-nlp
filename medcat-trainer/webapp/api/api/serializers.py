@@ -60,6 +60,26 @@ class VocabularySerializer(serializers.ModelSerializer):
 
 
 class DatasetSerializer(serializers.ModelSerializer):
+    """
+    Serializer for Dataset model.
+    
+    Schema Requirements:
+    - File format: .csv or .xlsx
+    - Required columns:
+      * name: A unique identifier for each document (string)
+      * text: The free-text content to annotate (string)
+    - Additional columns are allowed but will be ignored
+    
+    Example CSV structure:
+    name,text
+    doc001,"This is the first document to annotate."
+    doc002,"This is the second document with medical text."
+    """
+    
+    original_file = serializers.FileField(
+        help_text="Upload a .csv or .xlsx file with two required columns: 'name' (unique document identifier) and 'text' (free-text to annotate)."
+    )
+    
     class Meta:
         model = Dataset
         fields = '__all__'
