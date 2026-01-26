@@ -3,6 +3,10 @@
 MedCAT can be used to extract information from Electronic Health Records (EHRs) and link it to biomedical ontologies like SNOMED-CT, UMLS, or HPO (and potentially other ontologies).
 Original paper for v1 on [arXiv](https://arxiv.org/abs/2010.01165). 
 
+## Why MedCAT v2?
+
+MedCAT v2 is a comprehensive refactor designed to improve modularity, flexibility, and maintainability. The core library is now lightweight, with optional extras (spaCy tokenization, MetaCAT, DeID, RelCAT) available as separate installable features—allowing you to install only what you need. This modular approach reduces dependencies, enables smaller installs, and provides better separation of concerns. Additionally, v2 reduces internal coupling with spaCy, allowing for alternative tokenizers and greater extensibility. The new architecture makes it easier to create custom components and addons, while improving code maintainability and preparing the foundation for future enhancements. For most users, single-threaded inference APIs remain unchanged, ensuring a smooth transition.
+
 **There's a number of breaking changes in MedCAT v2 compared to v1.**
 When moving from v1 to v2, please refer to the [migration guide](docs/migration_guide_v2.md).
 Details on breaking are outlined [here](docs/breaking_changes.md).
