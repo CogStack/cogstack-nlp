@@ -6,19 +6,67 @@
           <h2>Project Administration</h2>
           <p class="subtitle">Manage your annotation projects</p>
         </div>
-        <button class="btn btn-primary btn-create" @click="showCreateForm = true">
-          <font-awesome-icon icon="plus"></font-awesome-icon>
-          <span>Create New Project</span>
-        </button>
+        <div class="header-actions">
+          <button v-if="activeTab === 'projects'" class="btn btn-primary btn-create" @click="showCreateForm = true">
+            <font-awesome-icon icon="plus"></font-awesome-icon>
+            <span>Create New Project</span>
+          </button>
+          <button v-if="activeTab === 'modelpacks'" class="btn btn-primary btn-create" @click="showModelPackForm = true; editingModelPack = null">
+            <font-awesome-icon icon="plus"></font-awesome-icon>
+            <span>Add Model Pack</span>
+          </button>
+          <button v-if="activeTab === 'datasets'" class="btn btn-primary btn-create" @click="showDatasetForm = true; editingDataset = null">
+            <font-awesome-icon icon="plus"></font-awesome-icon>
+            <span>Add Dataset</span>
+          </button>
+          <button v-if="activeTab === 'users'" class="btn btn-primary btn-create" @click="showUserForm = true; editingUser = null">
+            <font-awesome-icon icon="plus"></font-awesome-icon>
+            <span>Add User</span>
+          </button>
+        </div>
       </div>
+    </div>
+
+    <!-- Tab Navigation -->
+    <div class="admin-tabs">
+      <button
+        class="tab-button"
+        :class="{ active: activeTab === 'projects' }"
+        @click="activeTab = 'projects'; closeAllForms()">
+        <font-awesome-icon icon="folder"></font-awesome-icon>
+        Projects
+      </button>
+      <button
+        class="tab-button"
+        :class="{ active: activeTab === 'modelpacks' }"
+        @click="activeTab = 'modelpacks'; closeAllForms()">
+        <font-awesome-icon icon="box"></font-awesome-icon>
+        Model Packs
+      </button>
+      <button
+        class="tab-button"
+        :class="{ active: activeTab === 'datasets' }"
+        @click="activeTab = 'datasets'; closeAllForms()">
+        <font-awesome-icon icon="database"></font-awesome-icon>
+        Datasets
+      </button>
+      <button
+        class="tab-button"
+        :class="{ active: activeTab === 'users' }"
+        @click="activeTab = 'users'; closeAllForms()">
+        <font-awesome-icon icon="users"></font-awesome-icon>
+        Users
+      </button>
     </div>
 
     <div v-if="loading" class="loading-container">
       <v-progress-circular indeterminate color="primary" size="48"></v-progress-circular>
-      <span class="loading-text">Loading projects...</span>
+      <span class="loading-text">Loading...</span>
     </div>
 
     <div v-else class="project-admin-content">
+      <!-- Projects Tab -->
+      <div v-if="activeTab === 'projects'">
       <!-- Project List View -->
       <div v-if="!showCreateForm && !editingProject" class="project-list-section">
         <div class="section-header">
@@ -159,8 +207,8 @@
               <h4>Model Configuration</h4>
               <div class="form-row">
                 <div class="form-group form-group-inline">
-                  <label>Model Pack</label>
-                  <select v-model="formData.model_pack" class="form-control" :disabled="useBackupOption">
+                  <label>Local Model Pack</label>
+                  <select v-model="formData.model_pack" class="form-control" :disabled="useBackupOption || formData.use_model_service">
                     <option :value="null">None</option>
                     <option v-for="mp in modelPacks" :key="mp.id" :value="mp.id">{{ mp.name }}</option>
                   </select>
@@ -392,6 +440,308 @@
           </div>
         </template>
       </modal>
+      </div>
+      <!-- End Projects Tab -->
+
+      <!-- Model Packs Tab -->
+      <div v-if="activeTab === 'modelpacks'" class="admin-section">
+        <div v-if="!showModelPackForm && !editingModelPack" class="list-section">
+          <div class="section-header">
+            <h3>Model Packs <span class="item-count">({{ modelPacks.length }})</span></h3>
+          </div>
+          <div v-if="modelPacks.length > 0" class="table-container">
+            <v-data-table
+              :items="modelPacks"
+              :headers="modelPackHeaders"
+              :hover="true"
+              @click:row="selectModelPack"
+              hide-default-footer
+              :items-per-page="-1"
+              class="admin-table"
+              dense>
+              <template #item.concept_db="{ item }">
+                <span>{{ getConceptDbName(item.concept_db) }}</span>
+              </template>
+              <template #item.vocab="{ item }">
+                <span>{{ getVocabName(item.vocab) }}</span>
+              </template>
+              <template #item.actions="{ item }">
+                <div class="action-buttons" @click.stop>
+                  <button class="btn btn-sm btn-action btn-edit" @click="editModelPack(item)" title="Edit">
+                    <font-awesome-icon icon="edit"></font-awesome-icon>
+                  </button>
+                  <button class="btn btn-sm btn-action btn-delete" @click="confirmDeleteModelPack(item)" title="Delete">
+                    <font-awesome-icon icon="trash"></font-awesome-icon>
+                  </button>
+                </div>
+              </template>
+            </v-data-table>
+          </div>
+          <div v-else class="empty-state">
+            <h4>No Model Packs</h4>
+            <p>Add a model pack to get started.</p>
+          </div>
+        </div>
+
+        <!-- Model Pack Form -->
+        <div v-else class="form-section">
+          <div class="form-header">
+            <button class="btn btn-back" @click="closeModelPackForm">
+              <font-awesome-icon icon="arrow-left"></font-awesome-icon>
+              <span>Back</span>
+            </button>
+            <h3>{{ editingModelPack ? 'Edit Model Pack' : 'Add Model Pack' }}</h3>
+          </div>
+          <div class="form-content">
+            <form @submit.prevent="saveModelPack" class="admin-form">
+              <div class="form-sections-wrapper">
+                <div class="form-section form-section-horizontal">
+                  <div class="form-group">
+                    <label>Name *</label>
+                    <input v-model="modelPackForm.name" type="text" class="form-control" required />
+                  </div>
+                  <div class="form-group">
+                    <label>Model Pack File *</label>
+                    <input type="file" @change="handleModelPackFileChange" accept=".zip" class="form-control" :required="!editingModelPack" />
+                    <small class="form-text text-muted">Upload a .zip file containing the model pack</small>
+                  </div>
+                </div>
+                <div class="form-section form-section-horizontal">
+                  <div class="form-group">
+                    <label>Concept DB</label>
+                    <select v-model="modelPackForm.concept_db" class="form-control">
+                      <option :value="null">None</option>
+                      <option v-for="cdb in conceptDbs" :key="cdb.id" :value="cdb.id">{{ cdb.name }}</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label>Vocabulary</label>
+                    <select v-model="modelPackForm.vocab" class="form-control">
+                      <option :value="null">None</option>
+                      <option v-for="vocab in vocabs" :key="vocab.id" :value="vocab.id">{{ vocab.name }}</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <div class="form-actions">
+                <button type="button" class="btn btn-secondary" @click="closeModelPackForm">Cancel</button>
+                <button type="submit" class="btn btn-primary" :disabled="saving">
+                  <font-awesome-icon v-if="saving" icon="spinner" spin></font-awesome-icon>
+                  <span>{{ saving ? 'Saving...' : 'Save' }}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+      <!-- End Model Packs Tab -->
+
+      <!-- Datasets Tab -->
+      <div v-if="activeTab === 'datasets'" class="admin-section">
+        <div v-if="!showDatasetForm && !editingDataset" class="list-section">
+          <div class="section-header">
+            <h3>Datasets <span class="item-count">({{ datasets.length }})</span></h3>
+          </div>
+          <div v-if="datasets.length > 0" class="table-container">
+            <v-data-table
+              :items="datasets"
+              :headers="datasetHeaders"
+              :hover="true"
+              @click:row="selectDataset"
+              hide-default-footer
+              :items-per-page="-1"
+              class="admin-table"
+              dense>
+              <template #item.actions="{ item }">
+                <div class="action-buttons" @click.stop>
+                  <button class="btn btn-sm btn-action btn-edit" @click="editDataset(item)" title="Edit">
+                    <font-awesome-icon icon="edit"></font-awesome-icon>
+                  </button>
+                  <button class="btn btn-sm btn-action btn-delete" @click="confirmDeleteDataset(item)" title="Delete">
+                    <font-awesome-icon icon="trash"></font-awesome-icon>
+                  </button>
+                </div>
+              </template>
+            </v-data-table>
+          </div>
+          <div v-else class="empty-state">
+            <h4>No Datasets</h4>
+            <p>Add a dataset to get started.</p>
+          </div>
+        </div>
+
+        <!-- Dataset Form -->
+        <div v-else class="form-section">
+          <div class="form-header">
+            <button class="btn btn-back" @click="closeDatasetForm">
+              <font-awesome-icon icon="arrow-left"></font-awesome-icon>
+              <span>Back</span>
+            </button>
+            <h3>{{ editingDataset ? 'Edit Dataset' : 'Add Dataset' }}</h3>
+          </div>
+          <div class="form-content">
+            <form @submit.prevent="saveDataset" class="admin-form">
+              <div class="form-sections-wrapper">
+                <div class="form-section form-section-horizontal">
+                  <div class="form-group">
+                    <label>Name *</label>
+                    <input v-model="datasetForm.name" type="text" class="form-control" required />
+                  </div>
+                  <div class="form-group">
+                    <label>Description</label>
+                    <textarea v-model="datasetForm.description" class="form-control" rows="2"></textarea>
+                  </div>
+                </div>
+                <div class="form-section">
+                  <div class="form-group">
+                    <label>Original File *</label>
+                    <input type="file" @change="handleDatasetFileChange" accept=".csv,.xlsx" class="form-control" :required="!editingDataset" />
+                    <small class="form-text text-muted">Upload a .csv or .xlsx file. Must contain 'name' and 'text' columns.</small>
+                  </div>
+                </div>
+              </div>
+              <div class="form-actions">
+                <button type="button" class="btn btn-secondary" @click="closeDatasetForm">Cancel</button>
+                <button type="submit" class="btn btn-primary" :disabled="saving">
+                  <font-awesome-icon v-if="saving" icon="spinner" spin></font-awesome-icon>
+                  <span>{{ saving ? 'Saving...' : 'Save' }}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+      <!-- End Datasets Tab -->
+
+      <!-- Users Tab -->
+      <div v-if="activeTab === 'users'" class="admin-section">
+        <div v-if="!showUserForm && !editingUser" class="list-section">
+          <div class="section-header">
+            <h3>Users <span class="item-count">({{ users.length }})</span></h3>
+          </div>
+          <div v-if="users.length > 0" class="table-container">
+            <v-data-table
+              :items="users"
+              :headers="userHeaders"
+              :hover="true"
+              @click:row="selectUser"
+              hide-default-footer
+              :items-per-page="-1"
+              class="admin-table"
+              dense>
+              <template #item.is_staff="{ item }">
+                <span class="badge" :class="item.is_staff ? 'badge-success' : 'badge-secondary'">
+                  {{ item.is_staff ? 'Staff' : 'User' }}
+                </span>
+              </template>
+              <template #item.is_superuser="{ item }">
+                <span class="badge" :class="item.is_superuser ? 'badge-danger' : 'badge-secondary'">
+                  {{ item.is_superuser ? 'Admin' : 'Regular' }}
+                </span>
+              </template>
+              <template #item.actions="{ item }">
+                <div class="action-buttons" @click.stop>
+                  <button class="btn btn-sm btn-action btn-edit" @click="editUser(item)" title="Edit">
+                    <font-awesome-icon icon="edit"></font-awesome-icon>
+                  </button>
+                </div>
+              </template>
+            </v-data-table>
+          </div>
+          <div v-else class="empty-state">
+            <h4>No Users</h4>
+            <p>Add a user to get started.</p>
+          </div>
+        </div>
+
+        <!-- User Form -->
+        <div v-else class="form-section">
+          <div class="form-header">
+            <button class="btn btn-back" @click="closeUserForm">
+              <font-awesome-icon icon="arrow-left"></font-awesome-icon>
+              <span>Back</span>
+            </button>
+            <h3>{{ editingUser ? 'Edit User' : 'Add User' }}</h3>
+          </div>
+          <div class="form-content">
+            <form @submit.prevent="saveUser" class="admin-form">
+              <div class="form-sections-wrapper">
+                <div class="form-section form-section-horizontal">
+                  <div class="form-group">
+                    <label>Username *</label>
+                    <input v-model="userForm.username" type="text" class="form-control" required />
+                  </div>
+                  <div class="form-group">
+                    <label>Email</label>
+                    <input v-model="userForm.email" type="email" class="form-control" />
+                  </div>
+                </div>
+                <div v-if="!editingUser" class="form-section">
+                  <div class="form-group">
+                    <label>Password</label>
+                    <input v-model="userForm.password" type="password" class="form-control" />
+                    <small class="form-text text-muted">Note: Password cannot be set via API. Users should set their password through password reset or Django admin.</small>
+                  </div>
+                </div>
+                <div class="form-section">
+                  <div class="checkbox-grid">
+                    <div class="form-group checkbox-group">
+                      <label class="checkbox-label">
+                        <input v-model="userForm.is_staff" type="checkbox" class="checkbox-input" />
+                        <span class="checkbox-text">Staff</span>
+                      </label>
+                    </div>
+                    <div class="form-group checkbox-group">
+                      <label class="checkbox-label">
+                        <input v-model="userForm.is_superuser" type="checkbox" class="checkbox-input" />
+                        <span class="checkbox-text">Superuser (Admin)</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="form-actions">
+                <button type="button" class="btn btn-secondary" @click="closeUserForm">Cancel</button>
+                <button type="submit" class="btn btn-primary" :disabled="saving">
+                  <font-awesome-icon v-if="saving" icon="spinner" spin></font-awesome-icon>
+                  <span>{{ saving ? 'Saving...' : 'Save' }}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+      <!-- End Users Tab -->
+
+      <!-- Delete Modals -->
+      <modal v-if="modelPackToDelete" :closable="true" @modal:close="modelPackToDelete = null" class="confirm-modal">
+        <template #header><h3>Confirm Delete</h3></template>
+        <template #body>
+          <div class="confirm-content">
+            <p>Are you sure you want to delete the model pack <strong>{{ modelPackToDelete.name }}</strong>?</p>
+            <p class="text-danger warning-text">This action cannot be undone.</p>
+            <div class="form-actions">
+              <button class="btn btn-secondary" @click="modelPackToDelete = null">Cancel</button>
+              <button class="btn btn-danger" @click="deleteModelPack">Delete</button>
+            </div>
+          </div>
+        </template>
+      </modal>
+
+      <modal v-if="datasetToDelete" :closable="true" @modal:close="datasetToDelete = null" class="confirm-modal">
+        <template #header><h3>Confirm Delete</h3></template>
+        <template #body>
+          <div class="confirm-content">
+            <p>Are you sure you want to delete the dataset <strong>{{ datasetToDelete.name }}</strong>?</p>
+            <p class="text-danger warning-text">This action cannot be undone.</p>
+            <div class="form-actions">
+              <button class="btn btn-secondary" @click="datasetToDelete = null">Cancel</button>
+              <button class="btn btn-danger" @click="deleteDataset">Delete</button>
+            </div>
+          </div>
+        </template>
+      </modal>
+
     </div>
   </div>
 </template>
@@ -408,6 +758,7 @@ export default {
   },
   data() {
     return {
+      activeTab: 'projects',
       loading: true,
       projects: [],
       datasets: [],
@@ -426,6 +777,35 @@ export default {
       selectedCuiFilterConcepts: [],
       includeSubConcepts: false,
       showCuiFilterTextarea: false,
+      // Model Pack management
+      showModelPackForm: false,
+      editingModelPack: null,
+      modelPackToDelete: null,
+      modelPackForm: {
+        name: '',
+        model_pack: null,
+        concept_db: null,
+        vocab: null
+      },
+      // Dataset management
+      showDatasetForm: false,
+      editingDataset: null,
+      datasetToDelete: null,
+      datasetForm: {
+        name: '',
+        description: '',
+        original_file: null
+      },
+      // User management
+      showUserForm: false,
+      editingUser: null,
+      userForm: {
+        username: '',
+        email: '',
+        password: '',
+        is_staff: false,
+        is_superuser: false
+      },
       formData: {
         name: '',
         description: '',
@@ -456,6 +836,24 @@ export default {
         { title: 'Description', value: 'description' },
         { title: 'Status', value: 'status' },
         { title: 'Dataset', value: 'dataset' },
+        { title: 'Actions', value: 'actions', sortable: false }
+      ],
+      modelPackHeaders: [
+        { title: 'Name', value: 'name' },
+        { title: 'Concept DB', value: 'concept_db' },
+        { title: 'Vocabulary', value: 'vocab' },
+        { title: 'Actions', value: 'actions', sortable: false }
+      ],
+      datasetHeaders: [
+        { title: 'Name', value: 'name' },
+        { title: 'Description', value: 'description' },
+        { title: 'Actions', value: 'actions', sortable: false }
+      ],
+      userHeaders: [
+        { title: 'Username', value: 'username' },
+        { title: 'Email', value: 'email' },
+        { title: 'Staff', value: 'is_staff' },
+        { title: 'Admin', value: 'is_superuser' },
         { title: 'Actions', value: 'actions', sortable: false }
       ]
     }
@@ -555,6 +953,12 @@ export default {
       this.includeSubConcepts = false
       this.showCuiFilterTextarea = false
       this.resetForm()
+    },
+    closeAllForms() {
+      this.closeForm()
+      this.closeModelPackForm()
+      this.closeDatasetForm()
+      this.closeUserForm()
     },
     resetForm() {
       this.formData = {
@@ -816,7 +1220,235 @@ export default {
     getDatasetName(datasetId) {
       const dataset = this.datasets.find(ds => ds.id === datasetId)
       return dataset ? dataset.name : 'N/A'
-    }
+    },
+    getConceptDbName(conceptDbId) {
+      if (!conceptDbId) return 'N/A'
+      const cdb = this.conceptDbs.find(c => c.id === (typeof conceptDbId === 'object' ? conceptDbId.id : conceptDbId))
+      return cdb ? cdb.name : 'N/A'
+    },
+    getVocabName(vocabId) {
+      if (!vocabId) return 'N/A'
+      const vocab = this.vocabs.find(v => v.id === (typeof vocabId === 'object' ? vocabId.id : vocabId))
+      return vocab ? vocab.name : 'N/A'
+    },
+    // Model Pack methods
+    selectModelPack(event, { item }) {
+      this.editModelPack(item)
+    },
+    editModelPack(modelPack) {
+      this.editingModelPack = modelPack
+      this.modelPackForm = {
+        name: modelPack.name || '',
+        model_pack: null,
+        concept_db: modelPack.concept_db || null,
+        vocab: modelPack.vocab || null
+      }
+      this.showModelPackForm = true
+    },
+    closeModelPackForm() {
+      this.showModelPackForm = false
+      this.editingModelPack = null
+      this.modelPackForm = {
+        name: '',
+        model_pack: null,
+        concept_db: null,
+        vocab: null
+      }
+    },
+    handleModelPackFileChange(event) {
+      const file = event.target.files[0]
+      if (file) {
+        this.modelPackForm.model_pack = file
+      }
+    },
+    async saveModelPack() {
+      this.saving = true
+      try {
+        const formData = new FormData()
+        formData.append('name', this.modelPackForm.name)
+        if (this.modelPackForm.model_pack) {
+          formData.append('model_pack', this.modelPackForm.model_pack)
+        }
+        if (this.modelPackForm.concept_db) {
+          formData.append('concept_db', this.modelPackForm.concept_db)
+        }
+        if (this.modelPackForm.vocab) {
+          formData.append('vocab', this.modelPackForm.vocab)
+        }
+
+        if (this.editingModelPack) {
+          await this.$http.put(
+            `/api/modelpacks/${this.editingModelPack.id}/`,
+            formData,
+            { headers: { 'Content-Type': 'multipart/form-data' } }
+          )
+        } else {
+          await this.$http.post(
+            '/api/modelpacks/',
+            formData,
+            { headers: { 'Content-Type': 'multipart/form-data' } }
+          )
+        }
+
+        this.$toast?.success(`Model Pack ${this.editingModelPack ? 'updated' : 'created'} successfully`)
+        this.closeModelPackForm()
+        await this.fetchModelPacks()
+      } catch (error) {
+        console.error('Error saving model pack:', error)
+        const errorMsg = error.response?.data?.message || error.response?.data?.detail || 'Failed to save model pack'
+        this.$toast?.error(errorMsg)
+      } finally {
+        this.saving = false
+      }
+    },
+    confirmDeleteModelPack(modelPack) {
+      this.modelPackToDelete = modelPack
+    },
+    async deleteModelPack() {
+      try {
+        await this.$http.delete(`/api/modelpacks/${this.modelPackToDelete.id}/`)
+        this.$toast?.success('Model Pack deleted successfully')
+        this.modelPackToDelete = null
+        await this.fetchModelPacks()
+      } catch (error) {
+        console.error('Error deleting model pack:', error)
+        this.$toast?.error('Failed to delete model pack')
+      }
+    },
+    // Dataset methods
+    selectDataset(event, { item }) {
+      this.editDataset(item)
+    },
+    editDataset(dataset) {
+      this.editingDataset = dataset
+      this.datasetForm = {
+        name: dataset.name || '',
+        description: dataset.description || '',
+        original_file: null
+      }
+      this.showDatasetForm = true
+    },
+    closeDatasetForm() {
+      this.showDatasetForm = false
+      this.editingDataset = null
+      this.datasetForm = {
+        name: '',
+        description: '',
+        original_file: null
+      }
+    },
+    handleDatasetFileChange(event) {
+      const file = event.target.files[0]
+      if (file) {
+        this.datasetForm.original_file = file
+      }
+    },
+    async saveDataset() {
+      this.saving = true
+      try {
+        const formData = new FormData()
+        formData.append('name', this.datasetForm.name)
+        formData.append('description', this.datasetForm.description || '')
+        if (this.datasetForm.original_file) {
+          formData.append('original_file', this.datasetForm.original_file)
+        }
+
+        if (this.editingDataset) {
+          await this.$http.put(
+            `/api/datasets/${this.editingDataset.id}/`,
+            formData,
+            { headers: { 'Content-Type': 'multipart/form-data' } }
+          )
+        } else {
+          await this.$http.post(
+            '/api/datasets/',
+            formData,
+            { headers: { 'Content-Type': 'multipart/form-data' } }
+          )
+        }
+
+        this.$toast?.success(`Dataset ${this.editingDataset ? 'updated' : 'created'} successfully`)
+        this.closeDatasetForm()
+        await this.fetchDatasets()
+      } catch (error) {
+        console.error('Error saving dataset:', error)
+        const errorMsg = error.response?.data?.message || error.response?.data?.detail || 'Failed to save dataset'
+        this.$toast?.error(errorMsg)
+      } finally {
+        this.saving = false
+      }
+    },
+    confirmDeleteDataset(dataset) {
+      this.datasetToDelete = dataset
+    },
+    async deleteDataset() {
+      try {
+        await this.$http.delete(`/api/datasets/${this.datasetToDelete.id}/`)
+        this.$toast?.success('Dataset deleted successfully')
+        this.datasetToDelete = null
+        await this.fetchDatasets()
+      } catch (error) {
+        console.error('Error deleting dataset:', error)
+        this.$toast?.error('Failed to delete dataset')
+      }
+    },
+    // User methods
+    selectUser(event, { item }) {
+      this.editUser(item)
+    },
+    editUser(user) {
+      this.editingUser = user
+      this.userForm = {
+        username: user.username || '',
+        email: user.email || '',
+        password: '',
+        is_staff: user.is_staff || false,
+        is_superuser: user.is_superuser || false
+      }
+      this.showUserForm = true
+    },
+    closeUserForm() {
+      this.showUserForm = false
+      this.editingUser = null
+      this.userForm = {
+        username: '',
+        email: '',
+        password: '',
+        is_staff: false,
+        is_superuser: false
+      }
+    },
+    async saveUser() {
+      this.saving = true
+      try {
+        const data = {
+          username: this.userForm.username,
+          email: this.userForm.email || '',
+          is_staff: this.userForm.is_staff,
+          is_superuser: this.userForm.is_superuser
+        }
+
+        // Note: Password is not included in UserSerializer, so it cannot be set via API
+        // User creation/update will need to be done through Django admin or a custom endpoint
+        if (this.editingUser) {
+          await this.$http.put(`/api/users/${this.editingUser.id}/`, data)
+        } else {
+          // For new users, password cannot be set via this API
+          // Users should be created through Django admin or password reset flow
+          await this.$http.post('/api/users/', data)
+        }
+
+        this.$toast?.success(`User ${this.editingUser ? 'updated' : 'created'} successfully`)
+        this.closeUserForm()
+        await this.fetchUsers()
+      } catch (error) {
+        console.error('Error saving user:', error)
+        const errorMsg = error.response?.data?.message || error.response?.data?.detail || 'Failed to save user'
+        this.$toast?.error(errorMsg)
+      } finally {
+        this.saving = false
+      }
+    },
   },
   watch: {
     'formData.cuis'(newVal) {
@@ -856,6 +1488,11 @@ export default {
     justify-content: space-between;
     align-items: flex-start;
     gap: 20px;
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 10px;
   }
 
   .header-text {
@@ -1134,7 +1771,7 @@ export default {
 // Project Form Section (Full Screen)
 .project-form-section {
   background: white;
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 0;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   display: flex;
@@ -1150,6 +1787,7 @@ export default {
     display: flex;
     align-items: center;
     gap: 12px;
+    border-radius: 12px 12px 0 0;
 
     .btn-back {
       background: rgba(255, 255, 255, 0.2);
@@ -1206,56 +1844,68 @@ export default {
     overflow-y: auto;
     overflow-x: hidden;
     min-height: 0;
-    padding-bottom: 20px;
+    padding: 20px;
+    background: #f8f9fa;
   }
 
   .form-section {
-    margin-bottom: 20px;
-    padding-bottom: 16px;
-    border-bottom: 1px solid var(--color-border);
+    margin-bottom: 24px;
+    padding: 20px;
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
     flex-shrink: 0;
 
     &:last-child {
-      border-bottom: none;
       margin-bottom: 0;
-      padding-bottom: 0;
     }
 
     h4 {
-      margin-bottom: 12px;
+      margin-bottom: 16px;
+      margin-top: 0;
       color: var(--color-heading);
-      font-size: 1rem;
+      font-size: 1.05rem;
       font-weight: 600;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #f0f0f0;
     }
 
     &.form-section-horizontal {
       .form-row {
         display: flex;
-        gap: 16px;
-        align-items: flex-start;
+        gap: 20px;
+        align-items: flex-end;
         flex-wrap: wrap;
 
         .form-group-inline {
           flex: 1;
           min-width: 200px;
-          margin-bottom: 12px;
+          margin-bottom: 0;
+        }
+
+        // Align checkboxes with inputs
+        .checkbox-group.form-group-inline {
+          align-self: flex-end;
+          margin-bottom: 0;
+          padding-bottom: 0;
         }
       }
 
       .backup-options {
-        margin-top: 12px;
-        padding-top: 12px;
-        border-top: 1px solid var(--color-border);
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid #f0f0f0;
       }
     }
   }
 
   .form-group {
-    margin-bottom: 12px;
+    margin-bottom: 16px;
 
     label {
       display: block;
-      margin-bottom: 4px;
+      margin-bottom: 6px;
       font-weight: 500;
       color: var(--color-heading);
       font-size: 0.9rem;
@@ -1267,55 +1917,88 @@ export default {
 
     .form-control {
       width: 100%;
-      padding: 6px 10px;
-      border: 1px solid var(--color-border);
-      border-radius: 4px;
+      padding: 8px 12px;
+      border: 1px solid #d0d0d0;
+      border-radius: 8px;
       font-size: 0.9rem;
       transition: all 0.2s ease;
       background: white;
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.02);
+
+      &:hover {
+        border-color: #b0b0b0;
+      }
 
       &:focus {
         outline: none;
         border-color: $primary;
-        box-shadow: 0 0 0 2px rgba(0, 114, 206, 0.1);
+        box-shadow: 0 0 0 3px rgba(0, 114, 206, 0.1), inset 0 1px 2px rgba(0, 0, 0, 0.02);
       }
 
       &:disabled {
-        background-color: #f8f9fa;
+        background-color: #f5f5f5;
+        border-color: #e0e0e0;
         cursor: not-allowed;
-        opacity: 0.6;
+        opacity: 0.7;
       }
 
       &::placeholder {
-        color: var(--color-text);
-        opacity: 0.5;
+        color: #999;
+        opacity: 0.7;
       }
+    }
+
+    // Ensure select elements have consistent styling
+    select.form-control {
+      cursor: pointer;
+      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+      background-repeat: no-repeat;
+      background-position: right 8px center;
+      background-size: 16px 12px;
+      padding-right: 32px;
     }
 
     textarea.form-control {
       resize: vertical;
-      min-height: 60px;
+      min-height: 80px;
+      font-family: inherit;
+      line-height: 1.5;
+      border-radius: 8px;
     }
 
     select[multiple].form-control {
       min-height: 120px;
+      padding: 8px;
+      border-radius: 8px;
+      option {
+        padding: 6px 8px;
+      }
     }
 
     .file-input {
       padding: 8px;
       cursor: pointer;
+      border: 1px solid #d0d0d0;
+      border-radius: 8px;
+      background: white;
+
+      &:hover {
+        border-color: #b0b0b0;
+      }
 
       &::file-selector-button {
-        padding: 8px 16px;
+        padding: 6px 14px;
         margin-right: 12px;
-        border: 1px solid var(--color-border);
-        border-radius: 4px;
+        border: 1px solid #d0d0d0;
+        border-radius: 6px;
         background: #f8f9fa;
         cursor: pointer;
         transition: all 0.2s ease;
+        font-size: 0.85rem;
 
         &:hover {
           background: #e9ecef;
+          border-color: #b0b0b0;
         }
       }
     }
@@ -1330,16 +2013,17 @@ export default {
   }
 
   .checkbox-group {
-    margin-bottom: 8px;
+    margin-bottom: 12px;
 
     .checkbox-label {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
       cursor: pointer;
-      padding: 4px 0;
-      transition: opacity 0.2s ease;
+      padding: 8px 0;
+      transition: all 0.2s ease;
       margin-bottom: 0;
+      min-height: 36px; // Match input height for alignment
 
       &:hover {
         opacity: 0.8;
@@ -1347,25 +2031,28 @@ export default {
 
       .checkbox-input {
         margin: 0;
-        width: 16px;
-        height: 16px;
+        width: 18px;
+        height: 18px;
         cursor: pointer;
         accent-color: $primary;
         flex-shrink: 0;
+        border: 1px solid #d0d0d0;
+        border-radius: 3px;
       }
 
       .checkbox-text {
         flex: 1;
         font-weight: 400;
         color: var(--color-text);
-        font-size: 0.85rem;
-        line-height: 1.3;
+        font-size: 0.9rem;
+        line-height: 1.4;
       }
     }
 
     &.form-group-inline {
       margin-bottom: 0;
-      align-self: center;
+      align-self: flex-end;
+      padding-bottom: 0;
     }
   }
 
@@ -1377,7 +2064,11 @@ export default {
 
   // Concept Filtering Styles (from Demo.vue)
   .cui-filter-controls {
-    margin: -4px 0 8px 0;
+    margin: 0 0 16px 0;
+    padding: 12px;
+    background: #f8f9fa;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -1387,41 +2078,70 @@ export default {
   .cui-filter-checkbox {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     margin: 0;
     font-size: 0.9rem;
     cursor: pointer;
     font-weight: 400;
     color: var(--color-text);
+
+    input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+      accent-color: $primary;
+      border: 1px solid #d0d0d0;
+    }
   }
 
   .cui-filter-paste-toggle {
-    padding: 0;
+    padding: 4px 8px;
     font-size: 0.85rem;
+    border: 1px solid #d0d0d0;
+    border-radius: 6px;
+    background: white;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: #f0f0f0;
+      border-color: #b0b0b0;
+    }
   }
 
   .cui-filter-row {
     display: flex;
-    gap: 16px;
+    gap: 20px;
     align-items: flex-start;
-    margin: 6px 0 10px 0;
+    margin: 0 0 16px 0;
   }
 
   .cui-filter-picker {
     flex: 0 0 50%;
     max-width: 50%;
+    padding: 12px;
+    background: #fafafa;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
   }
 
   .cui-file-picker {
-    flex: 0 0 calc(50% - 16px);
-    max-width: calc(50% - 16px);
+    flex: 0 0 calc(50% - 20px);
+    max-width: calc(50% - 20px);
+    padding: 12px;
+    background: #fafafa;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
 
     label {
       display: block;
-      margin-bottom: 4px;
+      margin-bottom: 6px;
       font-weight: 500;
       color: var(--color-heading);
       font-size: 0.9rem;
+    }
+
+    .form-control {
+      border: 1px solid #d0d0d0;
     }
   }
 
@@ -1607,34 +2327,48 @@ export default {
     }
 
     .form-content {
-      padding: 12px 16px;
+      padding: 0;
+    }
+
+    .form-sections-wrapper {
+      padding: 16px;
     }
 
     .form-section {
-      margin-bottom: 16px;
-      padding-bottom: 12px;
+      margin-bottom: 20px;
+      padding: 16px;
 
       h4 {
-        font-size: 0.95rem;
-        margin-bottom: 8px;
+        font-size: 1rem;
+        margin-bottom: 12px;
+        padding-bottom: 10px;
       }
 
       .form-row {
         flex-direction: column;
-        gap: 12px;
+        gap: 16px;
 
         .form-group-inline {
           min-width: 100%;
+          margin-bottom: 0;
+        }
+
+        .checkbox-group.form-group-inline {
+          align-self: flex-start;
         }
       }
     }
 
     .form-group {
-      margin-bottom: 10px;
+      margin-bottom: 14px;
 
       label {
-        font-size: 0.85rem;
-        margin-bottom: 3px;
+        font-size: 0.9rem;
+        margin-bottom: 6px;
+      }
+
+      .form-control {
+        padding: 8px 10px;
       }
     }
   }
@@ -1645,13 +2379,146 @@ export default {
 
   .cui-filter-row {
     flex-direction: column;
-    gap: 12px;
+    gap: 16px;
 
     .cui-filter-picker,
     .cui-file-picker {
       flex: 1 1 100%;
       max-width: 100%;
     }
+  }
+}
+
+// Tab Navigation Styles
+.admin-tabs {
+  display: flex;
+  gap: 8px;
+  margin: 20px 0;
+  border-bottom: 2px solid var(--color-border);
+  padding-bottom: 0;
+}
+
+.tab-button {
+  padding: 12px 24px;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  margin-bottom: -2px;
+
+  &:hover {
+    color: var(--color-primary);
+    background: rgba(0, 0, 0, 0.02);
+  }
+
+  &.active {
+    color: var(--color-primary);
+    border-bottom-color: var(--color-primary);
+    font-weight: 600;
+  }
+
+  svg {
+    font-size: 1rem;
+  }
+}
+
+// Admin Section Styles (for Model Packs, Datasets, Users)
+.admin-section {
+  .list-section {
+    .section-header {
+      margin-bottom: 20px;
+
+      h3 {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--color-heading);
+        margin: 0;
+      }
+
+      .item-count {
+        font-weight: 400;
+        color: var(--color-text-secondary);
+        font-size: 1rem;
+      }
+    }
+
+    .table-container {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+    }
+  }
+
+  .admin-table {
+    .action-buttons {
+      display: flex;
+      gap: 6px;
+      justify-content: flex-end;
+    }
+  }
+
+  .form-section {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 250px);
+    min-height: 600px;
+  }
+
+  .admin-form {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+
+    .form-sections-wrapper {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      min-height: 0;
+      padding: 20px;
+    }
+
+    .form-actions {
+      margin-top: auto;
+      flex-shrink: 0;
+      padding: 20px;
+      border-top: 1px solid var(--color-border);
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+      background: var(--color-background-light);
+    }
+  }
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+
+  h4 {
+    font-size: 1.25rem;
+    color: var(--color-heading);
+    margin-bottom: 8px;
+  }
+
+  p {
+    color: var(--color-text-secondary);
+    margin-bottom: 20px;
   }
 }
 </style>

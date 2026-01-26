@@ -10,10 +10,6 @@
         </button>
       </div>
       <div class="view-bar-right">
-        <router-link to="/project-admin" class="btn btn-outline-success">
-          <font-awesome-icon icon="cog"></font-awesome-icon>
-          Manage Projects
-        </router-link>
       </div>
     </div>
     <div v-if="projectGroupView" class="full-height project-group-table">
