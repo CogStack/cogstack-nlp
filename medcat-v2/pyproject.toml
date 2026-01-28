@@ -140,6 +140,9 @@ package-dir = { "medcat" = "medcat" }
 [tool.setuptools.packages.find]
 include = ["medcat*"]
 
+[tool.setuptools.package-data]
+"medcat.plugins.data" = ["plugin_catalog.json"]
+
 [tool.setuptools_scm]
 # look for .git folder in root of repo
 root = ".."
