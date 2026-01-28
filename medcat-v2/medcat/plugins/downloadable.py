@@ -2,6 +2,7 @@
 
 from typing import Protocol, Optional
 from dataclasses import dataclass
+import re
 
 
 @dataclass
@@ -10,7 +11,8 @@ class PluginInstallSpec:
     name: str
     version_spec: str  # e.g., ">=1.0.0,<2.0.0" or git ref like "main", "v1.2.3"
     source: str  # PyPI package name, GitHub URL, etc.
-    source_type: str  # "pypi", "github", "github_subdir", "url"
+    source_type: str  # "pypi", "github", "github_subdir",
+                      #"github_ssh", "github_ssh_subdir", "url"
     subdirectory: Optional[str] = None  # Path within repo, e.g., "plugins/negation"
 
     def to_pip_spec(self) -> str:
@@ -31,11 +33,54 @@ class PluginInstallSpec:
             if self.subdirectory:
                 spec += f"#subdirectory={self.subdirectory}"
             return spec
+        elif self.source_type == "github_ssh":
+            # GitHub SSH install
+            # Format: git+ssh://git@github.com/user/repo.git@ref
+            ssh_url = self._normalize_ssh_url(self.source)
+            return f"git+{ssh_url}@{self.version_spec}"
+        elif self.source_type == "github_ssh_subdir":
+            # GitHub SSH with subdirectory
+            # Format: git+ssh://git@github.com/user/repo.git@ref#subdirectory=path
+            ssh_url = self._normalize_ssh_url(self.source)
+            spec = f"git+{ssh_url}@{self.version_spec}"
+            if self.subdirectory:
+                spec += f"#subdirectory={self.subdirectory}"
+            return spec
         elif self.source_type == "url":
             # Direct URL (could be a tarball, wheel, etc.)
             return self.source
         else:
             raise ValueError(f"Unknown source_type: {self.source_type}")
+
+    @staticmethod
+    def _normalize_ssh_url(url: str) -> str:
+        """
+        Normalize SSH URL to the format pip expects.
+
+        Handles various SSH URL formats:
+        - git@github.com:user/repo.git
+        - ssh://git@github.com/user/repo.git
+        - git@github.com:user/repo
+
+        Returns: ssh://git@github.com/user/repo.git
+        """
+        # Already in ssh:// format
+        if url.startswith("ssh://"):
+            if not url.endswith('.git'):
+                url += '.git'
+            return url
+
+        # Convert git@github.com:user/repo.git to ssh://git@github.com/user/repo.git
+        if '@' in url and ':' in url:
+            # Pattern: git@github.com:user/repo.git
+            match = re.match(r'^git@([^:]+):(.+?)(?:\.git)?$', url)
+            if match:
+                host, path = match.groups()
+                return f"ssh://git@{host}/{path}.git"
+
+        # If we can't parse it, return as-is and let pip handle it
+        return url
+
 
 
 class PluginInstaller(Protocol):
