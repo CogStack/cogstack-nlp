@@ -90,6 +90,40 @@ pip install "medcat[deid]"  # for DeID models
 pip install "medcat[spacy,meta-cat,deid,rel-cat,dict-ner]"  # for all of the above
 ```
 
+### Installing plugins
+
+MedCAT v2 supports **external plugins** that can provide new components (e.g. alternative NER models, addons, tokenizers) via Python entry points.
+
+- **Curated plugins**: The `medcat.plugins.catalog` module ships with a curated plugin catalog that can be updated from a remote JSON file.
+- **Installer**: The `medcat.plugins.installer.PluginInstallationManager` wraps a `pip`-based installer and knows how to resolve a compatible plugin version for your current MedCAT version.
+- **CLI**: You can install curated plugins directly from the command line:
+
+```bash
+python -m medcat plugins install medcat-gliner
+```
+
+This will:
+
+- look up `medcat-gliner` in the curated catalog,
+- resolve a version compatible with your installed MedCAT,
+- and install it using `pip`.
+
+You can also:
+
+- pass `--dry-run` to show what would be installed without making changes:
+
+  ```bash
+  python -m medcat plugins install --dry-run medcat-gliner
+  ```
+
+- override the version/ref explicitly (e.g. when testing a branch or tag):
+
+  ```bash
+  python -m medcat plugins install medcat-gliner --force-version main
+  ```
+
+If a plugin requires authentication (for example, private Git repositories), MedCAT will log a warning and the installer will surface pip’s error messages if credentials are missing or incorrect.
+
 ### Version / update checking
 
 MedCAT now has the ability to check for newer versions of itself on PyPI (or a local mirror of it).

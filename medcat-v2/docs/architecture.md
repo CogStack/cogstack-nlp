@@ -28,6 +28,16 @@ All components are registered in a central registry. This means you can:
 ### Plugins
 **Plugins** are external Python packages that provide new component implementations or other functionality. They integrate with MedCAT through Python entry points, allowing automatic discovery and registration without modifying MedCAT's core code.
 
+MedCAT v2 also includes a **curated plugin catalog** and an **installer**:
+
+- `medcat.plugins.catalog.PluginCatalog` maintains a list of known plugins, their metadata, and MedCAT compatibility rules (e.g. “this plugin supports `>=2.5.0,<3.0.0`”).
+- `medcat.plugins.installer.PluginInstallationManager` uses that catalog to select a compatible version and install it (currently via `pip`), with support for:
+  - PyPI packages
+  - Git repositories (including subdirectories such as monorepo layouts)
+  - Direct URLs (e.g. wheels or tarballs)
+
+The curated catalog can be updated from a remote JSON file, and plugins can be installed either programmatically or via the `python -m medcat plugins install ...` CLI.
+
 ---
 
 ## Working with Core Components
