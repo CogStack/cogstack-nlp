@@ -51,10 +51,11 @@ class PluginCatalog:
         """
         self._catalog: Dict[str, PluginInfo] = {}
         self._load_local_catalog()
-        try:
-            self._update_from_remote()
-        except Exception as e:
-            logger.debug(f"Could not fetch remote catalog: {e}")
+        if use_remote:
+            try:
+                self._update_from_remote()
+            except Exception as e:
+                logger.debug(f"Could not fetch remote catalog: {e}")
 
     def _load_local_catalog(self):
         """Load the catalog from the packaged JSON file."""
