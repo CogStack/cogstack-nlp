@@ -1,6 +1,9 @@
 from typing import TypedDict
 
 
+from medcat.plugins.catalog import get_catalog
+
+
 class MissingPluginInfo(TypedDict):
     name: str
     provides: list[tuple[str, str]]
@@ -19,6 +22,7 @@ class MissingPluginError(ImportError):
         super().__init__(message)
 
     def _generate_message(self) -> str:
+        catalog = get_catalog()
         msg = "The following required plugins are missing:\n"
         for plugin in self.missing_plugins:
             msg += f"  - Plugin: {plugin['name']}\n"
@@ -29,6 +33,9 @@ class MissingPluginError(ImportError):
                 msg += f"    Author: {plugin['author']}\n"
             if plugin['url']:
                 msg += f"    URL: {plugin['url']}\n"
+            if catalog.get_plugin(plugin['name']) is not None:
+                msg += "\n    NB: You should be able to install this plugin using:\n"
+                msg += f"        python -m medcat install-plugins {plugin['name']}\n"
             msg += "\n"
         msg += "Please install the missing plugins to load this model pack."
         return msg
