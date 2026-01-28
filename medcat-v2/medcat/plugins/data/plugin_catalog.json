@@ -5,10 +5,11 @@
       "medcat-gliner": {
         "display_name": "medcat-gliner",
         "description": "Gliner based NER for MedCAT",
-        "source": "https://github.com/CogStack/cogstack-ops",
-        "source_type": "github_subdir",
-        "subdirectory": "plugins/experimental",
+        "source": "git@github.com:CogStack/cogstack-ops.git",
+        "source_type": "github_ssh_subdir",
+        "subdirectory": "medcat-gliner",
         "homepage": "https://github.com/CogStack/cogstack-ops/tree/main/medcat-gliner",
+        "requires_auth": true,
         "compatibility": [
           {
             "medcat_version": ">=2.5.0,<3.0.0",
