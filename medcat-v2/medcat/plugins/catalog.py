@@ -38,8 +38,8 @@ class PluginCatalog:
     """Manages the catalog of curated plugins."""
 
     REMOTE_CATALOG_URL = (
-        "https://raw.githubusercontent.com/CogStack/MedCAT/main/"
-        "medcat/plugins/data/plugin_catalog.json"
+        "https://raw.githubusercontent.com/CogStack/cogstack-nlp/main/"
+        "medcat-v2/medcat/plugins/data/plugin_catalog.json"
     )
 
     def __init__(self, use_remote: bool = True):
