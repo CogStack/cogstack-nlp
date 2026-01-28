@@ -104,7 +104,12 @@ class PluginCatalog:
 
     def get_plugin(self, name: str) -> Optional[PluginInfo]:
         """Get plugin info by name."""
-        return self._catalog.get(name)
+        plugin = self._catalog.get(name)
+        if plugin:
+            return plugin
+        # try lower case and with "-" instead of "_"
+        return self._catalog.get(name.lower().replace("_", "-"))
+
 
     def list_plugins(self) -> List[PluginInfo]:
         """List all available plugins."""
