@@ -1,0 +1,21 @@
+{
+    "version": "1.0",
+    "last_updated": "2026-01-28",
+    "plugins": {
+      "medcat-gliner": {
+        "display_name": "medcat-gliner",
+        "description": "Gliner based NER for MedCAT",
+        "source": "https://github.com/CogStack/cogstack-ops",
+        "source_type": "github_subdir",
+        "subdirectory": "plugins/experimental",
+        "homepage": "https://github.com/CogStack/cogstack-ops/tree/main/medcat-gliner",
+        "compatibility": [
+          {
+            "medcat_version": ">=2.5.0,<3.0.0",
+            "plugin_version": "main",
+            "comment": "For git refs, plugin_version is the branch/tag/commit"
+          }
+        ]
+      }
+    }
+  }
