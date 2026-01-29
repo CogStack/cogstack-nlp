@@ -10,6 +10,14 @@ from medcat.plugins.catalog import (
 )
 
 
+class IncludedCatalogSchemaTests(unittest.TestCase):
+
+    def test_is_correct_format(self):
+        with open(catalog_module.LOCAL_CATALOG_PATH) as f:
+            text = f.read()
+        catalog_module.CatalogModel.model_validate_json(text)
+
+
 class TestPluginCatalogParsingAndQueries(unittest.TestCase):
     EXAMPLE_PLUGIN_NAME = 'example-plugin'
 
@@ -17,19 +25,24 @@ class TestPluginCatalogParsingAndQueries(unittest.TestCase):
         # Avoid network access in tests by not touching the remote catalog.
         self.catalog = PluginCatalog(use_remote=False)
         # Reset any data that might have been loaded in __init__
-        self.catalog._catalog = {}
+        self.catalog._catalog.plugins.clear()
 
         # Populate the catalog with a simple in-memory definition
         self.catalog._parse_catalog(
             {
+                "version": "0.0test",
+                "last_updated": "test-time",
                 "plugins": {
                     self.EXAMPLE_PLUGIN_NAME: {
+                        "name": "example-plugin",
                         "display_name": "Example Plugin",
                         "description": "Test plugin",
-                        "source": self.EXAMPLE_PLUGIN_NAME,
-                        "source_type": "pypi",
+                        "source_spec": {
+                            "source": self.EXAMPLE_PLUGIN_NAME,
+                            "source_type": "pypi",
+                            "subdirectory": "plugins/example"
+                        },
                         "homepage": "https://example.com/example-plugin",
-                        "subdirectory": "plugins/example",
                         "requires_auth": True,
                         "compatibility": [
                             {
