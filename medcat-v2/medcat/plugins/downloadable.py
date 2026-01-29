@@ -1,12 +1,11 @@
 """Protocol definitions for plugin installation backends."""
 
 from typing import Protocol, Optional
-from dataclasses import dataclass
+from pydantic import BaseModel
 import re
 
 
-@dataclass
-class PluginSourceSpec:
+class PluginSourceSpec(BaseModel):
     """Where and how to obtain a plugin."""
     source: str  # PyPI package name, GitHub URL, SSH URL, etc.
     source_type: str
@@ -15,8 +14,7 @@ class PluginSourceSpec:
     subdirectory: Optional[str] = None  # Path within repo, e.g., "plugins/negation"
 
 
-@dataclass
-class PluginInstallSpec:
+class PluginInstallSpec(BaseModel):
     """Specification for installing a plugin."""
     name: str
     version_spec: str  # e.g., ">=1.0.0,<2.0.0" or git ref like "main", "v1.2.3"
@@ -88,7 +86,6 @@ class PluginInstallSpec:
 
         # If we can't parse it, return as-is and let pip handle it
         return url
-
 
 
 class PluginInstaller(Protocol):
