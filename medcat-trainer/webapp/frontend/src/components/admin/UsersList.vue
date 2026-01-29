@@ -8,7 +8,7 @@
         :items="users"
         :headers="headers"
         :hover="true"
-        @click:row="$emit('select-user', $event)"
+        @click:row="handleRowClick"
         hide-default-footer
         :items-per-page="-1"
         class="admin-table"
@@ -25,9 +25,7 @@
         </template>
         <template #item.actions="{ item }">
           <div class="action-buttons" @click.stop>
-            <button class="btn btn-sm btn-action btn-edit" @click="$emit('edit-user', item)" title="Edit">
-              <font-awesome-icon icon="edit"></font-awesome-icon>
-            </button>
+            <!-- No actions needed - clicking row edits -->
           </div>
         </template>
       </v-data-table>
@@ -48,7 +46,7 @@ export default {
       required: true
     }
   },
-  emits: ['select-user', 'edit-user'],
+  emits: ['select-user'],
   data() {
     return {
       headers: [
@@ -58,6 +56,12 @@ export default {
         { title: 'Admin', value: 'is_superuser' },
         { title: 'Actions', value: 'actions', sortable: false }
       ]
+    }
+  },
+  methods: {
+    handleRowClick(event, { item }) {
+      // v-data-table click:row passes (event, { item })
+      this.$emit('select-user', event, { item })
     }
   }
 }

@@ -8,7 +8,7 @@
         :items="modelPacks"
         :headers="headers"
         :hover="true"
-        @click:row="$emit('select-model-pack', $event)"
+        @click:row="handleRowClick"
         hide-default-footer
         :items-per-page="-1"
         class="admin-table"
@@ -21,9 +21,6 @@
         </template>
         <template #item.actions="{ item }">
           <div class="action-buttons" @click.stop>
-            <button class="btn btn-sm btn-action btn-edit" @click="$emit('edit-model-pack', item)" title="Edit">
-              <font-awesome-icon icon="edit"></font-awesome-icon>
-            </button>
             <button class="btn btn-sm btn-action btn-delete" @click="$emit('confirm-delete-model-pack', item)" title="Delete">
               <font-awesome-icon icon="trash"></font-awesome-icon>
             </button>
@@ -55,7 +52,7 @@ export default {
       required: true
     }
   },
-  emits: ['select-model-pack', 'edit-model-pack', 'confirm-delete-model-pack'],
+  emits: ['select-model-pack', 'confirm-delete-model-pack'],
   data() {
     return {
       headers: [
@@ -67,6 +64,10 @@ export default {
     }
   },
   methods: {
+    handleRowClick(event, { item }) {
+      // v-data-table click:row passes (event, { item })
+      this.$emit('select-model-pack', event, { item })
+    },
     getConceptDbName(conceptDbId) {
       if (!conceptDbId) return 'N/A'
       const cdb = this.conceptDbs.find(c => c.id === (typeof conceptDbId === 'object' ? conceptDbId.id : conceptDbId))

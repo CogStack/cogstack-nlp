@@ -8,16 +8,13 @@
         :items="datasets"
         :headers="headers"
         :hover="true"
-        @click:row="$emit('select-dataset', $event)"
+        @click:row="handleRowClick"
         hide-default-footer
         :items-per-page="-1"
         class="admin-table"
         dense>
         <template #item.actions="{ item }">
           <div class="action-buttons" @click.stop>
-            <button class="btn btn-sm btn-action btn-edit" @click="$emit('edit-dataset', item)" title="Edit">
-              <font-awesome-icon icon="edit"></font-awesome-icon>
-            </button>
             <button class="btn btn-sm btn-action btn-delete" @click="$emit('confirm-delete-dataset', item)" title="Delete">
               <font-awesome-icon icon="trash"></font-awesome-icon>
             </button>
@@ -41,7 +38,7 @@ export default {
       required: true
     }
   },
-  emits: ['select-dataset', 'edit-dataset', 'confirm-delete-dataset'],
+  emits: ['select-dataset', 'confirm-delete-dataset'],
   data() {
     return {
       headers: [
@@ -49,6 +46,12 @@ export default {
         { title: 'Description', value: 'description' },
         { title: 'Actions', value: 'actions', sortable: false }
       ]
+    }
+  },
+  methods: {
+    handleRowClick(event, { item }) {
+      // v-data-table click:row passes (event, { item })
+      this.$emit('select-dataset', event, { item })
     }
   }
 }

@@ -12,7 +12,7 @@
         :items="projects"
         :headers="tableHeaders"
         :hover="true"
-        @click:row="$emit('select-project', $event)"
+        @click:row="handleRowClick"
         hide-default-footer
         :items-per-page="-1"
         class="projects-table"
@@ -21,7 +21,6 @@
         <template #item.name="{ item }">
           <div class="project-name-cell">
             <strong class="project-name">{{ item.name }}</strong>
-            <span v-if="item.description" class="project-description">{{ item.description }}</span>
           </div>
         </template>
         <template #item.status="{ item }">
@@ -96,6 +95,10 @@ export default {
     }
   },
   methods: {
+    handleRowClick(event, { item }) {
+      // v-data-table click:row passes (event, { item })
+      this.$emit('select-project', event, { item })
+    },
     getStatusClass(status) {
       const classes = {
         'A': 'badge-primary',

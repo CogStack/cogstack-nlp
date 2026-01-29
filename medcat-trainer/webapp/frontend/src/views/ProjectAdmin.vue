@@ -66,7 +66,7 @@
 
     <div v-else class="project-admin-content">
       <!-- Projects Tab -->
-      <div v-if="activeTab === 'projects'">
+      <div v-if="activeTab === 'projects'" class="tab-content">
       <!-- Project List View -->
       <projects-list
         v-if="!showCreateForm && !editingProject"
@@ -385,14 +385,13 @@
       <!-- End Projects Tab -->
 
       <!-- Model Packs Tab -->
-      <div v-if="activeTab === 'modelpacks'" class="admin-section">
+      <div v-if="activeTab === 'modelpacks'" class="tab-content admin-section">
         <model-packs-list
           v-if="!showModelPackForm && !editingModelPack"
           :model-packs="modelPacks"
           :concept-dbs="conceptDbs"
           :vocabs="vocabs"
           @select-model-pack="selectModelPack"
-          @edit-model-pack="editModelPack"
           @confirm-delete-model-pack="confirmDeleteModelPack"
         />
 
@@ -411,12 +410,11 @@
       <!-- End Model Packs Tab -->
 
       <!-- Datasets Tab -->
-      <div v-if="activeTab === 'datasets'" class="admin-section">
+      <div v-if="activeTab === 'datasets'" class="tab-content admin-section">
         <datasets-list
           v-if="!showDatasetForm && !editingDataset"
           :datasets="datasets"
           @select-dataset="selectDataset"
-          @edit-dataset="editDataset"
           @confirm-delete-dataset="confirmDeleteDataset"
         />
 
@@ -433,12 +431,11 @@
       <!-- End Datasets Tab -->
 
       <!-- Users Tab -->
-      <div v-if="activeTab === 'users'" class="admin-section">
+      <div v-if="activeTab === 'users'" class="tab-content admin-section">
         <users-list
           v-if="!showUserForm && !editingUser"
           :users="users"
           @select-user="selectUser"
-          @edit-user="editUser"
         />
 
         <!-- User Form -->
@@ -1137,11 +1134,16 @@ export default {
   max-width: 1400px;
   margin: 0 auto;
   background: var(--color-background);
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 100px);
+  height: calc(100vh - 100px);
+  overflow: hidden;
 }
 
 .project-admin-header {
-  padding-bottom: 20px;
   border-bottom: 2px solid var(--color-border);
+  flex-shrink: 0;
 
   .header-content {
     display: flex;
@@ -1436,18 +1438,20 @@ export default {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 180px);
-  max-height: calc(100vh - 180px);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 
   .form-header {
-    padding: 12px 20px;
+    padding: 14px 20px;
     border-bottom: 1px solid var(--color-border);
     background: linear-gradient(135deg, $primary 0%, darken($primary, 10%) 100%);
     color: white;
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 16px;
     border-radius: 12px 12px 0 0;
+    flex-shrink: 0;
 
     .btn-back {
       background: rgba(255, 255, 255, 0.2);
@@ -1455,12 +1459,13 @@ export default {
       color: white;
       display: flex;
       align-items: center;
-      gap: 6px;
-      padding: 6px 12px;
-      border-radius: 4px;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: 6px;
       transition: all 0.2s ease;
       font-weight: 500;
       font-size: 0.9rem;
+      white-space: nowrap;
 
       &:hover {
         background: rgba(255, 255, 255, 0.3);
@@ -1468,7 +1473,7 @@ export default {
       }
 
       svg {
-        font-size: 0.85rem;
+        font-size: 0.9rem;
       }
     }
 
@@ -1483,7 +1488,7 @@ export default {
   .form-content {
     flex: 1;
     overflow: hidden;
-    padding: 16px 20px;
+    padding: 0;
     display: flex;
     flex-direction: column;
     min-height: 0;
@@ -1493,9 +1498,11 @@ export default {
     padding: 0;
     max-width: 1400px;
     margin: 0 auto;
+    width: 100%;
     flex: 1;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
     min-height: 0;
   }
 
@@ -1926,18 +1933,21 @@ export default {
   .form-actions {
     display: flex;
     justify-content: flex-end;
-    gap: 10px;
+    gap: 12px;
     margin-top: auto;
-    padding-top: 16px;
+    padding: 16px 20px;
     border-top: 1px solid var(--color-border);
     flex-shrink: 0;
+    background: white;
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
 
     .btn {
-      padding: 8px 20px;
+      padding: 10px 24px;
       font-weight: 500;
-      border-radius: 4px;
-      font-size: 0.9rem;
+      border-radius: 8px;
+      font-size: 0.95rem;
       transition: all 0.2s ease;
+      min-width: 100px;
 
       &:hover {
         transform: translateY(-1px);
@@ -2134,6 +2144,23 @@ export default {
   margin: 20px 0;
   border-bottom: 2px solid var(--color-border);
   padding-bottom: 0;
+  flex-shrink: 0;
+}
+
+.project-admin-content {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+
+  .tab-content {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
 }
 
 .tab-button {
