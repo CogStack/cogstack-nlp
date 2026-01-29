@@ -1,12 +1,14 @@
 import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
+from copy import deepcopy
 
 import medcat.plugins.catalog as catalog_module
 from medcat.plugins.catalog import (
     NoCompatibleSpecException,
     NoSuchPluginException,
     PluginCatalog,
+    PluginCompatibility,
 )
 
 
@@ -16,6 +18,129 @@ class IncludedCatalogSchemaTests(unittest.TestCase):
         with open(catalog_module.LOCAL_CATALOG_PATH) as f:
             text = f.read()
         catalog_module.CatalogModel.model_validate_json(text)
+
+
+class CatalogMergeTests(unittest.TestCase):
+    v1 = "v1"
+    update1 = "at noon"
+    v2 = "v2"
+    update2 = "at night"
+    v3 = "v3"
+    update3 = "next morning"
+    pl1_comp1 = catalog_module.PluginCompatibility(
+        plugin_version="v0.1.0", medcat_version=">=2.5")
+    pl1_comp2 = catalog_module.PluginCompatibility(
+        plugin_version="v0.1.1", medcat_version=">=2.6")
+    pl1 = catalog_module.PluginInfo(
+        name='pl1', display_name='Plugin 1',
+        description="Plugin 1 ...",
+        source_spec=catalog_module.PluginSourceSpec(
+            source="github", source_type="github"),
+        homepage="www.google.com", requires_auth=False,
+        compatibility=[pl1_comp1]
+    )
+    pl1_alt = catalog_module.PluginInfo(
+        name='pl1', display_name='Plugin 1',
+        description="Plugin 1 - UPDATED ...",
+        source_spec=catalog_module.PluginSourceSpec(
+            source="github", source_type="github"),
+        homepage="www.google.com", requires_auth=False,
+        compatibility=[pl1_comp1, pl1_comp2]
+    )
+    pl2_comp1 = catalog_module.PluginCompatibility(
+        plugin_version="v0.2.0", medcat_version=">=2.3")
+    pl2 = catalog_module.PluginInfo(
+        name='pl2', display_name='Plugin 2',
+        description="Plugin two ...",
+        source_spec=catalog_module.PluginSourceSpec(
+            source="github", source_type="github"),
+        homepage="www.amazon.com", requires_auth=False,
+        compatibility=[pl2_comp1]
+    )
+    plugins1 = {
+        "pl1": pl1,
+    }
+    plugins2 = {
+        "pl2": pl2,
+    }
+    plugins3 = {
+        "pl1": pl1_alt,
+        "pl2": pl2,
+    }
+
+    def _copy_catalog(self, catalog: catalog_module.CatalogModel) -> catalog_module.CatalogModel:
+        model_dump = deepcopy(catalog.model_dump())
+        return catalog_module.CatalogModel.model_validate(model_dump)
+
+    def setUp(self) -> None:
+        self.catalog1 = self._copy_catalog(catalog_module.CatalogModel(
+            version=self.v1, last_updated=self.update1, plugins=self.plugins1
+        ))
+        self.catalog2 = self._copy_catalog(catalog_module.CatalogModel(
+            version=self.v2, last_updated=self.update2, plugins=self.plugins2
+        ))
+        self.catalog3_update = self._copy_catalog(catalog_module.CatalogModel(
+            version=self.v3, last_updated=self.update3, plugins=self.plugins3
+        ))
+        self.merged_2_into_1_po = self._copy_catalog(self.catalog1)
+        self.merged_2_into_1_po.merge(self.catalog2, prefer_other=True)
+        self.merged_2_into_1_ps = self._copy_catalog(self.catalog1)
+        self.merged_2_into_1_ps.merge(self.catalog2, prefer_other=False)
+        self.merged_3_into_1_po = self._copy_catalog(self.catalog1)
+        self.merged_3_into_1_po.merge(self.catalog3_update, prefer_other=True)
+        self.merged_3_into_1_ps = self._copy_catalog(self.catalog1)
+        self.merged_3_into_1_ps.merge(self.catalog3_update, prefer_other=False)
+
+    def test_catalog_merge_updates_version(self):
+        assert self.merged_2_into_1_po.version == self.v2
+
+    def test_catalog_merge_updates_update_date(self):
+        assert self.merged_2_into_1_po.last_updated == self.update2
+
+    def test_catalog_merge_can_leave_version(self):
+        assert self.merged_2_into_1_ps.version == self.v1
+
+    def test_catalog_merge_can_leave_date(self):
+        assert self.merged_2_into_1_ps.last_updated == self.update1
+
+    def assert_has_merged(
+            self, part1: catalog_module.CatalogModel, part2: catalog_module,
+            merged: catalog_module.CatalogModel):
+        assert len(merged.plugins) >= len(part1.plugins)
+        assert len(merged.plugins) >= len(part2.plugins)
+        merged_plugins = set(merged.plugins.keys())
+        downstream_plugins = set(part1.plugins.keys()) | set(part2.plugins.keys())
+        assert merged_plugins == downstream_plugins
+
+    def test_merge_adds_plugins_2_to_1_other(self):
+        self.assert_has_merged(self.catalog1, self.catalog2, self.merged_2_into_1_po)
+
+    def test_merge_adds_plugins_2_to_1_self(self):
+        self.assert_has_merged(self.catalog1, self.catalog2, self.merged_2_into_1_ps)
+
+    def test_merge_adds_plugins_3_to_1_other(self):
+        self.assert_has_merged(self.catalog1, self.catalog3_update, self.merged_3_into_1_po)
+
+    def test_merge_adds_plugins_3_to_1_self(self):
+        self.assert_has_merged(self.catalog1, self.catalog3_update, self.merged_3_into_1_ps)
+
+    def test_keeps_updated_info(self):
+        merged_pl = self.merged_3_into_1_po.plugins[self.pl1.name]
+        cat1_pl = self.catalog1.plugins[self.pl1.name]
+        cat3_pl = self.catalog3_update.plugins[self.pl1.name]
+        assert merged_pl.compatibility == cat3_pl.compatibility
+        assert merged_pl.compatibility != cat1_pl.compatibility
+        assert merged_pl.description == cat3_pl.description
+        assert merged_pl.description != cat1_pl.description
+
+    def test_can_keep_prior_info(self):
+        merged_pl = self.merged_3_into_1_ps.plugins[self.pl1.name]
+        cat1_pl = self.catalog1.plugins[self.pl1.name]
+        cat3_pl = self.catalog3_update.plugins[self.pl1.name]
+        assert merged_pl.compatibility != cat3_pl.compatibility
+        assert merged_pl.compatibility == cat1_pl.compatibility
+        assert merged_pl.description != cat3_pl.description
+        assert merged_pl.description == cat1_pl.description
 
 
 class TestPluginCatalogParsingAndQueries(unittest.TestCase):
