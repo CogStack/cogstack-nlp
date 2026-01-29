@@ -11,8 +11,9 @@ class PluginInstallSpec:
     name: str
     version_spec: str  # e.g., ">=1.0.0,<2.0.0" or git ref like "main", "v1.2.3"
     source: str  # PyPI package name, GitHub URL, etc.
-    source_type: str    # "pypi", "github", "github_subdir",
-                        # "github_ssh", "github_ssh_subdir", "url"
+    source_type: str
+    # this includes: "pypi", "github", "github_subdir",
+    # "github_ssh", "github_ssh_subdir", "url"
     subdirectory: Optional[str] = None  # Path within repo, e.g., "plugins/negation"
 
     def to_pip_spec(self) -> str:
