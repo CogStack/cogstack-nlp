@@ -2,7 +2,7 @@
 
 import json
 import logging
-from typing import Dict, Optional, List
+from typing import Optional
 import importlib.resources
 import requests
 
@@ -31,7 +31,7 @@ class PluginInfo(BaseModel):
     description: str
     source_spec: PluginSourceSpec
     homepage: str
-    compatibility: List[PluginCompatibility]
+    compatibility: list[PluginCompatibility]
     requires_auth: bool = False
 
     def can_merge(self, other: 'PluginInfo') -> bool:
@@ -83,7 +83,7 @@ class PluginInfo(BaseModel):
 
 class CatalogModel(BaseModel):
     """Pydantic model for the top-level catalog JSON."""
-    plugins: Dict[str, PluginInfo] = Field(default_factory=dict)
+    plugins: dict[str, PluginInfo] = Field(default_factory=dict)
     version: str
     last_updated: str
 
@@ -164,7 +164,7 @@ class PluginCatalog:
         return self._catalog.plugins.get(name.lower().replace("_", "-"))
 
 
-    def list_plugins(self) -> List[PluginInfo]:
+    def list_plugins(self) -> list[PluginInfo]:
         """List all available plugins."""
         return list(self._catalog.plugins.values())
 
