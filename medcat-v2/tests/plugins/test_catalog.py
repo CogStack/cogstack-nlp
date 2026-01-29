@@ -51,7 +51,7 @@ class TestPluginCatalogParsingAndQueries(unittest.TestCase):
         self.assertIsNotNone(plugin)
         self.assertTrue(self.catalog.is_curated(self.EXAMPLE_PLUGIN_NAME))
         self.assertEqual(plugin.display_name, "Example Plugin")
-        self.assertEqual(plugin.subdirectory, "plugins/example")
+        self.assertEqual(plugin.source_spec.subdirectory, "plugins/example")
         self.assertTrue(plugin.requires_auth)
 
     def test_list_plugins_returns_all(self):

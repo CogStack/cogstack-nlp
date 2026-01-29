@@ -108,7 +108,8 @@ class PluginInstallationManager:
         if plugin_info.requires_auth:
             logger.warning(
                 f"Plugin '{plugin_name}' requires authentication.\n"
-                f"Ensure you have configured Git credentials for {plugin_info.source}"
+                "Ensure you have configured Git credentials for "
+                f"{plugin_info.source_spec.source}"
             )
 
         # Determine version/ref to install
@@ -130,9 +131,7 @@ class PluginInstallationManager:
         spec = PluginInstallSpec(
             name=plugin_name,
             version_spec=version_spec,
-            source=plugin_info.source,
-            source_type=plugin_info.source_type,
-            subdirectory=plugin_info.subdirectory  # NEW
+            source_spec=plugin_info.source_spec,
         )
 
         logger.info(
@@ -140,8 +139,8 @@ class PluginInstallationManager:
             f"({plugin_name}{version_spec})"
         )
 
-        if plugin_info.subdirectory:
-            logger.info(f"  From subdirectory: {plugin_info.subdirectory}")
+        if plugin_info.source_spec.subdirectory:
+            logger.info(f"  From subdirectory: {plugin_info.source_spec.subdirectory}")
 
         try:
             return self.installer.install(spec, dry_run=dry_run)

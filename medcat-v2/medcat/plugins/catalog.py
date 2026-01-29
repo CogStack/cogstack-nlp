@@ -10,6 +10,8 @@ import requests
 from packaging.specifiers import SpecifierSet
 from packaging.version import Version
 
+from .downloadable import PluginSourceSpec
+
 logger = logging.getLogger(__name__)
 
 
@@ -26,11 +28,9 @@ class PluginInfo:
     name: str
     display_name: str
     description: str
-    source: str
-    source_type: str
+    source_spec: PluginSourceSpec
     homepage: str
     compatibility: List[PluginCompatibility]
-    subdirectory: Optional[str] = None
     requires_auth: bool = False
 
 
@@ -93,12 +93,14 @@ class PluginCatalog:
                 name=plugin_name,
                 display_name=plugin_data.get("display_name", plugin_name),
                 description=plugin_data.get("description", ""),
-                source=plugin_data.get("source", ""),
-                source_type=plugin_data.get("source_type", "pypi"),
+                source_spec=PluginSourceSpec(
+                    source=plugin_data.get("source", ""),
+                    source_type=plugin_data.get("source_type", "pypi"),
+                    subdirectory=plugin_data.get("subdirectory"),
+                ),
                 homepage=plugin_data.get("homepage", ""),
                 compatibility=compatibility,
-                subdirectory=plugin_data.get("subdirectory"),  # NEW
-                requires_auth=plugin_data.get("requires_auth", False)  # NEW
+                requires_auth=plugin_data.get("requires_auth", False),
             )
 
 

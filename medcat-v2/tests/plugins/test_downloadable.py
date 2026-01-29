@@ -1,6 +1,6 @@
 import unittest
 
-from medcat.plugins.downloadable import PluginInstallSpec
+from medcat.plugins.downloadable import PluginInstallSpec, PluginSourceSpec
 
 
 class TestPluginInstallSpec(unittest.TestCase):
@@ -9,8 +9,10 @@ class TestPluginInstallSpec(unittest.TestCase):
         spec = PluginInstallSpec(
             name="example-plugin",
             version_spec="==1.2.3",
-            source="example-plugin",
-            source_type="pypi",
+            source_spec=PluginSourceSpec(
+                source="example-plugin",
+                source_type="pypi",
+            ),
         )
 
         self.assertEqual(spec.to_pip_spec(), "example-plugin==1.2.3")
@@ -19,8 +21,10 @@ class TestPluginInstallSpec(unittest.TestCase):
         spec = PluginInstallSpec(
             name="example-plugin",
             version_spec="v1.0.0",
-            source="https://github.com/example/example-plugin",
-            source_type="github",
+            source_spec=PluginSourceSpec(
+                source="https://github.com/example/example-plugin",
+                source_type="github",
+            ),
         )
 
         self.assertEqual(
@@ -32,9 +36,11 @@ class TestPluginInstallSpec(unittest.TestCase):
         spec = PluginInstallSpec(
             name="example-plugin",
             version_spec="main",
-            source="https://github.com/example/example-plugin",
-            source_type="github_subdir",
-            subdirectory="plugins/example",
+            source_spec=PluginSourceSpec(
+                source="https://github.com/example/example-plugin",
+                source_type="github_subdir",
+                subdirectory="plugins/example",
+            ),
         )
 
         self.assertEqual(
@@ -47,8 +53,10 @@ class TestPluginInstallSpec(unittest.TestCase):
         spec = PluginInstallSpec(
             name="example-plugin",
             version_spec="main",
-            source="https://github.com/example/example-plugin",
-            source_type="github_subdir",
+            source_spec=PluginSourceSpec(
+                source="https://github.com/example/example-plugin",
+                source_type="github_subdir",
+            ),
         )
 
         self.assertEqual(
@@ -60,8 +68,10 @@ class TestPluginInstallSpec(unittest.TestCase):
         spec = PluginInstallSpec(
             name="example-plugin",
             version_spec="",  # ignored for url
-            source="https://example.com/example-plugin-1.0.0.whl",
-            source_type="url",
+            source_spec=PluginSourceSpec(
+                source="https://example.com/example-plugin-1.0.0.whl",
+                source_type="url",
+            ),
         )
 
         self.assertEqual(
@@ -73,8 +83,10 @@ class TestPluginInstallSpec(unittest.TestCase):
         spec = PluginInstallSpec(
             name="example-plugin",
             version_spec="==1.0.0",
-            source="example-plugin",
-            source_type="unknown-source",
+            source_spec=PluginSourceSpec(
+                source="example-plugin",
+                source_type="unknown-source",
+            ),
         )
 
         with self.assertRaises(ValueError):

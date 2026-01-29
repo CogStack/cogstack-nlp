@@ -3,7 +3,7 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-from medcat.plugins.downloadable import PluginInstallSpec
+from medcat.plugins.downloadable import PluginInstallSpec, PluginSourceSpec
 from medcat.plugins.installer import PipInstaller, PluginInstallationManager
 
 
@@ -16,8 +16,10 @@ class TestPipInstaller(unittest.TestCase):
         spec = PluginInstallSpec(
             name="example-plugin",
             version_spec="==1.0.0",
-            source="example-plugin",
-            source_type="pypi",
+            source_spec=PluginSourceSpec(
+                source="example-plugin",
+                source_type="pypi",
+            ),
         )
 
         result = installer.install(spec)
@@ -36,8 +38,10 @@ class TestPipInstaller(unittest.TestCase):
         spec = PluginInstallSpec(
             name="example-plugin",
             version_spec="==1.0.0",
-            source="example-plugin",
-            source_type="pypi",
+            source_spec=PluginSourceSpec(
+                source="example-plugin",
+                source_type="pypi",
+            ),
         )
 
         result = installer.install(spec, dry_run=True)
@@ -58,8 +62,10 @@ class TestPipInstaller(unittest.TestCase):
         spec = PluginInstallSpec(
             name="example-plugin",
             version_spec="==1.0.0",
-            source="example-plugin",
-            source_type="pypi",
+            source_spec=PluginSourceSpec(
+                source="example-plugin",
+                source_type="pypi",
+            ),
         )
 
         result = installer.install(spec)
@@ -136,11 +142,13 @@ class TestPluginInstallationManager(unittest.TestCase):
             name="example-plugin",
             display_name="Example Plugin",
             description="",
-            source="https://github.com/example/example-plugin",
-            source_type="github_subdir",
+            source_spec=PluginSourceSpec(
+                source="https://github.com/example/example-plugin",
+                source_type="github_subdir",
+                subdirectory="plugins/example",
+            ),
             homepage="https://example.com/example-plugin",
             compatibility=[],
-            subdirectory="plugins/example",
             requires_auth=False,
         )
         fake_catalog = MagicMock()
@@ -163,11 +171,13 @@ class TestPluginInstallationManager(unittest.TestCase):
             name="example-plugin",
             display_name="Example Plugin",
             description="",
-            source="example-plugin",
-            source_type="pypi",
+            source_spec=PluginSourceSpec(
+                source="example-plugin",
+                source_type="pypi",
+                subdirectory=None,
+            ),
             homepage="https://example.com/example-plugin",
             compatibility=[],
-            subdirectory=None,
             requires_auth=False,
         )
         fake_catalog = MagicMock()
@@ -203,11 +213,13 @@ class TestPluginInstallationManager(unittest.TestCase):
             name="example-plugin",
             display_name="Example Plugin",
             description="",
-            source="example-plugin",
-            source_type="pypi",
+            source_spec=PluginSourceSpec(
+                source="example-plugin",
+                source_type="pypi",
+                subdirectory=None,
+            ),
             homepage="https://example.com/example-plugin",
             compatibility=[],
-            subdirectory=None,
             requires_auth=False,
         )
         fake_catalog = MagicMock()
@@ -228,8 +240,8 @@ class TestPluginInstallationManager(unittest.TestCase):
         fake_installer.install.assert_called_once()
         spec = fake_installer.install.call_args[0][0]
         self.assertEqual(spec.version_spec, "==1.2.3")
-        self.assertEqual(spec.source, "example-plugin")
-        self.assertEqual(spec.source_type, "pypi")
+        self.assertEqual(spec.source_spec.source, "example-plugin")
+        self.assertEqual(spec.source_spec.source_type, "pypi")
 
     @patch("medcat.plugins.installer.get_catalog")
     def test_install_multiple_collects_results_and_handles_exceptions(
