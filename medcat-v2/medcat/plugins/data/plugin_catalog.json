@@ -18,7 +18,7 @@
                     "plugin_version": "main"
                 }
             ],
-            "requires_auth": false
+            "requires_auth": true
         }
     }
 }
