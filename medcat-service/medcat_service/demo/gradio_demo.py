@@ -27,8 +27,11 @@ if settings.deid_mode:
                     placeholder="Enter some text and click Deidentify..."
                 )
                 examples = gr.Examples(
-                    examples=[demo_content.short_example, demo_content.anoncat_example],
+                    examples=[demo_content.short_example,  demo_content.anoncat_example],
                     inputs=input_text,
+                    example_labels=["Short Example",
+                                    "Note with personally identifiable information"]
+
                 )
                 with gr.Row():
                     clear_btn = gr.Button("Clear", variant="secondary")
@@ -57,15 +60,20 @@ else:
                     lines=6,
                     placeholder="Enter some text and click Annotate..."
                 )
-                examples = gr.Examples(
-                    examples=[demo_content.short_example, demo_content.long_example],
-                    inputs=input_text,
-                )
+                with gr.Row():
+                    examples = gr.Examples(
+                        examples=[demo_content.short_example, demo_content.long_example, demo_content.anoncat_example],
+                        inputs=input_text,
+                        example_labels=["Short Example",
+                                        "Patient Discharge Summary in Neurology",
+                                        "Note with personally identifiable information" ]
+                    )
                 with gr.Row():
                     clear_btn = gr.Button("Clear", variant="secondary")
                     annotate_btn = gr.Button("Annotate", variant="primary")
             with gr.Column():
-                highlighted = gr.HighlightedText(label="Processed Text", elem_id="highlighted-text-output")
+                highlighted = gr.HighlightedText(
+                    label="Processed Text", elem_id="highlighted-text-output")
                 dataframe = gr.Dataframe(label="Annotations", headers=headers, interactive=False, max_chars=50)
         annotate_btn.click(
             perform_named_entity_resolution,
