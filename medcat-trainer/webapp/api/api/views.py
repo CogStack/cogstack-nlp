@@ -1,6 +1,5 @@
 import logging
 import os
-import traceback
 from smtplib import SMTPException
 from tempfile import NamedTemporaryFile
 from typing import Any
@@ -201,13 +200,13 @@ class ModelPackViewSet(viewsets.ModelViewSet):
 class DatasetViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing datasets.
-    
+
     File Schema Requirements:
     - Format: .csv or .xlsx file
     - Required columns:
       * name: A unique identifier for each document
       * text: The free-text content to annotate
-    
+
     Example CSV:
     name,text
     doc001,"First document text"
@@ -334,10 +333,8 @@ def prepare_documents(request):
 
     except Exception as e:
         logger.warning('Error preparing documents for project %s', p_id, exc_info=e)
-        stack = traceback.format_exc()
         return Response({'message': e.args[0] if len(e.args) > 0 else 'Internal Server Error',
-                         'description': e.args[1] if len(e.args) > 1 else '',
-                         'stacktrace': stack}, status=500)
+                         'description': e.args[1] if len(e.args) > 1 else '',}, status=500)
     return Response({'message': 'Documents prepared successfully'})
 
 
@@ -384,7 +381,7 @@ def prepare_docs_bg_task(request, proj_id):
             ds_total_count = Document.objects.filter(dataset=ProjectAnnotateEntities.objects.get(id=proj_id).dataset.id).count()
             return Response({'proj_id': proj_id, 'dataset_len': ds_total_count, 'prepd_docs_len': prepd_docs_count})
         except ObjectDoesNotExist:
-            return HttpResponseBadRequest('No Project found for ID: %s', proj_id)
+            return HttpResponseBadRequest('No Project found for ID: %s' % proj_id)
     else:
         running_doc_prep_tasks = {json.loads(task.task_params)[0][0]: task.id
                                   for task in Task.objects.filter(queue='doc_prep')}
@@ -549,7 +546,7 @@ def submit_document(request):
     try:
         _submit_document(project, document)
     except Exception as e:
-        HttpResponseServerError(e.message)
+        return HttpResponseServerError(str(e))
 
     return Response({'message': 'Document submited successfully'})
 
@@ -778,7 +775,7 @@ def concept_search_index_available(request):
     except Exception as e:
         logger.error("Failed to search for concept_search_index. Solr Search Service not available", exc_info=e)
         return HttpResponseServerError("Solr Search Service not available check the service is up, running "
-                                       "and configured correctly", e)
+                                       "and configured correctly.")
 
 
 @api_view(http_method_names=['GET'])
@@ -1175,7 +1172,7 @@ def project_admin_detail(request, project_id):
                 return Response(ProjectAnnotateEntitiesSerializer(project).data)
             except Exception as e:
                 logger.error(f"Error saving project {project_id}: {e}", exc_info=e)
-                return Response({'error': f'Failed to save project: {str(e)}'}, status=400)
+                return Response({'error': f'Failed to save project'}, status=400)
         else:
             logger.warning(f"Validation errors for project {project_id}: {serializer.errors}")
             return Response(serializer.errors, status=400)
@@ -1273,7 +1270,7 @@ def project_admin_clone(request, project_id):
         return Response(serializer.data, status=201)
     except Exception as e:
         logger.error(f"Failed to clone project: {e}", exc_info=e)
-        return Response({'error': f'Failed to clone project: {str(e)}'}, status=500)
+        return Response({'error': f'Failed to clone project:'}, status=500)
 
 
 @api_view(http_method_names=['POST'])
