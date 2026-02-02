@@ -5,7 +5,7 @@ from functools import cache
 @cache
 def _read_file(filename: str) -> str:
     package = importlib.resources.files(__package__ or 'medcat_service.demo')
-    file_path = package / filename
+    file_path = package / 'resources' / filename
     return file_path.read_text(encoding='utf-8')
 
 

@@ -149,6 +149,20 @@ def perform_named_entity_resolution(input_text: str):
     response_datatable_format = convert_display_model_to_list_of_lists(annotations_as_display_format)
 
     response: EntityResponse = EntityResponse(entities=entity_ner_format, text=input_text)
-    result = response.model_dump(), response_datatable_format
+    result = response.model_dump(), response_datatable_format, result.text
     logger.debug("Returning final result")
+    return result
+
+def medcat_demo_perform_named_entity_resolution(input_text: str):
+    """
+    Performs named entity resolution for the MedCAT demo.
+    """
+    result = perform_named_entity_resolution(input_text)
+    return result[0], result[1]
+
+def anoncat_demo_perform_deidentification(input_text: str):
+    """
+    Performs deidentification for the AnonCAT demo.
+    """
+    result = perform_named_entity_resolution(input_text)
     return result

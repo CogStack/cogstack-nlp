@@ -1,7 +1,7 @@
 import gradio as gr
 
 import medcat_service.demo.demo_content as demo_content
-from medcat_service.demo.demo_logic import perform_named_entity_resolution
+from medcat_service.demo.demo_logic import medcat_demo_perform_named_entity_resolution, anoncat_demo_perform_deidentification
 from medcat_service.dependencies import get_settings
 
 headers = ["Pretty Name", "Identifier", "Confidence Score", "Start Index", "End Index", "ID"]
@@ -83,15 +83,30 @@ if settings.deid_mode:
                 )
                 with gr.Row():
                     clear_btn = gr.Button("Clear", variant="secondary")
-                    deid_btn = gr.Button("Deidentify", variant="primary")
+                    annotate_btn = gr.Button("Deidentify", variant="primary")
 
             with gr.Column():
-                highlighted = gr.HighlightedText(
-                    label="Processed Text", elem_id="highlighted-text-output", interactive=False
-                )
-                dataframe = gr.Dataframe(label="Annotations", headers=headers, interactive=False, max_chars=4)
-        deid_btn.click(perform_named_entity_resolution, inputs=input_text, outputs=[highlighted, dataframe])
-        clear_btn.click(lambda: ("", None, None), outputs=[input_text, highlighted, dataframe])
+                with gr.Tab("Deidentification"):
+                    deidentified_text = gr.Textbox(label="Deidentified Text", value="", interactive=False)
+                with gr.Tab("Details"):
+
+                    highlighted = gr.HighlightedText(
+                        label="Processed Text", elem_id="highlighted-text-output", interactive=False
+                    )
+                    annotation_details = gr.Markdown(label="Annotation Details",
+                                                     value=annotation_details_placeholder_text)
+                    dataframe = gr.Dataframe(label="All Annotations", headers=headers, interactive=False, max_chars=50)
+
+        highlighted.select(on_select, [highlighted, annotation_details, dataframe], outputs=annotation_details)
+
+        annotate_btn.click(anoncat_demo_perform_deidentification,
+                           inputs=input_text, outputs=[highlighted, dataframe, deidentified_text])
+        annotate_btn.click(lambda: (annotation_details_placeholder_text), outputs=[annotation_details])
+
+        clear_btn.click(
+            lambda: ("", None, None, annotation_details_placeholder_text),
+            outputs=[input_text, highlighted, dataframe, annotation_details],
+        )
         gr.Markdown(demo_content.anoncat_help_content)
 else:
     with gr.Blocks(title="MedCAT Demo", fill_width=True) as io:
@@ -124,7 +139,8 @@ else:
         highlighted.select(on_select, [highlighted, annotation_details, dataframe], outputs=annotation_details)
 
         annotate_btn.click(lambda: (annotation_details_placeholder_text), outputs=[annotation_details])
-        annotate_btn.click(perform_named_entity_resolution, inputs=input_text, outputs=[highlighted, dataframe])
+        annotate_btn.click(medcat_demo_perform_named_entity_resolution,
+                           inputs=input_text, outputs=[highlighted, dataframe])
 
         clear_btn.click(
             lambda: ("", None, None, annotation_details_placeholder_text),
