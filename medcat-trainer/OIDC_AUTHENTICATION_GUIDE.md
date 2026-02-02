@@ -39,7 +39,7 @@ MedCAT Trainer uses a **two-client architecture** for OIDC:
   "KEYCLOAK_URL": "https://auth.cogstack.example.site",
   "KEYCLOAK_REALM": "cogstack",
   "KEYCLOAK_CLIENT_ID": "cogstack-medcattrainer-frontend",
-  "LOGOUT_REDIRECT_URI": "https://launchpad.cogstack.example.site/"
+  "KEYCLOAK_LOGOUT_REDIRECT_URI": "https://launchpad.cogstack.example.site/"
 }
 ```
 
@@ -57,11 +57,11 @@ MedCAT Trainer uses a **two-client architecture** for OIDC:
 **Configuration:**
 ```python
 # Backend settings
-OIDC_HOST = "https://auth.cogstack.example.site"
-OIDC_REALM = "cogstack"
-OIDC_FRONTEND_CLIENT_ID = "cogstack-medcattrainer-frontend"
-OIDC_BACKEND_CLIENT_ID = "cogstack-medcattrainer-backend"
-OIDC_BACKEND_CLIENT_SECRET = "***secret***"
+KEYCLOAK_INTERNAL_SERVICE_URL = "https://auth.cogstack.example.site"
+KEYCLOAK_REALM = "cogstack"
+KEYCLOAK_FRONTEND_CLIENT_ID = "cogstack-medcattrainer-frontend"
+KEYCLOAK_BACKEND_CLIENT_ID = "cogstack-medcattrainer-backend"
+KEYCLOAK_BACKEND_CLIENT_SECRET = "***secret***"
 ```
 ---
 ## Key Files

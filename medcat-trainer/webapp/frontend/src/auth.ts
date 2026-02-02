@@ -30,11 +30,11 @@ export const authPlugin = {
     // configure axios
     axios.defaults.headers.common['Authorization'] = `Bearer ${keycloak.token}`
 
-    const refreshInterval = Number(getRuntimeConfig().KEYCLOAK_TOKEN_REFRESH_INTERVAL) || 10000
-    const minValidity = Number(getRuntimeConfig().KEYCLOAK_TOKEN_MIN_VALIDITY) || 30
+    const refreshIntervalSecs = Number(getRuntimeConfig().KEYCLOAK_TOKEN_REFRESH_INTERVAL)
+    const minValiditySecs = Number(getRuntimeConfig().KEYCLOAK_TOKEN_MIN_VALIDITY)
 
     setInterval(() => {
-      keycloak.updateToken(minValidity)
+      keycloak.updateToken(minValiditySecs)
         .then(refreshed => {
           if (refreshed) {
             console.log('[AuthPlugin] Token refreshed')
@@ -44,7 +44,7 @@ export const authPlugin = {
         .catch(err => {
           console.error('[AuthPlugin] Failed to refresh token', err)
         })
-    }, refreshInterval)
+    }, (refreshIntervalSecs * 1000))
 
 
     app.config.globalProperties.$keycloak = keycloak

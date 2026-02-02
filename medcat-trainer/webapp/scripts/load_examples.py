@@ -64,7 +64,7 @@ def main(port=8001,
 
                 use_oidc = os.environ.get('USE_OIDC')
                 logger.info('Checking for environment variable USE_OIDC...')
-                if use_oidc is not None and use_oidc in ('1', 'true', 't', 'y'):
+                if use_oidc is not None and use_oidc in '1':
                     logger.info('Found environment variable USE_OIDC is set to truthy value. Will load data using JWT')
                     token = get_keycloak_access_token()
                     headers = {

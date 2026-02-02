@@ -64,8 +64,11 @@ def call_remote_model_service(service_url, text):
         "text": text
     }
 
+    # Get timeout from environment variable, default to 60 seconds
+    timeout = int(os.getenv('REMOTE_MODEL_SERVICE_TIMEOUT', '60'))
+
     try:
-        response = requests.post(api_url, json=payload, timeout=60)
+        response = requests.post(api_url, json=payload, timeout=timeout)
         response.raise_for_status()
         result = response.json()
 

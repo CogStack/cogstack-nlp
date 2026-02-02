@@ -3,40 +3,40 @@ set -e
 
 echo "Generating runtime config.json from template..."
 
-# Set VITE_USE_OIDC to 0 if not provided (traditional auth mode)
-export VITE_USE_OIDC="${VITE_USE_OIDC:-0}"
+# Set USE_OIDC to 0 if not provided (traditional auth mode)
+export USE_OIDC="${USE_OIDC:-0}"
 
-# If OIDC is enabled, require all OIDC-related variables
-if [ "$VITE_USE_OIDC" = "1" ]; then
+# If OIDC is enabled, validate required variables
+if [ "$USE_OIDC" = "1" ]; then
   echo "OIDC mode enabled - validating OIDC environment variables..."
 
-  if [ -z "$VITE_KEYCLOAK_URL" ]; then
-    echo "ERROR: VITE_KEYCLOAK_URL environment variable is required when VITE_USE_OIDC=1"
+  if [ -z "$KEYCLOAK_URL" ]; then
+    echo "ERROR: KEYCLOAK_URL is required when USE_OIDC=1"
     exit 1
   fi
 
-  if [ -z "$VITE_KEYCLOAK_REALM" ]; then
-    echo "ERROR: VITE_KEYCLOAK_REALM environment variable is required when VITE_USE_OIDC=1"
+  if [ -z "$KEYCLOAK_REALM" ]; then
+    echo "ERROR: KEYCLOAK_REALM is required when USE_OIDC=1"
     exit 1
   fi
 
-  if [ -z "$VITE_KEYCLOAK_CLIENT_ID" ]; then
-    echo "ERROR: VITE_KEYCLOAK_CLIENT_ID environment variable is required when VITE_USE_OIDC=1"
+  if [ -z "$KEYCLOAK_FRONTEND_CLIENT_ID" ]; then
+    echo "ERROR: KEYCLOAK_FRONTEND_CLIENT_ID is required when USE_OIDC=1"
     exit 1
   fi
 
-  if [ -z "$VITE_LOGOUT_REDIRECT_URI" ]; then
-    echo "ERROR: VITE_LOGOUT_REDIRECT_URI environment variable is required when VITE_USE_OIDC=1"
+  if [ -z "$KEYCLOAK_LOGOUT_REDIRECT_URI" ]; then
+    echo "ERROR: KEYCLOAK_LOGOUT_REDIRECT_URI is required when USE_OIDC=1"
     exit 1
   fi
 
 else
-  echo "Traditional auth mode enabled (VITE_USE_OIDC=0)"
-  # Traditional auth mode - set defaults for unused variables
-  export VITE_KEYCLOAK_URL="${VITE_KEYCLOAK_URL:-http://localhost}"
-  export VITE_KEYCLOAK_REALM="${VITE_KEYCLOAK_REALM:-default}"
-  export VITE_KEYCLOAK_CLIENT_ID="${VITE_KEYCLOAK_CLIENT_ID:-medcattrainer}"
-  export VITE_LOGOUT_REDIRECT_URI="${VITE_LOGOUT_REDIRECT_URI:-/}"
+  echo "Traditional auth mode enabled (USE_OIDC=0)"
+  # Set Defaults
+  export KEYCLOAK_URL="${KEYCLOAK_URL:-}"
+  export KEYCLOAK_REALM="${KEYCLOAK_REALM:-}"
+  export KEYCLOAK_LOGOUT_REDIRECT_URI="${KEYCLOAK_LOGOUT_REDIRECT_URI:-}"
+  export KEYCLOAK_FRONTEND_CLIENT_ID="${KEYCLOAK_FRONTEND_CLIENT_ID:-}"
 fi
 
 # Check if template exists
@@ -45,6 +45,12 @@ if [ ! -f "$TEMPLATE_FILE" ]; then
   echo "ERROR: Template not found at $TEMPLATE_FILE"
   exit 1
 fi
+
+# Set token refresh settings with sensible defaults
+# KEYCLOAK_TOKEN_MIN_VALIDITY: Refresh token if it expires in less than this many seconds (default: 30s)
+# KEYCLOAK_TOKEN_REFRESH_INTERVAL: Check token validity every N seconds (default: 20s)
+export KEYCLOAK_TOKEN_MIN_VALIDITY="${KEYCLOAK_TOKEN_MIN_VALIDITY:-30}"
+export KEYCLOAK_TOKEN_REFRESH_INTERVAL="${KEYCLOAK_TOKEN_REFRESH_INTERVAL:-20}"
 
 # Generate config.json from template
 envsubst < "$TEMPLATE_FILE" > /home/frontend/dist/config.json
