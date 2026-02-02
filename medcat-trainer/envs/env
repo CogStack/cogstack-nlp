@@ -17,6 +17,8 @@ DEBUG=1
 
 ### Load example CDB, Vocab ###
 LOAD_EXAMPLES=1
+# URL that examples will be sent to
+API_URL=http://localhost:8001/api/
 
 ### Dataset conf ###
 UNIQUE_DOC_NAMES_IN_DATASETS=True
@@ -45,13 +47,5 @@ EMAIL_PASS="to be changed"
 EMAIL_HOST=mail.cogstack.org
 EMAIL_PORT=465
 
-# Backend auth
-USE_OIDC=
-
-# Traefik
-NGINX_HOST=medcattrainer.cogstack.localhost
-
-# OIDC settings
-OIDC_HOST=http://keycloak:8080
-OIDC_REALM=cogstack-realm
-OIDC_FRONTEND_CLIENT_ID=cogstack-medcattrainer-frontend
+# Remote model service timeout in seconds
+REMOTE_MODEL_SERVICE_TIMEOUT=60

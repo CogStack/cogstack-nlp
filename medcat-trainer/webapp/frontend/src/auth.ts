@@ -1,17 +1,17 @@
 import type { App } from 'vue'
 import Keycloak, { KeycloakConfig } from 'keycloak-js'
 import axios from 'axios'
+import { getRuntimeConfig} from './runtimeConfig'
 
 let keycloak: Keycloak
 
 export const authPlugin = {
   install: async (app: App) => {
     const config: KeycloakConfig = {
-      url: import.meta.env.VITE_KEYCLOAK_URL,
-      realm: import.meta.env.VITE_KEYCLOAK_REALM,
-      clientId: import.meta.env.VITE_KEYCLOAK_CLIENT_ID,
+      url: getRuntimeConfig().KEYCLOAK_URL,
+      realm: getRuntimeConfig().KEYCLOAK_REALM,
+      clientId: getRuntimeConfig().KEYCLOAK_CLIENT_ID,
     }
-
     keycloak = new Keycloak(config)
 
     const authenticated = await keycloak.init({
@@ -21,27 +21,30 @@ export const authPlugin = {
     })
 
     if (!authenticated) {
-      console.warn('User is not authenticated')
+      console.warn('[AuthPlugin] User is not authenticated')
       window.location.reload()
     }
+
+    console.log('[AuthPlugin] User authenticated successfully')
 
     // configure axios
     axios.defaults.headers.common['Authorization'] = `Bearer ${keycloak.token}`
 
-    const refreshInterval = Number(import.meta.env.VITE_KEYCLOAK_TOKEN_REFRESH_INTERVAL) || 10000
-    const minValidity = Number(import.meta.env.VITE_KEYCLOAK_TOKEN_MIN_VALIDITY) || 30
+    const refreshIntervalSecs = Number(getRuntimeConfig().KEYCLOAK_TOKEN_REFRESH_INTERVAL)
+    const minValiditySecs = Number(getRuntimeConfig().KEYCLOAK_TOKEN_MIN_VALIDITY)
 
     setInterval(() => {
-      keycloak.updateToken(minValidity)
+      keycloak.updateToken(minValiditySecs)
         .then(refreshed => {
           if (refreshed) {
+            console.log('[AuthPlugin] Token refreshed')
             axios.defaults.headers.common['Authorization'] = `Bearer ${keycloak.token}`
           }
         })
         .catch(err => {
-          console.error('Failed to refresh token', err)
+          console.error('[AuthPlugin] Failed to refresh token', err)
         })
-    }, refreshInterval)
+    }, (refreshIntervalSecs * 1000))
 
 
     app.config.globalProperties.$keycloak = keycloak

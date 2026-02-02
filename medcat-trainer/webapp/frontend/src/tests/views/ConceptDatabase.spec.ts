@@ -11,9 +11,9 @@ const mockCdbsPage1 = {
 }
 
 describe('ConceptDatabase.vue', () => {
-  let mockGet
+  let mockGet: ReturnType<typeof vi.fn>
   beforeEach(() => {
-    mockGet = vi.fn((url) => {
+    mockGet = vi.fn((url: string) => {
       if (url === '/api/concept-dbs/') {
         return Promise.resolve({ data: mockCdbsPage1 })
       }

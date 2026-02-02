@@ -193,9 +193,11 @@ def find_alternate_classname(category_value2id: Dict, category_values: Set, alte
                 failed_to_find = True
             if failed_to_find:
                 raise Exception("The classes set in the config are not the same as the one found in the data. "
-                                "The classes present in the config vs the ones found in the data - "
-                                f"{set(category_value2id.keys())}, {category_values}. Additionally, ensure the "
-                                "populate the 'alternative_class_names' attribute to accommodate for variations.")
+                                f"The classes present in the config: {set(category_value2id.keys())} vs "
+                                f"the ones found in the data: {category_values}. Additionally, ensure to "
+                                "populate the 'alternative_class_names' attribute to accommodate for variations. "
+                                " This also could be due to the data not including enough examples of a given class"
+                                " after train / test splitting.")
     category_value2id = copy.deepcopy(updated_category_value2id)
     logger.info("Updated categoryvalue2id mapping - %s", category_value2id)
     return category_value2id

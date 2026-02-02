@@ -137,17 +137,24 @@ class LocalFileDen(Den):
     def den_type(self) -> DenType:
         return self._den_type
 
-    def list_available_models(self) -> list[ModelInfo]:
+    def list_available_models(
+            self, backend_name: Optional[str] = None) -> list[ModelInfo]:
         return self._sqlite.list_models()
 
-    def list_available_base_models(self) -> list[ModelInfo]:
+    def list_available_base_models(
+            self, backend_name: Optional[str] = None) -> list[ModelInfo]:
         return [model for model in self.list_available_models()
                 # base models don't have a base model defined
                 if model.base_model is None]
 
-    def list_available_derivative_models(self, model: ModelInfo
+    def list_available_derivative_models(self, model: ModelInfo,
+                                         backend_name: Optional[str] = None
                                          ) -> list[ModelInfo]:
         return self._sqlite.list_derivatives(model.model_id)
+
+    def has_model(self, model: ModelInfo,
+                  backend_name: Optional[str] = None) -> bool:
+        return bool(self._sqlite.get_model(model.model_id))
 
     def _get_model_zip_name(self, model_hash: str) -> str:
         return f"{model_hash}.zip"
@@ -156,7 +163,8 @@ class LocalFileDen(Den):
         return os.path.join(self._models_folder,
                             self._get_model_zip_name(model_info.model_id))
 
-    def fetch_model(self, model_info: ModelInfo) -> CATWrapper:
+    def fetch_model(self, model_info: ModelInfo,
+                    backend_name: Optional[str] = None) -> CATWrapper:
         db_info = self._sqlite.get_model(model_id=model_info.model_id)
         if db_info is None:
             raise ValueError(f"The model info {model_info} does not "
@@ -167,7 +175,9 @@ class LocalFileDen(Den):
             CATWrapper.load_model_pack(model_path, model_info=model_info,
                                        den_cnf=self._cnf))
 
-    def push_model(self, cat: CAT, description: str) -> None:
+    def push_model(self, cat: CAT, description: str,
+                   backend_name: Optional[str] = None,
+                   push_unchanged: bool = False) -> None:
         if isinstance(cat, CATWrapper):
             model_info = cat._model_info
         else:
@@ -179,6 +189,7 @@ class LocalFileDen(Den):
             # NOTE: if there's no model in databae, treat as new one
             raise DuplicateModelException(
                 "Duplicate model: ", model_info)
+        model_description = None if push_unchanged else description
         zip_name = self._get_model_zip_name(new_hash)
         kwargs: dict[Any, Any] = {}
         if isinstance(cat, CATWrapper):
@@ -187,10 +198,12 @@ class LocalFileDen(Den):
             self._models_folder,
             pack_name=zip_name.removesuffix(".zip"),
             add_hash_to_pack_name=False,
-            change_description=description,
+            change_description=model_description,
             **kwargs)
         # NOTE: the updated one should have the updated history and the like
         updated_mi = ModelInfo.from_model_pack(cat)
+        if updated_mi.base_model is not None and not self.has_model(updated_mi.base_model):
+            updated_mi.base_model = None
         if isinstance(cat, CATWrapper):
             cat._model_info = updated_mi
         self._sqlite.insert_model(updated_mi)
@@ -203,12 +216,24 @@ class LocalFileDen(Den):
         #       otherwise it doesn't make sense to use local cache)
         self._push_model_from_file(full_model_pack_path, description)
 
-    def _push_model_from_file(self, file_path: str, description: str) -> None:
+    def _push_model_from_file(self, file_path: str, description: str,
+                              backend_name: Optional[str] = None) -> None:
         # NOTE: for local file den this is not needed, but will still be called
         pass
 
+    def move_model(den, model_info: ModelInfo, origin: str, destination: str) -> None:
+        raise UnsupportedAPIException(
+            "The move_model method can only be called on a multi-backend den "
+            "not the individidual back ends")
+
+    def sync_backend(self, origin: str, destination: str) -> None:
+        raise UnsupportedAPIException(
+            "The move_model method can only be called on a multi-backend den "
+            "not the individidual back ends")
+
     def delete_model(self, model_info: ModelInfo,
-                     allow_delete_base_models: bool = False):
+                     allow_delete_base_models: bool = False,
+                     backend_name: Optional[str] = None):
         if not model_info.model_card:
             raise ValueError(
                 "Need to specify a model info with a model card for deletion")
@@ -225,14 +250,16 @@ class LocalFileDen(Den):
             shutil.rmtree(folder_path)
 
     def finetune_model(self, model_info: ModelInfo,
-                       data: Union[list[str], MedCATTrainerExport]):
+                       data: Union[list[str], MedCATTrainerExport],
+                       backend_name: Optional[str] = None):
         raise UnsupportedAPIException(
             "Local den does not support finetuning on the den. "
             "Use a remote den instead or perform training locally."
         )
 
     def evaluate_model(self, model_info: ModelInfo,
-                       data: Union[list[str], MedCATTrainerExport]) -> dict:
+                       data: Union[list[str], MedCATTrainerExport],
+                       backend_name: Optional[str] = None) -> dict:
         raise UnsupportedAPIException(
             "Local den does not support evaluation on the den. "
             "Use a remote den instead or perform evaluation locally."

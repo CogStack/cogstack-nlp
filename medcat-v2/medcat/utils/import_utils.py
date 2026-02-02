@@ -19,6 +19,19 @@ _DEP_NAME_MAPPER = KeyDefaultDict({
 })
 
 
+def get_module_base_name(entry_point_value: str) -> str:
+    """Extracts the base module name from an entry point value string.
+
+    Args:
+        entry_point_value (str): The value string of an EntryPoint object,
+            e.g., "my_plugin.module:load_func".
+
+    Returns:
+        str: The base module name, e.g., "my_plugin.module".
+    """
+    return entry_point_value.split(':')[0]
+
+
 def get_all_extra_deps_raw(package_name: str) -> set[str]:
     """Get all the dependencies for a pcakge that are for an extra component.
 

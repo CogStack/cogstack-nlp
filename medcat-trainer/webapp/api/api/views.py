@@ -3,6 +3,7 @@ import os
 import traceback
 from smtplib import SMTPException
 from tempfile import NamedTemporaryFile
+from typing import Any
 
 from background_task.models import Task, CompletedTask
 from django.contrib.auth.views import PasswordResetView
@@ -18,12 +19,14 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from medcat.components.ner.trf.deid import DeIdModel
 from medcat.utils.cdb_utils import ch2pt_from_pt2ch, get_all_ch, snomed_ct_concept_path
+from medcat.utils.config_utils import temp_changed_config
+
 
 from .admin import download_projects_with_text, download_projects_without_text, \
     import_concepts_from_cdb
 from .data_utils import upload_projects_export
 from .metrics import calculate_metrics
-from .model_cache import get_medcat, get_cached_cdb, VOCAB_MAP, clear_cached_medcat, CAT_MAP, CDB_MAP, is_model_loaded
+from .model_cache import get_medcat, get_medcat_from_model_pack_id, get_cached_cdb, VOCAB_MAP, clear_cached_medcat, clear_cached_medcat_by_model_pack_id, is_model_pack_loaded, CAT_MAP, CDB_MAP, is_model_loaded
 from .permissions import *
 from .serializers import *
 from .solr_utils import collections_available, search_collection, ensure_concept_searchable
@@ -434,30 +437,44 @@ def add_concept(request):
 
     cat = get_medcat(project=project)
 
-    if cui in cat.cdb.cui2names:
-        err_msg = f'Cannot add a concept "{name}" with cui:{cui}. CUI already linked to {cat.cdb.cui2names[cui]}'
+    if cui in cat.cdb.cui2info:
+        err_msg = f'Cannot add a concept "{name}" with cui:{cui}. CUI already linked to {cat.cdb.cui2info[cui]["preferred_name"]}'
         logger.error(err_msg)
         return Response({'err': err_msg}, 400)
 
     spacy_doc = cat(document.text)
     spacy_entity = None
     if source_val in spacy_doc.text:
-        start = spacy_doc.text.index(source_val)
-        end = start + len(source_val)
-        spacy_entity = [tkn for tkn in spacy_doc if tkn.idx >= start and tkn.idx <= end]
+        # Find all occurrences of source_val in the text
+        all_occurrences_start_idxs = []
+        idx = 0
+        while idx != -1:
+            idx = spacy_doc.text.find(source_val, idx)
+            if idx != -1:
+                all_occurrences_start_idxs.append(idx)
+                idx += len(source_val)
 
+        # Use selection_idx to get the correct occurrence
+        if sel_occur_idx < len(all_occurrences_start_idxs):
+            start = all_occurrences_start_idxs[sel_occur_idx]
+            end = start + len(source_val)
+            # Find tokens that overlap with the span [start, end)
+            # A token overlaps if: token_start < end AND token_end > start
+            spacy_entity = [tkn for tkn in spacy_doc if tkn.char_index < end and (tkn.char_index + len(tkn.text)) > start]
+    # if len(spacy_entity) == 0:
+    #     spacy_entity = None
     cat.trainer.add_and_train_concept(cui=cui, name=name, name_status='P', mut_doc=spacy_doc, mut_entity=spacy_entity)
+
 
     id = create_annotation(source_val=source_val,
                            selection_occurrence_index=sel_occur_idx,
                            cui=cui,
                            user=user,
                            project=project,
-                           document=document,
-                           cat=cat)
+                           document=document)
 
     # ensure new concept detail is available in SOLR search service
-    ensure_concept_searchable(cui, cat.cdb, project.concept_db)
+    ensure_concept_searchable(cui, cat.cdb, project.cdb_search_filter.first())
 
     # add to project cuis if required.
     if (project.cuis or project.cuis_file) and project.restrict_concept_lookup:
@@ -622,17 +639,49 @@ def update_meta_annotation(request):
 
 @api_view(http_method_names=['POST'])
 def annotate_text(request):
-    p_id = request.data['project_id']
-    message = request.data['message']
-    cuis = request.data['cuis']
-    if message is None or p_id is None:
+    message = request.data.get('message')
+    cuis = request.data.get('cuis', [])
+    p_id = request.data.get('project_id')
+    modelpack_id = request.data.get('modelpack_id')
+    include_sub_concepts = request.data.get('include_sub_concepts', False)
+
+    if message is None or (p_id is None and modelpack_id is None):
         return HttpResponseBadRequest('No message to annotate')
 
-    project = ProjectAnnotateEntities.objects.get(id=p_id)
+    if modelpack_id is not None:
+        try:
+            cat = get_medcat_from_model_pack_id(int(modelpack_id))
+        except (ValueError, TypeError):
+            logger.warning(f'Invalid modelpack_id received for project:{p_id}')
+            return HttpResponseBadRequest('Invalid modelpack_id for project')
+        except ModelPack.DoesNotExist:
+            logger.warning(f'ModelPack does not exist received for project:{p_id}')
+            return HttpResponseBadRequest('ModelPack does not exist for project')
+    else:
+        project = ProjectAnnotateEntities.objects.get(id=p_id)
+        cat = get_medcat(project=project)
 
-    cat = get_medcat(project=project)
-    cat.config.components.linking.filters.cuis = set(cuis)
-    spacy_doc = cat(message)
+    # Normalise cuis to a set[str]
+    if isinstance(cuis, str):
+        cuis_set = {c.strip() for c in cuis.split(',') if c.strip()}
+    elif isinstance(cuis, (list, tuple, set)):
+        cuis_set = {str(c).strip() for c in cuis if str(c).strip()}
+    else:
+        cuis_set = set()
+
+    # Expand CUIs to include sub-concepts if requested
+    if include_sub_concepts and cuis_set and cat.cdb:
+        expanded_cuis = set(cuis_set)
+        for parent_cui in cuis_set:
+            try:
+                child_cuis = get_all_ch(parent_cui, cat.cdb)
+                expanded_cuis.update(child_cuis)
+            except Exception as e:
+                logger.warning(f'Failed to get children for CUI {parent_cui}: {e}')
+        cuis_set = expanded_cuis
+
+    with temp_changed_config(cat.config.components.linking, 'filters', cuis_set):
+        spacy_doc = cat(message)
 
     ents = []
     anno_tkns = []
@@ -640,6 +689,26 @@ def annotate_text(request):
         cnt = Entity.objects.filter(label=ent.cui).count()
         inc_ent = all(tkn not in anno_tkns for tkn in ent)
         if inc_ent and cnt != 0:
+            meta_annotations = []
+            if 'meta_cat_meta_anns' in ent.get_available_addon_paths():
+                meta_anns = ent.get_addon_data('meta_cat_meta_anns')
+                for meta_ann_task, pred in meta_anns.items():
+                    # Extract value and confidence from pred
+                    # pred can be a dict, object, or string
+                    if isinstance(pred, dict):
+                        pred_value = pred.get('value', str(pred))
+                        pred_confidence = pred.get('confidence', None)
+                    elif hasattr(pred, 'value'):
+                        pred_value = pred.value
+                        pred_confidence = getattr(pred, 'confidence', None)
+                    else:
+                        pred_value = str(pred)
+                        pred_confidence = None
+                    meta_annotations.append({
+                        'task': meta_ann_task,
+                        'value': pred_value,
+                        'confidence': pred_confidence
+                    })
             anno_tkns.extend([tkn for tkn in ent])
             entity = Entity.objects.get(label=ent.cui)
             ents.append({
@@ -647,7 +716,8 @@ def annotate_text(request):
                 'value': ent.base.text,
                 'start_ind': ent.base.start_char_index,
                 'end_ind': ent.base.end_char_index,
-                'acc': ent.context_similarity
+                'acc': ent.context_similarity,
+                'meta_annotations': meta_annotations
             })
 
     ents.sort(key=lambda e: e['start_ind'])
@@ -737,7 +807,7 @@ def upload_deployment(request):
 
 
 @api_view(http_method_names=['GET', 'DELETE'])
-def cache_model(request, project_id):
+def cache_project_model(request, project_id):
     try:
         project = ProjectAnnotateEntities.objects.get(id=project_id)
         is_loaded = is_model_loaded(project)
@@ -753,6 +823,24 @@ def cache_model(request, project_id):
             return Response(f'Invalid method', 404)
     except ProjectAnnotateEntities.DoesNotExist:
         return Response(f'Project with id:{project_id} does not exist', 404)
+    except Exception as e:
+        return Response({'message': f'{str(e)}'}, 500)
+
+
+@api_view(http_method_names=['GET', 'DELETE'])
+def cache_modelpack(request, modelpack_id: int):
+    try:
+        if request.method == 'GET':
+            if not is_model_pack_loaded(modelpack_id):
+                get_medcat_from_model_pack_id(modelpack_id)
+            return Response('success', 200)
+        elif request.method == 'DELETE':
+            clear_cached_medcat_by_model_pack_id(modelpack_id)
+            return Response('success', 200)
+        else:
+            return Response(f'Invalid method', 404)
+    except ModelPack.DoesNotExist:
+        return Response(f'ModelPack with id:{modelpack_id} does not exist', 404)
     except Exception as e:
         return Response({'message': f'{str(e)}'}, 500)
 
@@ -781,7 +869,8 @@ def metrics_jobs(request):
                 'projects': task.verbose_name.split('-')[1].split('_'),
                 'created_user': task.creator.username,
                 'create_time': task.run_at.strftime(dt_fmt),
-                'status': state
+                'error_msg': '\n'.join(task.last_error.split('\n')[-2:]),
+                'status': state,
             }
         running_reports = [serialize_task(t, 'running') for t in running_metrics_tasks_qs]
         for r, t in zip(running_reports, running_metrics_tasks_qs):
@@ -790,6 +879,8 @@ def metrics_jobs(request):
 
         comp_reports = [serialize_task(t, 'complete') for t in completed_metrics_tasks]
         for comp_task, comp_rep in zip(completed_metrics_tasks, comp_reports):
+            if comp_task.has_error():
+                comp_rep['status'] = 'Failed'
             pm_obj = ProjectMetrics.objects.filter(report_name_generated=comp_task.verbose_name).first()
             if pm_obj is not None and pm_obj.report_name is not None:
                 comp_rep['report_name'] = pm_obj.report_name

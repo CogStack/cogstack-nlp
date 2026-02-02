@@ -3,7 +3,7 @@ import json
 import re
 import hashlib
 import pandas as pd
-from typing import Dict, List, Optional, Tuple
+from typing import Optional
 from dataclasses import dataclass, field
 from enum import Enum, auto
 
@@ -189,12 +189,12 @@ class SupportedExtension(Enum):
 
 @dataclass
 class BundleDescriptor:
-    extensions: List[SupportedExtension]
-    ignores: Dict[RefSetFileType, List[SupportedExtension]] = field(
+    extensions: list[SupportedExtension]
+    ignores: dict[RefSetFileType, list[SupportedExtension]] = field(
         default_factory=dict)
 
     def has_invalid(self, ext: SupportedExtension,
-                    file_types: Tuple[RefSetFileType]) -> bool:
+                    file_types: tuple[RefSetFileType]) -> bool:
         for ft in file_types:
             if ft not in self.ignores:
                 continue
@@ -217,8 +217,8 @@ class SupportedBundles(Enum):
         )
 
 
-def match_partials_with_folders(exp_names: List[Tuple[str, Optional[str]]],
-                                folder_names: List[str],
+def match_partials_with_folders(exp_names: list[tuple[str, Optional[str]]],
+                                folder_names: list[str],
                                 _group_nr1: int = 1, _group_nr2: int = 2
                                 ) -> bool:
     if len(exp_names) > len(folder_names):

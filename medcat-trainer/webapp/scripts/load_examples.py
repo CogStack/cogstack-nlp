@@ -1,12 +1,23 @@
 import os
+import sys
+import logging
 
 import pandas as pd
 import requests
 from time import sleep
 import json
 
+# Set up logging with prefix including process ID
+pid = os.getpid()
+logging.basicConfig(
+    level=logging.INFO,
+    format=f'[load_examples.py pid:{pid}] %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+
 def get_keycloak_access_token():
-    print('Getting Keycloak access token...')
+    logger.info('Getting Keycloak access token...')
     keycloak_url = os.environ.get("KEYCLOAK_URL", "http://keycloak.cogstack.localhost")
     realm = os.environ.get("KEYCLOAK_REALM", "cogstack-realm")
     client_id = os.environ.get("KEYCLOAK_CLIENT_ID", "cogstack-medcattrainer-frontend")
@@ -27,38 +38,41 @@ def get_keycloak_access_token():
     resp.raise_for_status()
     return resp.json()["access_token"]
 
-def main(port=8000,
+
+def main(port=8001,
          model_pack_tmp_file='/home/model_pack.zip',
          dataset_tmp_file='/home/ds.csv',
          initial_wait=15):
 
-    print('Checking for environment variable LOAD_EXAMPLES...')
+    logger.info('Checking for environment variable LOAD_EXAMPLES...')
     val = os.environ.get('LOAD_EXAMPLES')
     if val is not None and val not in ('1', 'true', 't', 'y'):
-        print('Found Env Var LOAD_EXAMPLES is False, not loading example data, cdb, vocab and project')
+        logger.info('Found Env Var LOAD_EXAMPLES is False, not loading example data, cdb, vocab and project')
         return
 
-    print('Found Env Var LOAD_EXAMPLES, waiting 15 seconds for API to be ready...')
-    URL = f'http://localhost:{port}/api/'
+    logger.info('Found Env Var LOAD_EXAMPLES, waiting 15 seconds for API to be ready...')
+    URL = os.environ.get('API_URL', f'http://localhost:{port}/api/')
     sleep(initial_wait)
 
-    print('Checking for default projects / datasets / CDBs / Vocabs')
-    while True:
+    logger.info('Checking for default projects / datasets / CDBs / Vocabs')
+    max_retries = 60  # 60 retries = 5 minutes
+    retry_count = 0
+    while retry_count < max_retries:
         try:
             # check API is available
             if requests.get(URL).status_code == 200:
 
                 use_oidc = os.environ.get('USE_OIDC')
-                print('Checking for environment variable USE_OIDC...')
-                if use_oidc is not None and use_oidc in ('1', 'true', 't', 'y'):
-                    print('Found environment variable USE_OIDC is set to truthy value. Will load data using JWT')
+                logger.info('Checking for environment variable USE_OIDC...')
+                if use_oidc is not None and use_oidc in '1':
+                    logger.info('Found environment variable USE_OIDC is set to truthy value. Will load data using JWT')
                     token = get_keycloak_access_token()
                     headers = {
                         'Authorization': f'Bearer {token}',
                     }
                 else:
                     # check API default username and pass are available.
-                    print('Getting DRF auth token ...')
+                    logger.info('Getting DRF auth token ...')
                     payload = {"username": "admin", "password": "admin"}
                     resp = requests.post(f"{URL}api-token-auth/", json=payload)
                     if resp.status_code != 200:
@@ -77,14 +91,15 @@ def main(port=8000,
                 codes = [r.status_code == 200 for r in all_resps]
 
                 if all(codes) and all(len(r.text) > 0 and json.loads(r.text)['count'] == 0 for r in all_resps):
-                    print("Found No Objects. Populating Example: Model Pack, Dataset and Project...")
+                    logger.info("Found No Objects. Populating Example: Model Pack, Dataset and Project...")
                     # download example model pack and dataset
-                    print("Downloading example model pack...")
-                    model_pack_file = requests.get('https://trainer-example-data.s3.eu-north-1.amazonaws.com/medcat2_model_pack_0f66077250cc2957.zip')
+                    logger.info("Downloading example model pack...")
+                    model_pack_file = requests.get(
+                        'https://trainer-example-data.s3.eu-north-1.amazonaws.com/medcat2_model_pack_0f66077250cc2957.zip')
                     with open(model_pack_tmp_file, 'wb') as f:
                         f.write(model_pack_file.content)
 
-                    print("Downloading example dataset")
+                    logger.info("Downloading example dataset")
                     ds = requests.get('https://trainer-example-data.s3.eu-north-1.amazonaws.com/dr_notes.csv')
                     with open(dataset_tmp_file, 'w') as f:
                         f.write(ds.text)
@@ -93,26 +108,37 @@ def main(port=8000,
                     create_example_project(URL, headers, model_pack_tmp_file, 'M-IV_NeuroNotes', ds_dict,
                                            'Example Project - Model Pack (Diseases / Symptoms / Findings)')
 
-
                     # clean up temp files
                     os.remove(model_pack_tmp_file)
                     os.remove(dataset_tmp_file)
                     break
                 else:
-                    print('Found at least one object amongst model packs, datasets & projects. Skipping example creation')
+                    logger.info('Found at least one object amongst model packs, datasets & projects. Skipping example creation')
                     break
         except ConnectionRefusedError:
-            print(f'Connection refused to {URL}. Retrying in 5 seconds...')
-            sleep(5)
+            retry_count += 1
+            if retry_count < max_retries:
+                logger.info(
+                    f'Loading examples - Connection refused to {URL}. Retrying in 5 seconds... (attempt {retry_count}/{max_retries})')
+                sleep(5)
             continue
         except requests.exceptions.ConnectionError:
-            print(f'Connection error to {URL}. Retrying in 5 seconds...')
-            sleep(5)
+            retry_count += 1
+            if retry_count < max_retries:
+                logger.info(
+                    f'Loading examples - Connection error to {URL}. Retrying in 5 seconds... (attempt {retry_count}/{max_retries})')
+                sleep(5)
             continue
+
+    # If we exited the loop due to max retries, exit with error code
+    if retry_count >= max_retries:
+        logger.error(f'FATAL - Error loading examples. Max retries ({max_retries}) reached. Exiting with code 1.')
+        sys.exit(1)
+    logger.info('Successfully loaded examples')
 
 
 def create_example_project(url, headers, model_pack, ds_name, ds_dict, project_name):
-    print('Creating Model Pack / Dataset / Project in the Trainer')
+    logger.info('Creating Model Pack / Dataset / Project in the Trainer')
     res_model_pack_mk = requests.post(f'{url}modelpacks/', headers=headers,
                                       data={'name': 'Example Model Pack'},
                                       files={'model_pack': open(model_pack, 'rb')})
@@ -122,7 +148,7 @@ def create_example_project(url, headers, model_pack, ds_name, ds_dict, project_n
     payload = {
         'dataset_name': ds_name,
         'dataset': ds_dict,
-        'description': f'Clinical texts from MIMIC-IV'
+        'description': 'Clinical texts from MIMIC-IV'
     }
     resp = requests.post(f'{url}create-dataset/', json=payload, headers=headers)
     ds_id = json.loads(resp.text)['dataset_id']
@@ -141,10 +167,8 @@ def create_example_project(url, headers, model_pack, ds_name, ds_dict, project_n
         'members': [user_id]
     }
     requests.post(f'{url}project-annotate-entities/', json=payload, headers=headers)
-    print('Successfully created the example project')
+    logger.info('Successfully created the example project')
 
 
 if __name__ == '__main__':
-    main(port=8001, initial_wait=3,
-            model_pack_tmp_file='/Users/foooo/Downloads/model_pack.zip',
-            dataset_tmp_file='/Users/fooo/Downloads/ds.csv')
+    main()

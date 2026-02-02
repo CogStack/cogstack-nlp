@@ -6,6 +6,7 @@ class DenType(str, Enum):
     LOCAL_USER = "local_user"
     LOCAL_MACHINE = "local_machine"
     MEDCATTERY = "medcattery"
+    MULTI_BACKEND = "multi_backend"
     # S3 = "s3"
     # and so on
 

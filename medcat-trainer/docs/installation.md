@@ -77,25 +77,35 @@ You'll need to `docker stop` the running containers if you have already run the 
 
 You can enable OIDC (OpenID Connect) authentication for the MedCAT Trainer. To do so, you must configure the following environment variables:
 
-| Variable                                | 	Used by	            | Description                                                    |
-|-----------------------------------------|-------------------------|----------------------------------------------------------------|
-| USE_OIDC                                | 	Backend	            | Enable OIDC login flow (1 (true) / 0 (false)).                 |
-| VITE_USE_OIDC                           | 	Frontend            | 	Exposed version of USE_OIDC for Vue.                          |
-| VITE_API_URL                            | 	Frontend            | 	Base API URL for frontend calls.                              |
-| VITE_KEYCLOAK_URL                       | 	Frontend            | 	Keycloak base URL (e.g. http://keycloak.cogstack.localhost/). |
-| VITE_KEYCLOAK_REALM                     | 	Frontend            | 	Keycloak realm name.                                          |
-| VITE_KEYCLOAK_CLIENT_ID                 | 	Frontend            | 	Keycloak client ID for this app.                              |
-| VITE_KEYCLOAK_TOKEN_REFRESH_INTERVAL_MS | 	Frontend            | 	Token refresh frequency in ms.                                |
-| VITE_KEYCLOAK_TOKEN_MIN_VALIDITY_SECS   | 	Frontend            | 	Minimum token validity before refresh.                        |
-| VITE_LOGOUT_REDIRECT_URI                | 	Frontend            | 	Where to send user after logout.                              |
-| NGINX_HOST                              | Backend              | Host alias used by reverse proxy (Traefik )                    |
+| Variable                          | Example                                   | Description                                        |
+|-----------------------------------|-------------------------------------------|----------------------------------------------------|
+| `USE_OIDC`                        | `1`                                       | Enable OIDC (1=enabled, 0=traditional auth)        |
+| `KEYCLOAK_URL`                    | `https://auth.example.org`                | Keycloak base URL                                  |
+| `KEYCLOAK_REALM`                  | `cogstack`                                | Keycloak realm name                                |
+| `KEYCLOAK_LOGOUT_REDIRECT_URI`    | `https://cogstack-launchpad.example.org/` | Where to go after logout                           |
+| `KEYCLOAK_INTERNAL_SERVICE_URL`   | `http://keycloak.8080`                    | Keycloak internal service URL                      |
+| `KEYCLOAK_FRONTEND_CLIENT_ID`     | `cogstack-medcattrainer-frontend`         | Keycloak Frontend client ID (for token validation) |
+| `KEYCLOAK_BACKEND_CLIENT_ID`      | `cogstack-medcattrainer-backend`          | Keycloak Backend client ID                         |
+| `KEYCLOAK_BACKEND_CLIENT_SECRET`  | `***secret***`                            | Keycloak Backend client secret                     |
+
+#### Advanced Optional OIDC Settings
+
+| Variable                          | Default | Description                                                                       |
+|-----------------------------------|---------|-----------------------------------------------------------------------------------|
+| `KEYCLOAK_TOKEN_MIN_VALIDITY`     | `30`    | The interval in seconds between each refresh attempt                              |
+| `KEYCLOAK_TOKEN_REFRESH_INTERVAL` | `20`    | Minimum time in seconds the token should remain valid before triggering a refresh |
 
 You can either use the Gateway Auth stack available in cogstack-ops or deploy your own Keycloak instance.
-If you deploy your own Keycloak instance, make sure to configure the network accordingly.
 
+#### Roles
 Currently, there are two roles that can be assigned to users:
-- medcattrainer_superuser: grants superuser privileges in the application.
-- medcattrainer_staff: grants staff-level privileges without full superuser access.
+
+| Keycloak Role | Django Permission | Capabilities |
+|---------------|-------------------|--------------|
+| `medcattrainer_superuser` | `is_superuser=True`, `is_staff=True` | Full admin access, Django admin, all projects |
+| `medcattrainer_staff` | `is_staff=True` | Staff-level access, can manage assigned projects |
+| (no role) | Regular user | Can only access assigned projects, no admin |
+
 
 ### (Optional) Postgres Database Support
 MedCAT trainer defaults to a local SQLite database, which is suitable for single-user or small-scale setups.  

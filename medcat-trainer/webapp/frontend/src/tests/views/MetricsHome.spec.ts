@@ -20,9 +20,9 @@ const mockProjects = {
 }
 
 describe('MetricsHome.vue', () => {
-  let mockGet
+  let mockGet: ReturnType<typeof vi.fn>
   beforeEach(() => {
-    mockGet = vi.fn((url) => {
+    mockGet = vi.fn((url: string) => {
       if (url === '/api/metrics-job/') {
         return Promise.resolve({ data: { reports: mockReports } })
       }
@@ -40,7 +40,7 @@ describe('MetricsHome.vue', () => {
     mount(MetricsHome, {
       global: {
         mocks: { $http: { get: mockGet } },
-        stubs: ['v-data-table', 'v-overlay', 'v-progress-circular', 'modal', 'font-awesome-icon', 'router-link']
+        stubs: ['v-data-table', 'v-overlay', 'v-progress-circular', 'v-tooltip', 'v-runtime-template', 'modal', 'font-awesome-icon', 'router-link']
       }
     })
     await flushPromises()
@@ -51,7 +51,7 @@ describe('MetricsHome.vue', () => {
     mount(MetricsHome, {
       global: {
         mocks: { $http: { get: mockGet } },
-        stubs: ['v-data-table', 'v-overlay', 'v-progress-circular', 'modal', 'font-awesome-icon', 'router-link']
+        stubs: ['v-data-table', 'v-overlay', 'v-progress-circular', 'v-tooltip', 'v-runtime-template', 'modal', 'font-awesome-icon', 'router-link']
       }
     })
     await flushPromises()
@@ -63,11 +63,11 @@ describe('MetricsHome.vue', () => {
     const wrapper = mount(MetricsHome, {
       global: {
         mocks: { $http: { get: mockGet } },
-        stubs: ['v-data-table', 'v-overlay', 'v-progress-circular', 'modal', 'font-awesome-icon', 'router-link']
+        stubs: ['v-data-table', 'v-overlay', 'v-progress-circular', 'v-tooltip', 'v-runtime-template', 'modal', 'font-awesome-icon', 'router-link']
       }
     })
     await flushPromises()
-    const headers = wrapper.vm.reports.headers.map(h => h.title)
+    const headers = wrapper.vm.reports.headers.map((h: { title: string }) => h.title)
     expect(headers).toEqual([
       'ID',
       'Report Name',

@@ -27,8 +27,10 @@ from medcat.pipeline import Pipeline
 from medcat.tokenizing.tokens import MutableDocument, MutableEntity
 from medcat.tokenizing.tokenizers import SaveableTokenizer, TOKENIZER_PREFIX
 from medcat.data.entities import Entity, Entities, OnlyCUIEntities
-from medcat.data.model_card import ModelCard
+from medcat.data.model_card import ModelCard, PipelineDescription
+from medcat.data.model_card import RequiredPluginDescription
 from medcat.components.types import AbstractCoreComponent, HashableComponent
+from medcat.components.types import CoreComponent
 from medcat.components.addons.addons import AddonComponent
 from medcat.utils.legacy.identifier import is_legacy_model_pack
 from medcat.utils.defaults import avoid_legacy_conversion
@@ -36,6 +38,10 @@ from medcat.utils.defaults import doing_legacy_conversion_message
 from medcat.utils.defaults import LegacyConversionDisabledError
 from medcat.utils.usage_monitoring import UsageMonitor, _NoDelUM
 from medcat.utils.import_utils import MissingDependenciesError
+from medcat.plugins.registry import plugin_registry, find_provider
+import importlib.util
+from medcat.utils.exceptions import MissingPluginError, MissingPluginInfo
+
 
 
 logger = logging.getLogger(__name__)
@@ -655,6 +661,11 @@ class CAT(AbstractSerialisable):
             self._trainer = Trainer(self.cdb, self.__call__, self._pipeline)
         return self._trainer
 
+    def save_model_card(self, model_card_path: str) -> None:
+        model_card: str = self.get_model_card(as_dict=False)
+        with open(model_card_path, 'w') as f:
+            f.write(model_card)
+
     def save_model_pack(
             self, target_folder: str, pack_name: str = DEFAULT_PACK_NAME,
             serialiser_type: Union[str, AvailableSerialisers] = 'dill',
@@ -705,10 +716,7 @@ class CAT(AbstractSerialisable):
             self.config.general.nlp.modelname = internals_path
         # serialise
         serialise(serialiser_type, self, model_pack_path)
-        model_card: str = self.get_model_card(as_dict=False)
-        model_card_path = os.path.join(model_pack_path, "model_card.json")
-        with open(model_card_path, 'w') as f:
-            f.write(model_card)
+        self.save_model_card(os.path.join(model_pack_path, "model_card.json"))
         # components
         components_folder = os.path.join(
             model_pack_path, COMPONENTS_FOLDER)
@@ -778,6 +786,33 @@ class CAT(AbstractSerialisable):
         return model_pack_path
 
     @classmethod
+    def _get_missing_plugins(cls, model_pack_path: str) -> list[MissingPluginInfo]:
+        model_card = cls.load_model_card_off_disk(model_pack_path, as_dict=True)
+        required_plugins: list[
+            RequiredPluginDescription] = model_card.get("Required Plugins", [])
+        missing_plugins: list[MissingPluginInfo] = []
+
+        for plugin_info in required_plugins:
+            # Check if the plugin module can be imported
+            if importlib.util.find_spec(plugin_info["name"]) is None:
+                # Cast to str for safety
+                provided = [(str(p[0]), str(p[1])) for p in plugin_info["provides"]]
+                missing_plugins.append(MissingPluginInfo(
+                    name=plugin_info["name"],
+                    provides=provided,
+                    author=plugin_info.get("author"),
+                    url=plugin_info.get("url"),
+                ))
+
+        if missing_plugins:
+            logger.warning(
+                "Missing required plugins for this model pack. "
+                "Attempting to load anyway, but it may fail. "
+                f"Missing: {[p['name'] for p in missing_plugins]}"
+            )
+        return missing_plugins
+
+    @classmethod
     def load_model_pack(cls, model_pack_path: str,
                         config_dict: Optional[dict] = None,
                         addon_config_dict: Optional[dict[str, dict]] = None
@@ -796,6 +831,7 @@ class CAT(AbstractSerialisable):
 
         Raises:
             ValueError: If the saved data does not represent a model pack.
+            MissingPluginError: If required plugins are missing for this model pack.
 
         Returns:
             CAT: The loaded model pack.
@@ -812,22 +848,32 @@ class CAT(AbstractSerialisable):
             return Converter(model_pack_path, None).convert()
         elif is_legacy and avoid_legacy:
             raise LegacyConversionDisabledError("CAT")
-        # NOTE: ignoring addons since they will be loaded later / separately
-        cat = deserialise(model_pack_path, model_load_path=model_pack_path,
-                          ignore_folders_prefix={
-                            AddonComponent.NAME_PREFIX,
-                            # NOTE: will be loaded manually
-                            AbstractCoreComponent.NAME_PREFIX,
-                            # tokenizer stuff internals are loaded separately
-                            # if appropraite
-                            TOKENIZER_PREFIX,
-                            # components will be loaded semi-manually
-                            # within the creation of pipe
-                            COMPONENTS_FOLDER,
-                            # ignore hidden files/folders
-                            '.'},
-                          config_dict=config_dict,
-                          addon_config_dict=addon_config_dict)
+
+        # Load model card to check for required plugins
+        missing_plugins = cls._get_missing_plugins(model_pack_path)
+
+        try:
+            # NOTE: ignoring addons since they will be loaded later / separately
+            cat = deserialise(model_pack_path, model_load_path=model_pack_path,
+                              ignore_folders_prefix={
+                                AddonComponent.NAME_PREFIX,
+                                # NOTE: will be loaded manually
+                                AbstractCoreComponent.NAME_PREFIX,
+                                # tokenizer stuff internals are loaded separately
+                                # if appropraite
+                                TOKENIZER_PREFIX,
+                                # components will be loaded semi-manually
+                                # within the creation of pipe
+                                COMPONENTS_FOLDER,
+                                # ignore hidden files/folders
+                                '.'},
+                              config_dict=config_dict,
+                              addon_config_dict=addon_config_dict)
+        except ImportError as e:
+            if missing_plugins:
+                raise MissingPluginError(missing_plugins) from e
+            raise
+
         # NOTE: deserialising of components that need serialised
         #       will be dealt with upon pipeline creation automatically
         if not isinstance(cat, CAT):
@@ -924,6 +970,13 @@ class CAT(AbstractSerialisable):
         else:
             met_cat_model_cards = []
         cdb_info = self.cdb.get_basic_info()
+
+        # Pipeline Description
+        pipeline_description = self.describe_pipeline()
+
+        # Required Plugins
+        required_plugins = self.get_required_plugins()
+
         model_card: ModelCard = {
             'Model ID': self.config.meta.hash,
             'Last Modified On': self.config.meta.last_saved.isoformat(),
@@ -931,6 +984,8 @@ class CAT(AbstractSerialisable):
             'Description': self.config.meta.description,
             'Source Ontology': self.config.meta.ontology,
             'Location': self.config.meta.location,
+            'Pipeline Description': pipeline_description,
+            'Required Plugins': required_plugins,
             'MetaCAT models': met_cat_model_cards,
             'Basic CDB Stats': cdb_info,
             'Performance': {},  # TODO
@@ -942,6 +997,55 @@ class CAT(AbstractSerialisable):
         if as_dict:
             return model_card
         return json.dumps(model_card, indent=2, sort_keys=False)
+
+
+    def describe_pipeline(self) -> PipelineDescription:
+        pipeline_description: PipelineDescription = {"core": {}, "addons": []}
+
+        for component in self._pipeline.iter_all_components():
+            provider = find_provider(component)
+
+            if component.is_core():
+                core_comp = cast(CoreComponent, component)
+                pipeline_description["core"][core_comp.get_type().name] = {
+                    "name": component.name,
+                    "provider": provider,
+                }
+            else:
+                pipeline_description["addons"].append({
+                    "name": component.name,
+                    "provider": provider,
+                })
+        return pipeline_description
+
+    def get_required_plugins(self) -> list[RequiredPluginDescription]:
+        # get plugins based on pipe
+        req_plugins: dict[str, list[tuple[str, str]]] = {}
+        pipe_descr = self.describe_pipeline()
+        core_comps = list(pipe_descr["core"].items())
+        addons = [("addon", addon) for addon in pipe_descr["addons"]]
+        for comp_type, comp in core_comps + addons:
+            provider = comp["provider"]
+            if provider == "medcat":
+                continue
+            if provider not in req_plugins:
+                req_plugins[provider] = []
+            req_plugins[provider].append((comp_type, comp["name"]))
+        # map to plugin info
+        out_plugins: list[RequiredPluginDescription] = []
+        for plugin_name, comp_names in req_plugins.items():
+            plugin_info = plugin_registry.get_plugin_info(plugin_name)
+            if plugin_info is None:
+                continue
+            out_plugins.append(
+                {
+                    "name": plugin_name,
+                    "provides": comp_names,
+                    "author": plugin_info.author,
+                    "url": plugin_info.url,
+                }
+            )
+        return out_plugins
 
     @overload
     @classmethod

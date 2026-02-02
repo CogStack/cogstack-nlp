@@ -8,7 +8,7 @@ from tempfile import TemporaryDirectory
 
 from diskcache import Cache
 
-from medcat_den.den import Den
+from medcat_den.den import DenBackend
 from medcat_den.base import ModelInfo
 from medcat_den.wrappers import CATWrapper
 from medcat_den.config import LocalCacheConfig
@@ -100,14 +100,14 @@ class LocalCache:
     def __delitem__(self, key: str) -> None:
         self.delete(key)
 
-    def add_to_den(self, den: Den) -> None:
+    def add_to_den(self, backend: DenBackend) -> None:
         """Add this local cache to the given den.
 
         Args:
-            den (Den): The den to add the cache to.
+            backend (DenBackend): The den to add the cache to.
         """
         # wrap push_model to add to cache
-        orig_push = den._push_model_from_file
+        orig_push = backend._push_model_from_file
 
         def push_wrapper(cat_path: str, description: str) -> None:
             # do remote push frist
@@ -119,9 +119,9 @@ class LocalCache:
                 model_bytes = f.read()
             self.insert_raw(model_hash, model_bytes)
 
-        den._push_model_from_file = push_wrapper  # type: ignore
+        backend._push_model_from_file = push_wrapper  # type: ignore
         # wrap fetch_model to check cache first
-        orig_fetch = den.fetch_model
+        orig_fetch = backend.fetch_model
 
         def fetch_wrapper(model_info: ModelInfo) -> CATWrapper:
             model_hash = model_info.model_id
@@ -143,17 +143,17 @@ class LocalCache:
                 self.insert_raw(model_hash, model_bytes)
             return cat
 
-        den.fetch_model = fetch_wrapper  # type: ignore
-        den.cache = self  # type: ignore
+        backend.fetch_model = fetch_wrapper  # type: ignore
+        backend.cache = self  # type: ignore
 
 
-def has_local_cache(den: Den) -> bool:
+def has_local_cache(backend: DenBackend) -> bool:
     """Check if the given den has a local cache.
 
     Args:
-        den (Den): The den to check.
+        backend (DenBackend): The den to check.
 
     Returns:
         bool: True if it has a local cache, False otherwise.
     """
-    return hasattr(den, 'cache') and isinstance(den.cache, LocalCache)
+    return hasattr(backend, 'cache') and isinstance(backend.cache, LocalCache)

@@ -64,8 +64,11 @@ def call_remote_model_service(service_url, text):
         "text": text
     }
 
+    # Get timeout from environment variable, default to 60 seconds
+    timeout = int(os.getenv('REMOTE_MODEL_SERVICE_TIMEOUT', '60'))
+
     try:
-        response = requests.post(api_url, json=payload, timeout=60)
+        response = requests.post(api_url, json=payload, timeout=timeout)
         response.raise_for_status()
         result = response.json()
 
@@ -235,7 +238,6 @@ def get_create_cdb_infos(cdb, concept, cui, cui_info_prop, code_prop, desc_prop,
             new_code.cdb = concept.cdb
             new_code.save()
     return model_clazz.objects.filter(code__in=codes)
-
 
 
 def create_annotation(source_val: str, selection_occurrence_index: int, cui: str, user: User,

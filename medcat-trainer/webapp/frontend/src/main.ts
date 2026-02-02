@@ -23,6 +23,7 @@ import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import {authPlugin} from "./auth";
+import { loadRuntimeConfig, isOidcEnabled } from './runtimeConfig';
 
 const theme ={
   dark: false,
@@ -46,9 +47,9 @@ const vuetify = createVuetify({
   }
 })
 
-const USE_OIDC = import.meta.env.VITE_USE_OIDC === '1'
-
 async function bootstrap() {
+  await loadRuntimeConfig();
+
   const app = createApp(App)
   app.config.globalProperties.$http = axios
   app.component("v-select", vSelect)
@@ -60,9 +61,12 @@ async function bootstrap() {
 
   console.log("Running in " + import.meta.env.MODE)
 
-  if (USE_OIDC) {
+  // Use runtime config to determine OIDC mode
+  if (isOidcEnabled()) {
+    console.log('[Bootstrap] OIDC mode enabled')
     await authPlugin.install(app)
   } else {
+    console.log('[Bootstrap] Traditional auth mode')
     const apiToken = document.cookie
       .split(';')
       .map(s => s.trim().split('='))
@@ -81,3 +85,5 @@ async function bootstrap() {
 }
 
 bootstrap()
+  .then(() => console.log('[Bootstrap] Application started successfully'))
+  .catch(error => console.error('[Bootstrap] Failed to start application:', error))

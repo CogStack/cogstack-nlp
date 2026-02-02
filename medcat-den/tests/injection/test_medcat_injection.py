@@ -59,7 +59,10 @@ def den_with_model(tmp_path: str, cat: CAT) -> Den:
 def den_with_nonempty_model(den_with_model: Den):
     model = den_with_model.fetch_model(
         den_with_model.list_available_base_models()[0])
-    model.vocab = Vocab()
+    # NOTE: normally, the CATWrapper setattr isn't used so it's not
+    #       delegating to the original
+    #       but once set, the gettattr will use the correct delegation
+    model._delegate.vocab = Vocab()
     model.vocab.add_word("acute", 4, np.array([1, 0, 0]))
     model.vocab.add_word("chronic", 3, np.array([-1, 0, 0]))
     model.vocab.add_word("does", 10, np.array([0, 1, 0]))

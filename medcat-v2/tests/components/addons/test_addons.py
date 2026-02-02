@@ -20,6 +20,9 @@ class FakeAddonNoInit:
         assert cnf.comp_name == self.name
         self.config = cnf
 
+    def is_core(self) -> bool:
+        return False
+
     def __call__(self, doc):
         return doc
 
@@ -61,6 +64,9 @@ class FakeAddonWithInit:
         self._token = tokenizer
         self._cdb = cdb
         self.config = cnf
+
+    def is_core(self) -> bool:
+        return False
 
     def __call__(self, doc):
         return doc

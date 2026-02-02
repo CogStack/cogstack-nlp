@@ -3,6 +3,10 @@
 MedCAT can be used to extract information from Electronic Health Records (EHRs) and link it to biomedical ontologies like SNOMED-CT, UMLS, or HPO (and potentially other ontologies).
 Original paper for v1 on [arXiv](https://arxiv.org/abs/2010.01165). 
 
+## Why MedCAT v2?
+
+MedCAT v2 is a comprehensive refactor designed to improve modularity, flexibility, and maintainability. The core library is now lightweight, with optional extras (spaCy tokenization, MetaCAT, DeID, RelCAT) available as separate installable features—allowing you to install only what you need. This modular approach reduces dependencies, enables smaller installs, and provides better separation of concerns. Additionally, v2 reduces internal coupling with spaCy, allowing for alternative tokenizers and greater extensibility. The new architecture makes it easier to create custom components and addons, while improving code maintainability and preparing the foundation for future enhancements. For most users, single-threaded inference APIs remain unchanged, ensuring a smooth transition.
+
 **There's a number of breaking changes in MedCAT v2 compared to v1.**
 When moving from v1 to v2, please refer to the [migration guide](docs/migration_guide_v2.md).
 Details on breaking are outlined [here](docs/breaking_changes.md).
@@ -85,6 +89,40 @@ pip install "medcat[meta-cat]"  # for MetaCAT
 pip install "medcat[deid]"  # for DeID models
 pip install "medcat[spacy,meta-cat,deid,rel-cat,dict-ner]"  # for all of the above
 ```
+
+### Installing plugins
+
+MedCAT v2 supports **external plugins** that can provide new components (e.g. alternative NER models, addons, tokenizers) via Python entry points.
+
+- **Curated plugins**: The `medcat.plugins.catalog` module ships with a curated plugin catalog that can be updated from a remote JSON file.
+- **Installer**: The `medcat.plugins.installer.PluginInstallationManager` wraps a `pip`-based installer and knows how to resolve a compatible plugin version for your current MedCAT version.
+- **CLI**: You can install curated plugins directly from the command line:
+
+```bash
+python -m medcat plugins install medcat-gliner
+```
+
+This will:
+
+- look up `medcat-gliner` in the curated catalog,
+- resolve a version compatible with your installed MedCAT,
+- and install it using `pip`.
+
+You can also:
+
+- pass `--dry-run` to show what would be installed without making changes:
+
+  ```bash
+  python -m medcat plugins install --dry-run medcat-gliner
+  ```
+
+- override the version/ref explicitly (e.g. when testing a branch or tag):
+
+  ```bash
+  python -m medcat plugins install medcat-gliner --force-version main
+  ```
+
+If a plugin requires authentication (for example, private Git repositories), MedCAT will log a warning and the installer will surface pip’s error messages if credentials are missing or incorrect.
 
 ### Version / update checking
 
