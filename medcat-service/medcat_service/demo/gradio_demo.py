@@ -122,7 +122,7 @@ else:
                 with gr.Accordion(label="All Annotations", open=False):
                     dataframe = gr.Dataframe(label="All Annotations", headers=headers, interactive=False, max_chars=50)
         highlighted.select(on_select, [highlighted, annotation_details, dataframe], outputs=annotation_details)
-        
+
         annotate_btn.click(lambda: (annotation_details_placeholder_text), outputs=[annotation_details])
         annotate_btn.click(perform_named_entity_resolution, inputs=input_text, outputs=[highlighted, dataframe])
 
