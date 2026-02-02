@@ -85,6 +85,7 @@ if settings.deid_mode:
                         inputs=input_text,
                         example_labels=["Short Example", "Note with personally identifiable information"],
                     )
+                    redact = gr.Checkbox(label="Redact")
                     with gr.Row():
                         clear_btn = gr.Button("Clear", variant="secondary")
                         annotate_btn = gr.Button("Deidentify", variant="primary")
@@ -108,7 +109,7 @@ if settings.deid_mode:
 
         annotate_btn.click(
             anoncat_demo_perform_deidentification,
-            inputs=input_text,
+            inputs=[input_text, redact],
             outputs=[highlighted, dataframe, deidentified_text],
         )
         annotate_btn.click(lambda: (annotation_details_placeholder_text), outputs=[annotation_details])

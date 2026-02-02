@@ -108,7 +108,7 @@ def convert_display_model_to_list_of_lists(entity_display_model: list[EntityAnno
     ]
 
 
-def perform_named_entity_resolution(input_text: str):
+def perform_named_entity_resolution(input_text: str, redact: bool | None = None):
     """
     Performs clinical coding by processing the input text with MedCAT to extract and
     annotate medical concepts (entities).
@@ -140,7 +140,7 @@ def perform_named_entity_resolution(input_text: str):
     processor = get_medcat_processor(get_settings())
     input = ProcessAPIInputContent(text=input_text)
 
-    result = processor.process_content(input.model_dump())
+    result = processor.process_content(input.model_dump(), redact=redact)
 
     entity_ner_format: list[EntityAnnotation] = convert_entity_dict_to_annotations(result.annotations)
 
@@ -162,9 +162,9 @@ def medcat_demo_perform_named_entity_resolution(input_text: str):
     return result[0], result[1]
 
 
-def anoncat_demo_perform_deidentification(input_text: str):
+def anoncat_demo_perform_deidentification(input_text: str, redact: bool):
     """
     Performs deidentification for the AnonCAT demo.
     """
-    result = perform_named_entity_resolution(input_text)
+    result = perform_named_entity_resolution(input_text, redact=redact)
     return result
