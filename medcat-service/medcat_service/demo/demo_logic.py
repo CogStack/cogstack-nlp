@@ -153,12 +153,14 @@ def perform_named_entity_resolution(input_text: str):
     logger.debug("Returning final result")
     return result
 
+
 def medcat_demo_perform_named_entity_resolution(input_text: str):
     """
     Performs named entity resolution for the MedCAT demo.
     """
     result = perform_named_entity_resolution(input_text)
     return result[0], result[1]
+
 
 def anoncat_demo_perform_deidentification(input_text: str):
     """
