@@ -93,7 +93,8 @@ def convert_entity_dict_to_annotations(entity_dict_list: list[dict[str, Entity]]
 
 
 def convert_entity_dict_to_display_model(entity_dict_list: list[dict[str, Entity]]) -> list[EntityAnnotationDisplay]:
-    logger.debug("Converting entity dict to display model")   annotations: list[EntityAnnotationDisplay] = []
+    logger.debug("Converting entity dict to display model")
+    annotations: list[EntityAnnotationDisplay] = []
     for entity_dict in entity_dict_list:
         for key, entity in entity_dict.items():
             annotations.append(convert_annotation_to_display_model(entity))
