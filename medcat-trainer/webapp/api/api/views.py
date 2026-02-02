@@ -383,7 +383,7 @@ def prepare_docs_bg_task(request, proj_id):
             ds_total_count = Document.objects.filter(dataset=ProjectAnnotateEntities.objects.get(id=proj_id).dataset.id).count()
             return Response({'proj_id': proj_id, 'dataset_len': ds_total_count, 'prepd_docs_len': prepd_docs_count})
         except ObjectDoesNotExist:
-            return HttpResponseBadRequest('No Project found for ID: %s' % proj_id)
+            return HttpResponseBadRequest('No Project found for the given ID')
     else:
         running_doc_prep_tasks = {json.loads(task.task_params)[0][0]: task.id
                                   for task in Task.objects.filter(queue='doc_prep')}
