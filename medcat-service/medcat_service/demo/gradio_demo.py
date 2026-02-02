@@ -16,7 +16,7 @@ highlighted_text_css = """
 """
 settings = get_settings()
 
-default_annotation_details = "**No annotation selected**\n\nClick on a highlighted entity to view its details."
+annotation_details_placeholder_text = "Click on a highlighted entity to view its details"
 
 
 def format_annotation_details(row, selected_text: str):
@@ -33,7 +33,7 @@ def format_annotation_details(row, selected_text: str):
 
     confidence_pct = float(confidence) * 100
 
-    details = f"""## Annotation Details
+    details = f"""### Annotation Details
 **Input Text:**         {selected_text}
 
 **Entity Name:**        {pretty_name}
@@ -101,7 +101,7 @@ else:
                 row = dataframe.iloc[datatable_index]
                 return format_annotation_details(row, selected_text)
             else:
-                return "**No annotation selected**\n\nClick on a highlighted entity to view its details."
+                return annotation_details_placeholder_text
 
         gr.Markdown("# MedCAT Demo")
         with gr.Row():
@@ -127,13 +127,13 @@ else:
                     label="Processed Text", elem_id="highlighted-text-output", interactive=False)
                 annotation_details = gr.Markdown(
                     label="Annotation Details",
-                    value=default_annotation_details
+                    value=annotation_details_placeholder_text
                 )
                 with gr.Accordion(label="All Annotations", open=False):
                     dataframe = gr.Dataframe(label="All Annotations", headers=headers, interactive=False, max_chars=50)
         highlighted.select(on_select, [highlighted, annotation_details, dataframe], outputs=annotation_details)
         annotate_btn.click(
-            lambda: (default_annotation_details),
+            lambda: (annotation_details_placeholder_text),
             outputs=[annotation_details]
         )
         annotate_btn.click(
@@ -143,7 +143,7 @@ else:
         )
 
         clear_btn.click(
-            lambda: ("", None, None, default_annotation_details),
+            lambda: ("", None, None, annotation_details_placeholder_text),
             outputs=[input_text, highlighted, dataframe, annotation_details]
         )
         gr.Markdown(demo_content.article_footer)
