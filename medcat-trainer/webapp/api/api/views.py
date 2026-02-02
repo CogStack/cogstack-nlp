@@ -31,6 +31,8 @@ from .serializers import *
 from .solr_utils import collections_available, search_collection, ensure_concept_searchable
 from .utils import add_annotations, remove_annotations, train_medcat, create_annotation, prep_docs
 
+logger = logging.getLogger(__name__)
+
 # For local testing, put envs
 """
 from environs import Env
@@ -547,8 +549,9 @@ def submit_document(request):
 
     try:
         _submit_document(project, document)
-    except Exception as e:
-        return HttpResponseServerError(str(e))
+    except Exception:
+        logger.exception("Error while submitting document")
+        return HttpResponseServerError("An internal error occurred while submitting the document.")
 
     return Response({'message': 'Document submited successfully'})
 
