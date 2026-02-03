@@ -135,7 +135,7 @@ def perform_named_entity_resolution(input_text: str, redact: bool | None = None)
     """
     logger.debug("Performing named entity resolution")
     if not input_text or not input_text.strip():
-        return None, None
+        return None, None, None
 
     processor = get_medcat_processor(get_settings())
     input = ProcessAPIInputContent(text=input_text)
