@@ -619,7 +619,8 @@ class Linker(AbstractEntityProvidingComponent):
 
             entity.link_candidates = list(cuis)
 
-    def _pre_inference(self, doc: MutableDocument) -> tuple[list, list]:
+    def _pre_inference(self, doc: MutableDocument
+    ) -> tuple[list[MutableEntity], list[MutableEntity]]:
         """Checking all entities for entites with only a single link candidate and to
         avoid full inference step. If we want to calculate similarities, or not use
         link candidates then just return the entities"""
@@ -643,8 +644,8 @@ class Linker(AbstractEntityProvidingComponent):
         if self.cnf_l.always_calculate_similarity:
             return [], filtered_ents
 
-        le = []
-        to_infer = []
+        le: list[MutableEntity] = []
+        to_infer: list[MutableEntity] = []
         for entity in all_ents:
             if len(entity.link_candidates) == 1:
                 # if the include filter exists and the only cui is in it
