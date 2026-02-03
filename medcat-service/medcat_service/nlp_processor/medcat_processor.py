@@ -136,7 +136,7 @@ class MedCatProcessor:
         yield entities
 
     @tracer.start_as_current_span("process_content")
-    def process_content(self, content, *args, redact = None, **kwargs):
+    def process_content(self, content, *args, redact=None, **kwargs):
         """Processes a single document extracting the annotations.
 
         Args:
