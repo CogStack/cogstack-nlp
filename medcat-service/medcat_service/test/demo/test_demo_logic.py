@@ -1,6 +1,7 @@
 """
 Unit tests for demo logic functions, specifically perform_named_entity_resolution.
 """
+
 import json
 import unittest
 from unittest.mock import MagicMock, patch
@@ -26,6 +27,28 @@ class TestDemoLogic(unittest.TestCase):
     """
 
     processor: MedCatProcessor
+
+    # Mock annotations JSON for anoncat tests
+    mock_annotations_json = """
+    {
+      "annotations": [
+        {
+          "1": {
+            "pretty_name": "Test Entity",
+            "cui": "C123456",
+            "type_ids": ["T001"],
+            "source_value": "test entity",
+            "detected_name": "test~entity",
+            "acc": 0.95,
+            "context_similarity": 0.9,
+            "start": 0,
+            "end": 11,
+            "id": 1
+          }
+        }
+      ]
+    }
+    """
 
     @classmethod
     def setUpClass(cls):
@@ -209,9 +232,7 @@ class TestDemoLogic(unittest.TestCase):
 
     @patch("medcat_service.demo.demo_logic.get_settings")
     @patch("medcat_service.demo.demo_logic.get_medcat_processor")
-    def test_perform_named_entity_resolution_with_mocked_get_entities(
-        self, mock_get_processor, mock_get_settings
-    ):
+    def test_perform_named_entity_resolution_with_mocked_get_entities(self, mock_get_processor, mock_get_settings):
         """Test perform_named_entity_resolution with mocked get_entities returning JSON data."""
         # Mock entities data inline as JSON string
         mock_annotations_json = """
@@ -348,32 +369,10 @@ class TestDemoLogic(unittest.TestCase):
 
     @patch("medcat_service.demo.demo_logic.get_settings")
     @patch("medcat_service.demo.demo_logic.get_medcat_processor")
-    def test_anoncat_demo_perform_deidentification_with_redact_true(
-        self, mock_get_processor, mock_get_settings
-    ):
+    def test_anoncat_demo_perform_deidentification_with_redact_true(self, mock_get_processor, mock_get_settings):
         """Test anoncat_demo_perform_deidentification with redact=True."""
         # Mock entities data
-        mock_annotations_json = """
-        {
-          "annotations": [
-            {
-              "1": {
-                "pretty_name": "Test Entity",
-                "cui": "C123456",
-                "type_ids": ["T001"],
-                "source_value": "test entity",
-                "detected_name": "test~entity",
-                "acc": 0.95,
-                "context_similarity": 0.9,
-                "start": 0,
-                "end": 11,
-                "id": 1
-              }
-            }
-          ]
-        }
-        """
-        mock_annotations_data = json.loads(mock_annotations_json)
+        mock_annotations_data = json.loads(self.mock_annotations_json)
 
         # Create a mock processor
         mock_processor = MagicMock(spec=MedCatProcessor)
@@ -415,8 +414,10 @@ class TestDemoLogic(unittest.TestCase):
         self.assertIsInstance(result_table, list)
         self.assertIsInstance(result_text, str)
         # Verify the text is redacted
-        self.assertEqual(result_text, redacted_text)
-        self.assertEqual(result_dict["text"], redacted_text)  # dict still has original text
+        self.assertEqual(result_text, redacted_text, "output contains redacted text")
+        self.assertEqual(
+            result_dict["text"], self.test_text, "dict still has original text for use by highlighted text viewer"
+        )
 
         # Verify process_content was called with redact=True
         mock_processor.process_content.assert_called_once()
@@ -425,32 +426,10 @@ class TestDemoLogic(unittest.TestCase):
 
     @patch("medcat_service.demo.demo_logic.get_settings")
     @patch("medcat_service.demo.demo_logic.get_medcat_processor")
-    def test_anoncat_demo_perform_deidentification_with_redact_false(
-        self, mock_get_processor, mock_get_settings
-    ):
+    def test_anoncat_demo_perform_deidentification_with_redact_false(self, mock_get_processor, mock_get_settings):
         """Test anoncat_demo_perform_deidentification with redact=False."""
         # Mock entities data
-        mock_annotations_json = """
-        {
-          "annotations": [
-            {
-              "1": {
-                "pretty_name": "Test Entity",
-                "cui": "C123456",
-                "type_ids": ["T001"],
-                "source_value": "test entity",
-                "detected_name": "test~entity",
-                "acc": 0.95,
-                "context_similarity": 0.9,
-                "start": 0,
-                "end": 11,
-                "id": 1
-              }
-            }
-          ]
-        }
-        """
-        mock_annotations_data = json.loads(mock_annotations_json)
+        mock_annotations_data = json.loads(self.mock_annotations_json)
 
         # Create a mock processor
         mock_processor = MagicMock(spec=MedCatProcessor)
@@ -491,9 +470,10 @@ class TestDemoLogic(unittest.TestCase):
         self.assertIsInstance(result_dict["entities"], list)
         self.assertIsInstance(result_table, list)
         self.assertIsInstance(result_text, str)
-        # Verify the text is not redacted
-        self.assertEqual(result_text, deidentified_text)
-        self.assertEqual(result_dict["text"], deidentified_text)  # dict still has original text
+        # Verify the text is deidentified
+        self.assertEqual(result_text, deidentified_text, "output contains deidentified text")
+        # dict still has original text for use by highlighted text viewer
+        self.assertEqual(result_dict["text"], self.test_text)
 
         # Verify process_content was called with redact=False
         mock_processor.process_content.assert_called_once()
