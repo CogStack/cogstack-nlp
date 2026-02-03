@@ -654,7 +654,7 @@ class Linker(AbstractEntityProvidingComponent):
                     entity.context_similarity = 1
                     le.append(entity)
                     continue
-            elif self.cnf_l.use_ner_link_candidates and not len(entity.link_candidates):
+            elif self.cnf_l.use_ner_link_candidates and not entity.link_candidates:
                 continue
             # it has to be inferred due to filters or number of link candidates
             to_infer.append(entity)
