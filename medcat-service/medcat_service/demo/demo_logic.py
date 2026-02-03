@@ -11,7 +11,7 @@ import logging
 from pydantic import BaseModel
 
 from medcat_service.dependencies import get_medcat_processor, get_settings
-from medcat_service.types import ProcessAPIInputContent
+from medcat_service.types import ProcessAPIInputContent, ProcessErrorsResult, ProcessResult
 from medcat_service.types_entities import Entity
 
 logger = logging.getLogger(__name__)
@@ -140,7 +140,14 @@ def perform_named_entity_resolution(input_text: str, redact: bool | None = None)
     processor = get_medcat_processor(get_settings())
     input = ProcessAPIInputContent(text=input_text)
 
-    result = processor.process_content(input.model_dump(), redact=redact)
+    process_result = processor.process_content(input.model_dump(), redact=redact)
+
+    if isinstance(process_result, ProcessErrorsResult):
+        error_msg = (
+            "; ".join(process_result.errors) if process_result.errors else "Unknown error occurred during processing"
+        )
+        raise ValueError(f"Processing failed: {error_msg}")
+    result: ProcessResult = process_result
 
     entity_ner_format: list[EntityAnnotation] = convert_entity_dict_to_annotations(result.annotations)
 
@@ -149,9 +156,8 @@ def perform_named_entity_resolution(input_text: str, redact: bool | None = None)
     response_datatable_format = convert_display_model_to_list_of_lists(annotations_as_display_format)
 
     response: EntityResponse = EntityResponse(entities=entity_ner_format, text=input_text)
-    result = response.model_dump(), response_datatable_format, result.text
-    logger.debug("Returning final result")
-    return result
+    response_tuple = response.model_dump(), response_datatable_format, result.text
+    return response_tuple
 
 
 def medcat_demo_perform_named_entity_resolution(input_text: str):
