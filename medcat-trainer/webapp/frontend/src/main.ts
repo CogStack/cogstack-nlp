@@ -24,6 +24,7 @@ import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import {authPlugin} from "./auth";
 import { loadRuntimeConfig, isOidcEnabled } from './runtimeConfig';
+import { performStartupCleanup } from './utils/storage-cleanup';
 
 const theme ={
   dark: false,
@@ -49,6 +50,9 @@ const vuetify = createVuetify({
 
 async function bootstrap() {
   await loadRuntimeConfig();
+
+  // Clear browser storage on startup to prevent auth state conflicts
+  performStartupCleanup();
 
   const app = createApp(App)
   app.config.globalProperties.$http = axios
