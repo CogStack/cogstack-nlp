@@ -106,23 +106,6 @@ describe('storageCleanup', () => {
       expect(consoleLogSpy).toHaveBeenCalled()
     })
 
-    it('should remove Keycloak items from localStorage', () => {
-      // Add some localStorage items
-      localStorage.setItem('kc-callback-e5a2e61c-69c3-430f-b0ba-5ed3c74be34a', {"state":"e5a2e61c-69c3-430f-b0ba-5ed3c74be34a","nonce":"89152b76-263f-41f9-92af-688f5ccc6b37","redirectUri":"https%3A%2F%2Fmedcattrainer.sites.er.kcl.ac.uk%2Ftrain-annotations%2F1%2F1","loginOptions":{},"pkceCodeVerifier":"hiPqBzEFgSBsqggWDOpmZBgwoy12Snso9rPBms1BPUemxDaDVFU1iAbuDMInsmnbJpFYRrQJ3PBoM6fjJb2XNe3mvGNl5iAu","expires":1770212697181})
-      localStorage.setItem('keycloak-random', 'instance-data')
-      localStorage.setItem('other-key', 'should-remain')
-
-      expect(Object.keys(localStorageMock)).toHaveLength(3)
-
-      performStartupCleanup()
-
-      // Only 'other-key' should remain
-      expect(localStorageMock['other-key']).toBe('should-remain')
-      expect(localStorageMock['kc-callback-e5a2e61c-69c3-430f-b0ba-5ed3c74be34a']).toBeUndefined()
-      expect(localStorageMock['keycloak-instance']).toBeUndefined()
-      expect(Object.keys(localStorageMock)).toHaveLength(1)
-    })
-
     it('should clear all sessionStorage', () => {
       // Add some sessionStorage items
       sessionStorage.setItem('session-key1', 'value1')
@@ -135,57 +118,6 @@ describe('storageCleanup', () => {
       expect(Object.keys(sessionStorageMock)).toHaveLength(0)
     })
 
-    it('should remove OAuth callback parameters from URL hash', () => {
-      window.location.href = 'https://medcattrainer.sites.er.kcl.ac.uk/#state=4d6f2da7-5b67-4a1b-b2eb-bc6fe7953206&session_state=6e6c31ef-5d5b-485d-8036-6e155508934f&iss=https%3A%2F%2Fcogstack-auth.sites.er.kcl.ac.uk%2Frealms%2Fcogstack&code=2b13e03c-1961-432a-b736-959c720685fa.6e6c31ef-5d5b-485d-8036-6e155508934f.5eca49a4-3f37-46ce-9570-65aed1ee33c6'
-
-      performStartupCleanup()
-
-      expect(window.history.replaceState).toHaveBeenCalledWith(
-        {},
-        expect.any(String),
-        expect.stringContaining('https://medcattrainer.sites.er.kcl.ac.uk/')
-      )
-
-      // Verify the URL doesn't contain OAuth params
-      const callArgs = (window.history.replaceState as any).mock.calls[0][2]
-      expect(callArgs).not.toContain('state=')
-      expect(callArgs).not.toContain('session_state=')
-      expect(callArgs).not.toContain('iss=')
-      expect(callArgs).not.toContain('code=')
-    })
-
-    it('should not modify URL if no OAuth parameters present', () => {
-      window.location.href = 'https://example.com/#/dashboard'
-
-      performStartupCleanup()
-
-      expect(window.history.replaceState).not.toHaveBeenCalled()
-    })
-
-    it('should handle URL with only some OAuth parameters', () => {
-      window.location.href = 'https://example.com/#state=abc123&other=value'
-
-      performStartupCleanup()
-
-      expect(window.history.replaceState).toHaveBeenCalled()
-
-      // Verify 'other' parameter is preserved
-      const callArgs = (window.history.replaceState as any).mock.calls[0][2]
-      expect(callArgs).toContain('other=value')
-      expect(callArgs).not.toContain('state=')
-    })
-
-    it('should handle empty hash after removing all OAuth parameters', () => {
-      window.location.href = 'https://example.com/#state=abc123&code=code123'
-
-      performStartupCleanup()
-
-      expect(window.history.replaceState).toHaveBeenCalled()
-
-      const callArgs = (window.history.replaceState as any).mock.calls[0][2]
-      // Should just be the base URL without hash or with empty hash
-      expect(callArgs).toMatch(/https:\/\/example\.com\/#?$/)
-    })
 
     it('should handle localStorage with no Keycloak items', () => {
       localStorage.setItem('normal-key', 'normal-value')

@@ -11,7 +11,7 @@ import '@/assets/main.css'
 import { createApp } from 'vue'
 
 import App from './App.vue'
-import router from './router'
+import { initialiseRouter } from './router'
 import axios from 'axios'
 import VueCookies from 'vue-cookies'
 import vSelect from 'vue-select'
@@ -51,15 +51,11 @@ const vuetify = createVuetify({
 async function bootstrap() {
   await loadRuntimeConfig();
 
-  // Clear browser storage on startup to prevent auth state conflicts
-  performStartupCleanup();
-
   const app = createApp(App)
   app.config.globalProperties.$http = axios
   app.component("v-select", vSelect)
   app.component('vue-simple-context-menu', VueSimpleContextMenu)
   app.component('font-awesome-icon', FontAwesomeIcon)
-  app.use(router)
   app.use(VueCookies, { expires: '7d'})
   app.use(vuetify);
 
@@ -85,9 +81,16 @@ async function bootstrap() {
   }
 
   app.config.compilerOptions.whitespace = 'preserve'
+
+  // Router is initialised and created after keycloak initialisation as workaround to URL fragments not being removed after successful login
+  // See: https://github.com/keycloak/keycloak/issues/14742#issuecomment-1663069438
+  app.use(initialiseRouter())
   app.mount('#app')
 }
 
+// Clear app storage before the application is bootstrapped
+// This prevents stale auth state from being used
+performStartupCleanup();
 bootstrap()
   .then(() => console.log('[Bootstrap] Application started successfully'))
   .catch(error => console.error('[Bootstrap] Failed to start application:', error))
