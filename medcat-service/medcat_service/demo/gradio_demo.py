@@ -1,4 +1,5 @@
 import gradio as gr
+import pandas as pd
 
 import medcat_service.demo.demo_content as demo_content
 from medcat_service.demo.demo_logic import (
@@ -22,7 +23,7 @@ settings = get_settings()
 annotation_details_placeholder_text = "Click on a highlighted entity to view its details"
 
 
-def format_annotation_details(row, selected_text: str):
+def format_annotation_details(row: pd.Series | None, selected_text: str) -> str:
     """Format a pandas Series row as markdown for display."""
     if row is None:
         return "**No annotation selected**\n\nClick on a highlighted entity to view its details."
@@ -52,7 +53,7 @@ def format_annotation_details(row, selected_text: str):
     return details
 
 
-def on_select(value, annotation_details, dataframe, evt: gr.SelectData):
+def on_select_annotation(value, annotation_details, dataframe, evt: gr.SelectData):
     """
     On select of annotations in the highlighted text component.
 
@@ -71,90 +72,94 @@ def on_select(value, annotation_details, dataframe, evt: gr.SelectData):
         return annotation_details_placeholder_text
 
 
+def output_details_interface():
+    """
+    Output details interface for the demo.
+    Based on gradio Namd-Entity Recognition Demo
+    https://www.gradio.app/guides/named-entity-recognition
+    """
+    highlighted = gr.HighlightedText(label="Processed Text", elem_id="highlighted-text-output", interactive=False)
+    annotation_details = gr.Markdown(label="Annotation Details", value=annotation_details_placeholder_text)
+    with gr.Accordion(label="All Annotations", open=False):
+        dataframe = gr.Dataframe(label="All Annotations", headers=headers, interactive=False, max_chars=50)
+
+    highlighted.select(on_select_annotation, [highlighted, annotation_details, dataframe], outputs=annotation_details)
+    return highlighted, annotation_details, dataframe
+
+
 def anoncat_demo_interface():
+    def input_column():
+        with gr.Tab("Input"):
+            with gr.Group():
+                # Using a tab here just to make the input text box align with the output that is also tabbed
+                input_text = gr.Textbox(
+                    label="Input Text", lines=3, placeholder="Enter some text and click Deidentify..."
+                )
+                redact = gr.Checkbox(label="Redact", info="Replace sensitive information with ****")
+            examples = gr.Examples(
+                examples=[demo_content.short_example, demo_content.anoncat_example],
+                inputs=input_text,
+                example_labels=["Short Example", "Note with personally identifiable information"],
+            )
+            with gr.Row():
+                clear_btn = gr.Button("Clear", variant="secondary")
+                annotate_btn = gr.Button("Deidentify", variant="primary")
+        return input_text, redact, clear_btn, annotate_btn
+
+    def output_column():
+        with gr.Tab("Deidentification"):
+            deidentified_text = gr.Textbox(label="Deidentified Text", value="", lines=3, interactive=False)
+        with gr.Tab("Details"):
+            highlighted, annotation_details, dataframe = output_details_interface()
+        return highlighted, dataframe, deidentified_text, annotation_details
+
     with gr.Blocks(title="AnonCAT Demo", fill_width=True) as io:
         gr.Markdown("# AnonCAT Demo")
         with gr.Row():
             with gr.Column():  # noqa
-                with gr.Tab("Input"):
-                    # Using a tab here just to make the input text box align with the output that is also tabbed
-                    input_text = gr.Textbox(
-                        label="Input Text", lines=3, placeholder="Enter some text and click Deidentify..."
-                    )
-                    examples = gr.Examples(
-                        examples=[demo_content.short_example, demo_content.anoncat_example],
-                        inputs=input_text,
-                        example_labels=["Short Example", "Note with personally identifiable information"],
-                    )
-
-                    redact = gr.Checkbox(label="Redact", container=False,
-                                         info="Replace sensitive information with ****")
-
-                clear_btn = gr.Button("Clear", variant="secondary")
-                annotate_btn = gr.Button("Deidentify", variant="primary")
-
+                input_text, redact, clear_btn, annotate_btn = input_column()
             with gr.Column():
-                with gr.Tab("Deidentification"):
-                    deidentified_text = gr.Textbox(label="Deidentified Text", value="", interactive=False)
-                with gr.Tab("Details"):
-                    highlighted = gr.HighlightedText(
-                        label="Processed Text", elem_id="highlighted-text-output", interactive=False
-                    )
-                    annotation_details = gr.Markdown(
-                        label="Annotation Details", value=annotation_details_placeholder_text
-                    )
-                    with gr.Accordion(label="All Annotations", open=False):
-                        dataframe = gr.Dataframe(
-                            label="All Annotations", headers=headers, interactive=False, max_chars=50
-                        )
+                highlighted, dataframe, deidentified_text, annotation_details = output_column()
+        annotate_btn.click(
+            anoncat_demo_perform_deidentification,
+            inputs=[input_text, redact],
+            outputs=[highlighted, dataframe, deidentified_text],
+        )
+        annotate_btn.click(lambda: (annotation_details_placeholder_text), outputs=[annotation_details])
 
-                    highlighted.select(on_select, [highlighted, annotation_details,
-                                       dataframe], outputs=annotation_details)
-
-            annotate_btn.click(
-                anoncat_demo_perform_deidentification,
-                inputs=[input_text, redact],
-                outputs=[highlighted, dataframe, deidentified_text],
-            )
-            annotate_btn.click(lambda: (annotation_details_placeholder_text), outputs=[annotation_details])
-
-            clear_btn.click(
-                lambda: ("", None, None, annotation_details_placeholder_text),
-                outputs=[input_text, highlighted, dataframe, annotation_details],
-            )
+        clear_btn.click(
+            lambda: ("", None, None, annotation_details_placeholder_text),
+            outputs=[input_text, highlighted, dataframe, annotation_details],
+        )
         gr.Markdown(demo_content.anoncat_help_content)
     return io
 
 
 def medcat_demo_interface():
+    def input_column():
+        input_text = gr.Textbox(label="Input Text", lines=6, placeholder="Enter some text and click Annotate...")
+        with gr.Row():
+            examples = gr.Examples(
+                examples=[demo_content.short_example, demo_content.long_example, demo_content.anoncat_example],
+                inputs=input_text,
+                example_labels=[
+                    "Short Example",
+                    "Patient Discharge Summary in Neurology",
+                    "Note with personally identifiable information",
+                ],
+            )
+        with gr.Row():
+            clear_btn = gr.Button("Clear", variant="secondary")
+            annotate_btn = gr.Button("Annotate", variant="primary")
+        return input_text, clear_btn, annotate_btn
+
     with gr.Blocks(title="MedCAT Demo", fill_width=True) as io:
         gr.Markdown("# MedCAT Demo")
         with gr.Row():
             with gr.Column():
-                input_text = gr.Textbox(
-                    label="Input Text", lines=6, placeholder="Enter some text and click Annotate..."
-                )
-                with gr.Row():
-                    examples = gr.Examples(
-                        examples=[demo_content.short_example, demo_content.long_example, demo_content.anoncat_example],
-                        inputs=input_text,
-                        example_labels=[
-                            "Short Example",
-                            "Patient Discharge Summary in Neurology",
-                            "Note with personally identifiable information",
-                        ],
-                    )
-                with gr.Row():
-                    clear_btn = gr.Button("Clear", variant="secondary")
-                    annotate_btn = gr.Button("Annotate", variant="primary")
+                input_text, clear_btn, annotate_btn = input_column()
             with gr.Column():
-                highlighted = gr.HighlightedText(
-                    label="Processed Text", elem_id="highlighted-text-output", interactive=False
-                )
-                annotation_details = gr.Markdown(label="Annotation Details", value=annotation_details_placeholder_text)
-                with gr.Accordion(label="All Annotations", open=False):
-                    dataframe = gr.Dataframe(label="All Annotations", headers=headers, interactive=False, max_chars=50)
-        highlighted.select(on_select, [highlighted, annotation_details, dataframe], outputs=annotation_details)
+                highlighted, annotation_details, dataframe = output_details_interface()
 
         annotate_btn.click(lambda: (annotation_details_placeholder_text), outputs=[annotation_details])
         annotate_btn.click(
