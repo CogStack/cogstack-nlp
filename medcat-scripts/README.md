@@ -12,6 +12,11 @@ To gain access to these scripts you simply:
 git clone https://github.com/CogStack/cogstack-nlp.git
 cd cogstack-nlp/medcat-scripts
 ```
+OR (in `medcat>=2.3.0`) you can have `medcat` download the appropriate scripts for you by running:
+```
+# NOTE: by default this gets installed to your local directory, but a path can be provided
+python -m medcat download-scripts
+```
 You may subsequently need to install the relevant requirements
 ```
 python -m pip install -r requirements.txt
