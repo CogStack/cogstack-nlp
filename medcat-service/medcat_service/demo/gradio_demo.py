@@ -96,7 +96,7 @@ def anoncat_demo_interface():
                     label="Input Text", lines=3, placeholder="Enter some text and click Deidentify..."
                 )
                 redact = gr.Checkbox(label="Redact", info="Replace sensitive information with ****")
-            examples = gr.Examples(
+            examples = gr.Examples(  # noqa
                 examples=[demo_content.short_example, demo_content.anoncat_example],
                 inputs=input_text,
                 example_labels=["Short Example", "Note with personally identifiable information"],
@@ -139,7 +139,7 @@ def medcat_demo_interface():
     def input_column():
         input_text = gr.Textbox(label="Input Text", lines=6, placeholder="Enter some text and click Annotate...")
         with gr.Row():
-            examples = gr.Examples(
+            examples = gr.Examples(  # noqa
                 examples=[demo_content.short_example, demo_content.long_example, demo_content.anoncat_example],
                 inputs=input_text,
                 example_labels=[
