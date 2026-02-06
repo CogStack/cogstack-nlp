@@ -97,10 +97,10 @@ class TestDemoLogic(unittest.TestCase):
         # Execute
         result_dict, result_table, result_text = perform_named_entity_resolution("")
 
-        # Assert
-        self.assertIsNone(result_dict)
-        self.assertIsNone(result_table)
-        self.assertIsNone(result_text)
+        # Assert - should return empty objects, not None
+        self.assertEqual(result_dict, {})
+        self.assertEqual(result_table, [])
+        self.assertEqual(result_text, "")
 
     @patch("medcat_service.demo.demo_logic.get_settings")
     @patch("medcat_service.demo.demo_logic.get_medcat_processor")
@@ -113,10 +113,10 @@ class TestDemoLogic(unittest.TestCase):
         # Execute
         result_dict, result_table, result_text = perform_named_entity_resolution("   \n\t  ")
 
-        # Assert
-        self.assertIsNone(result_dict)
-        self.assertIsNone(result_table)
-        self.assertIsNone(result_text)
+        # Assert - should return empty objects, not None
+        self.assertEqual(result_dict, {})
+        self.assertEqual(result_table, [])
+        self.assertEqual(result_text, "")
 
     @patch("medcat_service.demo.demo_logic.get_settings")
     @patch("medcat_service.demo.demo_logic.get_medcat_processor")
