@@ -1,6 +1,6 @@
 # MedCAT Tutorials (version 2)
 
-The MedCAT Tutorials privde an interactive learning path for using MedCAT
+The MedCAT Tutorials provide an interactive learning path for using MedCAT.
 
 ## Introductory tutorials
 
