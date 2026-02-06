@@ -329,6 +329,8 @@ The following environment variables are available for tailoring the MedCAT Servi
 - `APP_BULK_NPROC` - the number of threads used in bulk processing (default: `8`),
 - `APP_MEDCAT_MODEL_PACK` -  MedCAT Model Pack path, if this parameter has a value IT WILL BE LOADED FIRST OVER EVERYTHING ELSE (CDB, Vocab, MetaCATs, etc.) declared above.
 - `APP_ENABLE_METRICS` - Enable prometheus metrics collection served on the path /metrics
+- `APP_ENABLE_DEMO_UI` - Enable the demo user interface to try models
+- `APP_DEMO_UI_PATH` - Customise the path of the demo UI. Default is /demo
 
 ### Shared Memory (`DOCKER_SHM_SIZE`)
 
