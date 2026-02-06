@@ -7,6 +7,7 @@ MedCAT's annotation results and Gradio's interactive demo expectations.
 """
 
 import logging
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -108,7 +109,9 @@ def convert_display_model_to_list_of_lists(entity_display_model: list[EntityAnno
     ]
 
 
-def perform_named_entity_resolution(input_text: str, redact: bool | None = None):
+def perform_named_entity_resolution(
+    input_text: str, redact: bool | None = None
+) -> tuple[dict[str, Any], list[list[str]], str]:
     """
     Performs clinical coding by processing the input text with MedCAT to extract and
     annotate medical concepts (entities).
@@ -135,7 +138,7 @@ def perform_named_entity_resolution(input_text: str, redact: bool | None = None)
     """
     logger.debug("Performing named entity resolution")
     if not input_text or not input_text.strip():
-        return None, None, None
+        return {}, [], ""
 
     processor = get_medcat_processor(get_settings())
     input = ProcessAPIInputContent(text=input_text)
@@ -160,7 +163,7 @@ def perform_named_entity_resolution(input_text: str, redact: bool | None = None)
     return response_tuple
 
 
-def medcat_demo_perform_named_entity_resolution(input_text: str):
+def medcat_demo_perform_named_entity_resolution(input_text: str) -> tuple[dict[str, Any], list[list[str]]]:
     """
     Performs named entity resolution for the MedCAT demo.
     """
@@ -168,7 +171,7 @@ def medcat_demo_perform_named_entity_resolution(input_text: str):
     return result[0], result[1]
 
 
-def anoncat_demo_perform_deidentification(input_text: str, redact: bool):
+def anoncat_demo_perform_deidentification(input_text: str, redact: bool) -> tuple[dict[str, Any], list[list[str]], str]:
     """
     Performs deidentification for the AnonCAT demo.
     """
