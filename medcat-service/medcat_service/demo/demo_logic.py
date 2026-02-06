@@ -9,6 +9,7 @@ MedCAT's annotation results and Gradio's interactive demo expectations.
 import logging
 from typing import Any
 
+from opentelemetry import trace
 from pydantic import BaseModel
 
 from medcat_service.dependencies import get_medcat_processor, get_settings
@@ -16,6 +17,7 @@ from medcat_service.types import ProcessAPIInputContent, ProcessErrorsResult, Pr
 from medcat_service.types_entities import Entity
 
 logger = logging.getLogger(__name__)
+tracer = trace.get_tracer("medcat_service")
 
 
 class EntityAnnotation(BaseModel):
@@ -163,6 +165,7 @@ def perform_named_entity_resolution(
     return response_tuple
 
 
+@tracer.start_as_current_span("medcat_demo_perform_named_entity_resolution")
 def medcat_demo_perform_named_entity_resolution(input_text: str) -> tuple[dict[str, Any], list[list[str]]]:
     """
     Performs named entity resolution for the MedCAT demo.
@@ -171,6 +174,7 @@ def medcat_demo_perform_named_entity_resolution(input_text: str) -> tuple[dict[s
     return result[0], result[1]
 
 
+@tracer.start_as_current_span("anoncat_demo_perform_deidentification")
 def anoncat_demo_perform_deidentification(input_text: str, redact: bool) -> tuple[dict[str, Any], list[list[str]], str]:
     """
     Performs deidentification for the AnonCAT demo.
