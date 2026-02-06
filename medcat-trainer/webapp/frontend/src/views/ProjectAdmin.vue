@@ -1131,6 +1131,7 @@ export default {
 
 <style scoped lang="scss">
 @import '@/styles/variables.scss';
+@import '@/styles/admin.scss';
 
 .project-admin-view {
   padding: 30px;
@@ -1446,13 +1447,13 @@ export default {
   overflow: hidden;
 
   .form-header {
-    padding: 14px 20px;
+    padding: 8px 20px;
     border-bottom: 1px solid var(--color-border);
     background: linear-gradient(135deg, $primary 0%, darken($primary, 10%) 100%);
     color: white;
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 12px;
     border-radius: 12px 12px 0 0;
     flex-shrink: 0;
 

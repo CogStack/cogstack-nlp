@@ -124,6 +124,9 @@ export default {
 </script>
 
 <style scoped lang="scss">
+@import '@/styles/admin.scss';
+
+// Component-specific styles
 .project-list-section {
   background: white;
   border-radius: 8px;
@@ -131,21 +134,11 @@ export default {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 
   .section-header {
-    margin-bottom: 20px;
     padding-bottom: 12px;
     border-bottom: 1px solid var(--color-border);
 
     h3 {
-      margin: 0;
       font-size: 1.3rem;
-      font-weight: 600;
-      color: var(--color-heading);
-    }
-
-    .project-count {
-      font-weight: 400;
-      color: var(--color-text-secondary);
-      font-size: 1rem;
     }
   }
 
@@ -186,53 +179,9 @@ export default {
     color: var(--color-text);
   }
 
-  .action-buttons {
-    display: flex;
-    gap: 6px;
-    justify-content: flex-start;
-  }
-
-  .btn-action {
-    padding: 4px 8px;
-    border: none;
-    background: transparent;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    border-radius: 4px;
-
-    &:hover {
-      background: rgba(0, 0, 0, 0.05);
-    }
-
-    &.btn-clone {
-      color: #0d6efd;
-    }
-
-    &.btn-reset {
-      color: #ffc107;
-    }
-
-    &.btn-delete {
-      color: #dc3545;
-    }
-  }
-
   .no-projects {
     padding: 60px 20px;
     text-align: center;
-  }
-
-  .empty-state {
-    h4 {
-      font-size: 1.25rem;
-      color: var(--color-heading);
-      margin-bottom: 8px;
-    }
-
-    p {
-      color: var(--color-text-secondary);
-      margin-bottom: 20px;
-    }
   }
 }
 </style>
