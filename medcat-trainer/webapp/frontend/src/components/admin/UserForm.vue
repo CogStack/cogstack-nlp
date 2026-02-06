@@ -19,9 +19,7 @@
               <label>Email</label>
               <input v-model="formData.email" type="email" class="form-control" />
             </div>
-          </div>
-          <div v-if="!editing" class="form-section">
-            <div class="form-group">
+            <div v-if="!editing" class="form-group">
               <label>Password</label>
               <input v-model="formData.password" type="password" class="form-control" />
               <small class="form-text text-muted">Note: Password cannot be set via API. Users should set their password through password reset or Django admin.</small>
@@ -124,4 +122,9 @@ export default {
 .form-section {
   max-height: calc(100vh - 270px);
 }
+
+.admin-form {
+  height: calc(100% - 70px);
+}
+
 </style>
