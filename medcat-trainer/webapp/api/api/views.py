@@ -217,7 +217,7 @@ class DatasetViewSet(viewsets.ModelViewSet):
     doc002,"Second document text"
     """
     permission_classes = [permissions.IsAuthenticated]
-    http_method_names = ['get', 'post']
+    http_method_names = ['get', 'post', 'put', 'patch', 'delete']
     queryset = Dataset.objects.all()
     serializer_class = DatasetSerializer
 

@@ -183,6 +183,7 @@ export default {
   flex-direction: column;
   height: 100%;
   overflow: hidden;
+  height: calc(100% - 70px);
 
   .form-sections-wrapper {
     flex: 1;

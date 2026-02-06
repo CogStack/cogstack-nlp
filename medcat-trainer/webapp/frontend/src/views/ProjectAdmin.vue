@@ -332,7 +332,7 @@
             <p>Are you sure you want to delete the project <strong class="project-name-highlight">{{ projectToDelete.name }}</strong>?</p>
             <p class="text-danger warning-text">This action cannot be undone.</p>
             <div class="form-actions">
-              <button class="btn btn-secondary" @click="projectToDelete = null">Cancel</button>
+              <button class="btn btn-default" @click="projectToDelete = null">Cancel</button>
               <button class="btn btn-danger" @click="deleteProject">Delete</button>
             </div>
           </div>
@@ -349,7 +349,7 @@
             <p>Are you sure you want to reset the project <strong class="project-name-highlight">{{ projectToReset.name }}</strong>?</p>
             <p class="text-warning warning-text">This will remove all annotations and clear validated/prepared documents.</p>
             <div class="form-actions">
-              <button class="btn btn-secondary" @click="projectToReset = null">Cancel</button>
+              <button class="btn btn-default" @click="projectToReset = null">Cancel</button>
               <button class="btn btn-warning" @click="resetProject">Reset</button>
             </div>
           </div>
@@ -375,7 +375,7 @@
               />
             </div>
             <div class="form-actions" style="margin-top: 20px;">
-              <button class="btn btn-secondary" @click="closeCloneModal">Cancel</button>
+              <button class="btn btn-default" @click="closeCloneModal">Cancel</button>
               <button class="btn btn-success" @click="performClone" :disabled="!cloneName || cloneName.trim() === ''">Clone</button>
             </div>
           </div>
@@ -393,6 +393,7 @@
           :vocabs="vocabs"
           @select-model-pack="selectModelPack"
           @confirm-delete-model-pack="confirmDeleteModelPack"
+          @add-model-pack="showModelPackForm = true; editingModelPack = null"
         />
 
         <!-- Model Pack Form -->
@@ -416,6 +417,7 @@
           :datasets="datasets"
           @select-dataset="selectDataset"
           @confirm-delete-dataset="confirmDeleteDataset"
+          @add-dataset="showDatasetForm = true; editingDataset = null"
         />
 
         <!-- Dataset Form -->
@@ -436,6 +438,7 @@
           v-if="!showUserForm && !editingUser"
           :users="users"
           @select-user="selectUser"
+          @add-user="showUserForm = true; editingUser = null"
         />
 
         <!-- User Form -->
@@ -458,7 +461,7 @@
             <p>Are you sure you want to delete the model pack <strong>{{ modelPackToDelete.name }}</strong>?</p>
             <p class="text-danger warning-text">This action cannot be undone.</p>
             <div class="form-actions">
-              <button class="btn btn-secondary" @click="modelPackToDelete = null">Cancel</button>
+              <button class="btn btn-default" @click="modelPackToDelete = null">Cancel</button>
               <button class="btn btn-danger" @click="deleteModelPack">Delete</button>
             </div>
           </div>
@@ -472,7 +475,7 @@
             <p>Are you sure you want to delete the dataset <strong>{{ datasetToDelete.name }}</strong>?</p>
             <p class="text-danger warning-text">This action cannot be undone.</p>
             <div class="form-actions">
-              <button class="btn btn-secondary" @click="datasetToDelete = null">Cancel</button>
+              <button class="btn btn-default" @click="datasetToDelete = null">Cancel</button>
               <button class="btn btn-danger" @click="deleteDataset">Delete</button>
             </div>
           </div>
@@ -1971,7 +1974,6 @@ export default {
   }
 
   :deep(.modal-header) {
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
     padding: 20px 24px;
     margin: 0;
     border-bottom: 1px solid var(--color-border);

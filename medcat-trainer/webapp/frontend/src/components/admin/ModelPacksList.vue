@@ -31,6 +31,10 @@
     <div v-else class="empty-state">
       <h4>No Model Packs</h4>
       <p>Add a model pack to get started.</p>
+      <button class="btn btn-primary btn-create-empty" @click="$emit('add-model-pack')">
+        <font-awesome-icon icon="plus"></font-awesome-icon>
+        <span>Add Your First Model Pack</span>
+      </button>
     </div>
   </div>
 </template>
@@ -52,7 +56,7 @@ export default {
       required: true
     }
   },
-  emits: ['select-model-pack', 'confirm-delete-model-pack'],
+  emits: ['select-model-pack', 'confirm-delete-model-pack', 'add-model-pack'],
   data() {
     return {
       headers: [
@@ -111,7 +115,7 @@ export default {
   .action-buttons {
     display: flex;
     gap: 6px;
-    justify-content: flex-end;
+    justify-content: flex-start;
   }
 
   .btn-action {
@@ -151,6 +155,23 @@ export default {
     p {
       color: var(--color-text-secondary);
       margin-bottom: 20px;
+    }
+
+    .btn-create-empty {
+      margin-top: 10px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      font-weight: 500;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 4px rgba(0, 114, 206, 0.2);
+
+      &:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 114, 206, 0.3);
+      }
     }
   }
 }
