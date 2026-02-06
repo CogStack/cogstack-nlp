@@ -12,7 +12,7 @@
             <h1 class="app-title" @click="navigateToHome">
               Med<img src="./assets/cat-logo.png" alt="MedCAT Logo" class="cat-logo" />AT
             </h1>
-            <span class="version-id">{{ version }}</span>
+            <span class="version-id">{{ displayVersion }}</span>
 
             <!-- Navigation Links -->
             <div class="navigation-links">
@@ -62,6 +62,13 @@ export default {
       uname: null,
       version: '',
       useOidc: isOidcEnabled(),
+    }
+  },
+  computed: {
+    displayVersion () {
+      const v = this.version || ''
+      if (v.length <= 11) return v
+      return `${v.slice(0, 7)}…${v.slice(-6)}`
     }
   },
   methods: {
