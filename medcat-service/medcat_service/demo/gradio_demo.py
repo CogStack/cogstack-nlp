@@ -1,5 +1,6 @@
 import gradio as gr
 import pandas as pd
+from fastapi import FastAPI
 
 import medcat_service.demo.demo_content as demo_content
 from medcat_service.demo.demo_logic import (
@@ -174,7 +175,7 @@ def medcat_demo_interface() -> gr.Blocks:
     return io
 
 
-def mount_gradio_app(app, path) -> None:
+def mount_gradio_app(app: FastAPI, path: str) -> None:
     """
     Mount the Gradio interface to the FastAPI app with a custom theme.
 
