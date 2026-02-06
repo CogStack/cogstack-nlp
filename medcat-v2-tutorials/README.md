@@ -3,7 +3,7 @@
 The MedCAT Tutorials provide an interactive learning path for using MedCAT.
 
 NOTE: These tutorials are aimed at developers and / or people creating their own models.
-For every day usage (e.g inference) the [medcat-scripts](../medcat-scripts/README.md) portion would probably be more useful.
+For every day usage (e.g inference) the [medcat-scripts](../medcat-scripts) portion would probably be more useful.
 
 ## Introductory tutorials
 
