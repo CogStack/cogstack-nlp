@@ -36,7 +36,9 @@ app.include_router(admin.router)
 app.include_router(health.router)
 app.include_router(process.router)
 
-mount_gradio_app(app, path="/demo")
+
+if settings.enable_demo_app:
+    mount_gradio_app(app, path=settings.demo_app_path)
 
 
 def configure_observability(settings: Settings, app: FastAPI):

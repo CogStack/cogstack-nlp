@@ -53,7 +53,7 @@ def format_annotation_details(row: pd.Series | None, selected_text: str) -> str:
     return details
 
 
-def on_select_annotation(value, annotation_details, dataframe, evt: gr.SelectData):
+def on_select_annotation(value, annotation_details: str, dataframe: pd.DataFrame, evt: gr.SelectData) -> str:
     """
     On select of annotations in the highlighted text component.
 
@@ -72,7 +72,7 @@ def on_select_annotation(value, annotation_details, dataframe, evt: gr.SelectDat
         return annotation_details_placeholder_text
 
 
-def output_details_interface():
+def output_details_interface() -> tuple[gr.HighlightedText, gr.Markdown, gr.Dataframe]:
     """
     Output details interface for the demo.
     Based on gradio Namd-Entity Recognition Demo
@@ -87,7 +87,7 @@ def output_details_interface():
     return highlighted, annotation_details, dataframe
 
 
-def anoncat_demo_interface():
+def anoncat_demo_interface() -> gr.Blocks:
     def input_column():
         with gr.Tab("Input"):
             with gr.Group():
@@ -135,7 +135,7 @@ def anoncat_demo_interface():
     return io
 
 
-def medcat_demo_interface():
+def medcat_demo_interface() -> gr.Blocks:
     def input_column():
         input_text = gr.Textbox(label="Input Text", lines=6, placeholder="Enter some text and click Annotate...")
         with gr.Row():
@@ -174,7 +174,7 @@ def medcat_demo_interface():
     return io
 
 
-def mount_gradio_app(app, path: str = "/demo") -> None:
+def mount_gradio_app(app, path) -> None:
     """
     Mount the Gradio interface to the FastAPI app with a custom theme.
 

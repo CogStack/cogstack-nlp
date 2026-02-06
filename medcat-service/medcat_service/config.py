@@ -52,6 +52,9 @@ class Settings(BaseSettings):
         description="Enable DEID redaction. Returns text like [***] instead of [ANNOTATION]",
     )
 
+    enable_demo_app : bool = Field(default=False, description="Run the demo app", alias="APP_ENABLE_DEMO_APP")
+    demo_app_path: str = Field(default="/demo", description="Path to the demo app", alias="APP_DEMO_APP_PATH")
+
     # Model paths
     model_cdb_path: str | None = Field("/cat/models/medmen/cdb.dat", alias="APP_MODEL_CDB_PATH")
     model_vocab_path: str | None = Field("/cat/models/medmen/vocab.dat", alias="APP_MODEL_VOCAB_PATH")
