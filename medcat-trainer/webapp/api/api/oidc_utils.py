@@ -8,11 +8,7 @@ def get_user_by_email(request, id_token):
     User = get_user_model()
     email = id_token.get('email')
     username = id_token.get('preferred_username')
-    print(id_token)
-    roles = []
-    if 'realm_access' in id_token:
-        roles = id_token['realm_access'].get('roles', [])
-
+    roles = id_token.get('roles', [])
     is_superuser = 'medcattrainer_superuser' in roles
     is_staff = 'medcattrainer_staff' in roles
 

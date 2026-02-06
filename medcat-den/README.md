@@ -118,22 +118,77 @@ There's ways of doing that as well:
     python -m medcat_den --with-injection python -i <whatever>
     ```
 
+## Multi-Backend Den
+
+It is possible to configure `MedCAT-den` to use multiple backends simultaneously, allowing you to access different model repositories (e.g., a local user cache and a remote MedCATtery instance) through a single `Den` object. This is achieved by providing a JSON configuration file via an environment variable.
+
+### Configuration
+
+Create a JSON file (e.g., `multi_backend_config.json`) that defines your backends. Each backend is given a unique name and its own configuration parameters, similar to how a single `Den` is configured. You can also specify a `default_backend`.
+
+Here's an example:
+
+```json
+{
+    "default_backend": "user_local_dev",
+    "backends": {
+        "user_local_dev": {
+            "type": "local_user",
+            "location": "/path/to/my/user_local_den_dev"
+        },
+        "medcattery_prod": {
+            "type": "medcattery",
+            "host": "https://medcattery.example.com",
+            "credentials": {
+                "api_key": "YOUR_API_KEY"
+            }
+        }
+    }
+}
+```
+
+To enable this multi-backend configuration, set the `MEDCAT_DEN_BACKENDS_JSON` environment variable to the path of your JSON configuration file:
+
+```bash
+export MEDCAT_DEN_BACKENDS_JSON="/path/to/your/multi_backend_config.json"
+```
+
+### Usage
+
+When a multi-backend den is configured, you can specify which backend to use for a particular operation by providing the `backend_name` argument to the `Den` methods:
+
+```python
+from medcat_den.den import get_default_den
+
+den = get_default_den()
+
+# List models from the default backend (user_local_dev in the example above)
+default_models = den.list_available_models()
+
+# List models from a specific backend (medcattery_prod)
+medcattery_models = den.list_available_models(backend_name="medcattery_prod")
+
+# Fetch a model from a specific backend
+cat_model = den.fetch_model(medcattery_models[0], backend_name="medcattery_prod")
+```
+
 ## Settings
 
 The above created a default den.
-If not prior configuraiton is done, this will be a user-local model cache.
+If no prior configuration is done, this will be a user-local model cache.
 
 However, there's a set of environmental variables that can be set in order to curate the default den:
-| Environmetnal variable name    | Values | Description | Comments |
+| Environmental variable name    | Values | Description | Comments |
 | ------------------------------ | ------ | ----------- | -------- |
-| MEDCAT_DEN_TYPE                | `LOCAL_USER`, `LOCAL_MACHINE` | The type of den to use | Currently, only local dens have been implemented, but remote (e.g MedCATtery or even cloud) options can be implemented. |
-| MEDCAT_DEN_PATH                | str    | The save path (for local backends) | This is normally automatically specified based on OS and whether it's user or machien local. But can be overwritten here as well. |
+| MEDCAT_DEN_TYPE                | `LOCAL_USER`, `LOCAL_MACHINE`, `MEDCATTERY` | The type of den to use | Currently, only local dens have been implemented, but remote (e.g MedCATtery or even cloud) options can be implemented. |
+| MEDCAT_DEN_PATH                | str    | The save path (for local backends) | This is normally automatically specified based on OS and whether it's user or machine local. But can be overwritten here as well. |
 | MEDCAT_DEN_REMOTE_HOST         | str    | The host path to the remote (e.g MedCATtery) | This is currently not yet implemented |
 | MEDCAT_DEN_LOCAL_CACHE_PATH            | str | The local cache path (if required). | This allows caching of models from remote dens |
-| MEDCAT_DEN_LOCAL_CACHE_EXPIRATION_TIME | int | The expriation time for local cache (in seconds) | The default is 10 days |
+| MEDCAT_DEN_LOCAL_CACHE_EXPIRATION_TIME | int | The expiration time for local cache (in seconds) | The default is 10 days |
 | MEDCAT_DEN_LOCAL_CACHE_MAX_SIZE        | int | The maximum size of the cache in bytes | The default is 100 GB |
 | MEDCAT_DEN_LOCAL_CACHE_EVICTION_POLICY | str | The eviction policy for the local cache | The default is LRU |
-| MEDCAT_DEN_REMOTE_ALLOW_PUSH_FINETUNED | bool | Whether to allow locallly fine tuned model to be pushed to remote dens | Defaults to False |
+| MEDCAT_DEN_REMOTE_ALLOW_PUSH_FINETUNED | bool | Whether to allow locally fine tuned model to be pushed to remote dens | Defaults to False |
 | MEDCAT_DEN_REMOTE_ALLOW_LOCAL_FINE_TUNE | bool | Whether to allow local fine tuning for remote dens | Defaults to False |
+| MEDCAT_DEN_BACKENDS_JSON       | str | Path to a JSON file configuring multiple backends | If set, this overrides all other `MEDCAT_DEN_*` settings for the default den configuration, and enables multi-backend mode. |
 
 When creating a den, the resolver will use the explicitly passed values first, and if none are provided, it will default to the ones defined in the environmental variables.

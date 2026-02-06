@@ -45,6 +45,7 @@ import Modal from '@/components/common/Modal.vue'
 import Login from '@/components/common/Login.vue'
 import EventBus from '@/event-bus'
 import ProjectList from "@/components/common/ProjectList.vue"
+import { isOidcEnabled } from '../runtimeConfig';
 
 export default {
   name: 'Home',
@@ -73,7 +74,7 @@ export default {
       isAdmin: false,
       selectedProjectGroup: null,
       cdbSearchIndexStatus: {},
-      useOidc: import.meta.env.VITE_USE_OIDC === '1'
+      useOidc: isOidcEnabled()
     }
   },
   created () {

@@ -1,12 +1,16 @@
 from medcat.components.linking import embedding_linker
 from medcat.components import types
 from medcat.config import Config
+from medcat.data.entities import Entity
 from medcat.vocab import Vocab
+from medcat.cat import CAT
 from medcat.cdb.concepts import CUIInfo, NameInfo
 from medcat.components.types import TrainableComponent
 from medcat.components.types import _DEFAULT_LINKING as DEF_LINKING
 import unittest
 from ..helper import ComponentInitTests
+
+from ... import UNPACKED_EXAMPLE_MODEL_PACK_PATH
 
 class FakeDocument:
     linked_ents = []
@@ -64,4 +68,36 @@ class NonTrainableEmbeddingLinkerTests(unittest.TestCase):
 
     def test_linker_processes_document(self):
         doc = FakeDocument("Test Document")
-        self.linker(doc) 
+        self.linker(doc)
+
+
+class EmbeddingModelDisambiguationTests(unittest.TestCase):
+    PLACEHOLDER = "{SOME_PLACEHOLDER}"
+    TEXT = f"""The issue has a lot to do with the {PLACEHOLDER}"""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.model = CAT.load_model_pack(UNPACKED_EXAMPLE_MODEL_PACK_PATH)
+        cls.model.config.components.linking = embedding_linker.EmbeddingLinking()
+        cls.model._recreate_pipe()
+        linker: embedding_linker.Linker = cls.model.pipe.get_component(
+            types.CoreComponentType.linking)
+        linker.create_embeddings()
+
+    def assert_has_name(self, out_ents: dict[int, Entity], name: str):
+        self.assertTrue(
+            any(ent["source_value"] == name for ent in out_ents.values())
+        )
+
+    def test_does_disambiguation(self):
+        used_names = 0
+        for name, info in self.model.cdb.name2info.items():
+            if len(info['per_cui_status']) <= 1:
+                continue
+            used_names += 1
+            with self.subTest(name):
+                cur_text = self.TEXT.replace(self.PLACEHOLDER, name)
+                out_ents = self.model.get_entities(cur_text)["entities"]
+                self.assert_has_name(out_ents, name)
+        self.assertGreater(used_names, 0)
+

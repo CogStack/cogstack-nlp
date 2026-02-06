@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - "medcat/v2*"
+      - "MedCAT/v2*"
 
 permissions:
   contents: write
@@ -35,14 +36,18 @@ jobs:
 
           # Get the tag without the 'v' and strip the patch version
           VERSION_TAG="${GITHUB_REF#refs/tags/}"
+
+          # Convert to lowercase first, then strip
+          VERSION_TAG_LOWER="${VERSION_TAG,,}"
+
           # NOTE: branch name is in line with version tag, except for the patch version
-          BRANCH_NAME="${VERSION_TAG%.*}"  # This removes the patch version (everything after the second dot)
+          BRANCH_NAME="${VERSION_TAG_LOWER%.*}"  # This removes the patch version (everything after the second dot)
 
           # set version tag as output for later use
-          echo "version_tag=$VERSION_TAG" >> $GITHUB_OUTPUT
+          echo "version_tag=$VERSION_TAG_LOWER" >> $GITHUB_OUTPUT
 
           # only the version (no medcat/v prefix)
-          VERSION_ONLY="${VERSION_TAG#medcat/v}"
+          VERSION_ONLY="${VERSION_TAG_LOWER#medcat/v}"
           echo "version_only=$VERSION_ONLY" >> $GITHUB_OUTPUT
 
           # Check out the corresponding release branch (e.g., medcat/v0.1)

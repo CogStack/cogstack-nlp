@@ -11,3 +11,4 @@ psycopg[binary,pool]==3.2.9
 cryptography==45.0.*
 drf-oidc-auth==3.0.0
 django-health-check==3.20.0
+requests==2.31.*

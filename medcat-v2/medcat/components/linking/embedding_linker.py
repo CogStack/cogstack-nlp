@@ -283,27 +283,6 @@ class Linker(AbstractEntityProvidingComponent):
             texts.append(text)
         return self._embed(texts, self.device)
 
-    def _initialize_cui_name_mapping(self) -> None:
-        """Call this once during initialization to pre-compute CUI->name."""
-        self._cui_to_name_mask = {}
-
-        for cui, cui_idx in self._cui_to_idx.items():
-            mask = torch.tensor(
-                [cui_idx in name_cui_idxs
-                 for name_cui_idxs in self._name_to_cui_idxs],
-                dtype=torch.bool,
-                device=self.device
-            )
-            self._cui_to_name_mask[cui] = mask
-
-        # Cache _has_cuis_all as well
-        self._has_cuis_all_cached = torch.tensor(
-            [bool(self.cdb.name2info[name]["per_cui_status"])
-             for name in self._name_keys],
-            device=self.device,
-            dtype=torch.bool,
-        )
-
     def _initialize_filter_structures(self) -> None:
         """Call once during initialization to create efficient lookup structures."""
         # Build an inverted index: cui_idx -> list of name indices that contain it
@@ -419,13 +398,13 @@ class Linker(AbstractEntityProvidingComponent):
             return allowed_mask
 
         # Collect all name indices to exclude
-        all_name_indices: list[np.ndarray] = []
+        _all_name_indices: list[np.ndarray] = []
         for cui_idx in exclude_cui_idxs:
             if cui_idx in self._cui_idx_to_name_idxs:
-                all_name_indices.append(self._cui_idx_to_name_idxs[cui_idx])
+                _all_name_indices.append(self._cui_idx_to_name_idxs[cui_idx])
 
-        if all_name_indices:
-            all_name_indices = np.unique(np.concatenate(all_name_indices))
+        if _all_name_indices:
+            all_name_indices = np.unique(np.concatenate(_all_name_indices))
             allowed_mask[torch.from_numpy(all_name_indices).to(self.device)] = False
 
         return allowed_mask
@@ -640,7 +619,8 @@ class Linker(AbstractEntityProvidingComponent):
 
             entity.link_candidates = list(cuis)
 
-    def _pre_inference(self, doc: MutableDocument) -> tuple[list, list]:
+    def _pre_inference(self, doc: MutableDocument
+    ) -> tuple[list[MutableEntity], list[MutableEntity]]:
         """Checking all entities for entites with only a single link candidate and to
         avoid full inference step. If we want to calculate similarities, or not use
         link candidates then just return the entities"""
@@ -664,8 +644,8 @@ class Linker(AbstractEntityProvidingComponent):
         if self.cnf_l.always_calculate_similarity:
             return [], filtered_ents
 
-        le = []
-        to_infer = []
+        le: list[MutableEntity] = []
+        to_infer: list[MutableEntity] = []
         for entity in all_ents:
             if len(entity.link_candidates) == 1:
                 # if the include filter exists and the only cui is in it
@@ -674,7 +654,7 @@ class Linker(AbstractEntityProvidingComponent):
                     entity.context_similarity = 1
                     le.append(entity)
                     continue
-            elif self.cnf_l.use_ner_link_candidates:
+            elif self.cnf_l.use_ner_link_candidates and not entity.link_candidates:
                 continue
             # it has to be inferred due to filters or number of link candidates
             to_infer.append(entity)

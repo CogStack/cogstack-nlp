@@ -155,10 +155,14 @@ class AbstractEntityProvidingComponent(AbstractCoreComponent):
 
 
 @runtime_checkable
-class HashableComponet(Protocol):
+class HashableComponent(Protocol):
 
     def get_hash(self) -> str:
         pass
+
+
+# keep typo'd name!
+HashableComponet = HashableComponent
 
 
 @runtime_checkable
@@ -248,7 +252,7 @@ def register_core_component(comp_type: CoreComponentType,
     _CORE_REGISTRIES[comp_type].register(comp_name, comp_clazz)
 
 
-def lazy_register_core_componet(
+def lazy_register_core_component(
         comp_type: CoreComponentType,
         comp_name: str,
         comp_module: str,

@@ -9,7 +9,7 @@ from contextlib import contextmanager
 
 from pydantic import BaseModel, Field, ValidationError, ConfigDict
 
-from medcat import __version__ as medcat_version
+from medcat.version import __version__ as medcat_version
 from medcat.utils.defaults import workers
 from medcat.utils.envsnapshot import Environment, get_environment_info
 from medcat.utils.iterutils import callback_iterator

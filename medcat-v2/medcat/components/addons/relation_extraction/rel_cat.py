@@ -212,6 +212,9 @@ class RelCAT:
     def _init_data_paths(self):
         doc_cls = self.base_tokenizer.get_doc_class()
         doc_cls.register_addon_path('relations', def_val=[], force=True)
+        entity_cls = self.base_tokenizer.get_entity_class()
+        entity_cls.register_addon_path('start', def_val=None, force=True)
+        entity_cls.register_addon_path('end', def_val=None, force=True)
 
     def save(self, save_path: str = "./") -> None:
         self.component.save(save_path=save_path)
@@ -833,27 +836,23 @@ class RelCAT:
 
                         relations: list = doc.get_addon_data(  # type: ignore
                             "relations")
+                        out_rels = predict_rel_dataset.dataset[
+                            "output_relations"][rel_idx]
                         relations.append(
                             {
                                 "relation": rc_cnf.general.idx2labels[
                                     predicted_label_id],
                                 "label_id": predicted_label_id,
-                                "ent1_text": predict_rel_dataset.dataset[
-                                    "output_relations"][rel_idx][
-                                    2],
-                                "ent2_text": predict_rel_dataset.dataset[
-                                    "output_relations"][rel_idx][
-                                    3],
+                                "ent1_text": out_rels[2],
+                                "ent2_text": out_rels[3],
                                 "confidence": float("{:.3f}".format(
                                     confidence[0])),
-                                "start_ent_pos": "",
-                                "end_ent_pos": "",
-                                "start_entity_id":
-                                    predict_rel_dataset.dataset[
-                                        "output_relations"][rel_idx][8],
-                                "end_entity_id":
-                                    predict_rel_dataset.dataset[
-                                        "output_relations"][rel_idx][9]
+                                "start_ent1_char_pos": out_rels[18],
+                                "end_ent1_char_pos": out_rels[19],
+                                "start_ent2_char_pos": out_rels[20],
+                                "end_ent2_char_pos": out_rels[21],
+                                "start_entity_id": out_rels[8],
+                                "end_entity_id": out_rels[9],
                             })
                     pbar.update(len(token_ids))
             pbar.close()
@@ -901,6 +900,8 @@ class RelCAT:
             entity = base_tokenizer.create_entity(
                 doc, min(tkn_idx), max(tkn_idx) + 1, label=ann["value"])
             entity.cui = ann["cui"]
+            entity.set_addon_data('start', ann['strat'])
+            entity.set_addon_data('end', ann['end'])
             doc.ner_ents.append(entity)
 
         doc = self(doc)

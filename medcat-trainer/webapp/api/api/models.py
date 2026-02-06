@@ -45,52 +45,72 @@ class ModelPack(models.Model):
     last_modified_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, default=None, null=True)
 
     @transaction.atomic
-    def save(self, *args, **kwargs):
+    def save(self, *args, skip_load=False, **kwargs):
         is_new = self._state.adding
         if is_new:
             super().save(*args, **kwargs)
 
+        if skip_load:
+            super().save(*args, **kwargs)
+            return
+
         # Process the model pack
         logger.info('Loading model pack: %s', self.model_pack)
-        model_pack_name = str(self.model_pack).replace(".zip", "")
+        model_pack_path = self.model_pack.path
+
         try:
-            CAT.attempt_unpack(self.model_pack.path)
+            CAT.attempt_unpack(model_pack_path)
         except BadZipFile as exc:
             # potential for CRC-32 errors in Trainer process - ignore and still use
             logger.warning(f'Possibly corrupt cdb.dat decompressing {self.model_pack}\nFull Exception: {exc}')
-        unpacked_model_pack_path = self.model_pack.path.replace('.zip', '')
-        # attempt to load cdb
+
+        unpacked_model_pack_path = model_pack_path.replace('.zip', '')
+        unpacked_file_name = self.model_pack.file.name.replace('.zip', '')
+
+        # attempt to load cdb - use absolute paths for file existence checks
         try:
-            CAT.load_cdb(unpacked_model_pack_path)
+            # Check for v2 (directory) first
+            cdb_path_abs = os.path.join(unpacked_model_pack_path, 'cdb')
+            if os.path.exists(cdb_path_abs) and os.path.isdir(cdb_path_abs):
+                # v2: CDB is a directory
+                cdb_path_rel = os.path.join(unpacked_file_name, 'cdb')
+            else:
+                # v1: CDB is a file
+                cdb_path_abs = os.path.join(unpacked_model_pack_path, 'cdb.dat')
+                cdb_path_rel = os.path.join(unpacked_file_name, 'cdb.dat')
+                if not os.path.exists(cdb_path_abs):
+                    raise FileNotFoundError(f'CDB not found in model pack: {unpacked_model_pack_path}')
+
+            # Validate CDB can be loaded
+            CDB.load(cdb_path_abs)
+
+            # Create ConceptDB model with relative path (to MEDIA_ROOT)
             concept_db = ConceptDB()
-            unpacked_file_name = self.model_pack.file.name.replace('.zip', '')
-            # cdb path for v2
-            cdb_path = os.path.join(unpacked_file_name, 'cdb')
-            if not os.path.exists(cdb_path):
-                # cdb path for v1
-                cdb_path = os.path.join(unpacked_file_name, 'cdb.dat')
-            concept_db.cdb_file.name = cdb_path
+            concept_db.cdb_file.name = cdb_path_rel
             concept_db.name = f'{self.name}_CDB'
             concept_db.save(skip_load=True)
             self.concept_db = concept_db
         except Exception as exc:
             raise FileNotFoundError(f'Error loading the CDB from this model pack: {self.model_pack.path}') from exc
 
-        # Load Vocab, v2
-        vocab_path = os.path.join(unpacked_model_pack_path, "vocab")
-        if not os.path.exists(vocab_path):
+        # Load Vocab, v2 (directory) or v1 (file)
+        vocab_path_abs = os.path.join(unpacked_model_pack_path, "vocab")
+        vocab_path_rel = os.path.join(unpacked_file_name, "vocab")
+        if not os.path.exists(vocab_path_abs):
             # v1
-            vocab_path = os.path.join(unpacked_model_pack_path, "vocab.dat")
-        if os.path.exists(vocab_path):
-            Vocab.load(vocab_path)
+            vocab_path_abs = os.path.join(unpacked_model_pack_path, "vocab.dat")
+            vocab_path_rel = os.path.join(unpacked_file_name, "vocab.dat")
+        if os.path.exists(vocab_path_abs):
+            Vocab.load(vocab_path_abs)
             vocab = Vocabulary()
-            vocab.vocab_file.name = vocab_path.replace(f'{MEDIA_ROOT}/', '')
+            # Use relative path for saving to model
+            vocab.vocab_file.name = vocab_path_rel
             vocab.save(skip_load=True)
             self.vocab = vocab
         else:
             # DeID model packs do not have a vocab.dat file
             logger.warn('Error loading the Vocab from this model pack - '
-                        f'if this is a DeID model pack, this is expected: {vocab_path}')
+                        f'if this is a DeID model pack, this is expected: {vocab_path_abs}')
 
         # load MetaCATs
         try:
@@ -112,7 +132,12 @@ class ModelPack(models.Model):
         except Exception as exc:
             raise MedCATLoadException(f'Failure loading MetaCAT models - {unpacked_model_pack_path}') from exc
 
-        super().save(*args, **kwargs)
+        if not is_new:
+            super().save(*args, **kwargs)
+        else:
+            # For new objects, just update the FK fields without full save
+            # Fixes psycopg.errors.UniqueViolation: duplicate key value violates unique constraint "api_modelpack_pkey" 
+            super().save(*args, update_fields=['concept_db', 'vocab'], **kwargs)
 
     def __str__(self):
         return self.name
@@ -458,15 +483,24 @@ class ProjectAnnotateEntitiesFields(models.Model):
                                              'if a model pack is used for the project')
     relations = models.ManyToManyField('Relation', blank=True, default=None,
                                        help_text='Relations that will be available for this project')
+    use_model_service = models.BooleanField(default=False,
+                                            help_text='Use a remote MedCAT service API for document processing instead of local models'\
+                                                      '(note: interim model training is not supported for remote model service projects)')
+    model_service_url = models.CharField(max_length=500, blank=True, null=True,
+                                         help_text='URL of the remote MedCAT service API (e.g., http://medcat-service:8000)')
 
     def save(self, *args, **kwargs):
-        if self.model_pack is None and (self.concept_db is None or self.vocab is None):
-            raise ValidationError('Must set at least the ModelPack or a Concept Database and Vocab Pair')
-        if self.model_pack and (self.concept_db is not None or self.vocab is not None):
-            raise ValidationError('Cannot set model pack and ConceptDB or a Vocab. You must use one or the other.')
-        if self.deid_model_annotation and self.model_pack is None:
-            raise ValidationError('Must set a DeID ModelPack for De-ID Model Annotation, cannot only set a cdb / vocab pair as'
-                                  ' not be a DeId model')
+        # If using remote model service, skip local model validation
+        if not self.use_model_service:
+            if self.model_pack is None and (self.concept_db is None or self.vocab is None):
+                raise ValidationError('Must set at least the ModelPack or a Concept Database and Vocab Pair')
+            if self.model_pack and (self.concept_db is not None or self.vocab is not None):
+                raise ValidationError('Cannot set model pack and ConceptDB or a Vocab. You must use one or the other.')
+            if self.deid_model_annotation and self.model_pack is None:
+                raise ValidationError('Must set a DeID ModelPack for De-ID Model Annotation, cannot only set a cdb / vocab pair as'
+                                      ' not be a DeId model')
+        elif self.use_model_service and not self.model_service_url:
+            raise ValidationError('When using model service, model_service_url must be set')
         super().save(*args, **kwargs)
 
 

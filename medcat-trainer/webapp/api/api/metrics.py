@@ -245,7 +245,7 @@ class ProjectMetrics(object):
         self.annotations = self._annotations()
         return
 
-    def _eval_model(self, model: nn.Module, data: List, config: ConfigMetaCAT, tokenizer: TokenizerWrapperBase) -> Dict:
+    def _eval_model(self, model: nn.Module, data: List, config: ConfigMetaCAT) -> Dict:
         device = torch.device(config.general.device)  # Create a torch device
         batch_size_eval = config.general.batch_size_eval
         pad_id = config.model.padding_idx
@@ -267,7 +267,7 @@ class ProjectMetrics(object):
 
         with torch.no_grad():
             for i in range(num_batches):
-                x, cpos, attention_mask, y = create_batch_piped_data(data,
+                x, cpos, _, y = create_batch_piped_data(data,
                                                      i*batch_size_eval,
                                                      (i+1)*batch_size_eval,
                                                      device=device,
@@ -283,23 +283,22 @@ class ProjectMetrics(object):
         return predictions
 
     def _eval(self, metacat_model, mct_export):
-        # TODO: Should be moved into
         g_config = metacat_model.config.general
-        t_config = metacat_model.config.train
-        t_config['test_size'] = 0
-        t_config['shuffle_data'] = False
-        t_config['prerequisites'] = {}
-        t_config['cui_filter'] = {}
 
         # Prepare the data
-        assert metacat_model.tokenizer is not None
-        data = prepare_from_json(mct_export, g_config['cntx_left'], g_config['cntx_right'], metacat_model.tokenizer,
-                                 cui_filter=t_config['cui_filter'],
-                                 replace_center=g_config['replace_center'], prerequisites=t_config['prerequisites'],
-                                 lowercase=g_config['lowercase'])
+        data = prepare_from_json(
+            mct_export,
+            g_config.cntx_left,
+            g_config.cntx_right,
+            metacat_model.mc.tokenizer,
+            cui_filter={},
+            replace_center=g_config.replace_center,
+            prerequisites={},
+            lowercase=g_config.lowercase
+        )
 
         # Check is the name there
-        category_name = g_config['category_name']
+        category_name = g_config.category_name
         if category_name not in data:
             warnings.warn(f"The meta_model {category_name} does not exist in this MedCATtrainer export.", UserWarning)
             return {category_name: f"{category_name} does not exist"}
@@ -307,12 +306,11 @@ class ProjectMetrics(object):
         data = data[category_name]
 
         # We already have everything, just get the data
-        category_value2id = g_config['category_value2id']
+        category_value2id = g_config.category_value2id
         data, _, _ = encode_category_values(data, existing_category_value2id=category_value2id)
         logger.info(_)
         # Run evaluation
-        assert metacat_model.tokenizer is not None
-        result = self._eval_model(metacat_model.model, data, config=metacat_model.config, tokenizer=metacat_model.tokenizer)
+        result = self._eval_model(metacat_model.mc.model, data, config=metacat_model.mc.config)
 
         return {'predictions': result, 'meta_values': _}
 

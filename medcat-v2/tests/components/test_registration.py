@@ -80,7 +80,7 @@ class LazyRegisteredCompBaseTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        types.lazy_register_core_componet(
+        types.lazy_register_core_component(
             cls.TYPE, cls.COMP_NAME,
             cls.TO_REGISTER_MODULE, cls.TO_REGISTER_INIT)
         cls.expected_type = eval(cls.TO_REGISTER_INIT.split(".")[0])
