@@ -114,8 +114,8 @@ def anoncat_demo_interface() -> gr.Blocks:
             highlighted, annotation_details, dataframe = output_details_interface()
         return highlighted, dataframe, deidentified_text, annotation_details
 
-    with gr.Blocks(title="AnonCAT Demo", fill_width=True) as io:
-        gr.Markdown("# AnonCAT Demo")
+    with gr.Blocks(title="AnonCAT", fill_width=True) as io:
+        gr.Markdown("# AnonCAT")
         with gr.Row():
             with gr.Column():  # noqa
                 input_text, redact, clear_btn, annotate_btn = input_column()
@@ -154,8 +154,8 @@ def medcat_demo_interface() -> gr.Blocks:
             annotate_btn = gr.Button("Annotate", variant="primary")
         return input_text, clear_btn, annotate_btn
 
-    with gr.Blocks(title="MedCAT Demo", fill_width=True) as io:
-        gr.Markdown("# MedCAT Demo")
+    with gr.Blocks(title="MedCAT", fill_width=True) as io:
+        gr.Markdown("# MedCAT")
         with gr.Row():
             with gr.Column():
                 input_text, clear_btn, annotate_btn = input_column()
