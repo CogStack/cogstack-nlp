@@ -19,14 +19,13 @@ python /home/api/manage.py migrate api --noinput
 /home/scripts/nginx-entrypoint.sh
 
 # create a new super user, with configurable username, email, and password via env vars
-# defaults: MCTRAINER_ADMIN_USERNAME=admin, MCTRAINER_ADMIN_EMAIL=admin@example.com, MCTRAINER_ADMIN_PASSWORD=admin
 # also create a user group `user_group` that prevents users from deleting models
 echo "import os
 from django.contrib.auth import get_user_model
 User = get_user_model()
-admin_username = os.getenv('MCTRAINER_ADMIN_USERNAME') or 'admin'
-admin_email = os.getenv('MCTRAINER_ADMIN_EMAIL') or 'admin@example.com'
-admin_password = os.getenv('MCTRAINER_ADMIN_PASSWORD') or 'admin'
+admin_username = os.getenv('MCTRAINER_BOOTSTRAP_ADMIN_USERNAME') or 'admin'
+admin_email = os.getenv('MCTRAINER_BOOTSTRAP_ADMIN_EMAIL') or 'admin@example.com'
+admin_password = os.getenv('MCTRAINER_BOOTSTRAP_ADMIN_PASSWORD') or 'admin'
 if not User.objects.filter(username=admin_username).exists():
     User.objects.create_superuser(admin_username, admin_email, admin_password)
 " | python manage.py shell
