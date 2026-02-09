@@ -8,12 +8,23 @@
       <h3>{{ editing ? 'Edit User' : 'Add User' }}</h3>
     </div>
     <div class="form-content">
-      <form @submit.prevent="$emit('save', formData)" class="admin-form">
+      <form @submit.prevent="handleSubmit" class="admin-form">
         <div class="form-sections-wrapper">
           <div class="form-section form-section-horizontal">
             <div class="form-group">
               <label>Username *</label>
-              <input v-model="formData.username" type="text" class="form-control" required />
+              <input
+                v-model="formData.username"
+                type="text"
+                name="username"
+                data-field="username"
+                class="form-control"
+                :class="{ 'is-invalid': validationErrors.username }"
+                required
+                @invalid="handleInvalid($event)"
+                @input="clearValidationError('username')"
+              />
+              <small v-if="validationErrors.username" class="form-text text-danger">{{ validationErrors.username }}</small>
             </div>
             <div class="form-group">
               <label>Email</label>
@@ -80,7 +91,8 @@ export default {
         password: '',
         is_staff: false,
         is_superuser: false
-      }
+      },
+      validationErrors: {}
     }
   },
   watch: {
@@ -98,10 +110,67 @@ export default {
         } else {
           this.resetForm()
         }
+        // Clear validation errors when user changes
+        this.validationErrors = {}
+      }
+    },
+    'formData.username'() {
+      // Clear error when user starts typing
+      if (this.validationErrors.username) {
+        delete this.validationErrors.username
       }
     }
   },
   methods: {
+    handleInvalid(event) {
+      event.preventDefault()
+      const field = event.target
+      const fieldName = field.name || field.getAttribute('data-field')
+      if (fieldName && this.validationErrors[fieldName]) {
+        field.setCustomValidity(this.validationErrors[fieldName])
+      }
+    },
+    clearValidationError(fieldName) {
+      if (this.validationErrors[fieldName]) {
+        delete this.validationErrors[fieldName]
+        const field = this.$el?.querySelector(`[data-field="${fieldName}"], [name="${fieldName}"]`)
+        if (field) {
+          field.setCustomValidity('')
+          field.classList.remove('is-invalid')
+        }
+      }
+    },
+    validateForm() {
+      this.validationErrors = {}
+      let isValid = true
+
+      if (!this.formData.username || this.formData.username.trim() === '') {
+        this.validationErrors.username = 'Username is required'
+        isValid = false
+      }
+
+      // Set HTML5 validation messages
+      if (!isValid) {
+        this.$nextTick(() => {
+          Object.keys(this.validationErrors).forEach(fieldName => {
+            const field = this.$el?.querySelector(`[data-field="${fieldName}"], [name="${fieldName}"]`)
+            if (field && this.validationErrors[fieldName]) {
+              field.setCustomValidity(this.validationErrors[fieldName])
+              field.classList.add('is-invalid')
+            }
+          })
+        })
+      }
+
+      return isValid
+    },
+    handleSubmit() {
+      if (this.validateForm()) {
+        this.$emit('save', this.formData)
+      } else {
+        this.$toast?.error('Please fix the validation errors before saving')
+      }
+    },
     resetForm() {
       this.formData = {
         username: '',
@@ -110,6 +179,7 @@ export default {
         is_staff: false,
         is_superuser: false
       }
+      this.validationErrors = {}
     }
   }
 }
@@ -123,8 +193,5 @@ export default {
   max-height: calc(100vh - 270px);
 }
 
-.admin-form {
-  height: calc(100% - 70px);
-}
 
 </style>

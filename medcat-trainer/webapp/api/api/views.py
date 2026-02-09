@@ -1135,25 +1135,25 @@ def project_admin_detail(request, project_id):
         # Handle both JSON and FormData
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
 
-        # Extract many-to-many fields before serializer validation
+        # Extract many-to-many fields - handle both JSON (list) and FormData (getlist)
         cdb_search_filter_ids = []
-        if 'cdb_search_filter' in request.data:
-            if isinstance(request.data.get('cdb_search_filter'), list):
-                cdb_search_filter_ids = request.data['cdb_search_filter']
-            else:
-                # FormData sends as multiple values with same key
-                cdb_search_filter_ids = request.data.getlist('cdb_search_filter')
-        # Remove from data dict so serializer doesn't try to validate it
-        data.pop('cdb_search_filter', None)
+        try:
+            cdb_search_filter_ids = [int(x) for x in request.data['cdb_search_filter'] if x]
+        except (ValueError, TypeError) as e:
+            logger.warning(f"Error parsing cdb_search_filter: {e}")
+            cdb_search_filter_ids = []
 
         members_ids = []
-        if 'members' in request.data:
-            if isinstance(request.data.get('members'), list):
-                members_ids = request.data['members']
-            else:
-                members_ids = request.data.getlist('members')
-        # Remove from data dict so serializer doesn't try to validate it
-        data.pop('members', None)
+        try:
+            members_ids = [int(x) for x in request.data['members'] if x]
+        except (ValueError, TypeError) as e:
+            logger.warning(f"Error parsing members: {e}")
+            members_ids = []
+
+        # Set many-to-many fields to the extracted IDs (or empty list)
+        # This satisfies serializer validation, then we'll set them properly after save
+        data['members'] = members_ids if members_ids else []
+        data['cdb_search_filter'] = cdb_search_filter_ids if cdb_search_filter_ids else []
 
         # Convert string booleans to actual booleans
         boolean_fields = ['project_locked', 'annotation_classification', 'require_entity_validation',
@@ -1192,37 +1192,53 @@ def project_admin_create(request):
     Create a new project (user must be authenticated).
     """
     # Handle both JSON and FormData
-    data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
-
-    # Convert many-to-many fields from FormData format
-    if 'cdb_search_filter' in request.data:
+    # Extract many-to-many fields - handle both JSON (list) and FormData (getlist)
+    cdb_search_filter_ids = []
+    try:
         if isinstance(request.data.get('cdb_search_filter'), list):
-            data['cdb_search_filter'] = request.data['cdb_search_filter']
-        else:
+            # JSON request - already a list
+            cdb_search_filter_ids = [int(x) for x in request.data['cdb_search_filter'] if x]
+        elif hasattr(request.data, 'getlist'):
+            # FormData request - use getlist()
             cdb_filter_list = request.data.getlist('cdb_search_filter')
-            # Only include if list has items, otherwise set to empty list
-            data['cdb_search_filter'] = cdb_filter_list if cdb_filter_list else []
-    else:
-        data['cdb_search_filter'] = []
+            if cdb_filter_list:
+                cdb_search_filter_ids = [int(x) for x in cdb_filter_list if x and str(x).strip()]
+    except (ValueError, TypeError) as e:
+        logger.warning(f"Error parsing cdb_search_filter: {e}")
+        cdb_search_filter_ids = []
 
-    if 'members' in request.data:
+    members_ids = []
+    try:
         if isinstance(request.data.get('members'), list):
-            data['members'] = request.data['members']
-        else:
+            # JSON request - already a list
+            members_ids = [int(x) for x in request.data['members'] if x]
+        elif hasattr(request.data, 'getlist'):
+            # FormData request - use getlist()
             members_list = request.data.getlist('members')
-            # Only include if list has items
-            data['members'] = members_list if members_list else []
+            if members_list:
+                members_ids = [int(x) for x in members_list if x and str(x).strip()]
+    except (ValueError, TypeError) as e:
+        logger.warning(f"Error parsing members: {e}")
+        members_ids = []
+
+    # Build data dict - use the actual member IDs we extracted, or empty list if none
+    # The serializer will validate with these, then we'll set them properly after save
+    if hasattr(request.data, 'copy'):
+        data = request.data.copy()
     else:
-        data['members'] = []
+        data = dict(request.data)
+
+    # Set many-to-many fields to the extracted IDs (or empty list)
+    # This satisfies serializer validation, then we'll set them properly after save
+    data['members'] = members_ids if members_ids else []
+    data['cdb_search_filter'] = cdb_search_filter_ids if cdb_search_filter_ids else []
 
     serializer = ProjectAnnotateEntitiesSerializer(data=data)
     if serializer.is_valid():
         project = serializer.save()
-        # Handle many-to-many fields manually
-        if 'cdb_search_filter' in data:
-            project.cdb_search_filter.set(data['cdb_search_filter'])
-        if 'members' in data:
-            project.members.set(data['members'])
+        # Handle many-to-many fields manually after saving
+        project.cdb_search_filter.set(cdb_search_filter_ids)
+        project.members.set(members_ids)
         # Add the creator as a member if not already included
         if request.user not in project.members.all():
             project.members.add(request.user)

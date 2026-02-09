@@ -8,12 +8,23 @@
       <h3>{{ editing ? 'Edit Dataset' : 'Add Dataset' }}</h3>
     </div>
     <div class="form-content">
-      <form @submit.prevent="$emit('save', formData)" class="admin-form">
+      <form @submit.prevent="handleSubmit" class="admin-form">
         <div class="form-sections-wrapper">
           <div class="form-section form-section-horizontal">
             <div class="form-group">
               <label>Name *</label>
-              <input v-model="formData.name" type="text" class="form-control" required />
+              <input
+                v-model="formData.name"
+                type="text"
+                name="name"
+                data-field="name"
+                class="form-control"
+                :class="{ 'is-invalid': validationErrors.name }"
+                required
+                @invalid="handleInvalid($event)"
+                @input="clearValidationError('name')"
+              />
+              <small v-if="validationErrors.name" class="form-text text-danger">{{ validationErrors.name }}</small>
             </div>
             <div class="form-group">
               <label>Description</label>
@@ -23,7 +34,18 @@
           <div class="form-section">
             <div class="form-group">
               <label>Original File *</label>
-              <input type="file" @change="handleFileChange" accept=".csv,.xlsx" class="form-control file-input" :required="!editing" />
+              <input
+                type="file"
+                name="original_file"
+                data-field="original_file"
+                @change="handleFileChange"
+                accept=".csv,.xlsx"
+                class="form-control file-input"
+                :class="{ 'is-invalid': validationErrors.original_file }"
+                :required="!editing"
+                @invalid="handleInvalid($event)"
+              />
+              <small v-if="validationErrors.original_file" class="form-text text-danger">{{ validationErrors.original_file }}</small>
               <div class="schema-guide">
                 <small class="form-text text-muted">
                   <strong>File Schema Requirements:</strong>
@@ -84,7 +106,8 @@ export default {
         name: '',
         description: '',
         original_file: null
-      }
+      },
+      validationErrors: {}
     }
   },
   watch: {
@@ -100,14 +123,80 @@ export default {
         } else {
           this.resetForm()
         }
+        // Clear validation errors when dataset changes
+        this.validationErrors = {}
+      }
+    },
+    'formData.name'() {
+      // Clear error when user starts typing
+      if (this.validationErrors.name) {
+        delete this.validationErrors.name
       }
     }
   },
   methods: {
+    handleInvalid(event) {
+      event.preventDefault()
+      const field = event.target
+      const fieldName = field.name || field.getAttribute('data-field')
+      if (fieldName && this.validationErrors[fieldName]) {
+        field.setCustomValidity(this.validationErrors[fieldName])
+      }
+    },
+    clearValidationError(fieldName) {
+      if (this.validationErrors[fieldName]) {
+        delete this.validationErrors[fieldName]
+        const field = this.$el?.querySelector(`[data-field="${fieldName}"], [name="${fieldName}"]`)
+        if (field) {
+          field.setCustomValidity('')
+          field.classList.remove('is-invalid')
+        }
+      }
+    },
+    validateForm() {
+      this.validationErrors = {}
+      let isValid = true
+
+      if (!this.formData.name || this.formData.name.trim() === '') {
+        this.validationErrors.name = 'Dataset name is required'
+        isValid = false
+      }
+
+      if (!this.editing && !this.formData.original_file) {
+        this.validationErrors.original_file = 'Original file is required'
+        isValid = false
+      }
+
+      // Set HTML5 validation messages
+      if (!isValid) {
+        this.$nextTick(() => {
+          Object.keys(this.validationErrors).forEach(fieldName => {
+            const field = this.$el?.querySelector(`[data-field="${fieldName}"], [name="${fieldName}"]`)
+            if (field && this.validationErrors[fieldName]) {
+              field.setCustomValidity(this.validationErrors[fieldName])
+              field.classList.add('is-invalid')
+            }
+          })
+        })
+      }
+
+      return isValid
+    },
+    handleSubmit() {
+      if (this.validateForm()) {
+        this.$emit('save', this.formData)
+      } else {
+        this.$toast?.error('Please fix the validation errors before saving')
+      }
+    },
     handleFileChange(event) {
       const file = event.target.files[0]
       if (file) {
         this.formData.original_file = file
+        // Clear error when file is selected
+        if (this.validationErrors.original_file) {
+          delete this.validationErrors.original_file
+        }
       }
     },
     resetForm() {
@@ -116,6 +205,7 @@ export default {
         description: '',
         original_file: null
       }
+      this.validationErrors = {}
     }
   }
 }
@@ -129,9 +219,6 @@ export default {
   max-height: calc(100vh - 270px);
 }
 
-.admin-form {
-  height: calc(100% - 70px);
-}
 
 .form-group {
   textarea.form-control {
@@ -140,71 +227,6 @@ export default {
     font-family: inherit;
     line-height: 1.5;
     border-radius: 8px;
-  }
-
-  .schema-guide {
-    margin-top: 12px;
-    padding: 16px;
-    background: #f8f9fa;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-
-    .form-text {
-      margin-top: 0;
-      margin-bottom: 8px;
-      font-weight: 500;
-      opacity: 1;
-      color: var(--color-heading);
-    }
-
-    .schema-list {
-      margin: 8px 0 12px 0;
-      padding-left: 20px;
-      color: var(--color-text);
-      font-size: 0.9rem;
-      line-height: 1.6;
-
-      li {
-        margin-bottom: 6px;
-
-        code {
-          background: #e9ecef;
-          padding: 2px 6px;
-          border-radius: 4px;
-          font-size: 0.85em;
-          color: #d63384;
-          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-        }
-
-        ul {
-          margin-top: 4px;
-          margin-bottom: 4px;
-          padding-left: 20px;
-        }
-      }
-    }
-
-    .example-text {
-      margin-top: 12px;
-      padding-top: 12px;
-      border-top: 1px solid #e0e0e0;
-      display: block;
-      font-size: 0.85rem;
-      line-height: 1.8;
-
-      code {
-        display: block;
-        background: #f1f3f5;
-        padding: 8px 12px;
-        border-radius: 6px;
-        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-        font-size: 0.85em;
-        color: #495057;
-        margin-top: 4px;
-        white-space: pre;
-        overflow-x: auto;
-      }
-    }
   }
 }
 </style>

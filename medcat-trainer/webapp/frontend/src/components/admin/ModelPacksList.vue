@@ -21,7 +21,10 @@
         </template>
         <template #item.actions="{ item }">
           <div class="action-buttons" @click.stop>
-            <button class="btn btn-sm btn-action btn-delete" @click="$emit('confirm-delete-model-pack', item)" title="Delete">
+            <button
+              class="btn btn-sm btn-action btn-delete"
+              @click="$emit('confirm-delete-model-pack', item)"
+              :title="'Delete ' + item.name">
               <font-awesome-icon icon="trash"></font-awesome-icon>
             </button>
           </div>

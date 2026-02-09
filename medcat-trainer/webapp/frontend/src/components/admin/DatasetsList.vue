@@ -15,7 +15,10 @@
         dense>
         <template #item.actions="{ item }">
           <div class="action-buttons" @click.stop>
-            <button class="btn btn-sm btn-action btn-delete" @click="$emit('confirm-delete-dataset', item)" title="Delete">
+            <button
+              class="btn btn-sm btn-action btn-delete"
+              @click="$emit('confirm-delete-dataset', item)"
+              :title="'Delete ' + item.name">
               <font-awesome-icon icon="trash"></font-awesome-icon>
             </button>
           </div>

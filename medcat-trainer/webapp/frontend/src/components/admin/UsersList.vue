@@ -25,7 +25,7 @@
         </template>
         <template #item.actions="{ item }">
           <div class="action-buttons" @click.stop>
-            <!-- No actions needed - clicking row edits -->
+            <!-- Row click opens edit form -->
           </div>
         </template>
       </v-data-table>

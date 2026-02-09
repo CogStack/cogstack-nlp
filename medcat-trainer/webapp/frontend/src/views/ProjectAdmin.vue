@@ -96,14 +96,36 @@
               <div class="form-row">
                 <div class="form-group form-group-inline">
                   <label>Project Name *</label>
-                  <input v-model="formData.name" type="text" class="form-control" required placeholder="Enter project name" />
+                  <input
+                    v-model="formData.name"
+                    type="text"
+                    name="name"
+                    data-field="name"
+                    class="form-control"
+                    :class="{ 'is-invalid': validationErrors.name }"
+                    required
+                    placeholder="Enter project name"
+                    @invalid="handleInvalid($event)"
+                    @input="clearValidationError('name')"
+                  />
+                  <small v-if="validationErrors.name" class="form-text text-danger">{{ validationErrors.name }}</small>
                 </div>
                 <div class="form-group form-group-inline">
                   <label>Dataset *</label>
-                  <select v-model="formData.dataset" class="form-control" required>
+                  <select
+                    v-model="formData.dataset"
+                    name="dataset"
+                    data-field="dataset"
+                    class="form-control"
+                    :class="{ 'is-invalid': validationErrors.dataset }"
+                    required
+                    @invalid="handleInvalid($event)"
+                    @change="clearValidationError('dataset')"
+                  >
                     <option :value="null">Select a dataset</option>
                     <option v-for="ds in datasets" :key="ds.id" :value="ds.id">{{ ds.name }}</option>
                   </select>
+                  <small v-if="validationErrors.dataset" class="form-text text-danger">{{ validationErrors.dataset }}</small>
                 </div>
               </div>
               <div class="form-row">
@@ -149,10 +171,19 @@
               <div class="form-row">
                 <div class="form-group form-group-inline">
                   <label>Local Model Pack</label>
-                  <select v-model="formData.model_pack" class="form-control" :disabled="useBackupOption || formData.use_model_service">
+                  <select
+                    v-model="formData.model_pack"
+                    name="model_pack"
+                    data-field="model_pack"
+                    class="form-control"
+                    :class="{ 'is-invalid': validationErrors.model_pack }"
+                    :disabled="useBackupOption || formData.use_model_service"
+                    @change="clearValidationError('model_pack')"
+                  >
                     <option :value="null">None</option>
                     <option v-for="mp in modelPacks" :key="mp.id" :value="mp.id">{{ mp.name }}</option>
                   </select>
+                  <small v-if="validationErrors.model_pack" class="form-text text-danger">{{ validationErrors.model_pack }}</small>
                 </div>
                 <div class="form-group checkbox-group form-group-inline">
                   <label class="checkbox-label">
@@ -163,18 +194,34 @@
               </div>
               <div v-if="useBackupOption" class="form-row backup-options">
                 <div class="form-group form-group-inline">
-                  <label>Concept DB</label>
-                  <select v-model="formData.concept_db" class="form-control">
+                  <label>Concept DB *</label>
+                  <select
+                    v-model="formData.concept_db"
+                    name="concept_db"
+                    data-field="concept_db"
+                    class="form-control"
+                    :class="{ 'is-invalid': validationErrors.concept_db }"
+                    @change="clearValidationError('concept_db')"
+                  >
                     <option :value="null">None</option>
                     <option v-for="cdb in conceptDbs" :key="cdb.id" :value="cdb.id">{{ cdb.name }}</option>
                   </select>
+                  <small v-if="validationErrors.concept_db" class="form-text text-danger">{{ validationErrors.concept_db }}</small>
                 </div>
                 <div class="form-group form-group-inline">
-                  <label>Vocabulary</label>
-                  <select v-model="formData.vocab" class="form-control">
+                  <label>Vocabulary *</label>
+                  <select
+                    v-model="formData.vocab"
+                    name="vocab"
+                    data-field="vocab"
+                    class="form-control"
+                    :class="{ 'is-invalid': validationErrors.vocab }"
+                    @change="clearValidationError('vocab')"
+                  >
                     <option :value="null">None</option>
                     <option v-for="vocab in vocabs" :key="vocab.id" :value="vocab.id">{{ vocab.name }}</option>
                   </select>
+                  <small v-if="validationErrors.vocab" class="form-text text-danger">{{ validationErrors.vocab }}</small>
                 </div>
               </div>
               <div class="form-row">
@@ -187,9 +234,26 @@
               </div>
               <div v-if="formData.use_model_service" class="form-row">
                 <div class="form-group form-group-inline" style="flex: 1 1 100%;">
-                  <label>Remote Model Service URL</label>
-                  <input v-model="formData.model_service_url" type="url" class="form-control" placeholder="http://medcat-service:8000" />
-                  <small class="form-text text-muted">URL of the remote MedCAT service API (e.g., http://medcat-service:8000). Note: interim model training is not supported for remote model service projects.</small>
+                  <label>Remote Model Service URL *</label>
+                  <input
+                    v-model="formData.model_service_url"
+                    type="url"
+                    name="model_service_url"
+                    data-field="model_service_url"
+                    class="form-control"
+                    :class="{ 'is-invalid': validationErrors.model_service_url }"
+                    :required="formData.use_model_service"
+                    placeholder="http://medcat-service:8000"
+                    @invalid="handleInvalid($event)"
+                    @input="clearValidationError('model_service_url')"
+                  />
+                  <small v-if="validationErrors.model_service_url" class="form-text text-danger">{{ validationErrors.model_service_url }}</small>
+                  <small v-else class="form-text text-muted">URL of the remote MedCAT service API (e.g., http://medcat-service:8000). Note: interim model training is not supported for remote model service projects.</small>
+                </div>
+              </div>
+              <div v-if="validationErrors.model_config" class="form-row">
+                <div class="form-group" style="flex: 1 1 100%;">
+                  <small class="form-text text-danger">{{ validationErrors.model_config }}</small>
                 </div>
               </div>
             </div>
@@ -310,10 +374,8 @@
             </div>
             </div>
             <div class="form-actions">
-              <button type="button" class="btn btn-secondary btn-cancel" @click="closeForm">
-                <span>Cancel</span>
-              </button>
-              <button type="submit" class="btn btn-primary btn-save" :disabled="saving">
+              <button type="button" class="btn btn-secondary" @click="closeForm">Cancel</button>
+              <button type="submit" class="btn btn-primary" :disabled="saving">
                 <font-awesome-icon v-if="saving" icon="spinner" spin></font-awesome-icon>
                 <span>{{ saving ? 'Saving...' : 'Save Project' }}</span>
               </button>
@@ -332,7 +394,7 @@
             <p>Are you sure you want to delete the project <strong class="project-name-highlight">{{ projectToDelete.name }}</strong>?</p>
             <p class="text-danger warning-text">This action cannot be undone.</p>
             <div class="form-actions">
-              <button class="btn btn-default" @click="projectToDelete = null">Cancel</button>
+              <button class="btn btn-secondary" @click="projectToDelete = null">Cancel</button>
               <button class="btn btn-danger" @click="deleteProject">Delete</button>
             </div>
           </div>
@@ -349,7 +411,7 @@
             <p>Are you sure you want to reset the project <strong class="project-name-highlight">{{ projectToReset.name }}</strong>?</p>
             <p class="text-warning warning-text">This will remove all annotations and clear validated/prepared documents.</p>
             <div class="form-actions">
-              <button class="btn btn-default" @click="projectToReset = null">Cancel</button>
+              <button class="btn btn-secondary" @click="projectToReset = null">Cancel</button>
               <button class="btn btn-warning" @click="resetProject">Reset</button>
             </div>
           </div>
@@ -375,7 +437,7 @@
               />
             </div>
             <div class="form-actions" style="margin-top: 20px;">
-              <button class="btn btn-default" @click="closeCloneModal">Cancel</button>
+              <button class="btn btn-secondary" @click="closeCloneModal">Cancel</button>
               <button class="btn btn-success" @click="performClone" :disabled="!cloneName || cloneName.trim() === ''">Clone</button>
             </div>
           </div>
@@ -461,7 +523,7 @@
             <p>Are you sure you want to delete the model pack <strong>{{ modelPackToDelete.name }}</strong>?</p>
             <p class="text-danger warning-text">This action cannot be undone.</p>
             <div class="form-actions">
-              <button class="btn btn-default" @click="modelPackToDelete = null">Cancel</button>
+              <button class="btn btn-secondary" @click="modelPackToDelete = null">Cancel</button>
               <button class="btn btn-danger" @click="deleteModelPack">Delete</button>
             </div>
           </div>
@@ -475,7 +537,7 @@
             <p>Are you sure you want to delete the dataset <strong>{{ datasetToDelete.name }}</strong>?</p>
             <p class="text-danger warning-text">This action cannot be undone.</p>
             <div class="form-actions">
-              <button class="btn btn-default" @click="datasetToDelete = null">Cancel</button>
+              <button class="btn btn-secondary" @click="datasetToDelete = null">Cancel</button>
               <button class="btn btn-danger" @click="deleteDataset">Delete</button>
             </div>
           </div>
@@ -567,6 +629,7 @@ export default {
         cuis_file: null,
         members: []
       },
+      validationErrors: {},
       tableHeaders: [
         { title: 'Name', value: 'name' },
         { title: 'Description', value: 'description' },
@@ -667,6 +730,7 @@ export default {
       this.showCreateForm = false
       this.editingProject = null
       this.useBackupOption = false
+      this.validationErrors = {}
       this.selectedCuiFilterConcepts = []
       this.includeSubConcepts = false
       this.showCuiFilterTextarea = false
@@ -754,11 +818,88 @@ export default {
       }
       return null
     },
+    handleInvalid(event) {
+      // Prevent browser's default validation message popup
+      event.preventDefault()
+      const field = event.target
+      const fieldName = field.name || field.id || field.getAttribute('data-field')
+      if (fieldName && this.validationErrors[fieldName]) {
+        field.setCustomValidity(this.validationErrors[fieldName])
+      }
+    },
+    clearValidationError(fieldName) {
+      if (this.validationErrors[fieldName]) {
+        delete this.validationErrors[fieldName]
+        // Clear HTML5 validation state
+        const field = this.$el?.querySelector(`[data-field="${fieldName}"], [name="${fieldName}"]`)
+        if (field) {
+          field.setCustomValidity('')
+          field.classList.remove('is-invalid')
+        }
+      }
+    },
+    validateProjectForm() {
+      this.validationErrors = {}
+      let isValid = true
+
+      // Required fields
+      if (!this.formData.name || this.formData.name.trim() === '') {
+        this.validationErrors.name = 'Project name is required'
+        isValid = false
+      }
+
+      if (!this.formData.dataset) {
+        this.validationErrors.dataset = 'Dataset is required'
+        isValid = false
+      }
+
+      // Model configuration validation
+      if (this.formData.use_model_service) {
+        if (!this.formData.model_service_url || this.formData.model_service_url.trim() === '') {
+          this.validationErrors.model_service_url = 'Model service URL is required when using remote model service'
+          isValid = false
+        }
+      } else {
+        // Must have either model_pack OR (concept_db AND vocab)
+        const hasModelPack = !!this.formData.model_pack
+        const hasBackupOption = this.useBackupOption && !!this.formData.concept_db && !!this.formData.vocab
+
+        if (!hasModelPack && !hasBackupOption) {
+          this.validationErrors.model_config = 'Must set either a Model Pack or enable backup option with Concept DB and Vocabulary'
+          isValid = false
+        }
+
+        // Cannot have both model_pack and backup option
+        if (hasModelPack && hasBackupOption) {
+          this.validationErrors.model_config = 'Cannot set both Model Pack and Concept DB/Vocabulary pair. Use one or the other.'
+          isValid = false
+        }
+      }
+
+      // Set HTML5 validation messages
+      if (!isValid) {
+        this.$nextTick(() => {
+          Object.keys(this.validationErrors).forEach(fieldName => {
+            const field = this.$el?.querySelector(`[data-field="${fieldName}"], [name="${fieldName}"]`)
+            if (field && this.validationErrors[fieldName]) {
+              field.setCustomValidity(this.validationErrors[fieldName])
+              field.classList.add('is-invalid')
+            }
+          })
+        })
+      }
+
+      return isValid
+    },
     async saveProject() {
+      // Validate before submitting
+      if (!this.validateProjectForm()) {
+        this.$toast?.error('Please fix the validation errors before saving')
+        return
+      }
+
       this.saving = true
       try {
-        const formDataToSend = new FormData()
-
         // Sync CUIs from pills before saving
         this.syncCuiTextFromPills()
 
@@ -768,50 +909,63 @@ export default {
           this.formData.vocab = null
         }
 
-        // CDB Search Filter is hidden - will use ModelPack by default
-        // Clear it so backend uses ModelPack
-        this.formData.cdb_search_filter = []
+        // Prepare data payload - convert members to integers
+        const payload = { ...this.formData }
 
-        // Add all form fields to FormData
-        Object.keys(this.formData).forEach(key => {
-          if (key === 'cuis_file' && this.formData[key]) {
-            formDataToSend.append(key, this.formData[key])
-          } else if (key === 'cdb_search_filter' || key === 'members') {
-            // Handle arrays - send empty array as empty (don't append anything for empty arrays)
-            if (Array.isArray(this.formData[key]) && this.formData[key].length > 0) {
-              this.formData[key].forEach(val => {
-                if (val !== null && val !== undefined) {
-                  formDataToSend.append(key, val)
-                }
-              })
-            }
-            // For empty arrays, don't send anything (backend will handle as empty)
-          } else if (this.formData[key] !== null && this.formData[key] !== undefined) {
-            // Convert null-like values to empty strings for optional fields
-            const value = this.formData[key]
-            // For boolean false, send as string 'false'
-            if (typeof value === 'boolean') {
-              formDataToSend.append(key, value.toString())
-            } else {
-              formDataToSend.append(key, value)
-            }
+        // Set cdb_search_filter to the linked concept_db: when using a model pack use its
+        // concept_db; when using backup option use the project's concept_db.
+        let conceptDbIdForFilter = null
+        if (payload.model_pack) {
+          const modelPack = this.modelPacks.find(mp => mp.id === payload.model_pack)
+          if (modelPack?.concept_db != null) {
+            conceptDbIdForFilter = typeof modelPack.concept_db === 'object' ? modelPack.concept_db.id : modelPack.concept_db
           }
-        })
+        } else if (payload.concept_db) {
+          conceptDbIdForFilter = payload.concept_db
+        }
+        payload.cdb_search_filter = conceptDbIdForFilter != null ? [conceptDbIdForFilter] : []
+
+        // Ensure members are integers
+        if (Array.isArray(payload.members)) {
+          payload.members = payload.members
+            .map(val => {
+              if (val === null || val === undefined || val === '') return null
+              const numVal = typeof val === 'string' ? parseInt(val, 10) : Number(val)
+              return (!isNaN(numVal) && isFinite(numVal)) ? numVal : null
+            })
+            .filter(val => val !== null)
+        } else {
+          payload.members = []
+        }
+
+        // Ensure cdb_search_filter are integers
+        if (Array.isArray(payload.cdb_search_filter)) {
+          payload.cdb_search_filter = payload.cdb_search_filter
+            .map(val => {
+              if (val === null || val === undefined || val === '') return null
+              const numVal = typeof val === 'string' ? parseInt(val, 10) : Number(val)
+              return (!isNaN(numVal) && isFinite(numVal)) ? numVal : null
+            })
+            .filter(val => val !== null)
+        } else {
+          payload.cdb_search_filter = []
+        }
+
+        // Remove cuis_file from JSON payload (file uploads would need separate handling if needed)
+        delete payload.cuis_file
 
         let response
         if (this.editingProject) {
           // Update existing project
           response = await this.$http.put(
             `/api/project-admin/projects/${this.editingProject.id}/`,
-            formDataToSend,
-            { headers: { 'Content-Type': 'multipart/form-data' } }
+            payload
           )
         } else {
           // Create new project
           response = await this.$http.post(
             '/api/project-admin/projects/create/',
-            formDataToSend,
-            { headers: { 'Content-Type': 'multipart/form-data' } }
+            payload
           )
         }
 
@@ -1117,12 +1271,64 @@ export default {
         this.syncPillsFromCuiText()
       }
     },
+    'formData.name'() {
+      if (this.validationErrors.name) {
+        delete this.validationErrors.name
+      }
+    },
+    'formData.dataset'() {
+      if (this.validationErrors.dataset) {
+        delete this.validationErrors.dataset
+      }
+    },
+    'formData.model_service_url'() {
+      if (this.validationErrors.model_service_url) {
+        delete this.validationErrors.model_service_url
+      }
+    },
     'formData.model_pack'() {
       // Clear pills when model pack changes to avoid confusion
       // User can re-select concepts with the new model pack
       if (!this.editingProject) {
         this.selectedCuiFilterConcepts = []
-        this.formData.cuis = ''
+      }
+      // Clear validation errors
+      if (this.validationErrors.model_pack) {
+        delete this.validationErrors.model_pack
+      }
+      // Clear model_config error when model_pack is set
+      if (this.validationErrors.model_config && this.formData.model_pack) {
+        delete this.validationErrors.model_config
+      }
+    },
+    'formData.concept_db'() {
+      if (this.validationErrors.concept_db) {
+        delete this.validationErrors.concept_db
+      }
+      // Clear model_config error when both concept_db and vocab are set
+      if (this.validationErrors.model_config && this.formData.concept_db && this.formData.vocab) {
+        delete this.validationErrors.model_config
+      }
+    },
+    'formData.vocab'() {
+      if (this.validationErrors.vocab) {
+        delete this.validationErrors.vocab
+      }
+      // Clear model_config error when both concept_db and vocab are set
+      if (this.validationErrors.model_config && this.formData.concept_db && this.formData.vocab) {
+        delete this.validationErrors.model_config
+      }
+    },
+    'useBackupOption'() {
+      // Clear model_config error when switching modes
+      if (this.validationErrors.model_config) {
+        delete this.validationErrors.model_config
+      }
+    },
+    'formData.use_model_service'() {
+      // Clear model_config error when switching modes
+      if (this.validationErrors.model_config) {
+        delete this.validationErrors.model_config
       }
     }
   }
@@ -1200,22 +1406,6 @@ export default {
     svg {
       font-size: 0.9rem;
     }
-  }
-}
-
-.loading-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 20px;
-  padding: 80px 40px;
-  min-height: 400px;
-
-  .loading-text {
-    color: var(--color-text);
-    font-size: 1.1rem;
-    opacity: 0.8;
   }
 }
 
@@ -1307,58 +1497,6 @@ export default {
   font-size: 0.9rem;
 }
 
-.action-buttons {
-  display: flex;
-  gap: 6px;
-  justify-content: flex-end;
-
-  .btn-action {
-    padding: 4px 8px;
-    border-radius: 4px;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 32px;
-    height: 32px;
-    font-size: 0.85rem;
-
-    &:hover {
-      transform: translateY(-1px);
-    }
-
-    &.btn-clone {
-      color: $success;
-      border-color: $success;
-
-      &:hover {
-        background-color: $success;
-        color: white;
-      }
-    }
-
-    &.btn-reset {
-      color: $warning;
-      border-color: $warning;
-
-      &:hover {
-        background-color: $warning;
-        color: white;
-      }
-    }
-
-    &.btn-delete {
-      color: $danger;
-      border-color: $danger;
-
-      &:hover {
-        background-color: $danger;
-        color: white;
-      }
-    }
-  }
-}
-
 .no-projects {
   padding: 60px 40px;
   text-align: center;
@@ -1399,38 +1537,6 @@ export default {
         box-shadow: 0 4px 8px rgba(0, 114, 206, 0.3);
       }
     }
-  }
-}
-
-.badge {
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  white-space: nowrap;
-
-  &.badge-primary {
-    background-color: rgba(0, 114, 206, 0.1);
-    color: $primary;
-    border: 1px solid rgba(0, 114, 206, 0.2);
-  }
-
-  &.badge-success {
-    background-color: rgba(0, 150, 57, 0.1);
-    color: $success;
-    border: 1px solid rgba(0, 150, 57, 0.2);
-  }
-
-  &.badge-danger {
-    background-color: rgba(218, 41, 28, 0.1);
-    color: $danger;
-    border: 1px solid rgba(218, 41, 28, 0.2);
-  }
-
-  &.badge-secondary {
-    background-color: rgba(108, 117, 125, 0.1);
-    color: #6c757d;
-    border: 1px solid rgba(108, 117, 125, 0.2);
   }
 }
 
@@ -1694,71 +1800,6 @@ export default {
       color: var(--color-text);
       opacity: 0.7;
     }
-
-    .schema-guide {
-      margin-top: 12px;
-      padding: 16px;
-      background: #f8f9fa;
-      border: 1px solid #e0e0e0;
-      border-radius: 8px;
-
-      .form-text {
-        margin-top: 0;
-        margin-bottom: 8px;
-        font-weight: 500;
-        opacity: 1;
-        color: var(--color-heading);
-      }
-
-      .schema-list {
-        margin: 8px 0 12px 0;
-        padding-left: 20px;
-        color: var(--color-text);
-        font-size: 0.9rem;
-        line-height: 1.6;
-
-        li {
-          margin-bottom: 6px;
-
-          code {
-            background: #e9ecef;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 0.85em;
-            color: #d63384;
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-          }
-
-          ul {
-            margin-top: 4px;
-            margin-bottom: 4px;
-            padding-left: 20px;
-          }
-        }
-      }
-
-      .example-text {
-        margin-top: 12px;
-        padding-top: 12px;
-        border-top: 1px solid #e0e0e0;
-        display: block;
-        font-size: 0.85rem;
-        line-height: 1.8;
-
-        code {
-          display: block;
-          background: #f1f3f5;
-          padding: 8px 12px;
-          border-radius: 6px;
-          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-          font-size: 0.85em;
-          color: #495057;
-          margin-top: 4px;
-          white-space: pre;
-          overflow-x: auto;
-        }
-      }
-    }
   }
 
   .checkbox-group {
@@ -1811,129 +1852,6 @@ export default {
     gap: 8px;
   }
 
-  // Concept Filtering Styles (from Demo.vue)
-  .cui-filter-controls {
-    margin: 0 0 16px 0;
-    padding: 12px;
-    background: #f8f9fa;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-  }
-
-  .cui-filter-checkbox {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin: 0;
-    font-size: 0.9rem;
-    cursor: pointer;
-    font-weight: 400;
-    color: var(--color-text);
-
-    input[type="checkbox"] {
-      width: 16px;
-      height: 16px;
-      cursor: pointer;
-      accent-color: $primary;
-      border: 1px solid #d0d0d0;
-    }
-  }
-
-  .cui-filter-paste-toggle {
-    padding: 4px 8px;
-    font-size: 0.85rem;
-    border: 1px solid #d0d0d0;
-    border-radius: 6px;
-    background: white;
-    transition: all 0.2s ease;
-
-    &:hover {
-      background: #f0f0f0;
-      border-color: #b0b0b0;
-    }
-  }
-
-  .cui-filter-row {
-    display: flex;
-    gap: 20px;
-    align-items: flex-start;
-    margin: 0 0 16px 0;
-  }
-
-  .cui-filter-picker {
-    flex: 0 0 50%;
-    max-width: 50%;
-    padding: 12px;
-    background: #fafafa;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-  }
-
-  .cui-file-picker {
-    flex: 0 0 calc(50% - 20px);
-    max-width: calc(50% - 20px);
-    padding: 12px;
-    background: #fafafa;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-
-    label {
-      display: block;
-      margin-bottom: 6px;
-      font-weight: 500;
-      color: var(--color-heading);
-      font-size: 0.9rem;
-    }
-
-    .form-control {
-      border: 1px solid #d0d0d0;
-    }
-  }
-
-  .cui-pill-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin: 6px 0 10px 0;
-  }
-
-  .cui-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    border: 1px solid rgba(0, 0, 0, 0.15);
-    background: rgba(13, 110, 253, 0.08);
-    color: #0b5ed7;
-    border-radius: 999px;
-    padding: 4px 10px;
-    font-size: 0.75rem;
-    line-height: 1;
-  }
-
-  .cui-pill-text {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  }
-
-  .cui-pill-remove {
-    border: none;
-    background: transparent;
-    color: inherit;
-    padding: 0;
-    cursor: pointer;
-    font-size: 16px;
-    line-height: 1;
-    opacity: 0.7;
-    transition: opacity 0.2s ease;
-
-    &:hover {
-      opacity: 1;
-    }
-  }
-
   .form-actions {
     display: flex;
     justify-content: flex-end;
@@ -1944,90 +1862,6 @@ export default {
     flex-shrink: 0;
     background: white;
     box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
-
-    .btn {
-      padding: 10px 24px;
-      font-weight: 500;
-      border-radius: 8px;
-      font-size: 0.95rem;
-      transition: all 0.2s ease;
-      min-width: 100px;
-
-      &:hover {
-        transform: translateY(-1px);
-      }
-
-      &.btn-save {
-        box-shadow: 0 2px 4px rgba(0, 114, 206, 0.2);
-
-        &:hover {
-          box-shadow: 0 4px 8px rgba(0, 114, 206, 0.3);
-        }
-      }
-    }
-  }
-}
-
-.confirm-modal {
-  :deep(.modal-container) {
-    width: 500px;
-    border-radius: 8px;
-  }
-
-  :deep(.modal-header) {
-    padding: 20px 24px;
-    margin: 0;
-    border-bottom: 1px solid var(--color-border);
-
-    h3 {
-      color: var(--color-heading);
-      margin: 0;
-    }
-  }
-
-  :deep(.modal-body) {
-    padding: 24px;
-  }
-
-  .confirm-content {
-    .project-name-highlight {
-      color: $primary;
-      font-weight: 600;
-    }
-
-    .warning-text {
-      padding: 12px;
-      background-color: rgba(218, 41, 28, 0.1);
-      border-left: 3px solid $danger;
-      border-radius: 4px;
-      margin: 16px 0;
-    }
-
-    .text-warning {
-      padding: 12px;
-      background-color: rgba(118, 134, 146, 0.1);
-      border-left: 3px solid $warning;
-      border-radius: 4px;
-      margin: 16px 0;
-    }
-  }
-
-  .form-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
-    margin-top: 24px;
-
-    .btn {
-      padding: 10px 20px;
-      font-weight: 500;
-      border-radius: 6px;
-      transition: all 0.2s ease;
-
-      &:hover {
-        transform: translateY(-1px);
-      }
-    }
   }
 }
 
@@ -2122,171 +1956,22 @@ export default {
         padding: 8px 10px;
       }
     }
-  }
 
-  .checkbox-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .cui-filter-row {
-    flex-direction: column;
-    gap: 16px;
-
-    .cui-filter-picker,
-    .cui-file-picker {
-      flex: 1 1 100%;
-      max-width: 100%;
+    .checkbox-grid {
+      grid-template-columns: 1fr;
     }
-  }
-}
 
-// Tab Navigation Styles
-.admin-tabs {
-  display: flex;
-  gap: 8px;
-  margin: 20px 0;
-  border-bottom: 2px solid var(--color-border);
-  padding-bottom: 0;
-  flex-shrink: 0;
-}
+    .cui-filter-row {
+      flex-direction: column;
+      gap: 16px;
 
-.project-admin-content {
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-
-  .tab-content {
-    flex: 1;
-    min-height: 0;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-  }
-}
-
-.tab-button {
-  padding: 12px 24px;
-  background: transparent;
-  border: none;
-  border-bottom: 3px solid transparent;
-  cursor: pointer;
-  font-size: 0.95rem;
-  font-weight: 500;
-  color: var(--color-text-secondary);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: all 0.2s ease;
-  margin-bottom: -2px;
-
-  &:hover {
-    color: var(--color-primary);
-    background: rgba(0, 0, 0, 0.02);
-  }
-
-  &.active {
-    color: var(--color-primary);
-    border-bottom-color: var(--color-primary);
-    font-weight: 600;
-  }
-
-  svg {
-    font-size: 1rem;
-  }
-}
-
-// Admin Section Styles (for Model Packs, Datasets, Users)
-.admin-section {
-  .list-section {
-    .section-header {
-      margin-bottom: 20px;
-
-      h3 {
-        font-size: 1.5rem;
-        font-weight: 600;
-        color: var(--color-heading);
-        margin: 0;
-      }
-
-      .item-count {
-        font-weight: 400;
-        color: var(--color-text-secondary);
-        font-size: 1rem;
+      .cui-filter-picker,
+      .cui-file-picker {
+        flex: 1 1 100%;
+        max-width: 100%;
       }
     }
-
-    .table-container {
-      background: white;
-      border-radius: 8px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-      overflow: hidden;
-    }
-  }
-
-  .admin-table {
-    .action-buttons {
-      display: flex;
-      gap: 6px;
-      justify-content: flex-end;
-    }
-  }
-
-  .form-section {
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    max-height: calc(100vh - 200px);
-    min-height: auto;
-  }
-
-  .admin-form {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    overflow: hidden;
-
-    .form-sections-wrapper {
-      flex: 1;
-      overflow-y: auto;
-      overflow-x: hidden;
-      min-height: 0;
-      padding: 20px;
-    }
-
-    .form-actions {
-      margin-top: auto;
-      flex-shrink: 0;
-      padding: 20px;
-      border-top: 1px solid var(--color-border);
-      display: flex;
-      gap: 12px;
-      justify-content: flex-end;
-      background: var(--color-background-light);
-    }
   }
 }
 
-.empty-state {
-  text-align: center;
-  padding: 60px 20px;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-
-  h4 {
-    font-size: 1.25rem;
-    color: var(--color-heading);
-    margin-bottom: 8px;
-  }
-
-  p {
-    color: var(--color-text-secondary);
-    margin-bottom: 20px;
-  }
-}
 </style>
