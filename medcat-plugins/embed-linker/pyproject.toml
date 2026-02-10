@@ -77,6 +77,10 @@ dev = [
   "types-PyYAML",
 ]
 
+# entry-points to add onto medcat
+[project.entry-points."medcat.plugins"]
+embedding_linker = "medcat_embedding_linker"
+
 [project.urls]
 "Homepage" = "https://cogstack.org/"
 "Bug Reports" = "https://discourse.cogstack.org/"
