@@ -1,0 +1,51 @@
+name: medcat-gliner release-build
+
+on:
+  push:
+    tags:
+      - 'medcat-gliner/v*.*.*'  
+
+permissions:
+  id-token: write
+
+defaults:
+  run:
+    working-directory: ./medcat-plugins/medcat-gliner
+
+jobs:
+  test-and-publish-to-PyPI:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v6
+
+      - name: Release Tag
+        # If GITHUB_REF=refs/tags/medcat-gliner/v0.1.2, this returns v0.1.2. Note it's including the "v" though it probably shouldnt
+        run: echo "RELEASE_VERSION=${GITHUB_REF##refs/*/}" >> $GITHUB_ENV
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --upgrade build
+
+      - name: Install client package in development mode
+        run: |
+          pip install -e ".[dev]"
+
+      - name: Test
+        run: |
+          pytest tests
+
+      - name: Build client package
+        run: |
+          python -m build
+
+      - name: Publish production distribution to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages_dir: medcat-plugins/medcat-gliner/dist
