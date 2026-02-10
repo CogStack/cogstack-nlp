@@ -88,16 +88,16 @@ describe('storageCleanup', () => {
 
     it('should clear application cookies', () => {
       // Set some cookies
-      document.cookie = 'api-token=test123'
-      document.cookie = 'username=testuser'
-      document.cookie = 'admin=true'
-      document.cookie = '_oauth2_proxy=djIuWDI5aGRYUm9NbDl3Y205NGVTMDVaV05sTjJJeE1qUXdZVE0wTWpVNE1UYzBaVEJqWm1KaU1tWXdPR'
-      document.cookie = '_oauth2_proxy_1=mdlsjjsadfhHLFhBLGnbJlhB>j'
-      document.cookie = 'sessionid=6id701ipjww6rx0gumt0vvz1pnxpy12p'
-      document.cookie = 'AUTH_SESSION_ID=OTI4Mzk4NmUtZWJhNi'
-      document.cookie = 'KC_RESTART=eyJhbGciOiJkaXIiLCJlbmMiOiJBMTI4..'
-      document.cookie = 'KEYCLOAK_IDENTITY=eyJhbGciOiJIUzUxMiIsInR5cCI...'
-      document.cookie = 'KEYCLOAK_SESSION=-9rVzyOy1xEA4sktmgSvv8DriM3ZO4kv-zjrhjuYFkA'
+      document.cookie = 'api-token=test123; Secure; HttpOnly'
+      document.cookie = 'username=testuser; Secure; HttpOnly'
+      document.cookie = 'admin=true; Secure; HttpOnly'
+      document.cookie = '_oauth2_proxy=djIuWDI5aGRYUm9NbDl3Y205NGVTMDVaV05sTjJJeE1qUXdZVE0wTWpVNE1UYzBaVEJqWm1KaU1tWXdPR; Secure; HttpOnly'
+      document.cookie = '_oauth2_proxy_1=mdlsjjsadfhHLFhBLGnbJlhB>j; Secure; HttpOnly'
+      document.cookie = 'sessionid=6id701ipjww6rx0gumt0vvz1pnxpy12p; Secure; HttpOnly'
+      document.cookie = 'AUTH_SESSION_ID=OTI4Mzk4NmUtZWJhNi; Secure; HttpOnly'
+      document.cookie = 'KC_RESTART=eyJhbGciOiJkaXIiLCJlbmMiOiJBMTI4..; Secure; HttpOnly'
+      document.cookie = 'KEYCLOAK_IDENTITY=eyJhbGciOiJIUzUxMiIsInR5cCI...; Secure; HttpOnly'
+      document.cookie = 'KEYCLOAK_SESSION=-9rVzyOy1xEA4sktmgSvv8DriM3ZO4kv-zjrhjuYFkA; Secure; HttpOnly'
 
       performStartupCleanup()
 
