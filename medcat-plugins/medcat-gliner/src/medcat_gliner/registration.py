@@ -9,6 +9,6 @@ logger = logging.getLogger(__name__)
 
 
 def do_registration():
-    lazy_register_core_componet(
+    lazy_register_core_component(
         CoreComponentType.ner, "gliner_ner",
         "medcat_gliner.gliner_ner", "GlinerNER.create_new_component")
