@@ -10,5 +10,5 @@ logger = logging.getLogger(__name__)
 
 def do_registration():
     lazy_register_core_component(
-        CoreComponentType.ner, "embedding_linker",
+        CoreComponentType.linking, "embedding_linker",
         "medcat_embedding_linker.embedding_linker", "Linker.create_new_component")
