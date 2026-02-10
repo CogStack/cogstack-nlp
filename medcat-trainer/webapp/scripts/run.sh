@@ -1,9 +1,8 @@
 #!/bin/sh
 echo "Starting medcat trainer"
 
-# Use venv where uv installed dependencies (explicit path — do not rely on PATH)
-PY=/home/.venv/bin/python
-UWSGI=/home/.venv/bin/uwsgi
+# Use uv-managed project environment (no manual venv activation)
+export UV_PROJECT=/home
 
 # run db backup script before doing anything
 /home/scripts/backup_db.sh
@@ -13,11 +12,11 @@ TMP_RESUBMIT_ALL_VAR=$RESUBMIT_ALL_ON_STARTUP
 export RESUBMIT_ALL_ON_STARTUP=0
 
 # Collect static files and migrate if needed
-"$PY" /home/api/manage.py collectstatic --noinput
-"$PY" /home/api/manage.py makemigrations --noinput
-"$PY" /home/api/manage.py makemigrations api --noinput
-"$PY" /home/api/manage.py migrate --noinput
-"$PY" /home/api/manage.py migrate api --noinput
+uv run python /home/api/manage.py collectstatic --noinput
+uv run python /home/api/manage.py makemigrations --noinput
+uv run python /home/api/manage.py makemigrations api --noinput
+uv run python /home/api/manage.py migrate --noinput
+uv run python /home/api/manage.py migrate api --noinput
 
 # Generates the runtime configuration for the web app and copies it to the static directory for web access
 /home/scripts/nginx-entrypoint.sh
@@ -28,17 +27,17 @@ echo "from django.contrib.auth import get_user_model
 User = get_user_model()
 if not User.objects.filter(username='admin').exists():
     User.objects.create_superuser('admin', 'admin@example.com', 'admin')
-" | (cd /home/api && "$PY" manage.py shell)
+" | (cd /home/api && uv run python manage.py shell)
 
 if [ $LOAD_EXAMPLES ]; then
   echo "Loading examples..."
-  "$PY" /home/scripts/load_examples.py >> /dev/stdout 2>> /dev/stderr &
+  uv run python /home/scripts/load_examples.py >> /dev/stdout 2>> /dev/stderr &
 fi
 
 # Creating a default user group that can manage projects and annotate but not delete
-(cd /home/api && "$PY" manage.py shell < /home/scripts/create_group.py)
+(cd /home/api && uv run python manage.py shell < /home/scripts/create_group.py)
 
 # RESET any Env vars to original stat
 export RESUBMIT_ALL_ON_STARTUP=$TMP_RESUBMIT_ALL_VAR
 
-exec "$UWSGI" --http-timeout 360s --http :8000 --master --chdir /home/api/  --module core.wsgi
+exec uv run uwsgi --http-timeout 360s --http :8000 --master --chdir /home/api/  --module core.wsgi
