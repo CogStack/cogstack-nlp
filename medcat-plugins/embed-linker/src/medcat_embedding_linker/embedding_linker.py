@@ -13,18 +13,12 @@ import logging
 import math
 import numpy as np
 
-from medcat.utils.import_utils import ensure_optional_extras_installed
-import medcat
+from medcat_embedding_linker.config import EmbeddingLinking
 
-# NOTE: the below needs to be before torch/transformers imports
-_EXTRA_NAME = "embed-linker"
-ensure_optional_extras_installed(medcat.__name__, _EXTRA_NAME)
-
-# avoid linting issues due to above check
-from torch import Tensor  # noqa: E402
-from transformers import AutoTokenizer, AutoModel  # noqa: E402
-import torch.nn.functional as F  # noqa: E402
-import torch  # noqa: E402
+from torch import Tensor
+from transformers import AutoTokenizer, AutoModel
+import torch.nn.functional as F
+import torch
 
 logger = logging.getLogger(__name__)
 
