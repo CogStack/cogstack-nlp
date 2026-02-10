@@ -142,6 +142,7 @@ include = ["medcat*"]
 
 [tool.setuptools.package-data]
 "medcat.plugins.data" = ["plugin_catalog.json"]
+"medcat" = ["py.typed"]
 
 [tool.setuptools_scm]
 # look for .git folder in root of repo
