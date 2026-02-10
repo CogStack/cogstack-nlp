@@ -1,4 +1,4 @@
-from medcat.components.linking import embedding_linker
+from medcat_embedding_linker import embedding_linker
 from medcat.components import types
 from medcat.config import Config
 from medcat.data.entities import Entity
@@ -83,6 +83,10 @@ class EmbeddingModelDisambiguationTests(unittest.TestCase):
         linker: embedding_linker.Linker = cls.model.pipe.get_component(
             types.CoreComponentType.linking)
         linker.create_embeddings()
+        cls.linker = linker
+
+    def test_is_correct_linker(self):
+        self.assertIsInstance(self.linker, embedding_linker.Linker)
 
     def assert_has_name(self, out_ents: dict[int, Entity], name: str):
         self.assertTrue(
