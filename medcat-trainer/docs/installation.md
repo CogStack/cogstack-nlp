@@ -39,7 +39,7 @@ $ uv sync --no-install-project
 $ uv run python api/manage.py runserver
 ```
 
-To add or update dependencies, edit `pyproject.toml` and run `uv lock`; commit `uv.lock` for reproducible Docker builds.
+To add or update dependencies,  `uv add && uvlock`; commit `uv.lock` for reproducible Docker builds.
 
 To change environment variables, such as the exposed host ports and language of spaCy model, use:
 ```shell
