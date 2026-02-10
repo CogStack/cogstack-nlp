@@ -11,6 +11,9 @@ on:
       - 'medcat-plugins/medcat-gliner/**'
       - '.github/workflows/medcat-gliner**'
 
+permissions:
+  id-token: write
+
 defaults:
   run:
     working-directory: ./medcat-plugins/medcat-gliner
