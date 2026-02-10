@@ -35,7 +35,7 @@ RUN pip install uv \
     && uv sync --frozen --no-install-project
 
 # Ensure venv has pip (uv venvs don't include it; spacy download needs it)
-RUN .venv/bin/python -m ensurepip --upgrade
+RUN uv run python -m ensurepip --upgrade
 
 # Download spaCy models (only requires spaCy, not application code)
 ARG SPACY_MODELS="en_core_web_md"
