@@ -214,9 +214,6 @@ _DEFAULT_LINKING: dict[str, tuple[str, str]] = {
     "medcat2_two_step_linker": (
         "medcat.components.linking.two_step_context_based_linker",
         "TwoStepLinker.create_new_component"),
-    "medcat2_embedding_linker": (
-        "medcat.components.linking.embedding_linker",
-        "Linker.create_new_component"),
     # primary name only
     "primary_name_only_linker": (
         "medcat.components.linking.only_primary_name_linker",
