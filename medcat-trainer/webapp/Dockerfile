@@ -39,7 +39,7 @@ RUN uv run python -m ensurepip --upgrade
 
 # Download spaCy models (only requires spaCy, not application code)
 ARG SPACY_MODELS="en_core_web_md"
-RUN for SPACY_MODEL in ${SPACY_MODELS}; do .venv/bin/python -m spacy download ${SPACY_MODEL}; done
+RUN for SPACY_MODEL in ${SPACY_MODELS}; do uv run python -m spacy download ${SPACY_MODEL}; done
 
 # Copy rest of project
 WORKDIR /home
