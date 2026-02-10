@@ -1,5 +1,5 @@
 [project]
-name = "medcat_embed_linker"
+name = "medcat-embedding-linker"
 
 dynamic = ["version"]
 
