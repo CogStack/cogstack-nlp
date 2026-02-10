@@ -62,15 +62,15 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install --upgrade build
-
       - name: Set timestamp-based dev version
         run: |
           TS=$(date -u +"%Y%m%d%H%M%S")
           echo "SETUPTOOLS_SCM_PRETEND_VERSION_FOR_MEDCAT_GLINER=0.2.2.dev${TS}" >> $GITHUB_ENV
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --upgrade build
 
       - name: Install package in development mode
         run: |
