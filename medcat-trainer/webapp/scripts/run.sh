@@ -1,6 +1,10 @@
 #!/bin/sh
 echo "Starting medcat trainer"
 
+# Use venv where uv installed dependencies (explicit path — do not rely on PATH)
+PY=/home/.venv/bin/python
+UWSGI=/home/.venv/bin/uwsgi
+
 # run db backup script before doing anything
 /home/scripts/backup_db.sh
 
@@ -9,11 +13,11 @@ TMP_RESUBMIT_ALL_VAR=$RESUBMIT_ALL_ON_STARTUP
 export RESUBMIT_ALL_ON_STARTUP=0
 
 # Collect static files and migrate if needed
-python /home/api/manage.py collectstatic --noinput
-python /home/api/manage.py makemigrations --noinput
-python /home/api/manage.py makemigrations api --noinput
-python /home/api/manage.py migrate --noinput
-python /home/api/manage.py migrate api --noinput
+"$PY" /home/api/manage.py collectstatic --noinput
+"$PY" /home/api/manage.py makemigrations --noinput
+"$PY" /home/api/manage.py makemigrations api --noinput
+"$PY" /home/api/manage.py migrate --noinput
+"$PY" /home/api/manage.py migrate api --noinput
 
 # Generates the runtime configuration for the web app and copies it to the static directory for web access
 /home/scripts/nginx-entrypoint.sh
@@ -24,17 +28,17 @@ echo "from django.contrib.auth import get_user_model
 User = get_user_model()
 if not User.objects.filter(username='admin').exists():
     User.objects.create_superuser('admin', 'admin@example.com', 'admin')
-" | python manage.py shell
+" | (cd /home/api && "$PY" manage.py shell)
 
-if [ $LOAD_EXAMPLES ]; then 
+if [ $LOAD_EXAMPLES ]; then
   echo "Loading examples..."
-  python /home/scripts/load_examples.py >> /dev/stdout 2>> /dev/stderr &
+  "$PY" /home/scripts/load_examples.py >> /dev/stdout 2>> /dev/stderr &
 fi
 
 # Creating a default user group that can manage projects and annotate but not delete
-python manage.py shell < /home/scripts/create_group.py
+(cd /home/api && "$PY" manage.py shell < /home/scripts/create_group.py)
 
 # RESET any Env vars to original stat
 export RESUBMIT_ALL_ON_STARTUP=$TMP_RESUBMIT_ALL_VAR
 
-uwsgi --http-timeout 360s --http :8000 --master --chdir /home/api/  --module core.wsgi
+exec "$UWSGI" --http-timeout 360s --http :8000 --master --chdir /home/api/  --module core.wsgi

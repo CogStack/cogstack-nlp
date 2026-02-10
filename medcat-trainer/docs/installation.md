@@ -31,6 +31,16 @@ The above commands runs the latest release of MedCATtrainer, if you'd prefer to 
 $ docker-compose -f docker-compose-dev.yml up
 ```
 
+The webapp Python dependencies are managed with **uv** and **pyproject.toml** (see `medcat-trainer/webapp/pyproject.toml`). To install locally for development:
+
+```shell
+$ cd medcat-trainer/webapp
+$ uv sync --no-install-project
+$ uv run python api/manage.py runserver
+```
+
+To add or update dependencies, edit `pyproject.toml` and run `uv lock`; commit `uv.lock` for reproducible Docker builds.
+
 To change environment variables, such as the exposed host ports and language of spaCy model, use:
 ```shell
 $ cp .env-example .env
@@ -108,11 +118,11 @@ Currently, there are two roles that can be assigned to users:
 
 
 ### (Optional) Postgres Database Support
-MedCAT trainer defaults to a local SQLite database, which is suitable for single-user or small-scale setups.  
+MedCAT trainer defaults to a local SQLite database, which is suitable for single-user or small-scale setups.
 
 For larger deployments, or to support multiple replicas of the app for example in Kubernetes, you may want to run a postgresql database.
 
-You can optionally use a postgresql database instead by setting the following env variables. 
+You can optionally use a postgresql database instead by setting the following env variables.
 
 |Parameter|Description|
 |---------|-----------|

@@ -1,0 +1,26 @@
+[project]
+name = "medcattrainer-webapp"
+version = "1.0.0"
+description = "MedCATtrainer Django web application"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+dependencies = [
+    "scipy>=1.7.0,<1.14; python_version < '3.13'", # pin for py<3.13 so macOS arm64 gets pre-built wheels
+    "uwsgi>=2.0,<3",
+    "Django>=5.2,<6",
+    "django-filter>=25.2",
+    "django-polymorphic>=4.0,<5",                  # 4.x uses importlib.metadata, no pkg_resources
+    "djangorestframework>=3.16,<4",
+    "django-background-tasks-updated>=1.2",
+    "openpyxl>=3.1",
+    "medcat[meta-cat,spacy,rel-cat,deid]>=2.3",
+    "psycopg[binary,pool]>=3.2",
+    "cryptography>=45",
+    "drf-oidc-auth>=3.0",
+    "django-health-check>=3.22",
+    "requests>=2.31",
+]
+
+[tool.uv]
+extra-index-url = ["https://download.pytorch.org/whl/cpu/"]
+index-strategy = "unsafe-best-match"
