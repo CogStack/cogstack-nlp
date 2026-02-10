@@ -55,7 +55,7 @@ class EmbeddingLinkerInitTests(ComponentInitTests, unittest.TestCase):
     def test_has_default(self):
         avail_components = types.get_registered_components(self.comp_type)
         registered_names = [name for name, _ in avail_components]
-        self.assertIn("medcat2_embedding_linker", registered_names)
+        self.assertIn("embedding_linker", registered_names)
 
 class NonTrainableEmbeddingLinkerTests(unittest.TestCase):
     cnf = Config()
