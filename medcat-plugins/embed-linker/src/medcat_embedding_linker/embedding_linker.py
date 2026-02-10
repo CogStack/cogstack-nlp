@@ -1,5 +1,5 @@
 from medcat.cdb import CDB
-from medcat.config.config import Config, ComponentConfig, EmbeddingLinking
+from medcat.config.config import Config, ComponentConfig
 from medcat.components.types import CoreComponentType
 from medcat.components.types import AbstractEntityProvidingComponent
 from medcat.tokenizing.tokens import MutableEntity, MutableDocument
