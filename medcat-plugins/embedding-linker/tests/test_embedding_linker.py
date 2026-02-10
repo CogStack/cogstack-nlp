@@ -37,7 +37,7 @@ class FakeCDB:
 class EmbeddingLinkerInitTests(ComponentInitTests, unittest.TestCase):
     expected_def_components = len(DEF_LINKING)
     comp_type = types.CoreComponentType.linking
-    default = 'medcat2_embedding_linker'
+    default = 'embedding_linker'
     default_cls = embedding_linker.Linker
     default_creator = embedding_linker.Linker.create_new_component
     module = embedding_linker
