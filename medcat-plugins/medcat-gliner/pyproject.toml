@@ -49,7 +49,7 @@ Issues = "https://github.com/CogStack/medcat-ops/issues"
 
 [tool.setuptools_scm]
 root = "../.."
-tag_regex = "^medcat-gliner/v(?P<version>[0-9]+(?:\\.[0-9]+)*)$"
+tag_regex = "^medcat-gliner/v(?P<version>\\d+(?:\\.\\d+)*)(?:[ab]\\d+|rc\\d+)?$"
 version_scheme = "post-release"
 local_scheme = "no-local-version"
 git_describe_command = "git describe --dirty --tags --long --match 'medcat-gliner/v*'"
