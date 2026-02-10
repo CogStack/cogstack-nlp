@@ -31,6 +31,13 @@ jobs:
         uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
+
+      - name: Temp output for tags / build issues
+        run: |
+          echo "TAGS / grep"
+          git tag | grep medcat-gliner
+          echo "Tags / describe"
+          git describe --dirty --tags --long --match 'medcat-gliner/v*'
       - name: Install dependencies
         run: |
           df -h # check spaces before
