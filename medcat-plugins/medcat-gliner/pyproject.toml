@@ -28,7 +28,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "medcat>=2.0",
+    "medcat>=2.5",
     "gliner",
 ]
 
