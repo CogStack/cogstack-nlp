@@ -8,9 +8,9 @@ from medcat.cdb.concepts import CUIInfo, NameInfo
 from medcat.components.types import TrainableComponent
 from medcat.components.types import _DEFAULT_LINKING as DEF_LINKING
 import unittest
-from ..helper import ComponentInitTests
+from .helper import ComponentInitTests
 
-from ... import UNPACKED_EXAMPLE_MODEL_PACK_PATH
+from . import UNPACKED_EXAMPLE_MODEL_PACK_PATH
 
 class FakeDocument:
     linked_ents = []
