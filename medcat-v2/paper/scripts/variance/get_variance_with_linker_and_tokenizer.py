@@ -96,6 +96,7 @@ def capture_output():
     rec: str | None = None
     f1: str | None = None
     time_taken: str | None = None
+    ent_throughput: str | None = None
     for line in lines:
         if m := re.match(r"\s+Linker:\s*(.*)", line):
             linker = m.group(1)
@@ -108,15 +109,18 @@ def capture_output():
         elif m := re.search(
                 r"Took ([\d.]+)", line):
             time_taken = m.group(1)
-        if None not in (linker, tokenizer, prec, rec, f1, time_taken):
+        elif m:= re.search(
+                r"Throughput rate (\d+\.\d+)", line):
+            ent_throughput = m.group(1)
+        if None not in (linker, tokenizer, prec, rec, f1, time_taken, ent_throughput):
             # break early if all found
             break
-    if None in (linker, tokenizer, prec, rec, f1, time_taken):
+    if None in (linker, tokenizer, prec, rec, f1, time_taken, ent_throughput):
         raise ValueError(
-            "Unable to find linker, tokenizer, precision, recall, f1, "
+            "Unable to find linker, tokenizer, precision, recall, f1, ent_throughput"
             "or time taken. Got "
-            f"{linker}, {tokenizer}, {prec}, {rec}, {f1} {time_taken}")
-    out_list.extend([linker, tokenizer, prec, rec, f1, time_taken])
+            f"{linker}, {tokenizer}, {prec}, {rec}, {f1}, {time_taken}, {ent_throughput}")
+    out_list.extend([linker, tokenizer, prec, rec, f1, time_taken, ent_throughput])
 
 
 def main(
@@ -177,11 +181,14 @@ def _main(
         print("PROFILING")
         profile = Profile()
         profile.enable()
-    get_stats(cat, data, use_project_filters=True)
+    fps, _, tps, *_ = get_stats(cat, data, use_project_filters=True)
     if DO_PROFILING:
         profile.disable()
     end = time.perf_counter()
-    print("Took", end - start)
+    time_taken = end - start
+    print("Took", time_taken)
+    ents_found = sum(fps.values()) + sum(tps.values())
+    print("Throughput rate", ents_found / time_taken)
     if DO_PROFILING:
         print("Profile stats (CUMtime)")
         stats = Stats(profile)

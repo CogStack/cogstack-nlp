@@ -2,7 +2,7 @@ SCRIPT="scripts/variance/get_variance_with_linker_and_tokenizer.py"
 MODEL_PATH="../.temp/CONVERT_2023_model_no_mc_234dda1597f635e3.zip"
 
 # HEADER
-echo "Dataset,linker,tokenizer,prec,rec,f1,runtime"
+echo "Dataset,linker,tokenizer,prec,rec,f1,runtime,throughput"
 
 #"==COMETA=="
 DATASET="data/supervised/cometa/mct_export.json"
