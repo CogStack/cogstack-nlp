@@ -178,10 +178,6 @@ cat.config.components.linking.filters.cuis_exclude = {"C0000001"}
 - Training mode is not applicable (logs warning if enabled)
 - Requires pre-computed embeddings before inference
 
-## License
-
-[Your license here]
-
 ## Citation
 
 If you use this plugin, please cite MedCAT:
