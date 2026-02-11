@@ -117,4 +117,4 @@ jobs:
       - name: Publish production distribution to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          packages_dir: medcat-plugins/medcat-embedding-linker/dist
+          packages_dir: medcat-plugins/embedding-linker/dist
