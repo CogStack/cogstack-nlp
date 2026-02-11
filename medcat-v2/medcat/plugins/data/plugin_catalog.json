@@ -8,8 +8,7 @@
             "description": "Gliner based NER for MedCAT",
             "source_spec": {
                 "source": "medcat-gliner",
-                "source_type": "pypi",
-                "subdirectory": "medcat-gliner"
+                "source_type": "pypi"
             },
             "homepage": "https://github.com/CogStack/cogstack-ops/tree/main/medcat-gliner",
             "compatibility": [
