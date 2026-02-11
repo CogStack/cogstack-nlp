@@ -19,7 +19,7 @@ permissions:
 defaults:
   run:
     working-directory: ./medcat-plugins/medcat-gliner
-if: startsWith(github.ref, 'refs/tags/')
+
 jobs:
   tests:
 
