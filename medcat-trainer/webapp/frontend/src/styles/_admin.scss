@@ -1,0 +1,1043 @@
+// Shared admin component styles
+@import './variables.scss';
+
+// ============================================
+// Form Container Styles
+// ============================================
+
+.form-section {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 270px);
+  min-height: auto;
+}
+
+.form-header {
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--color-border);
+  background: linear-gradient(135deg, $primary 0%, darken($primary, 10%) 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  border-radius: 12px 12px 0 0;
+
+  .btn-back {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+  }
+
+  h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+}
+
+.form-content {
+  flex: 1;
+  overflow: hidden;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-form {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+
+  .form-sections-wrapper {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 0;
+    padding: 20px;
+    background: #f8f9fa;
+  }
+
+  .form-actions {
+    margin-top: auto;
+    flex-shrink: 0;
+    padding: 20px;
+    border-top: 1px solid var(--color-border);
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    background: var(--color-background-light);
+  }
+}
+
+// ============================================
+// Form and modal action buttons (consistent styling)
+// ============================================
+
+.admin-form .form-actions,
+.project-form .form-actions,
+.confirm-modal .form-actions {
+  .btn {
+    padding: 10px 20px;
+    font-weight: 500;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    min-width: 100px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    font-size: 0.95rem;
+
+    &:hover:not(:disabled) {
+      transform: translateY(-1px);
+    }
+
+    &:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+
+    &.btn-primary {
+      background-color: $primary;
+      color: white;
+      box-shadow: 0 2px 4px rgba(0, 114, 206, 0.2);
+
+      &:hover:not(:disabled) {
+        background-color: darken($primary, 6%);
+        box-shadow: 0 4px 8px rgba(0, 114, 206, 0.3);
+      }
+    }
+
+    &.btn-secondary,
+    &.btn-default {
+      background-color: #f0f0f0;
+      color: #333;
+      border-color: #d0d0d0;
+
+      &:hover:not(:disabled) {
+        background-color: #e5e5e5;
+        border-color: #b0b0b0;
+      }
+    }
+
+    &.btn-danger {
+      background-color: $danger;
+      color: white;
+
+      &:hover:not(:disabled) {
+        background-color: darken($danger, 6%);
+      }
+    }
+
+    &.btn-warning {
+      background-color: $warning;
+      color: white;
+
+      &:hover:not(:disabled) {
+        background-color: darken($warning, 8%);
+      }
+    }
+
+    &.btn-success {
+      background-color: $success;
+      color: white;
+
+      &:hover:not(:disabled) {
+        background-color: darken($success, 6%);
+      }
+    }
+  }
+}
+
+// ============================================
+// Form Section Styles
+// ============================================
+
+.form-section {
+  margin-bottom: 24px;
+  padding: 20px;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  flex-shrink: 0;
+
+  h4 {
+    margin-bottom: 16px;
+    margin-top: 0;
+    color: var(--color-heading);
+    font-size: 1.05rem;
+    font-weight: 600;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #f0f0f0;
+  }
+
+  &.form-section-horizontal {
+    // Only .form-row elements should be horizontal, not the entire section
+    // This allows h4 headers to remain full width (ProjectAdmin pattern)
+    // Components that need the section itself horizontal (like ModelPackForm) can override
+
+    .form-row {
+      display: flex;
+      gap: 20px;
+      align-items: flex-end;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+
+      .form-group {
+        margin-bottom: 0;
+        flex: 1;
+        min-width: 200px;
+      }
+    }
+  }
+}
+
+// ============================================
+// Form Group & Control Styles
+// ============================================
+
+.form-group {
+  margin-bottom: 16px;
+  flex: 1;
+  min-width: 200px;
+
+  label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 500;
+    color: var(--color-heading);
+    font-size: 0.9rem;
+    transition: color 0.2s ease;
+  }
+
+  &:has(.form-control:disabled) label,
+  &:has(input:disabled) label {
+    color: #6c757d;
+    opacity: 0.7;
+  }
+
+  .form-control {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #d0d0d0;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    background: white;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.02);
+
+    &:hover:not(:disabled) {
+      border-color: #b0b0b0;
+    }
+
+    &:focus:not(:disabled) {
+      outline: none;
+      border-color: $primary;
+      box-shadow: 0 0 0 3px rgba(0, 114, 206, 0.1), inset 0 1px 2px rgba(0, 0, 0, 0.02);
+    }
+
+    &:disabled {
+      background-color: #f5f5f5;
+      border-color: #d0d0d0;
+      color: #6c757d;
+      opacity: 0.6;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    &::placeholder {
+      color: #999;
+      opacity: 0.7;
+    }
+
+    // Validation error state
+    &.is-invalid {
+      border-color: $danger;
+      box-shadow: 0 0 0 3px rgba(218, 41, 28, 0.1), inset 0 1px 2px rgba(0, 0, 0, 0.02);
+
+      &:focus {
+        border-color: $danger;
+        box-shadow: 0 0 0 3px rgba(218, 41, 28, 0.15), inset 0 1px 2px rgba(0, 0, 0, 0.02);
+      }
+    }
+  }
+
+  // Error message styling
+  .form-text.text-danger {
+    color: $danger;
+    font-size: 0.85rem;
+    margin-top: 4px;
+    display: block;
+  }
+
+  // Select dropdown arrow
+  select.form-control {
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 16px 12px;
+    padding-right: 32px;
+  }
+
+  // Textarea specific styles
+  textarea.form-control {
+    resize: vertical;
+    min-height: 80px;
+    font-family: inherit;
+    line-height: 1.5;
+    border-radius: 8px;
+  }
+
+  // Multiple select styles
+  select[multiple].form-control {
+    min-height: 120px;
+    padding: 8px;
+    border-radius: 8px;
+
+    option {
+      padding: 6px 8px;
+    }
+  }
+
+  .form-text {
+    display: block;
+    margin-top: 6px;
+    font-size: 0.85rem;
+    color: var(--color-text);
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+  }
+
+  &:has(.form-control:disabled) .form-text,
+  &:has(input:disabled) .form-text {
+    opacity: 0.5;
+  }
+}
+
+// ============================================
+// File Input Styles
+// ============================================
+
+input[type="file"].form-control,
+.file-input {
+  padding: 8px;
+  cursor: pointer;
+  border: 1px solid #d0d0d0;
+  border-radius: 8px;
+  background: white;
+  display: block;
+  width: 100%;
+  min-height: 38px;
+  transition: all 0.2s ease;
+
+  &:hover:not(:disabled) {
+    border-color: #b0b0b0;
+  }
+
+  &:disabled {
+    background-color: #f5f5f5;
+    border-color: #d0d0d0;
+    color: #6c757d;
+    opacity: 0.6;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  &::file-selector-button {
+    padding: 6px 14px;
+    margin-right: 12px;
+    border: 1px solid #d0d0d0;
+    border-radius: 6px;
+    background: #f8f9fa;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.85rem;
+    display: inline-block;
+    visibility: visible;
+    opacity: 1;
+
+    &:hover {
+      background: #e9ecef;
+      border-color: #b0b0b0;
+    }
+  }
+
+  &:disabled::file-selector-button {
+    background: #e9ecef;
+    border-color: #d0d0d0;
+    color: #6c757d;
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+// ============================================
+// Checkbox Styles
+// ============================================
+
+.checkbox-group {
+  margin-bottom: 16px;
+
+  .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    padding: 8px 0;
+    transition: all 0.2s ease;
+    margin-bottom: 0;
+    min-height: 36px;
+
+    &:hover {
+      opacity: 0.8;
+    }
+
+    .checkbox-input {
+      margin: 0;
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+      accent-color: $primary;
+      flex-shrink: 0;
+      border: 1px solid #d0d0d0;
+      border-radius: 3px;
+    }
+
+    .checkbox-text {
+      flex: 1;
+      font-weight: 400;
+      color: var(--color-text);
+      font-size: 0.9rem;
+      line-height: 1.4;
+    }
+  }
+}
+
+.checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 8px;
+}
+
+// ============================================
+// List Section Styles
+// ============================================
+
+.list-section {
+  .section-header {
+    margin-bottom: 20px;
+
+    h3 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--color-heading);
+      margin: 0;
+    }
+
+    .item-count {
+      font-weight: 400;
+      color: var(--color-text-secondary);
+      font-size: 1rem;
+    }
+  }
+
+  .table-container {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+  }
+
+  .action-buttons {
+    display: flex;
+    gap: 6px;
+    justify-content: flex-start;
+
+    .btn-action {
+      padding: 4px 8px;
+      border-radius: 4px;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 32px;
+      height: 32px;
+      font-size: 0.85rem;
+      border: 1px solid transparent;
+
+      &:hover {
+        transform: translateY(-1px);
+      }
+
+      &.btn-clone {
+        color: $success;
+        border-color: $success;
+
+        &:hover {
+          background-color: $success;
+          color: white;
+        }
+      }
+
+      &.btn-reset {
+        color: $warning;
+        border-color: $warning;
+
+        &:hover {
+          background-color: $warning;
+          color: white;
+        }
+      }
+
+      &.btn-delete {
+        color: $danger;
+        border-color: $danger;
+
+        &:hover {
+          background-color: $danger;
+          color: white;
+        }
+      }
+
+      // Fallback for text-only action buttons (simpler style)
+      &:not(.btn-clone):not(.btn-reset):not(.btn-delete) {
+        border: none;
+        background: transparent;
+
+        &:hover {
+          background: rgba(0, 0, 0, 0.05);
+        }
+
+        &.btn-edit {
+          color: #0d6efd;
+        }
+      }
+    }
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+}
+
+// Action buttons styles - apply to all list sections
+.list-section .action-buttons,
+.project-list-section .action-buttons,
+.action-buttons {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-start;
+
+  .btn-action {
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 32px;
+    font-size: 0.85rem;
+    border: 1px solid transparent;
+
+    &:hover {
+      transform: translateY(-1px);
+    }
+
+    &.btn-clone {
+      color: $success;
+      border-color: $success;
+
+      &:hover {
+        background-color: $success;
+        color: white;
+      }
+    }
+
+    &.btn-reset {
+      color: $warning;
+      border-color: $warning;
+
+      &:hover {
+        background-color: $warning;
+        color: white;
+      }
+    }
+
+    &.btn-delete {
+      color: $danger;
+      border-color: $danger;
+
+      &:hover {
+        background-color: $danger;
+        color: white;
+      }
+    }
+
+    // Fallback for text-only action buttons (simpler style)
+    &:not(.btn-clone):not(.btn-reset):not(.btn-delete) {
+      border: none;
+      background: transparent;
+
+      &:hover {
+        background: rgba(0, 0, 0, 0.05);
+      }
+
+      &.btn-edit {
+        color: #0d6efd;
+      }
+    }
+  }
+}
+
+// Legacy support - keep old empty-state reference
+.list-section {
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+
+    h4 {
+      font-size: 1.25rem;
+      color: var(--color-heading);
+      margin-bottom: 8px;
+    }
+
+    p {
+      color: var(--color-text-secondary);
+      margin-bottom: 20px;
+    }
+
+    .btn-create-empty {
+      margin-top: 10px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      font-weight: 500;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 4px rgba(0, 114, 206, 0.2);
+
+      &:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 114, 206, 0.3);
+      }
+    }
+  }
+}
+
+// ============================================
+// Admin Tab Navigation (reusable across admin views)
+// ============================================
+
+.admin-tabs {
+  display: flex;
+  gap: 8px;
+  margin: 20px 0;
+  border-bottom: 2px solid var(--color-border);
+  padding-bottom: 0;
+  flex-shrink: 0;
+}
+
+.project-admin-content,
+.admin-tab-content {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+
+  .tab-content {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+.tab-button {
+  padding: 12px 24px;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  margin-bottom: -2px;
+
+  &:hover {
+    color: var(--color-primary);
+    background: rgba(0, 0, 0, 0.02);
+  }
+
+  &.active {
+    color: var(--color-primary);
+    border-bottom-color: var(--color-primary);
+    font-weight: 600;
+  }
+
+  svg {
+    font-size: 1rem;
+  }
+}
+
+// ============================================
+// Badge Styles (reusable across admin)
+// ============================================
+
+.badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+
+  &.badge-primary {
+    background-color: rgba(0, 114, 206, 0.1);
+    color: $primary;
+    border: 1px solid rgba(0, 114, 206, 0.2);
+  }
+
+  &.badge-success {
+    background-color: rgba(0, 150, 57, 0.1);
+    color: $success;
+    border: 1px solid rgba(0, 150, 57, 0.2);
+  }
+
+  &.badge-danger {
+    background-color: rgba(218, 41, 28, 0.1);
+    color: $danger;
+    border: 1px solid rgba(218, 41, 28, 0.2);
+  }
+
+  &.badge-secondary {
+    background-color: rgba(108, 117, 125, 0.1);
+    color: #6c757d;
+    border: 1px solid rgba(108, 117, 125, 0.2);
+  }
+}
+
+// Standalone empty state (e.g. for project list when no projects)
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+
+  h4 {
+    font-size: 1.25rem;
+    color: var(--color-heading);
+    margin-bottom: 8px;
+  }
+
+  p {
+    color: var(--color-text-secondary);
+    margin-bottom: 20px;
+  }
+}
+
+// ============================================
+// Loading Container (reusable across admin)
+// ============================================
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 80px 40px;
+  min-height: 400px;
+
+  .loading-text {
+    color: var(--color-text);
+    font-size: 1.1rem;
+    opacity: 0.8;
+  }
+}
+
+// ============================================
+// Schema Guide (reusable for file upload forms)
+// ============================================
+
+.schema-guide {
+  margin-top: 12px;
+  padding: 16px;
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+
+  .form-text {
+    margin-top: 0;
+    margin-bottom: 8px;
+    font-weight: 500;
+    opacity: 1;
+    color: var(--color-heading);
+  }
+
+  .schema-list {
+    margin: 8px 0 12px 0;
+    padding-left: 20px;
+    color: var(--color-text);
+    font-size: 0.9rem;
+    line-height: 1.6;
+
+    li {
+      margin-bottom: 6px;
+
+      code {
+        background: #e9ecef;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 0.85em;
+        color: #d63384;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      }
+
+      ul {
+        margin-top: 4px;
+        margin-bottom: 4px;
+        padding-left: 20px;
+      }
+    }
+  }
+
+  .example-text {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #e0e0e0;
+    display: block;
+    font-size: 0.85rem;
+    line-height: 1.8;
+
+    code {
+      display: block;
+      background: #f1f3f5;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 0.85em;
+      color: #495057;
+      margin-top: 4px;
+      white-space: pre;
+      overflow-x: auto;
+    }
+  }
+}
+
+// ============================================
+// Confirm Modal (reusable confirmation dialogs)
+// ============================================
+
+.confirm-modal {
+  :deep(.modal-container) {
+    width: 500px;
+    border-radius: 8px;
+  }
+
+  :deep(.modal-header) {
+    padding: 20px 24px;
+    margin: 0;
+    border-bottom: 1px solid var(--color-border);
+
+    h3 {
+      color: var(--color-heading);
+      margin: 0;
+    }
+  }
+
+  :deep(.modal-body) {
+    padding: 24px;
+  }
+
+  .confirm-content {
+    .project-name-highlight {
+      color: $primary;
+      font-weight: 600;
+    }
+
+    .warning-text {
+      padding: 12px;
+      background-color: rgba(218, 41, 28, 0.1);
+      border-left: 3px solid $danger;
+      border-radius: 4px;
+      margin: 16px 0;
+    }
+
+    .text-warning {
+      padding: 12px;
+      background-color: rgba(118, 134, 146, 0.1);
+      border-left: 3px solid $warning;
+      border-radius: 4px;
+      margin: 16px 0;
+    }
+  }
+
+  .form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 24px;
+  }
+}
+
+// ============================================
+// Concept UI Filter Styles (reusable filtering components)
+// ============================================
+
+.cui-filter-controls {
+  margin: 0 0 16px 0;
+  padding: 12px;
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.cui-filter-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 0.9rem;
+  cursor: pointer;
+  font-weight: 400;
+  color: var(--color-text);
+
+  input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: $primary;
+    border: 1px solid #d0d0d0;
+  }
+}
+
+.cui-filter-paste-toggle {
+  padding: 4px 8px;
+  font-size: 0.85rem;
+  border: 1px solid #d0d0d0;
+  border-radius: 6px;
+  background: white;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: #f0f0f0;
+    border-color: #b0b0b0;
+  }
+}
+
+.cui-filter-row {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  margin: 0 0 16px 0;
+}
+
+.cui-filter-picker {
+  flex: 0 0 50%;
+  max-width: 50%;
+  padding: 12px;
+  background: #fafafa;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+}
+
+.cui-file-picker {
+  flex: 0 0 calc(50% - 20px);
+  max-width: calc(50% - 20px);
+  padding: 12px;
+  background: #fafafa;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+
+  label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 500;
+    color: var(--color-heading);
+    font-size: 0.9rem;
+  }
+
+  .form-control {
+    border: 1px solid #d0d0d0;
+  }
+}
+
+.cui-pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0 10px 0;
+}
+
+.cui-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  background: rgba(13, 110, 253, 0.08);
+  color: #0b5ed7;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+.cui-pill-text {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.cui-pill-remove {
+  border: none;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+
+  &:hover {
+    opacity: 1;
+  }
+}

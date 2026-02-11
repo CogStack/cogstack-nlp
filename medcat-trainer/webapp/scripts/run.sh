@@ -18,12 +18,16 @@ python /home/api/manage.py migrate api --noinput
 # Generates the runtime configuration for the web app and copies it to the static directory for web access
 /home/scripts/nginx-entrypoint.sh
 
-# create a new super user, with username and password 'admin'
+# create a new super user, with configurable username, email, and password via env vars
 # also create a user group `user_group` that prevents users from deleting models
-echo "from django.contrib.auth import get_user_model
+echo "import os
+from django.contrib.auth import get_user_model
 User = get_user_model()
-if not User.objects.filter(username='admin').exists():
-    User.objects.create_superuser('admin', 'admin@example.com', 'admin')
+admin_username = os.getenv('MCTRAINER_BOOTSTRAP_ADMIN_USERNAME') or 'admin'
+admin_email = os.getenv('MCTRAINER_BOOTSTRAP_ADMIN_EMAIL') or 'admin@example.com'
+admin_password = os.getenv('MCTRAINER_BOOTSTRAP_ADMIN_PASSWORD') or 'admin'
+if not User.objects.filter(username=admin_username).exists():
+    User.objects.create_superuser(admin_username, admin_email, admin_password)
 " | python manage.py shell
 
 if [ $LOAD_EXAMPLES ]; then 

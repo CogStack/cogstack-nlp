@@ -60,18 +60,27 @@ export default {
     return {
       selectedCUI: null,
       searchResults: [],
-      loadingResults: false
+      loadingResults: false,
+      error: null
     }
   },
   watch: {
     'selectedCUI' (newVal) {
       this.$emit('pickedResult:concept', newVal)
     },
-    'selection': 'selectionChange'
+    'selection' (newVal) {
+      if (newVal) {
+        this.selectedCUI = this.searchResults.find(r => r.cui === newVal) || null
+        if (this.selectedCUI) {
+          this.searchCUI(newVal)
+        }
+      }
+    }
   },
   methods: {
     searchCUI: _.debounce(function (term) {
       this.loadingResults = true
+      this.error = null
 
       if (!term || term.trim().length === 0) {
         this.loadingResults = false

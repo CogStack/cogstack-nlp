@@ -18,7 +18,17 @@ export default defineConfig({
   },
   build: {
     sourcemap: true,
-    assetsDir: 'static'
+    assetsDir: 'static',
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vue-vendor': ['vue', 'vue-router'],
+          'vuetify-vendor': ['vuetify'],
+          'plotly-vendor': ['plotly.js-dist']
+        }
+      }
+    }
   },
   server: {
     host: '127.0.0.1',

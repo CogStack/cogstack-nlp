@@ -1,0 +1,23 @@
+Demo app for the deidentification of private health information using the CogStack AnonCAT model
+
+Please DO NOT test with any real sensitive PHI data.
+
+Local validation and fine-tuning available via [MedCATtrainer](
+https://github.com/CogStack/cogstack-nlp/tree/main/medcat-trainer).
+Email us, [contact@cogstack.org](mailto:contact@cogstack.org), to discuss model access,
+model performance, and your use case.
+
+The following PHI items have been trained:
+
+| PHI Item | Description |
+|----------|-------------|
+| NHS Number | UK National Health Service Numbers. |
+| Name | All names, first, middle, last of patients, relatives, care providers etc. Importantly, does not redact conditions that are named after a name, e.g. "Parkinsons's disease". |
+| Date of Birth | DOBs. Does not include other dates that may be in the record, i.e. dates of visit etc. |
+| Hospital Number | A unique number provided by the hospital. Distinct from the NHS number |
+| Address Line | Address lines - first, second, third or fourth |
+| Postcode | UK postal codes - 6 or 7 alphanumeric codes as part of addresses |
+| Telephone Number | Telephone numbers, extensions, mobile / cell phone numbers |
+| Email | Email addresses |
+| Initials | Patient, relatives, care provider name initials. |
+

@@ -136,12 +136,14 @@ class MedCatProcessor:
         yield entities
 
     @tracer.start_as_current_span("process_content")
-    def process_content(self, content, *args, **kwargs):
+    def process_content(self, content, *args, redact=None, **kwargs):
         """Processes a single document extracting the annotations.
 
         Args:
             content (dict): Document to be processed, containing "text" field.
             *args: Variable length argument list.
+            redact (bool, optional): Whether to redact entities. If not provided, uses
+                self.service_settings.deid_redact.
             **kwargs: Arbitrary keyword arguments.
                 meta_anns_filters (List[Tuple[str, List[str]]]): List of task and filter values pairs to filter
                     entities by. Example: meta_anns_filters = [("Presence", ["True"]),
@@ -171,7 +173,8 @@ class MedCatProcessor:
 
         if self.service_settings.deid_mode and isinstance(self.cat, DeIdModel):
             with tracer.start_as_current_span("cat.deid_text"):
-                text, entities = self.cat.deid_text_with_entities(text, redact=self.service_settings.deid_redact)
+                redact_value = redact if redact is not None else self.service_settings.deid_redact
+                text, entities = self.cat.deid_text_with_entities(text, redact=redact_value)
         else:
             if text is not None and len(text.strip()) > 0:
                 with tracer.start_as_current_span("cat.get_entities"):

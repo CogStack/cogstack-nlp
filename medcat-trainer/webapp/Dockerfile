@@ -32,7 +32,7 @@ RUN npm install
 WORKDIR /home
 COPY requirements.txt ./
 RUN pip install pip --upgrade 
-RUN pip install --upgrade setuptools
+RUN pip install "setuptools>=81.0.0,<82"
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Download spaCy models (only requires spaCy, not application code)

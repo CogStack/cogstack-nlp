@@ -1,6 +1,5 @@
 import logging
 import os
-import traceback
 from smtplib import SMTPException
 from tempfile import NamedTemporaryFile
 from typing import Any
@@ -15,7 +14,7 @@ from django.utils import timezone
 from django_filters import rest_framework as drf
 
 from rest_framework import viewsets
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from medcat.components.ner.trf.deid import DeIdModel
 from medcat.utils.cdb_utils import ch2pt_from_pt2ch, get_all_ch, snomed_ct_concept_path
@@ -31,6 +30,8 @@ from .permissions import *
 from .serializers import *
 from .solr_utils import collections_available, search_collection, ensure_concept_searchable
 from .utils import add_annotations, remove_annotations, train_medcat, create_annotation, prep_docs
+
+logger = logging.getLogger(__name__)
 
 # For local testing, put envs
 """
@@ -201,8 +202,22 @@ class ModelPackViewSet(viewsets.ModelViewSet):
 
 
 class DatasetViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing datasets.
+
+    File Schema Requirements:
+    - Format: .csv or .xlsx file
+    - Required columns:
+      * name: A unique identifier for each document
+      * text: The free-text content to annotate
+
+    Example CSV:
+    name,text
+    doc001,"First document text"
+    doc002,"Second document text"
+    """
     permission_classes = [permissions.IsAuthenticated]
-    http_method_names = ['get', 'post']
+    http_method_names = ['get', 'post', 'put', 'patch', 'delete']
     queryset = Dataset.objects.all()
     serializer_class = DatasetSerializer
 
@@ -322,10 +337,8 @@ def prepare_documents(request):
 
     except Exception as e:
         logger.warning('Error preparing documents for project %s', p_id, exc_info=e)
-        stack = traceback.format_exc()
         return Response({'message': e.args[0] if len(e.args) > 0 else 'Internal Server Error',
-                         'description': e.args[1] if len(e.args) > 1 else '',
-                         'stacktrace': stack}, status=500)
+                         'description': e.args[1] if len(e.args) > 1 else '',}, status=500)
     return Response({'message': 'Documents prepared successfully'})
 
 
@@ -372,7 +385,7 @@ def prepare_docs_bg_task(request, proj_id):
             ds_total_count = Document.objects.filter(dataset=ProjectAnnotateEntities.objects.get(id=proj_id).dataset.id).count()
             return Response({'proj_id': proj_id, 'dataset_len': ds_total_count, 'prepd_docs_len': prepd_docs_count})
         except ObjectDoesNotExist:
-            return HttpResponseBadRequest('No Project found for ID: %s', proj_id)
+            return HttpResponseBadRequest('No Project found for the given ID')
     else:
         running_doc_prep_tasks = {json.loads(task.task_params)[0][0]: task.id
                                   for task in Task.objects.filter(queue='doc_prep')}
@@ -536,8 +549,9 @@ def submit_document(request):
 
     try:
         _submit_document(project, document)
-    except Exception as e:
-        HttpResponseServerError(e.message)
+    except Exception:
+        logger.exception("Error while submitting document")
+        return HttpResponseServerError("An internal error occurred while submitting the document.")
 
     return Response({'message': 'Document submited successfully'})
 
@@ -764,7 +778,7 @@ def concept_search_index_available(request):
     except Exception as e:
         logger.error("Failed to search for concept_search_index. Solr Search Service not available", exc_info=e)
         return HttpResponseServerError("Solr Search Service not available check the service is up, running "
-                                       "and configured correctly", e)
+                                       "and configured correctly.")
 
 
 @api_view(http_method_names=['GET'])
@@ -1076,3 +1090,230 @@ def project_progress(request):
         out[p] = {'validated_count': val_docs, 'dataset_count': ds_doc_count}
 
     return Response(out)
+
+
+@api_view(http_method_names=['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def project_admin_projects(request):
+    """
+    Get all projects where the user is a project admin.
+    """
+    user = request.user
+    projects = ProjectAnnotateEntities.objects.filter(members=user.id)
+
+    # Also include projects where user is admin of the project's group
+    group_admin_projects = ProjectAnnotateEntities.objects.filter(
+        group__administrators=user.id
+    )
+    projects = (projects | group_admin_projects).distinct()
+
+    serializer = ProjectAnnotateEntitiesSerializer(projects, many=True)
+    return Response(serializer.data)
+
+
+@api_view(http_method_names=['GET', 'PUT', 'DELETE'])
+@permission_classes([permissions.IsAuthenticated])
+def project_admin_detail(request, project_id):
+    """
+    Get, update, or delete a project (only if user is project admin).
+    """
+    try:
+        project = ProjectAnnotateEntities.objects.get(id=project_id)
+    except ProjectAnnotateEntities.DoesNotExist:
+        return Response({'error': 'Project not found'}, status=404)
+
+    # Check if user is project admin
+    from .permissions import is_project_admin
+    if not is_project_admin(request.user, project):
+        return Response({'error': 'You do not have permission to access this project'}, status=403)
+
+    if request.method == 'GET':
+        serializer = ProjectAnnotateEntitiesSerializer(project)
+        return Response(serializer.data)
+
+    elif request.method == 'PUT':
+        # Handle both JSON and FormData
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+
+        # Extract many-to-many fields - handle both JSON (list) and FormData (getlist)
+        cdb_search_filter_ids = []
+        try:
+            cdb_search_filter_ids = [int(x) for x in request.data['cdb_search_filter'] if x]
+        except (ValueError, TypeError) as e:
+            logger.warning(f"Error parsing cdb_search_filter: {e}")
+            cdb_search_filter_ids = []
+
+        members_ids = []
+        try:
+            members_ids = [int(x) for x in request.data['members'] if x]
+        except (ValueError, TypeError) as e:
+            logger.warning(f"Error parsing members: {e}")
+            members_ids = []
+
+        # Set many-to-many fields to the extracted IDs (or empty list)
+        # This satisfies serializer validation, then we'll set them properly after save
+        data['members'] = members_ids if members_ids else []
+        data['cdb_search_filter'] = cdb_search_filter_ids if cdb_search_filter_ids else []
+
+        # Convert string booleans to actual booleans
+        boolean_fields = ['project_locked', 'annotation_classification', 'require_entity_validation',
+                         'train_model_on_submit', 'add_new_entities', 'restrict_concept_lookup',
+                         'terminate_available', 'irrelevant_available', 'enable_entity_annotation_comments',
+                         'use_model_service']
+        for field in boolean_fields:
+            if field in data:
+                if isinstance(data[field], str):
+                    data[field] = data[field].lower() in ('true', '1', 'yes', 'on')
+
+        serializer = ProjectAnnotateEntitiesSerializer(project, data=data, partial=True)
+        if serializer.is_valid():
+            try:
+                project = serializer.save()
+                # Handle many-to-many fields manually after saving
+                project.cdb_search_filter.set(cdb_search_filter_ids)
+                project.members.set(members_ids)
+                return Response(ProjectAnnotateEntitiesSerializer(project).data)
+            except Exception as e:
+                logger.error(f"Error saving project {project_id}: {e}", exc_info=e)
+                return Response({'error': f'Failed to save project'}, status=400)
+        else:
+            logger.warning(f"Validation errors for project {project_id}: {serializer.errors}")
+            return Response(serializer.errors, status=400)
+
+    elif request.method == 'DELETE':
+        project.delete()
+        return Response({'message': 'Project deleted successfully'}, status=200)
+
+
+@api_view(http_method_names=['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def project_admin_create(request):
+    """
+    Create a new project (user must be authenticated).
+    """
+    # Handle both JSON and FormData
+    # Extract many-to-many fields - handle both JSON (list) and FormData (getlist)
+    cdb_search_filter_ids = []
+    try:
+        if isinstance(request.data.get('cdb_search_filter'), list):
+            # JSON request - already a list
+            cdb_search_filter_ids = [int(x) for x in request.data['cdb_search_filter'] if x]
+        elif hasattr(request.data, 'getlist'):
+            # FormData request - use getlist()
+            cdb_filter_list = request.data.getlist('cdb_search_filter')
+            if cdb_filter_list:
+                cdb_search_filter_ids = [int(x) for x in cdb_filter_list if x and str(x).strip()]
+    except (ValueError, TypeError) as e:
+        logger.warning(f"Error parsing cdb_search_filter: {e}")
+        cdb_search_filter_ids = []
+
+    members_ids = []
+    try:
+        if isinstance(request.data.get('members'), list):
+            # JSON request - already a list
+            members_ids = [int(x) for x in request.data['members'] if x]
+        elif hasattr(request.data, 'getlist'):
+            # FormData request - use getlist()
+            members_list = request.data.getlist('members')
+            if members_list:
+                members_ids = [int(x) for x in members_list if x and str(x).strip()]
+    except (ValueError, TypeError) as e:
+        logger.warning(f"Error parsing members: {e}")
+        members_ids = []
+
+    # Build data dict - use the actual member IDs we extracted, or empty list if none
+    # The serializer will validate with these, then we'll set them properly after save
+    if hasattr(request.data, 'copy'):
+        data = request.data.copy()
+    else:
+        data = dict(request.data)
+
+    # Set many-to-many fields to the extracted IDs (or empty list)
+    # This satisfies serializer validation, then we'll set them properly after save
+    data['members'] = members_ids if members_ids else []
+    data['cdb_search_filter'] = cdb_search_filter_ids if cdb_search_filter_ids else []
+
+    serializer = ProjectAnnotateEntitiesSerializer(data=data)
+    if serializer.is_valid():
+        project = serializer.save()
+        # Handle many-to-many fields manually after saving
+        project.cdb_search_filter.set(cdb_search_filter_ids)
+        project.members.set(members_ids)
+        # Add the creator as a member if not already included
+        if request.user not in project.members.all():
+            project.members.add(request.user)
+        return Response(ProjectAnnotateEntitiesSerializer(project).data, status=201)
+    return Response(serializer.errors, status=400)
+
+
+@api_view(http_method_names=['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def project_admin_clone(request, project_id):
+    """
+    Clone a project (user must be authenticated and have permission).
+    """
+    import copy
+    try:
+        project = ProjectAnnotateEntities.objects.get(id=project_id)
+    except ProjectAnnotateEntities.DoesNotExist:
+        return Response({'error': 'Project not found'}, status=404)
+
+    # Check if user is project admin
+    from .permissions import is_project_admin
+    if not is_project_admin(request.user, project):
+        return Response({'error': 'You do not have permission to clone this project'}, status=403)
+
+    try:
+        # Get custom name from request, or use default
+        custom_name = request.data.get('name', None) if hasattr(request.data, 'get') else None
+        if not custom_name:
+            custom_name = f'{project.name} (Clone)'
+
+        # Create a copy of the project
+        project_copy = copy.copy(project)
+        project_copy.id = None
+        project_copy.pk = None
+        project_copy.name = custom_name
+        project_copy.save()
+
+        # Copy many-to-many fields
+        for m in project.members.all():
+            project_copy.members.add(m)
+        for c in project.cdb_search_filter.all():
+            project_copy.cdb_search_filter.add(c)
+        for t in project.tasks.all():
+            project_copy.tasks.add(t)
+
+        project_copy.save()
+        serializer = ProjectAnnotateEntitiesSerializer(project_copy)
+        return Response(serializer.data, status=201)
+    except Exception as e:
+        logger.error(f"Failed to clone project: {e}", exc_info=e)
+        return Response({'error': f'Failed to clone project:'}, status=500)
+
+
+@api_view(http_method_names=['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def project_admin_reset(request, project_id):
+    """
+    Reset a project (clear all annotations) - only if user is project admin.
+    This is equivalent to the reset_project admin action.
+    """
+    try:
+        project = ProjectAnnotateEntities.objects.get(id=project_id)
+    except ProjectAnnotateEntities.DoesNotExist:
+        return Response({'error': 'Project not found'}, status=404)
+
+    # Check if user is project admin
+    from .permissions import is_project_admin
+    if not is_project_admin(request.user, project):
+        return Response({'error': 'You do not have permission to reset this project'}, status=403)
+
+    # Remove all annotations and cascade to meta anns
+    AnnotatedEntity.objects.filter(project=project).delete()
+
+    # Clear validated_documents and prepared_documents
+    project.validated_documents.clear()
+    project.prepared_documents.clear()
+
+    return Response({'message': 'Project reset successfully'}, status=200)

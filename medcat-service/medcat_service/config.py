@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     )
 
     app_root_path: str = Field(
-        default="/",
+        default="",
         description="The Root Path for the FastAPI App",
         examples=["/medcat-service"],
     )
@@ -51,6 +51,9 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("deid_redact", "MEDCAT_DEID_REDACT"),
         description="Enable DEID redaction. Returns text like [***] instead of [ANNOTATION]",
     )
+
+    enable_demo_ui: bool = Field(default=False, description="Enable the demo app", alias="APP_ENABLE_DEMO_UI")
+    demo_ui_path: str = Field(default="", description="Path to the demo app", alias="APP_DEMO_UI_PATH")
 
     # Model paths
     model_cdb_path: str | None = Field("/cat/models/medmen/cdb.dat", alias="APP_MODEL_CDB_PATH")

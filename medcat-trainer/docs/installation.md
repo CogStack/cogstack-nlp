@@ -68,6 +68,9 @@ Environment variables are used to configure the app:
 |EMAIL_PASS|The password or authentication key which will be used with the email address|
 |EMAIL_HOST|The hostname of the SMTP server which will be used to send email (default: mail.cogstack.org)|
 |EMAIL_PORT|The port that the SMTP server is listening to, common numbers are 25, 465, 587 (default: 465)|
+|MCTRAINER_BOOTSTRAP_ADMIN_USERNAME|Username for the default admin user created on initial startup (default: admin)|
+|MCTRAINER_BOOTSTRAP_ADMIN_EMAIL|Email address for the default admin user created on initial startup (default: admin@example.com)|
+|MCTRAINER_BOOTSTRAP_ADMIN_PASSWORD|Password for the default admin user created on initial startup (default: admin)|
 
 Set these and re-run the docker-compose file.
 

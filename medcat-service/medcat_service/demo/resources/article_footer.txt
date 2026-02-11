@@ -1,0 +1,7 @@
+## Disclaimer
+This software is intended solely for the testing purposes and non-commercial use. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED.
+
+contact@cogstack.com for more information.
+
+Please note this is a limited version of MedCAT and it is not trained or validated by clinicans.
+

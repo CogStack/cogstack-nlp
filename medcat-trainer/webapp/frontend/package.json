@@ -4,13 +4,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "NODE_OPTIONS=--max-old-space-size=8192 vite",
     "build": "run-p type-check \"build-only {@}\" --",
     "preview": "vite preview",
     "test:unit": "vitest",
     "coverage": "vitest run --coverage",
     "test:ui": "vitest --ui",
-    "build-only": "vite build",
+    "build-only": "NODE_OPTIONS=--max-old-space-size=8192 vite build",
     "type-check": "vue-tsc --build --force",
     "lint": "eslint . --fix",
     "format": "prettier --write src/"

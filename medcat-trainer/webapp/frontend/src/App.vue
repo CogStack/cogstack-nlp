@@ -12,7 +12,7 @@
             <h1 class="app-title" @click="navigateToHome">
               Med<img src="./assets/cat-logo.png" alt="MedCAT Logo" class="cat-logo" />AT
             </h1>
-            <span class="version-id">{{ version }}</span>
+            <span class="version-id">{{ displayVersion }}</span>
 
             <!-- Navigation Links -->
             <div class="navigation-links">
@@ -27,6 +27,9 @@
 
           <!-- Action Buttons -->
           <div class="action-buttons">
+            <router-link v-if="isAdmin" to="/project-admin" class="admin-cog-link" title="Project Admin">
+              <font-awesome-icon icon="cog"></font-awesome-icon>
+            </router-link>
             <div class="user-section">
               <span v-if="!uname" class="login-link" @click="openLogin">Login</span>
               <span v-else class="user-info">
@@ -64,6 +67,13 @@ export default {
       useOidc: isOidcEnabled(),
     }
   },
+  computed: {
+    displayVersion () {
+      const v = this.version || ''
+      if (v.length <= 11) return v
+      return `${v.slice(0, 7)}…${v.slice(-6)}`
+    }
+  },
   methods: {
     navigateToHome () {
       this.$router.push('/')
@@ -83,6 +93,7 @@ export default {
       if (!this.useOidc) {
         this.loginModal = false
         this.uname = this.$cookies.get('username')
+        this.isAdmin = this.$cookies.get('admin') === 'true'
       } else {
         this.updateOidcUser()
       }
@@ -93,11 +104,13 @@ export default {
     updateOidcUser () {
       if (this.$keycloak && this.$keycloak.tokenParsed) {
         this.uname = this.$keycloak.tokenParsed.preferred_username || null
+        this.isAdmin = this.$keycloak.tokenParsed?.realm_access?.roles.includes('admin') ?? false
         this.$http.defaults.headers.common['Authorization'] = `Bearer ${this.$keycloak.token}`
       }
     },
     logout () {
       this.uname = null
+      this.isAdmin = false
       this.$cookies.remove('username')
       this.$cookies.remove('api-token')
       this.$cookies.remove('admin')
@@ -120,6 +133,7 @@ export default {
 
     if (!this.useOidc) {
       this.uname = this.$cookies.get('username') || null
+      this.isAdmin = this.$cookies.get('admin') === 'true'
     } else {
       if (this.$keycloak && this.$keycloak.authenticated) {
         this.updateOidcUser()
@@ -249,6 +263,35 @@ export default {
   display: flex;
   gap: 8px;
   align-items: center;
+}
+
+.admin-cog-link {
+  color: white;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 8px;
+  font-size: 16px;
+  opacity: 0.85;
+  transition: all 0.2s ease;
+  border-radius: 4px;
+
+  &:hover {
+    opacity: 1;
+    background-color: rgba(255, 255, 255, 0.1);
+    text-decoration: none;
+  }
+
+  &:focus {
+    color: white;
+    text-decoration: none;
+  }
+
+  &.router-link-active {
+    opacity: 1;
+    background-color: rgba(255, 255, 255, 0.15);
+  }
 }
 
 .user-section {
