@@ -19,6 +19,23 @@
                 }
             ],
             "requires_auth": true
+        },
+        "medcat-embedding-linker": {
+            "name": "medcat-embedding-linker",
+            "display_name": "MedCAT-embedding-linker",
+            "description": "Embedding based linker for MedCAT",
+            "source_spec": {
+                "source": "medcat-embedding-linker",
+                "source_type": "pypi"
+            },
+            "homepage": "https://github.com/CogStack/cogstack-nlp/tree/main/medcat-plugins/medcat-embedding-linker",
+            "compatibility": [
+                {
+                    "medcat_version": ">=2.5.0,<3.0.0",
+                    "plugin_version": "0.1.0"
+                }
+            ],
+            "requires_auth": false
         }
     }
 }
