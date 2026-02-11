@@ -94,7 +94,7 @@ class GlinerNER(AbstractEntityProvidingComponent):
 
         Args:
             doc (MutableDocument):
-                Spacy document to be annotated with named entities.
+                Document to be annotated with named entities.
             ents (list[MutableEntity] | None):
                 The entities given. This should be None.
 
