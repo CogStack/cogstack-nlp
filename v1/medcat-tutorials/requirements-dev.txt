@@ -3,8 +3,8 @@ pandas<2.0.0
 seaborn~=0.11.2
 pytest-xdist~=2.5.0
 nbmake<1.5
-nbconvert<6
-jinja2<=3.0
+nbconvert<8
+jinja2<=3.1.6
 matplotlib>=3.4.0,<3.8.0
 seaborn
 ipython<9.0.0
