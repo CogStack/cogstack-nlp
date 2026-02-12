@@ -2,15 +2,20 @@ from medcat.utils import download_scripts
 
 import os
 import unittest
+import unittest.mock
 import tempfile
 
 
 class ScriptsDownloadTest(unittest.TestCase):
+    use_version = "2.5.4"
 
     @classmethod
     def setUpClass(cls):
         cls._temp_dir = tempfile.TemporaryDirectory()
-        cls.scripts_path = download_scripts.fetch_scripts(cls._temp_dir.name)
+        with unittest.mock.patch(
+                download_scripts, "_get_medcat_version") as mock_get_version:
+            mock_get_version.return_value = self.use_versionr
+            cls.scripts_path = download_scripts.fetch_scripts(cls._temp_dir.name)
 
     def test_can_download(self):
         self.assertTrue(os.path.exists(self.scripts_path))
@@ -21,9 +26,8 @@ class ScriptsDownloadTest(unittest.TestCase):
         self.assertIn('requirements.txt', os.listdir(self.scripts_path))
 
     def test_requirements_define_correct_version(self):
-        cur_version = download_scripts._get_medcat_version()
         req_path = os.path.join(self.scripts_path, 'requirements.txt')
         with open(req_path) as f:
             medcat_line = [line.strip() for line in f if "medcat" in line]
-        self.assertIsIn(cur_version, medcat_line)
-        self.assertTrue(medcat_line.endswith(cur_version))
+        self.assertIsIn(self.use_version, medcat_line)
+        self.assertTrue(medcat_line.endswith(self.use_version))
