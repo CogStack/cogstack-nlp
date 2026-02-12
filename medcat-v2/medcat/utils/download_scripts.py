@@ -111,6 +111,23 @@ def _extract_zip(dest: Path, zip_path: Path):
     logger.info("Scripts extracted to: %s", dest)
 
 
+def _fix_requirements(dest: Path, current_version: str):
+    requirements_file = dest / "requirements.txt"
+    original = requirements_file.read_text(encoding="utf-8")
+
+    updated, count = re.subn(
+        pattern=r"(medcat\[.*?\])[><=!~]+[\d.]+",
+        repl=rf"\1~={current_version}",
+        string=original,
+    )
+
+    if count == 0:
+        return
+
+    requirements_file.write_text(updated, encoding="utf-8")
+
+
+
 def fetch_scripts(destination: str | Path = ".",
                   overwrite_url: str | None = None,
                   overwrite_tag: str | None = None) -> Path:
@@ -131,6 +148,7 @@ def fetch_scripts(destination: str | Path = ".",
     with tempfile.NamedTemporaryFile() as tmp:
         _download_zip(zip_url, tmp)
         _extract_zip(dest, Path(tmp.name))
+    _fix_requirements(dest, _get_medcat_version()
     logger.info(
         "You also need to install the requiements by doing:\n"
         "%s -m pip install -r %s/requirements.txt",
