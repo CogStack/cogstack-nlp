@@ -7,13 +7,14 @@ import tempfile
 
 
 class ScriptsDownloadTest(unittest.TestCase):
-    use_version = "2.5.4"
+    use_version = "2.5"
 
     @classmethod
     def setUpClass(cls):
         cls._temp_dir = tempfile.TemporaryDirectory()
         with unittest.mock.patch(
-                download_scripts._get_medcat_version) as mock_get_version:
+                "medcat.utils.download_scripts._get_medcat_version"
+                ) as mock_get_version:
             mock_get_version.return_value = cls.use_version
             cls.scripts_path = download_scripts.fetch_scripts(cls._temp_dir.name)
 
