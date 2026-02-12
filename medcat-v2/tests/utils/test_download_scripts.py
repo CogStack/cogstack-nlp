@@ -1,4 +1,4 @@
-from medcat.utils import donwload_scripts
+from medcat.utils import download_scripts
 
 import os
 import unittest
