@@ -67,7 +67,7 @@ def _determine_url(overwrite_url: str | None,
         else:
             tag = _find_latest_scripts_tag(version)
 
-        logger.info("Fetching scripts for MedCAT %s → tag %s}",
+        logger.info("Fetching scripts for MedCAT %s → tag %s",
                     version, tag)
 
         # Download the GitHub auto-generated zipball
