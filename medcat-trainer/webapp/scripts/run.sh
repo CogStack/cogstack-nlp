@@ -31,7 +31,7 @@ admin_email = os.getenv('MCTRAINER_BOOTSTRAP_ADMIN_EMAIL') or 'admin@example.com
 admin_password = os.getenv('MCTRAINER_BOOTSTRAP_ADMIN_PASSWORD') or 'admin'
 if not User.objects.filter(username=admin_username).exists():
     User.objects.create_superuser(admin_username, admin_email, admin_password)
-" | python manage.py shell
+" | uv run python manage.py shell
 
 if [ $LOAD_EXAMPLES ]; then
   echo "Loading examples..."
