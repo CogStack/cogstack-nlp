@@ -13,6 +13,7 @@ from pathlib import Path
 import requests
 import logging
 import argparse
+import re
 
 
 logger = logging.getLogger(__name__)
@@ -152,7 +153,7 @@ def fetch_scripts(destination: str | Path = ".",
     logger.info(
         "You also need to install the requiements by doing:\n"
         "%s -m pip install -r %s/requirements.txt",
-        sys.executable, destination.path)
+        sys.executable, str(destination))
     return dest
 
 
