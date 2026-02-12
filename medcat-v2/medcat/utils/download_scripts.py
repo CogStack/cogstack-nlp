@@ -148,7 +148,7 @@ def fetch_scripts(destination: str | Path = ".",
     with tempfile.NamedTemporaryFile() as tmp:
         _download_zip(zip_url, tmp)
         _extract_zip(dest, Path(tmp.name))
-    _fix_requirements(dest, _get_medcat_version()
+    _fix_requirements(dest, _get_medcat_version())
     logger.info(
         "You also need to install the requiements by doing:\n"
         "%s -m pip install -r %s/requirements.txt",
