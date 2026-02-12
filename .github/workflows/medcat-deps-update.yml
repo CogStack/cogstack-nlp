@@ -1,0 +1,53 @@
+name: Bump dependants on release
+
+on:
+  push:
+    tags:
+      - 'medcat/v*'
+      - 'MedCAT/v*'
+
+jobs:
+  bump-dependants:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#medcat/}"
+          VERSION="${VERSION#MedCAT/}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Check if minor release
+        id: release_type
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          PATCH=$(echo "$VERSION" | cut -d. -f3)
+          if [ "$PATCH" = "0" ]; then
+            echo "is_minor=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_minor=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set up Python
+        if: steps.release_type.outputs.is_minor == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Bump dependants
+        if: steps.release_type.outputs.is_minor == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python .github/scripts/bump_dependants.py \
+            --version "${{ steps.version.outputs.version }}" \
+            --package "medcat" \
+            --dependants "medcat-scripts" "medcat-v2-tutorials"
