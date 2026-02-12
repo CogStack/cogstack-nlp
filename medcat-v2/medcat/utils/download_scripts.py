@@ -8,6 +8,7 @@ medcat/v2.2.3 for instance.
 import importlib.metadata
 import tempfile
 import zipfile
+import sys
 from pathlib import Path
 import requests
 import logging
@@ -130,6 +131,10 @@ def fetch_scripts(destination: str | Path = ".",
     with tempfile.NamedTemporaryFile() as tmp:
         _download_zip(zip_url, tmp)
         _extract_zip(dest, Path(tmp.name))
+    logger.info(
+        "You also need to install the requiements by doing:\n"
+        "%s -m pip install -r %s/requirements.txt",
+        sys.executable, destination.path)
     return dest
 
 
