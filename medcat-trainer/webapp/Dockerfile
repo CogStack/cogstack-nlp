@@ -1,4 +1,4 @@
-FROM python:3.11
+FROM python:3.12
 
 # Update and upgrade everything
 RUN apt-get update -y && \
@@ -28,16 +28,18 @@ WORKDIR /home/frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm install
 
-# Install Python dependencies
+# Install uv and Python dependencies
 WORKDIR /home
-COPY requirements.txt ./
-RUN pip install pip --upgrade 
-RUN pip install "setuptools>=81.0.0,<82"
-RUN pip install --no-cache-dir -r requirements.txt
+COPY pyproject.toml uv.lock* ./
+RUN pip install uv \
+    && uv sync --frozen --no-install-project
+
+# Ensure venv has pip (uv venvs don't include it; spacy download needs it)
+RUN uv run python -m ensurepip --upgrade
 
 # Download spaCy models (only requires spaCy, not application code)
 ARG SPACY_MODELS="en_core_web_md"
-RUN for SPACY_MODEL in ${SPACY_MODELS}; do python -m spacy download ${SPACY_MODEL}; done
+RUN for SPACY_MODEL in ${SPACY_MODELS}; do uv run python -m spacy download ${SPACY_MODEL}; done
 
 # Copy rest of project
 WORKDIR /home
@@ -52,7 +54,7 @@ RUN chmod u+x /home/scripts/entry.sh && \
     chmod u+x /home/scripts/crontab && cp /home/scripts/crontab /etc/crontab && \
     chmod a+x /home/scripts/run.sh && \
     chmod a+x /home/scripts/run-bg-process.sh && \
-    chmod u+x /home/scripts/nginx-entrypoint.sh
- 
+    chmod a+x /home/scripts/nginx-entrypoint.sh
+
 WORKDIR /home/api/
 

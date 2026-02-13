@@ -25,7 +25,7 @@ services:
     environment:
       - MCT_VERSION=latest
       # OIDC Settings
-      - USE_OIDC=1
+      - USE_OIDC=0
       - KEYCLOAK_URL=http://keycloak.cogstack.localhost
       - KEYCLOAK_REALM=cogstack-realm
       - KEYCLOAK_FRONTEND_CLIENT_ID=cogstack-medcattrainer-frontend
