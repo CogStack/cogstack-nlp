@@ -14,7 +14,7 @@
             "compatibility": [
                 {
                     "medcat_version": ">=2.5.0,<3.0.0",
-                    "plugin_version": "0.1.0"
+                    "plugin_version": "0.2.0"
                 }
             ],
             "requires_auth": false
