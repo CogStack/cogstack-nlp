@@ -18,6 +18,10 @@ class ScriptsDownloadTest(unittest.TestCase):
             mock_get_version.return_value = cls.use_version
             cls.scripts_path = download_scripts.fetch_scripts(cls._temp_dir.name)
 
+    @classmethod
+    def tearDownClass(cls):
+        cls._temp_dir.cleanup()
+
     def test_can_download(self):
         self.assertTrue(os.path.exists(self.scripts_path))
         self.assertTrue(os.path.isdir(self.scripts_path))
