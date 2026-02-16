@@ -15,8 +15,12 @@ class ScriptsDownloadTest(unittest.TestCase):
         with unittest.mock.patch(
                 "medcat.utils.download_scripts._get_medcat_version"
                 ) as mock_get_version:
-            mock_get_version.return_value = cls.use_version
-            cls.scripts_path = download_scripts.fetch_scripts(cls._temp_dir.name)
+            with unittest.mock.patch(
+                    "medcat.utils.download_scripts._find_latest_scripts_tag"
+                    ) as mock_get_tag:
+                mock_get_version.return_value = cls.use_version
+                mock_get_tag.return_value = f"medcat/v{cls.use_version}"
+                cls.scripts_path = download_scripts.fetch_scripts(cls._temp_dir.name)
 
     @classmethod
     def tearDownClass(cls):
