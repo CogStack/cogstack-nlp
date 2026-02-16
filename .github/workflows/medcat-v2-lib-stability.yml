@@ -8,7 +8,6 @@ on:
   pull_request:
     paths:
       - ".github/workflows/medcat-v2-lib-stability.yml"
-      - "medcat-v2/tests/utils/test_download_scripts.py"  # TODO: REMOVE
 
 defaults:
   run:
