@@ -78,12 +78,13 @@ def _determine_url(overwrite_url: str | None,
     return zip_url
 
 
-def _download_zip(zip_url: str, tmp: tempfile._TemporaryFileWrapper):
-    with requests.get(zip_url, stream=True, timeout=30) as r:
-        r.raise_for_status()
-        for chunk in r.iter_content(chunk_size=8192):
-            tmp.write(chunk)
-        tmp.flush()
+def _download_zip(zip_url: str, tmp_path: str):
+    with open(tmp_path, 'wb') as tmp:
+        with requests.get(zip_url, stream=True, timeout=30) as r:
+            r.raise_for_status()
+            for chunk in r.iter_content(chunk_size=8192):
+                tmp.write(chunk)
+            tmp.flush()
 
 
 def _extract_zip(dest: Path, zip_path: Path):
