@@ -112,6 +112,13 @@ def main():
     run(["git", "config", "user.name", "github-actions[bot]"])
     run(["git", "config", "user.email", "github-actions[bot]@users.noreply.github.com"])
 
+    start_ref = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        capture_output=True, text=True, check=True,
+        ).stdout.strip()
+    print(f"Starting ref: {start_ref}")
+
+
     for dependant in args.dependants:
         dependant = dependant.strip().removesuffix(os.path.sep).strip()
         print(f"\nProcessing: {dependant}")
@@ -145,7 +152,7 @@ def main():
             ),
         )
 
-        run(["git", "checkout", "main"])
+        run(["git", "checkout", start_ref])
 
     print("\nDone.")
 
