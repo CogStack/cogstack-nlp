@@ -8,6 +8,7 @@ medcat/v2.2.3 for instance.
 import importlib.metadata
 import tempfile
 import zipfile
+import os
 import sys
 from pathlib import Path
 import requests
@@ -146,9 +147,10 @@ def fetch_scripts(destination: str | Path = ".",
     dest.mkdir(parents=True, exist_ok=True)
 
     zip_url = _determine_url(overwrite_url, overwrite_tag)
-    with tempfile.NamedTemporaryFile() as tmp:
-        _download_zip(zip_url, tmp)
-        _extract_zip(dest, Path(tmp.name))
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        zip_path = os.path.join(tmp_dir, 'downloaded_scripts.zip')
+        _download_zip(zip_url, zip_path)
+        _extract_zip(dest, Path(zip_path))
     _fix_requirements(dest, _get_medcat_version())
     logger.info(
         "You also need to install the requiements by doing:\n"
