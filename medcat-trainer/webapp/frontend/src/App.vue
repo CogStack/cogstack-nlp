@@ -63,6 +63,7 @@ export default {
     return {
       loginModal: false,
       uname: null,
+      isAdmin: false,
       version: '',
       useOidc: isOidcEnabled(),
     }
@@ -104,7 +105,7 @@ export default {
     updateOidcUser () {
       if (this.$keycloak && this.$keycloak.tokenParsed) {
         this.uname = this.$keycloak.tokenParsed.preferred_username || null
-        this.isAdmin = this.$keycloak.tokenParsed?.realm_access?.roles.includes('admin') ?? false
+        this.isAdmin = this.$keycloak.tokenParsed?.groups?.includes('/medcattrainer-admins') ?? false
         this.$http.defaults.headers.common['Authorization'] = `Bearer ${this.$keycloak.token}`
       }
     },

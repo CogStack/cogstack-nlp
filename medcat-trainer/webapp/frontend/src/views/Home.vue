@@ -112,7 +112,7 @@ export default {
           this.fetchProjects()
       } else if (this.useOidc && this.$keycloak && this.$keycloak.authenticated) {
           this.loginSuccessful = true
-          this.isAdmin = this.$keycloak.tokenParsed?.realm_access?.roles.includes('admin') ?? false;
+          this.isAdmin = this.$keycloak.tokenParsed?.groups.includes('/medcattrainer-admins') ?? false;
           this.fetchProjects()
         }
     },
