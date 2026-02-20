@@ -3,6 +3,6 @@ from medcat.utils.import_utils import (
 
 __ensure_deid("medcat", "deid")
 
-from medcat.components.ner.trf.deid import DeIDModel  # noqa
+from medcat.components.ner.trf.deid import DeIdModel  # noqa
 
-__all__ = ["DeIDModel"]
+__all__ = ["DeIdModel"]
