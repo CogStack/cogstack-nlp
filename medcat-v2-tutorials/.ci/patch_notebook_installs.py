@@ -12,13 +12,15 @@ abs_install_path = str(pathlib.Path(rel_install_path).resolve())
 # 2. `! pip install medcat[extras] @ git+...`
 shell_pattern = re.compile(
     r'(!\s*pip\s+install\s+)'       # group 1: the install command
-    r'medcat'                        # literal package name
-    r'(\[.*?\])?'                    # group 2: optional extras e.g. [meta-cat,spacy]
+    r'(\\?"?)'                       # group 2: optional opening \"
+    r'medcat'
+    r'(\[.*?\])?'                    # group 3: optional extras
     r'(?:'
-        r'\s*@\s*git\+[^"\'\s]+'    # either a git URL
+        r'\s*@\s*git\+[^"\'\s]+'
         r'|'
-        r'\s*[~=!<>][^"\'\s]*'      # or a version specifier e.g. ~=2.4.0, ==2.4.0
+        r'\s*[~=!<>][^"\'\\s]*'
     r')'
+    r'(\\?"?)'                       # group 4: optional closing \"
 )
 req_txt_pattern = re.compile(
     r'^(medcat(\[.*?\])?)\s*@\s*git\+\S+', flags=re.MULTILINE
@@ -26,7 +28,7 @@ req_txt_pattern = re.compile(
 
 
 def repl_nb(m, file_path: pathlib.Path):
-    extras = m[2] or ""
+    extras = m[3] or ""
     to_write = f'! pip install \\"{abs_install_path}{extras}\\"'
     print(f"[PATCHED] {file_path}\n with: '{to_write}'")
     return to_write
