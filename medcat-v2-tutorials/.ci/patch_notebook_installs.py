@@ -4,15 +4,21 @@ import re
 from functools import partial
 
 
-# rel_install_path = "../medcat-v2/"
-# abs_install_path = str(pathlib.Path(rel_install_path).resolve())
+rel_install_path = "../medcat-v2/"
+abs_install_path = str(pathlib.Path(rel_install_path).resolve())
 
 # Matches either:
-# 1. `! pip install medcat[extras]`
+# 1. `! pip install medcat[extras]~=version`
 # 2. `! pip install medcat[extras] @ git+...`
 shell_pattern = re.compile(
-    r'(!\s*pip\s+install\s+)(\\["\']?)medcat(\[.*?\])'
-    r'(\s*@\s*git\+[^"\'\s]+)?\2'
+    r'(!\s*pip\s+install\s+)'       # group 1: the install command
+    r'medcat'                        # literal package name
+    r'(\[.*?\])?'                    # group 2: optional extras e.g. [meta-cat,spacy]
+    r'(?:'
+        r'\s*@\s*git\+[^"\'\s]+'    # either a git URL
+        r'|'
+        r'\s*[~=!<>][^"\'\s]*'      # or a version specifier e.g. ~=2.4.0, ==2.4.0
+    r')'
 )
 req_txt_pattern = re.compile(
     r'^(medcat(\[.*?\])?)\s*@\s*git\+\S+', flags=re.MULTILINE
@@ -20,13 +26,8 @@ req_txt_pattern = re.compile(
 
 
 def repl_nb(m, file_path: pathlib.Path):
-    # extras = m[3]
-    old_url = m[4]
-    if old_url and "medcat/v" in old_url:
-        print(f"[WARN] {file_path} refers to alpha/tagged release: "
-              f"{old_url.strip()}")
-    # to_write = f'{m[1]}\\"{abs_install_path}{extras}\\"'
-    to_write = '! pip install \\"pip\\"'
+    extras = m[2] or ""
+    to_write = f'! pip install \\"{abs_install_path}{extras}\\"'
     print(f"[PATCHED] {file_path}\n with: '{to_write}'")
     return to_write
 
