@@ -900,7 +900,7 @@ class RelCAT:
             entity = base_tokenizer.create_entity(
                 doc, min(tkn_idx), max(tkn_idx) + 1, label=ann["value"])
             entity.cui = ann["cui"]
-            entity.set_addon_data('start', ann['strat'])
+            entity.set_addon_data('start', ann['start'])
             entity.set_addon_data('end', ann['end'])
             doc.ner_ents.append(entity)
 
