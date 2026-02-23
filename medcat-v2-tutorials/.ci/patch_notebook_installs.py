@@ -20,7 +20,8 @@ shell_pattern = re.compile(
         r'|'
         r'\s*[~=!<>][^"\'\\s]*'
     r')'
-    r'(\\?"?)'                       # group 4: optional closing \"
+    # only match \" (escaped quote), never a bare "
+    r'(\\")?'        # group 4: optional closing \"
 )
 req_txt_pattern = re.compile(
     r'^(medcat(\[.*?\])?)\s*@\s*git\+\S+', flags=re.MULTILINE
