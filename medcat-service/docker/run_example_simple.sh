@@ -17,6 +17,8 @@ fi
 # To run in a container run "export LOCALHOST_NAME=host.docker.internal"
 LOCALHOST_NAME=${LOCALHOST_NAME:-localhost}
 
+export APP_ENABLE_METRICS=True
+export APP_ENABLE_DEMO_UI=True
 echo "Running docker-compose"
 docker compose -f ${DOCKER_COMPOSE_FILE} up -d
 
