@@ -1,13 +1,34 @@
 smoketest_medcat_service() {
+  local localhost_name="$1"
+  local docker_compose_file="$2"
+  local port="${3:-5555}"
+
+  local apis=(
+    "/api/info"
+    "/api/health/live"
+    "/api/health/ready"
+    "/metrics"
+    "/docs"
+  )
+
+  for api in "${apis[@]}"; do
+      test_medcat_service_api "$localhost_name" "$docker_compose_file" "$api" "$port"
+  done
+}
+
+
+test_medcat_service_api() {
     local localhost_name="$1"
     local docker_compose_file="$2"
-    local port=${3:-5555}
+    local resource="${3:-/api/info}"
+    local port="${4:-5555}"
     if [ -z "$localhost_name" ] || [ -z "$docker_compose_file" ]; then
-        echo "Invalid arguments. Usage: health_check <localhost_name> <docker_compose_file>" >&2
+        echo "Invalid arguments. Usage: smoketest_medcat_service <localhost_name> <docker_compose_file> [resource] [port]" >&2
+        echo "  resource: e.g. /api/info (default: /api/info)" >&2
         return 1
     fi
 
-    API="http://${localhost_name}:${port}/api/info"
+    API="http://${localhost_name}:${port}${resource}"
 
     MAX_RETRIES=12
     RETRY_DELAY=5
@@ -23,7 +44,7 @@ smoketest_medcat_service() {
         break
     else
         echo "Attempt $((COUNT+1))/$MAX_RETRIES: Not ready (HTTP $IS_READY)."
-        docker compose -f ${DOCKER_COMPOSE_FILE} logs
+        docker compose -f "$docker_compose_file" logs
         COUNT=$((COUNT+1))
     fi
     done

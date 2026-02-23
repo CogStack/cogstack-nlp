@@ -37,10 +37,6 @@ app.include_router(health.router)
 app.include_router(process.router)
 
 
-if settings.enable_demo_ui:
-    mount_gradio_app(app, path=settings.demo_ui_path)
-
-
 def configure_observability(settings: Settings, app: FastAPI):
     if settings.observability.enable_metrics:
         from prometheus_fastapi_instrumentator import Instrumentator
@@ -51,6 +47,9 @@ def configure_observability(settings: Settings, app: FastAPI):
 
 
 configure_observability(settings, app)
+
+if settings.enable_demo_ui:
+    mount_gradio_app(app, path=settings.demo_ui_path)
 
 
 @app.exception_handler(HealthCheckFailedException)
