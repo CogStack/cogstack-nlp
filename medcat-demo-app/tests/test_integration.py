@@ -47,7 +47,7 @@ def run_checks(base_url: str, api_key: str, model_name: str) -> None:
     full_url = f"{url}?api_key={urllib.parse.quote(api_key)}"
     keep_api_key = min(len(api_key) - 1, 10)
     remove_from_end = len(api_key) - keep_api_key
-    print(f"  GET {full_url[:-remove_from_end]}...")
+    print(f"  GET {full_url[:-remove_from_end]}...[REDACTED]")
 
     try:
         req = urllib.request.Request(full_url)
