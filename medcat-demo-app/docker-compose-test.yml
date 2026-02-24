@@ -4,8 +4,6 @@ services:
   medcatweb:
     build:
       context: ./webapp
-      args:
-        REINSTALL_CORE_FROM_LOCAL: "true"
     command: >
       bash -c "
           python manage.py migrate --noinput &&
