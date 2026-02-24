@@ -26,9 +26,6 @@ RUN pip install -U pip && if [ "$USE_CPU_TORCH" = "true" ]; then \
                               pip install -r /webapp/requirements.txt; \
                           fi
 
-# Get the spacy model (for later copy)
-RUN python -m spacy download en_core_web_md
-
 # Stage 2: Final (production) image
 FROM python:3.12-slim AS final
 
