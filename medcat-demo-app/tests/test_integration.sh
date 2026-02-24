@@ -1,0 +1,276 @@
+#!/usr/bin/env bash
+# =============================================================================
+# Integration test: build → seed DB → call auth-callback-api → verify
+# =============================================================================
+# Usage:
+#   ./integration_test.sh --model-file /path/to/model.zip [OPTIONS]
+#
+# Options:
+#   --model-file PATH       (required) Path to the MedcatModel file on the HOST
+#   --model-name NAME       Model name stored in DB (default: test_model)
+#   --model-display NAME    Model display name (default: Test Model)
+#   --model-desc TEXT       Model description (default: Integration test model)
+#   --api-key-id IDENTIFIER APIKey identifier label (default: integration-test)
+#   --compose-file PATH     Path to docker-compose file (default: docker-compose.yml)
+#   --service NAME          Django service name in compose file (default: web)
+#   --port PORT             Host port the app is mapped to (default: 8000)
+#   --base-url URL          Override full base URL (default: http://localhost:PORT)
+#   --app-label LABEL       Django app label for model imports (default: yourapp)
+#   --keep-up               Don't tear down containers after the test
+#   --help                  Show this message
+# =============================================================================
+set -euo pipefail
+
+# ── Defaults ──────────────────────────────────────────────────────────────────
+MODEL_FILE=""
+MODEL_NAME="test_model"
+MODEL_DISPLAY_NAME="Test Model"
+MODEL_DESCRIPTION="Integration test model"
+API_KEY_IDENTIFIER="integration-test"
+COMPOSE_FILE="docker-compose-test.yml"
+SERVICE="medcatweb"
+PORT="8000"
+BASE_URL=""
+APP_LABEL="demo"
+KEEP_UP=false
+
+# ── Colour helpers ─────────────────────────────────────────────────────────────
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BOLD='\033[1m'; NC='\033[0m'
+info()  { echo -e "${GREEN}[INFO]${NC}  $*"; }
+warn()  { echo -e "${YELLOW}[WARN]${NC}  $*"; }
+error() { echo -e "${RED}[ERROR]${NC} $*" >&2; }
+die()   { error "$*"; exit 1; }
+step()  { echo -e "\n${BOLD}=== $* ===${NC}"; }
+
+# ── Argument parsing ───────────────────────────────────────────────────────────
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --model-file)    MODEL_FILE="$2";          shift 2 ;;
+        --model-name)    MODEL_NAME="$2";          shift 2 ;;
+        --model-display) MODEL_DISPLAY_NAME="$2";  shift 2 ;;
+        --model-desc)    MODEL_DESCRIPTION="$2";   shift 2 ;;
+        --api-key-id)    API_KEY_IDENTIFIER="$2";  shift 2 ;;
+        --compose-file)  COMPOSE_FILE="$2";        shift 2 ;;
+        --service)       SERVICE="$2";             shift 2 ;;
+        --port)          PORT="$2";                shift 2 ;;
+        --base-url)      BASE_URL="$2";            shift 2 ;;
+        --app-label)     APP_LABEL="$2";           shift 2 ;;
+        --keep-up)       KEEP_UP=true;             shift   ;;
+        --help)
+            sed -n '/^# Usage:/,/^# =====/p' "$0" | sed 's/^# \?//'
+            exit 0
+            ;;
+        *) die "Unknown argument: $1" ;;
+    esac
+done
+
+# ── Validate ───────────────────────────────────────────────────────────────────
+[[ -z "$MODEL_FILE" ]]     && die "--model-file is required"
+[[ ! -f "$MODEL_FILE" ]]   && die "Model file not found: $MODEL_FILE"
+[[ ! -f "$COMPOSE_FILE" ]] && die "Compose file not found: $COMPOSE_FILE"
+
+MODEL_FILE_ABS="$(realpath "$MODEL_FILE")"
+MODEL_FILE_DIR="$(dirname "$MODEL_FILE_ABS")"
+MODEL_FILE_BASENAME="$(basename "$MODEL_FILE_ABS")"
+[[ -z "$BASE_URL" ]] && BASE_URL="http://localhost:${PORT}"
+
+info "Model file  : $MODEL_FILE_ABS"
+info "Compose file: $COMPOSE_FILE  (service: $SERVICE)"
+info "Base URL    : $BASE_URL"
+info "App label   : $APP_LABEL"
+
+# ── Cleanup trap ───────────────────────────────────────────────────────────────
+cleanup() {
+    local exit_code=$?
+    if [[ "$KEEP_UP" == false ]]; then
+        info "Tearing down containers..."
+        docker compose -f "$COMPOSE_FILE" down -v --remove-orphans 2>/dev/null || true
+    else
+        warn "--keep-up specified; containers left running."
+    fi
+    if [[ $exit_code -ne 0 ]]; then
+        echo -e "\n${RED}${BOLD}Integration test FAILED ✗${NC}"
+    fi
+    exit $exit_code
+}
+trap cleanup EXIT
+
+# =============================================================================
+# STEP 1 – Build and start the stack
+# =============================================================================
+step "STEP 1 – Build & start containers"
+
+docker compose -f "$COMPOSE_FILE" up -d --build
+
+# Wait until the health endpoint (or root) responds with any HTTP status.
+info "Waiting for app to be reachable at ${BASE_URL}/health (max 90s)..."
+MAX_WAIT=90; WAITED=0
+until curl -sf --max-time 3 "${BASE_URL}/health" -o /dev/null 2>/dev/null; do
+    if [[ $WAITED -ge $MAX_WAIT ]]; then
+        error "App did not become ready within ${MAX_WAIT}s. Service logs:"
+        docker compose -f "$COMPOSE_FILE" logs --tail 50 "$SERVICE"
+        die "Aborting."
+    fi
+    sleep 3; WAITED=$((WAITED + 3))
+done
+info "App is ready (${WAITED}s elapsed)"
+
+# =============================================================================
+# STEP 2 – Find the model file inside the container
+# =============================================================================
+step "STEP 2 – Locate model file inside container"
+
+# We search the container's filesystem for the mounted file by name.
+# If your compose file mounts the directory under a fixed path you can
+# hard-code CONTAINER_MODEL_PATH instead of relying on auto-detection.
+CONTAINER_MODEL_PATH="$(
+    docker compose -f "$COMPOSE_FILE" exec -T "$SERVICE" \
+        python3 -c "
+import os, sys
+target = '${MODEL_FILE_BASENAME}'
+for root, dirs, files in os.walk('/'):
+    dirs[:] = [d for d in dirs if not root.startswith(('/proc','/sys','/dev'))]
+    if target in files:
+        print(os.path.join(root, target))
+        sys.exit(0)
+sys.exit(1)
+" 2>/dev/null
+)" || {
+    warn "Auto-detection failed. Falling back to host path: ${MODEL_FILE_ABS}"
+    warn "Make sure '${MODEL_FILE_DIR}' is mounted into the '${SERVICE}' container."
+    CONTAINER_MODEL_PATH="${MODEL_FILE_ABS}"
+}
+
+info "Container model path: ${CONTAINER_MODEL_PATH}"
+
+# =============================================================================
+# STEP 3 – Seed: MedcatModel + APIKey via manage.py shell
+# =============================================================================
+step "STEP 3 – Seed database"
+
+# We capture stdout only for the API key; all other output goes to stderr.
+API_KEY_VALUE="$(
+    docker compose -f "$COMPOSE_FILE" exec -T "$SERVICE" \
+        python3 manage.py shell << PYEOF
+import sys, os, secrets
+from django.core.files import File
+from django.utils import timezone
+from datetime import timedelta
+
+# ── Import models ─────────────────────────────────────────────────────────────
+try:
+    from ${APP_LABEL}.models import MedcatModel, APIKey
+except ImportError as e:
+    print(f"[SEED] ImportError: {e}", file=sys.stderr)
+    print(f"[SEED] Hint: pass --app-label with your Django app name", file=sys.stderr)
+    sys.exit(1)
+
+# ── MedcatModel ───────────────────────────────────────────────────────────────
+model_path = "${CONTAINER_MODEL_PATH}"
+if not os.path.exists(model_path):
+    print(f"[SEED] ERROR: model file not found in container: {model_path}", file=sys.stderr)
+    sys.exit(1)
+
+obj, created = MedcatModel.objects.get_or_create(
+    model_name="${MODEL_NAME}",
+    defaults={
+        "model_display_name": "${MODEL_DISPLAY_NAME}",
+        "model_description":  "${MODEL_DESCRIPTION}",
+    },
+)
+if created or not obj.model_file:
+    with open(model_path, "rb") as f:
+        obj.model_file.save("${MODEL_FILE_BASENAME}", File(f), save=True)
+    print(f"[SEED] MedcatModel created: {obj.model_name}", file=sys.stderr)
+else:
+    print(f"[SEED] MedcatModel already exists: {obj.model_name}", file=sys.stderr)
+
+# ── APIKey ────────────────────────────────────────────────────────────────────
+key_value = secrets.token_hex(32)   # 64-char hex, fits max_length=64
+APIKey.objects.create(
+    key=key_value,
+    identifier="${API_KEY_IDENTIFIER}",
+    expires_at=timezone.now() + timedelta(hours=1),
+    is_active=True,
+)
+print(f"[SEED] APIKey created for identifier: ${API_KEY_IDENTIFIER}", file=sys.stderr)
+
+# Print ONLY the key to stdout so the shell can capture it cleanly
+print(key_value)
+PYEOF
+)"
+
+[[ -z "$API_KEY_VALUE" ]] && die "manage.py shell returned no API key value"
+info "APIKey value (first 10 chars): ${API_KEY_VALUE:0:10}..."
+
+# =============================================================================
+# STEP 4 – Call the protected endpoint
+# =============================================================================
+step "STEP 4 – Call manual-api-callback"
+
+AUTH_URL="${BASE_URL}/manual-api-callback/?api_key=${API_KEY_VALUE}"
+info "GET ${AUTH_URL}"
+
+# -D - : dump response headers to stdout; we parse status from them
+HTTP_RESPONSE_FILE="$(mktemp)"
+HTTP_STATUS="$(
+    curl -s -o "$HTTP_RESPONSE_FILE" \
+         -w "%{http_code}" \
+         --max-time 15 \
+         "${AUTH_URL}"
+)"
+HTTP_BODY="$(cat "$HTTP_RESPONSE_FILE")"
+rm -f "$HTTP_RESPONSE_FILE"
+
+info "HTTP status: ${HTTP_STATUS}"
+
+# =============================================================================
+# STEP 5 – Verify the response
+# =============================================================================
+step "STEP 5 – Verify response"
+
+python3 - <<PYEOF
+import sys
+
+status        = "${HTTP_STATUS}"
+model_display = "${MODEL_DISPLAY_NAME}"
+body          = open("/dev/stdin").read() if False else """${HTTP_BODY}"""
+
+errors = []
+
+# 1. HTTP 200
+if status != "200":
+    errors.append(f"Expected HTTP 200, got {status}")
+
+# 2. Not an API-key rejection JSON
+if '"error"' in body and "API key" in body:
+    errors.append("Response looks like an API key rejection (JSON error body returned)")
+
+# 3. Model display name present in the rendered page
+if model_display not in body:
+    errors.append(f"Model display name '{model_display}' not found in page body")
+
+# 4. No Django error page
+if "Exception Value" in body or "Traceback (most recent call last)" in body:
+    errors.append("Django error page / traceback detected in response body")
+
+# 5. Valid-key message present (from the view context message)
+if "Manually obtained API key is being used" not in body:
+    errors.append("Expected validity message ('Manually obtained API key is being used') not in body")
+
+# ── Report ────────────────────────────────────────────────────────────────────
+if errors:
+    print("\n[FAIL] Verification FAILED:")
+    for e in errors:
+        print(f"  ✗  {e}")
+    sys.exit(1)
+else:
+    print("\n[PASS] All checks passed:")
+    print(f"  ✓  HTTP 200 received")
+    print(f"  ✓  No API-key rejection in body")
+    print(f"  ✓  Model '{model_display}' listed on page")
+    print(f"  ✓  No Django error page")
+    print(f"  ✓  Valid-key message present")
+PYEOF
+
+echo -e "\n${GREEN}${BOLD}Integration test PASSED ✓${NC}"
