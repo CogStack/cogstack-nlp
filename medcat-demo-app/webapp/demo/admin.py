@@ -7,14 +7,6 @@ from .models import *
 admin.site.register(Downloader)
 admin.site.register(MedcatModel)
 
-def remove_text(modeladmin, request, queryset):
-    UploadedText.objects.all().delete()
-
-
-class UploadedTextAdmin(admin.ModelAdmin):
-    model = UploadedText
-    actions = [remove_text]
-
 
 class APIKeyAdmin(admin.ModelAdmin):
     list_display = ('key_short', 'identifier', 'created_at', 'expires_at', 'is_active', 'is_expired')
@@ -66,5 +58,4 @@ class APIKeyAdmin(admin.ModelAdmin):
 
 
 # Register your models here.
-admin.site.register(UploadedText, UploadedTextAdmin)
 admin.site.register(APIKey, APIKeyAdmin)
