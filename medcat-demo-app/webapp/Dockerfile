@@ -17,14 +17,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libsqlite3-dev
 
 
-# Install Python dependencies
-ARG USE_CPU_TORCH=false
-# NOTE: Allow building without GPU so as to lower image size (disabled by default)
-RUN pip install -U pip && if [ "$USE_CPU_TORCH" = "true" ]; then \
-                              pip install -r /webapp/requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu/; \
-                          else \
-                              pip install -r /webapp/requirements.txt; \
-                          fi
+RUN pip install -U pip && pip install -r /webapp/requirements.txt
 
 # Stage 2: Final (production) image
 FROM python:3.12-slim AS final
