@@ -3,7 +3,8 @@ sys.path.insert(0, '/home/ubuntu/projects/MedCAT/')
 import os
 import requests
 from django.shortcuts import render
-from django.http import StreamingHttpResponse, HttpResponse
+from django.http import StreamingHttpResponse, HttpResponse, JsonResponse
+from django.db import connection
 from wsgiref.util import FileWrapper
 from urllib.request import urlopen
 from urllib.error import HTTPError
@@ -139,3 +140,14 @@ def download_model(request):
             return render(request, 'umls_user_validation.html', context=context)
     else:
         return HttpResponse('Erorr: Unknown HTTP method.')
+
+
+def report_health(request):
+    try:
+        connection.ensure_connection()
+        db_ok = True
+    except Exception:
+        db_ok = False
+
+    status = 200 if db_ok else 503
+    return JsonResponse({"status": "ok" if db_ok else "error", "db": db_ok}, status=status)
