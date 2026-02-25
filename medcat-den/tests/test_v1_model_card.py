@@ -13,6 +13,9 @@ import pytest
 def v1_model_card():
     model_card_path = os.path.join(
         V1_MODEL_PATH.removesuffix(".zip"), "model_card.json")
+    # NOTE: for some reason, this doesn't exist at this point
+    from medcat.cat import CAT
+    CAT.attempt_unpack(V1_MODEL_PATH)
     with open(model_card_path) as f:
         return json.load(f)
 
