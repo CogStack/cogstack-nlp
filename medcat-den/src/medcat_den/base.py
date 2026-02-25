@@ -35,10 +35,28 @@ class ModelInfo(BaseModel):
             defaults = {
                 'Pipeline Description': {"core": {}, "addons": []},
                 'Required Plugins': [],
+                "Location": "N/A",
+                "Basic CDB Stats": {
+                    "Unsupervised training history": [],
+                    "Supervised training history": [],
+                },
+                "Source Ontology": ["unknown"],
             }
             out_dict = {**defaults, **v}  # v overwrites defaults
-            if out_dict.get("Source Ontology") is None:
-                out_dict['Source Ontology'] = ['Unknown']
+            cls._check_key_value_recursively(out_dict, defaults)
             return out_dict
         return v
 
+    @classmethod
+    def _check_key_value_recursively(
+            cls, out_dict: dict, defaults: dict) -> None:
+        for key, def_val in defaults.items():
+            # NOTE: this should be mostly for nested stuff
+            if key not in out_dict:
+                out_dict[key] = def_val
+                continue
+            cur_val = out_dict[key]
+            if cur_val is None or type(cur_val) is not type(def_val):
+                out_dict[key] = def_val
+            elif isinstance(def_val, dict):
+                cls._check_key_value_recursively(cur_val, def_val)
