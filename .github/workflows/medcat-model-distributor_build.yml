@@ -1,16 +1,16 @@
-name: medcat-demo-app - Test
+name: medcat-model-distributor - Test
 
 on:
   push:
     branches: [ main ]
   pull_request:
     paths:
-      - 'medcat-demo-app/**'
+      - 'medcat-model-distributor/**'
       - 'medcat-v2/**'
-      - '.github/workflows/medcat-demo-app**'
+      - '.github/workflows/medcat-model-distributor**'
 defaults:
   run:
-    working-directory: ./medcat-demo-app
+    working-directory: ./medcat-model-distributor
 
 jobs:
   integration-test:
