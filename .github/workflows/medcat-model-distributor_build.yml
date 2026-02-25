@@ -15,8 +15,6 @@ defaults:
 jobs:
   integration-test:
     runs-on: ubuntu-latest
-    env:
-      MEDCAT_BRANCH: ${{ github.head_ref || github.ref_name }}
 
     steps:
     - uses: actions/checkout@v6
