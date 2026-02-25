@@ -44,10 +44,14 @@ def run_checks(base_url: str, api_key: str, model_name: str) -> None:
     url = f"{base_url.rstrip('/')}/auth-callback-api/"
 
     # ── 1. Call with key in query string ──────────────────────────────────────
-    full_url = f"{url}?api_key={urllib.parse.quote(api_key)}"
-    keep_api_key = min(len(api_key) - 1, 10)
-    remove_from_end = len(api_key) - keep_api_key
-    print(f"  GET {full_url[:-remove_from_end]}...[REDACTED]")
+    # NOTE: The "API key" used here is a test time one that has no value
+    #       outside this test. It is generated for the purposes of the test
+    quoted_api_key = urllib.parse.quote(api_key)
+    api_key_descr = (
+        f"Redacted Api key of length {len(quoted_api_key)} "
+        f"with hash {hash(quoted_api_key)}")
+    full_url = f"{url}?api_key={quoted_api_key}"
+    print(f"  GET {full_url.removesuffix(quoted_api_key)}<{api_key_descr}>")
 
     try:
         req = urllib.request.Request(full_url)
