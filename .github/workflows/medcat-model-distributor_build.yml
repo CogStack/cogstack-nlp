@@ -44,7 +44,7 @@ jobs:
       run: docker-compose -f docker-compose-test.yml up -d --build
 
     - name: Run integration test
-      run: ./tests/test_integration.sh  --model-file README.md
+      run: ./tests/test_integration.sh  --model-file manage.py
 
     - name: Check container logs for errors
       run: |
