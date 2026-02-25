@@ -120,26 +120,17 @@ info "App is ready (${WAITED}s elapsed)"
 # =============================================================================
 step "STEP 2 – Locate model file inside container"
 
-# We search the container's filesystem for the mounted file by name.
-# If your compose file mounts the directory under a fixed path you can
-# hard-code CONTAINER_MODEL_PATH instead of relying on auto-detection.
-CONTAINER_MODEL_PATH="$(
-    docker compose -f "$COMPOSE_FILE" exec -T "$SERVICE" \
-        python3 -c "
-import os, sys
-target = '${MODEL_FILE_BASENAME}'
-for root, dirs, files in os.walk('/'):
-    dirs[:] = [d for d in dirs if not root.startswith(('/proc','/sys','/dev'))]
-    if target in files:
-        print(os.path.join(root, target))
-        sys.exit(0)
-sys.exit(1)
-" 2>/dev/null
-)" || {
-    warn "Auto-detection failed. Falling back to host path: ${MODEL_FILE_ABS}"
-    warn "Make sure '${MODEL_FILE_DIR}' is mounted into the '${SERVICE}' container."
-    CONTAINER_MODEL_PATH="${MODEL_FILE_ABS}"
-}
+# Attempt auto-detection
+DETECTED_PATH="$(docker compose -f "$COMPOSE_FILE" exec -T "$SERVICE" find / -name "$MODEL_FILE_BASENAME" -not -path "/proc/*" -not -path "/sys/*" -print -quit 2>/dev/null | tr -d '\r')"
+
+if [[ -n "$DETECTED_PATH" ]]; then
+    CONTAINER_MODEL_PATH="$DETECTED_PATH"
+else
+    # This is the crucial part: Hardcode where your app lives in the Docker image
+    # Assuming your Dockerfile puts the code in /webapp
+    warn "Auto-detection failed. Using known container path..."
+    CONTAINER_MODEL_PATH="/webapp/$MODEL_FILE_BASENAME"
+fi
 
 info "Container model path: ${CONTAINER_MODEL_PATH}"
 
