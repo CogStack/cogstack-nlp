@@ -51,8 +51,7 @@ def run_checks(base_url: str, api_key: str, model_name: str) -> None:
         f"Redacted Api key of length {len(quoted_api_key)} "
         f"with hash {hash(quoted_api_key)}")
     full_url = f"{url}?api_key={quoted_api_key}"
-    redacted_url = full_url.replace(quoted_api_key, f'<{api_key_descr}>')
-    print(f"  GET {redacted_url}")
+    print(f"  GET {url}?api_key=<{api_key_descr}>")
 
     try:
         req = urllib.request.Request(full_url)
