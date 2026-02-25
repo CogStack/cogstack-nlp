@@ -60,7 +60,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/')
     needs: integration-test
     steps:
-      - name: Checkout main
+      - name: Checkout
         uses: actions/checkout@v6
 
       - name: Log in to Docker Hub
