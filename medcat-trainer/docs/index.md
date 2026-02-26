@@ -1,4 +1,4 @@
-# Medical <img src="_static/img/cat-logo.svg" width="45" alt="MedCAT">oncept Annotation Tool Trainer
+# Medical <img src="_static/img/cat-logo.svg" width="45" alt="C">oncept Annotation Tool Trainer
 
 MedCATtrainer is a web application for creating, validating, and improving
 MedCAT concept annotation models on biomedical or clinical text.
