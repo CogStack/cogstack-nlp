@@ -139,5 +139,5 @@ An example compose file is available at
 - **Concept picker empty**: confirm Solr is running and concepts were imported
   for the selected CDB.
 
-# Next Steps
+## Next Steps
 Now that medcat trainer is installed and running, proceed to [Administrator Setup](admin_setup.md) to create the Admin user.
