@@ -10,15 +10,15 @@ review-only workflows (collect annotations without changing the model).
 
 - Build annotation projects from CSV/XLSX datasets.
 - Use either:
-  - a **Model Pack** (recommended), or
-  - a **Concept DB + Vocabulary** pair.
+    - a **Model Pack** (recommended), or
+    - a **Concept DB + Vocabulary** pair.
 - Optionally use a **remote MedCAT model service** for document preparation.
 - Collect concept-level labels:
-  - Correct
-  - Incorrect
-  - Alternative concept
-  - Terminate
-  - Irrelevant
+    - Correct
+    - Incorrect
+    - Alternative concept
+    - Terminate
+    - Irrelevant
 - Collect optional **meta annotations** and **relation annotations**.
 - Use **Project Groups** for multi-annotator setups.
 - Run **metrics reports** across one or more compatible projects.

@@ -16,11 +16,11 @@ Create and manage tasks in Django admin (`/admin`):
 
 1. Create **Meta Task Values** (the allowed label options).
 2. Create a **Meta Task**:
-   - name
-   - values
-   - default value (optional)
-   - description
-   - ordering
+    - name
+    - values
+    - default value (optional)
+    - description
+    - ordering
 3. Attach selected tasks to your project (`Project annotate entities`).
 
 ## Model-pack predictions vs manual labels

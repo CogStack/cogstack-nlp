@@ -36,8 +36,8 @@ The backup scripts are SQLite-focused (`DB_ENGINE=sqlite3`).
 - A backup is taken on startup before migrations.
 - A scheduled backup job also runs regularly.
 - Backup location is controlled by:
-  - `DB_PATH`
-  - `DB_BACKUP_DIR`
+    - `DB_PATH`
+    - `DB_BACKUP_DIR`
 
 ### Restore process
 

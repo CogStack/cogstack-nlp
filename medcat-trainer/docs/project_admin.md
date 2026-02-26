@@ -10,11 +10,11 @@ MedCATtrainer supports two management surfaces:
 1. Open `/project-admin`.
 2. Go to the **Projects** tab and select **Create New Project**.
 3. Fill in:
-   - **Basic information** (name, dataset, description, guideline link)
-   - **Model configuration**
-   - **Annotation settings**
-   - **Concept filter (optional)**
-   - **Members**
+    - **Basic information** (name, dataset, description, guideline link)
+    - **Model configuration**
+    - **Annotation settings**
+    - **Concept filter (optional)**
+    - **Members**
 4. Save.
 
 ### Model configuration options

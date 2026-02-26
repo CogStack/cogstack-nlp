@@ -17,8 +17,8 @@ It does **not** persist annotation decisions like a project workflow does.
 
 1. Select a **Model Pack**.
 2. Optionally add CUI filters:
-   - pick concepts from the concept picker, or
-   - paste a comma-separated CUI list.
+    - pick concepts from the concept picker, or
+    - paste a comma-separated CUI list.
 3. Optionally enable **Include sub-concepts**.
 4. Enter or paste free text.
 
