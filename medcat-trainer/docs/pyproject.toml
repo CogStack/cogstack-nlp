@@ -1,0 +1,19 @@
+[project]
+name = "cogstack-documentation"
+version = "0.1.0"
+description = "CogStack Documentation"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "mkdocs-material>=9.7.0",
+    "termynal>=0.13.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.12.11",
+]
+
+[tool.ruff]
+line-length = 120
+

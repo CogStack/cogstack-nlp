@@ -1,4 +1,4 @@
-# Medical <img src="_static/img/cat-logo.png" width=45>oncept Annotation Tool Trainer
+# Medical <img src="_static/img/cat-logo.svg" width="45" alt="MedCAT">oncept Annotation Tool Trainer
 
 MedCATtrainer is a web application for creating, validating, and improving
 MedCAT concept annotation models on biomedical or clinical text.
@@ -27,9 +27,9 @@ review-only workflows (collect annotations without changing the model).
 ## Typical workflow
 
 1. Install and configure MedCATtrainer.
-2. Create users and upload model artifacts (Model Pack or CDB/Vocab).
-3. Create a project and assign annotators.
-4. Annotate and submit documents.
+2. Create users and upload model artifacts (Model Pack or CDB/Vocab). [Administrator Setup](admin_setup.md)
+3. Create a project and assign annotators. [Annotation Project Creation and Management](project_admin.md)
+4. Annotate and submit documents. [Annotator Guide](annotator_guide.md)
 5. Export annotations and evaluate with the metrics tools.
 
 ## Documentation map

@@ -1,0 +1,62 @@
+# yaml-language-server: $schema=https://squidfunk.github.io/mkdocs-material/schema.json
+site_name: MedCAT Trainer Documentation
+site_url: http://localhost:8080/docs/
+
+theme:
+  name: material
+  favicon: _static/img/cat-logo.svg
+  logo: _static/img/cat-logo.svg
+  icon:
+    logo:  _static/img/cat-logo.svg
+  palette:
+    primary: white
+
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.indexes
+    - navigation.tracking
+    - navigation.footer
+    - header.autohide
+    - content.tooltips
+    - search.highlight
+    - search.share
+    - search.suggest
+    - toc.follow
+    - attr_list
+
+repo_url: https://github.com/CogStack/cogstack-nlp
+repo_name: cogstack-nlp
+
+docs_dir: docs
+
+nav:
+  - Home: index.md
+  - Getting started:
+      - Installation: installation.md
+      - Demo: demo_page.md
+  - User guide:
+      - Annotator Guide: annotator_guide.md
+      - Administratiors Guide:
+        - Administrator setup: admin_setup.md
+        - Annotation Project admin: project_admin.md
+        - Annotation Project group admin: project_group_admin.md
+      - Meta annotations: meta_annotations.md
+  - Reference: 
+    - Advanced usage: advanced_usage.md
+    - Maintenance: maintenance.md
+  - Client API: client.md
+
+plugins:
+  - search
+  - termynal
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg

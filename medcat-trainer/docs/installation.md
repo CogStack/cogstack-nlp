@@ -1,5 +1,12 @@
 # Installation
 
+The steps to setup Medcat trainer are as follows:
+1. Run MedCAT Trainer with Docker or Helm
+2. Setup the Administrator user with [Administrator Setup](admin_setup.md) 
+3. Configure annotations Projects
+
+This page details the initial running of the application.
+
 MedCATtrainer is packaged as a Docker Compose deployment with three core
 services:
 
@@ -61,6 +68,7 @@ Host-level Compose variables (for example port overrides) can be set by copying
 
 | Variable | Description |
 |---|---|
+| `CSRF_TRUSTED_ORIGINS` | Allowed origins to access the admin panel. Mandatory to set if you expose the app over a different URL or port (default `'http://127.0.0.1:8001', 'http://localhost:8001'`). |
 | `MCTRAINER_PORT` | Host port for the web UI/API (default `8001`). |
 | `SOLR_PORT` | Host port for Solr admin (default `8983`). |
 | `MEDCAT_CONFIG_FILE` | MedCAT config file path inside the container. |
@@ -129,3 +137,6 @@ An example compose file is available at
   startup logs.
 - **Concept picker empty**: confirm Solr is running and concepts were imported
   for the selected CDB.
+
+# Next Steps
+Now that medcat trainer is installed and running, proceed to [Administrator Setup](admin_setup.md) to create the Admin user.

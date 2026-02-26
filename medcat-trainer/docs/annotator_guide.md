@@ -71,6 +71,9 @@ The sidebar shows details for the currently selected concept, including:
 
 If enabled by project settings, a **Comment** field is also available.
 
+!!! tip
+    If the details are not showing in the sidebar after you've selected one, the issue is likely with an unfinished Project setup. See the section for "Concept lookup index (Solr import)" in the [Project Creation and Management Guide](project_admin.md) for details.
+
 ## Meta annotations and relations
 
 Depending on project configuration:
