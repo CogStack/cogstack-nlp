@@ -20,4 +20,4 @@ build:
         - cd medcat-trainer/docs && UV_PROJECT_ENVIRONMENT="${READTHEDOCS_VIRTUALENV_PATH}" uv sync --frozen
 
 mkdocs:
-  configuration: medcat-trainer/docs/mkdocs.yml
+  configuration: medcat-trainer/mkdocs.yml
