@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 from medcat_den.base import ModelInfo
 
 
@@ -40,7 +42,7 @@ MODEL_CARD_WITH_NEW_KEYS = {
 def test_validates_with_old_format():
     model = ModelInfo(
         model_id="test_id",
-        model_card=MODEL_CARD_NO_NEW_KEYS,
+        model_card=deepcopy(MODEL_CARD_NO_NEW_KEYS),
             base_model=None,
         model_name="test_model",
         model_num=1,
@@ -51,7 +53,7 @@ def test_validates_with_old_format():
 def test_validates_with_new_format():
     model = ModelInfo(
         model_id="test_id",
-        model_card=MODEL_CARD_WITH_NEW_KEYS,
+        model_card=deepcopy(MODEL_CARD_WITH_NEW_KEYS),
             base_model=None,
         model_name="test_model",
         model_num=1,
@@ -62,7 +64,7 @@ def test_validates_with_new_format():
 def test_new_format_keeps_values():
     model = ModelInfo(
         model_id="test_id",
-        model_card=MODEL_CARD_WITH_NEW_KEYS,
+        model_card=deepcopy(MODEL_CARD_WITH_NEW_KEYS),
             base_model=None,
         model_name="test_model",
         model_num=1,
