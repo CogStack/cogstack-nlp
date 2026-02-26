@@ -1,11 +1,12 @@
 # Installation
 
 The steps to setup Medcat trainer are as follows:
+
 1. Run MedCAT Trainer with Docker or Helm
 2. Setup the Administrator user with [Administrator Setup](admin_setup.md) 
 3. Configure annotations Projects
 
-This page details the initial running of the application.
+This page details the initial running of the application with Docker
 
 MedCATtrainer is packaged as a Docker Compose deployment with three core
 services:
