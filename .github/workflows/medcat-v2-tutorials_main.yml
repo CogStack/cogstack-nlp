@@ -37,6 +37,11 @@ jobs:
       - name: Install IPython kernel
         run: |
           python -m ipykernel install --name smoketests --user
+
+      - name: DEBUG OUTPUT
+        run: |
+          python -c "import medcat;print('ver:', medcat.__version__);print('has:', dir(medcat))"
+          python -c "import medcat.utils;print('utils has:', dir(medcat.utils))"
       - name: Smoke test tutorial
         # NOTE: these need to be run separately so that order is guaranteed
         run: |
