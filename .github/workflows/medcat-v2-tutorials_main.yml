@@ -69,10 +69,7 @@ jobs:
 
       - name: Update install targets in notebooks
         run: |
-          python .ci/patch_notebook_installs.py .
-          git status
-          echo ""
-          git diff
+          python .ci/patch_notebook_installs.py . --expect-min-changes 4
 
       - name: Install dependencies
         run: |
