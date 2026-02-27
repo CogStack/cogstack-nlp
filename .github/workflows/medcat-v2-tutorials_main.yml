@@ -26,7 +26,7 @@ jobs:
 
       - name: Update install targets in notebooks
         run: |
-          python .ci/patch_notebook_installs.py .
+          python .ci/patch_notebook_installs.py . --expect-min-changes 4
 
       - name: Install dependencies
         run: |
@@ -69,7 +69,7 @@ jobs:
 
       - name: Update install targets in notebooks
         run: |
-          python .ci/patch_notebook_installs.py .
+          python .ci/patch_notebook_installs.py . --expect-min-changes 4
 
       - name: Install dependencies
         run: |

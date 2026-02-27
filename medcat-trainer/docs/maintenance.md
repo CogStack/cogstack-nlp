@@ -1,61 +1,64 @@
-# Maintanence
+# Maintenance
 
-MedCATtrainer is actively maintained. To ensure you receive the latest
-security patches of the software and its dependencies you should regularly
-be upgrading to the latest release.
+Keep MedCATtrainer regularly updated to receive dependency and security fixes.
 
-The latest stable releases update the `docker-compose.yml` and `docker-compose-prod.yml` files.
+## Upgrade workflow
 
-To update these docker compose files, either copy them directly from the [repo](https://github.com/CogStack/cogstack-nlp/tree/main/medcat-trainer)
-or update the cloned files via:
-
-```shell
-$ cd MedCATtrainer
-$ git pull
-$ docker-compose up
-# alternatively for prod releases use:
-$ docker-compose -f docker-compose-prod.yml up
+```bash
+cd medcat-trainer
+git pull
+docker compose pull
+docker compose up -d
 ```
 
-MedCATtrainer follows [Semver](https://semver.org/), so patch and minor release should always be backwards compatible, 
-whereas major releases, e.g. v1.x vs 2.x versions signify breaking changes. 
+For production compose:
 
-Neccessary Django DB migrations will automatically applied between releases, which should largely be invisible to an end admin 
-or annotation user. Nevertheless, migrating ORM / DB models, then rolling back a release can cause issues if values are defaulted 
-or removed from a later version. 
-
-## Backup and Restore
-
-### Backup
-Before updating to a new release, a backup will be created in the `DB_BACKUP_DIR`, as configured in `envs/env`.
-A further crontab runs the same backup script at 10pm every night. This does not cause any downtime and will look like
-this in the logs:
-```shell
-medcattrainer-medcattrainer-db-backup-1  | Found backup dir location: /home/api/db-backup and DB_PATH: /home/api/db/db.sqlite3
-medcattrainer-medcattrainer-db-backup-1  | Backed up existing DB to /home/api/db-backup/db-backup-2023-09-26__23-26-01.sqlite3
-medcattrainer-medcattrainer-db-backup-1  | To restore this backup use $ ./restore.sh /home/api/db-backup/db-backup-2023-09-26__23-26-01.sqlite3
+```bash
+docker compose -f docker-compose-prod.yml pull
+docker compose -f docker-compose-prod.yml up -d
 ```
 
-A backup is also automatically performed each time the service starts, and any migrations are performed, in the events of a new release
-introducing a breaking change and corrupting a DB.
+Database migrations are applied automatically on container startup.
 
-### Restore
-If a DB is corrupted or needs to be restored to an existing backed up db use the following commands, whilst the service is running:
+## Operational checks
 
-```shell
-$ docker ps
-CONTAINER ID   IMAGE                                          COMMAND                  CREATED      STATUS      PORTS                                               NAMES
-a2489b0c681b   cogstacksystems/medcat-trainer-nginx:v2.11.2   "/docker-entrypoint.…"   4 days ago   Up 4 days   80/tcp, 0.0.0.0:8001->8000/tcp, :::8001->8000/tcp   medcattrainer-nginx-1
-20fed153d798   solr:8                                         "docker-entrypoint.s…"   4 days ago   Up 4 days   0.0.0.0:8983->8983/tcp, :::8983->8983/tcp           mct_solr
-2b250a0975fe   cogstacksystems/medcat-trainer:v2.11.2         "/home/run.sh"           4 days ago   Up 4 days                                                       medcattrainer-medcattrainer-1
-$ docker exec -it 2b250a0975fe bash
-root@2b250a0975fe:/home/api# cd ..
-$ restore_db.sh db-backup-2023-09-25__23-21-39.sqlite3  # run the restore.sh script
-Found backup dir location: /home/api/db-backup, found db path: home/api/db/db.sqlite3
-DB file to restore: db-backup-2023-09-25__23-21-39.sqlite3
-Found db-backup-2023-09-25__23-21-39.sqlite3 - y to confirm backup: y  # you'll need tp confirm this is the correct file to restore.
-Restored db-backup-2023-09-25__23-21-39.sqlite3 to /home/db/db.sqlite3
+- Application/API health: `GET /api/health/`
+- Container logs: `docker compose logs -f medcattrainer`
+- Concept search availability: verify Solr container and project concept import
+  status.
+
+## Backup and restore (SQLite deployments)
+
+The backup scripts are SQLite-focused (`DB_ENGINE=sqlite3`).
+
+### Automatic backups
+
+- A backup is taken on startup before migrations.
+- A scheduled backup job also runs regularly.
+- Backup location is controlled by:
+  - `DB_PATH`
+  - `DB_BACKUP_DIR`
+
+### Restore process
+
+1. Enter the running `medcattrainer` container.
+2. Run restore script:
+
+```bash
+/home/scripts/restore_db.sh <backup-file-name>
 ```
 
-The `restore_db.sh` script will automatically restore the latest db file, if no file is specified.
+If no filename is provided, the latest backup is selected.
+
+The script prompts for confirmation before overwriting the active DB.
+
+## Release compatibility
+
+MedCATtrainer follows semantic versioning:
+
+- patch/minor versions are expected to be backward compatible,
+- major versions may include breaking changes.
+
+Avoid rollback after schema migrations unless you have tested rollback
+procedures and verified data compatibility.
 

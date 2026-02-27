@@ -1,72 +1,93 @@
 # Annotation Interface
 
-The annotation interface can be split into 5 sections.
+The annotator view is designed for fast review and correction of model
+predictions.
 
 ![](_static/img/main-annotation-interface.png)
 
-## Section 1 - Document Summary List
-A list of documents to be completed in this project. Currently selected documents are highlighted in blue
-left border. Submitted documents are marked with a ![tick_mark](_static/img/tick_mark.png).
+## 1) Document list
 
-## Section 2 - Clinical Text
-The selected documents text, highlighted with each concept recognised by the configured MedCAT model.
-Highlighted spans of text indicate status of the annotation:
-- Grey: A User has *not reviewed* this span that has been recognised and linked by MedCAT to a CDB concept.
-- Blue: A User has reviewed the span and marked it as ***correct*** in terms of its linked MedCAT concept.
-- Red: A User has reviewed the span and marked it as **incorrect** in terms of its linked MedCAT concept.
-- Dark Red: A User has reviewed the span and marked it to **terminate**, meaning the text span should never again
-  link to this text span, this informs MedCAT that
-- Turqoise: A User has reviewed the span and marked it as an  **alternative** linked concept. The user has used the
-  'Concept Picker' to choose the correct concept that should be linked.
+The left panel shows documents in the project dataset.
 
-### Additional Annotations
-MedCAT may miss text spans that are acronyms, abbreviations or misspellings of concepts. Missing annotations can be
-added to the text by directly highlighting the text span, right clicking, selecting 'Add Term', searching for
-concept (via ID, or name), and selecting Add Term:
+- Current document is highlighted.
+- Prepared documents (model predictions generated) are marked.
+- Submitted/validated documents are marked as complete.
 
-![](_static/img/add-annotation-text.png) -> ![](_static/img/add-annotation-menu.png) -> ![](_static/img/add-annotation-concept-pick.png)
+## 2) Clinical text
 
-Select:
-- Add Term: to add this annotation to the text span and link the selected concept
-- Cancel: (Shortcut esc): to cancel adding the annotation to the text.
+The center panel displays document text with detected concept spans.
 
-![](_static/img/add-annotation-select-concept.png)
+Select spans by clicking them directly, then apply one status from the task bar.
 
-## Section 3 - Action Bar
+### Supported concept statuses
 
-### Concept Navigation
-Navigating between the list of concepts as they appear in the document:
-- Action buttons, left and right
-- Left and right arrow keys on keyboard
-- Directly clicking on the concept within the text.
+- **Correct**
+- **Incorrect**
+- **Terminate** (if enabled for project)
+- **Alternative** (choose a different concept)
+- **Irrelevant** (if enabled for project)
 
+Only one status can be active per concept at a time.
 
-### Concept Status Buttons
-A concept can be marked with only one status. Status is recorded but only sent to MedCAT for
-training on **submit** of the document and if the projects configured with "Train Model On Submit" is ticked.
+### Adding missing annotations
 
-### Submit Button
-Submit is disabled until all concepts have been reviewed and marked with a status. Clicking submit will produce  
-a submission confirmation dialog with an annotation summary. Confirming submission will send all new annotations
-to MedCATTrainer middle tier, and re-train the MedCAT model. The following document will be selected and annotated
-by the newly trained MedCAT model
+If the model missed a mention:
 
-## Section 4 - Header Toolbar
-Lists the current name of the document under review and the number of remaining documents to annotate in this project
-action buttons for:
-- ![](_static/img/summary-button.png): Summary of current annotations. f A similar view is shown before confirmation of submission of the annotations
-- ![](_static/img/help-button.png): Help dialog, showing shortcuts for document & concept navigation, concept annotation and submission.
-- ![](_static/img/reset-button.png): Reset document. If an annotation is incorrectly added, or incorrectly submitted resetting the document will
-  clear all previous annotations and their status.
+1. Highlight text in the document.
+2. Right-click and choose **Add Term**.
+3. Search/select a concept in the concept picker.
+4. Confirm to create the annotation.
 
-## Section 5 - Concept Summary
-Lists the current selected concepts details.
+Projects with `add_new_entities` enabled can also create brand-new concepts.
 
-|Concept Detail| Description |
-|--------------| ------------|
-|Annotated Text| The text span linked to the concept|
-|Name          | The linked concept name from within the MedCAT CDB|
-|Type ID       | The higher level group of concepts that this concept sits under. This may be 'N/A' depending if your CDB has Type IDs or not.|
-|Concept ID    | The unique identifier for this linked concept from the MedCAT CDB.|
-|Accuracy      | The MedCAT found accuracy of the linked concept for this span. Text spans will have an accuracy 1.0, if they are uniquely identified by that name in the CDB|
-|Description   | The MedCAT associated description of the concept. SNOMED-CT does not provide descriptions of concepts, only alternative names whereas UMLS does provide descriptions|
+Overlapping annotations are supported.
+
+## 3) Task bar and submission
+
+The task bar contains status buttons and the **Submit** button.
+
+- Submit is enabled only when required tasks are completed for all concepts.
+- On submit, a confirmation dialog shows an annotation summary.
+- If project `train_model_on_submit` is enabled, submitted annotations are used
+  for incremental model updates (except remote model-service projects).
+
+## 4) Header actions
+
+Top-right actions:
+
+- **Summary**: open document annotation summary.
+- **Help**: keyboard shortcuts and project guidance.
+- **Reset document**: re-prepare current document and clear document-level
+  annotation state.
+
+## 5) Right sidebar (concept details)
+
+The sidebar shows details for the currently selected concept, including:
+
+- concept name/CUI
+- type IDs/semantic type (if available)
+- synonyms and description
+- confidence score
+
+If enabled by project settings, a **Comment** field is also available.
+
+## Meta annotations and relations
+
+Depending on project configuration:
+
+- **Meta Annotation Tasks** appear for relevant concept statuses.
+- **Relation** tab appears to create/edit relations between annotated entities.
+
+## Keyboard shortcuts
+
+| Shortcut | Action |
+|---|---|
+| Up / Down | Previous / next document |
+| Left / Right (or Space) | Previous / next concept |
+| `1` | Correct |
+| `2` | Incorrect |
+| `3` | Terminate (if enabled) |
+| `4` | Alternative |
+| `5` | Irrelevant (if enabled) |
+| Enter | Submit / confirm submit |
+| Esc | Close active modal/cancel active add-term flow |

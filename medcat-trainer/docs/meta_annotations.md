@@ -1,42 +1,45 @@
 # Meta Annotations
 
-MedCAT is also able to learn project & context specific annotations that overlay on top of the base layer of concept annotations.
+Meta annotations are extra labels attached to concept annotations, useful for
+context-specific tasks such as temporality, experiencer, assertion, or
+hypothetical mentions.
 
-Example use cases of these annotations could be to train models to predict if:
+Examples:
 
-- all disease concepts were **experienced** by the patient, a relative, or N/A.
-- all symptom concepts are **temporally** reference present day, or are historical.
-- all drug concepts are mentions of patients consuming drugs rather than **hypothetical** mentions.
-- a complaint for a patient is **primary** or **secondary**.
+- `Temporality`: Past / Present / Future
+- `Experiencer`: Patient / Family / Other
+- `Assertion`: Affirmed / Negated / Possible
 
-MedCATTrainer is configurable (via the administrator app), to allow for the collection of these meta annotations. We
-currently have not integrated the active learning components of the concept recognition.
+## Configure meta tasks
 
-## Meta Annotation Configuration
+Create and manage tasks in Django admin (`/admin`):
 
-To create a new Meta Annotation Task and attach to an existing project:
+1. Create **Meta Task Values** (the allowed label options).
+2. Create a **Meta Task**:
+   - name
+   - values
+   - default value (optional)
+   - description
+   - ordering
+3. Attach selected tasks to your project (`Project annotate entities`).
 
-1\. Enter your project configuration settings via the admin page (http://localhost:8001/admin/)
+## Model-pack predictions vs manual labels
 
-![](_static/img/select-existing-project.png)
+If your project uses a model pack that includes MetaCAT models:
 
-2\. At the bottom of the form, select the + icon to bring up the new Meta Annotation Task Form.
+- predicted meta labels may be shown in the annotation UI,
+- annotators can validate or override predictions.
 
-![](_static/img/add-new-meta-task.png)
+If no prediction is available, annotators can still assign labels manually.
 
-3\. Complete the form and add additional meta task values if required for your task via the '+' icon and the 'values' input.
-Values are enumerated options for your specific task. These can be re-used across projects or be project specific.
-Ensure the default is one of the corresponding values available. Descriptions appear alongside the tasks in interface
-and in full in the help dialog.
+## Annotator behavior
 
-![](_static/img/meta-task-form.png)
+In the annotation screen, meta tasks appear in the sidebar for eligible concept
+statuses (for example Correct/Alternative flows).
 
-4\. Select desired Meta Annotation tasks for the project by holding down (ctrl / cmd) and clicking the meta tasks,
-then select 'Save' to save the project changes.
+Task values can be toggled/updated and are stored as `MetaAnnotation` records.
 
-![](_static/img/select-tasks.png)
+## Reporting
 
-5\. Meta Annotations now appear in the interface for that project under the concept summary. Meta-annotations
-only appear for concepts that are correct.
-
-![](_static/img/meta-tasks-interface.png)
+Metrics reports include a **Meta Annotations** tab when meta annotation data is
+present, including macro/micro performance summaries by task.
