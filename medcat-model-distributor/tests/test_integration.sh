@@ -31,8 +31,8 @@ COMPOSE_FILE="docker-compose-test.yml"
 SERVICE="medcatweb"
 PORT="8000"
 BASE_URL=""
-APP_LABEL="demo"
 KEEP_UP=false
+WORKDIR="/webapp"
 
 # ── Colour helpers ─────────────────────────────────────────────────────────────
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BOLD='\033[1m'; NC='\033[0m'
@@ -54,7 +54,6 @@ while [[ $# -gt 0 ]]; do
         --service)       SERVICE="$2";             shift 2 ;;
         --port)          PORT="$2";                shift 2 ;;
         --base-url)      BASE_URL="$2";            shift 2 ;;
-        --app-label)     APP_LABEL="$2";           shift 2 ;;
         --keep-up)       KEEP_UP=true;             shift   ;;
         --help)
             sed -n '/^# Usage:/,/^# =====/p' "$0" | sed 's/^# \?//'
@@ -77,7 +76,6 @@ MODEL_FILE_BASENAME="$(basename "$MODEL_FILE_ABS")"
 info "Model file  : $MODEL_FILE_ABS"
 info "Compose file: $COMPOSE_FILE  (service: $SERVICE)"
 info "Base URL    : $BASE_URL"
-info "App label   : $APP_LABEL"
 
 # ── Cleanup trap ───────────────────────────────────────────────────────────────
 cleanup() {
@@ -139,59 +137,19 @@ info "Container model path: ${CONTAINER_MODEL_PATH}"
 # =============================================================================
 step "STEP 3 – Seed database"
 
+# get container ID
+CONTAINER=$(docker compose -f "$COMPOSE_FILE" ps -q "$SERVICE")
+
+# copy setup file to container
+docker cp tests/setup/setup_in_container.py "$CONTAINER":$WORKDIR/seed_script.py
+
 # We capture stdout only for the API key; all other output goes to stderr.
 API_KEY_VALUE="$(
     docker compose -f "$COMPOSE_FILE" exec -T "$SERVICE" \
-        python3 manage.py shell << PYEOF
-import sys, os, secrets
-from django.core.files import File
-from django.utils import timezone
-from datetime import timedelta
-
-# ── Import models ─────────────────────────────────────────────────────────────
-try:
-    from ${APP_LABEL}.models import MedcatModel, APIKey
-except ImportError as e:
-    print(f"[SEED] ImportError: {e}", file=sys.stderr)
-    print(f"[SEED] Hint: pass --app-label with your Django app name", file=sys.stderr)
-    sys.exit(1)
-
-# ── MedcatModel ───────────────────────────────────────────────────────────────
-model_path = "${CONTAINER_MODEL_PATH}"
-if not os.path.exists(model_path):
-    print(f"[SEED] ERROR: model file not found in container: {model_path}", file=sys.stderr)
-    sys.exit(1)
-
-obj, created = MedcatModel.objects.get_or_create(
-    model_name="${MODEL_NAME}",
-    defaults={
-        "model_display_name": "${MODEL_DISPLAY_NAME}",
-        "model_description":  "${MODEL_DESCRIPTION}",
-    },
-)
-if created or not obj.model_file:
-    with open(model_path, "rb") as f:
-        obj.model_file.save("${MODEL_FILE_BASENAME}", File(f), save=True)
-    print(f"[SEED] MedcatModel created: {obj.model_name}", file=sys.stderr)
-else:
-    print(f"[SEED] MedcatModel already exists: {obj.model_name}", file=sys.stderr)
-
-# ── APIKey ────────────────────────────────────────────────────────────────────
-key_value = secrets.token_hex(32)   # 64-char hex, fits max_length=64
-APIKey.objects.create(
-    key=key_value,
-    identifier="${API_KEY_IDENTIFIER}",
-    expires_at=timezone.now() + timedelta(hours=1),
-    is_active=True,
-)
-print(f"[SEED] APIKey created for identifier: ${API_KEY_IDENTIFIER}", file=sys.stderr)
-
-# Print ONLY the key to stdout so the shell can capture it cleanly
-print(key_value)
-PYEOF
+        python3 $WORKDIR/seed_script.py "$CONTAINER_MODEL_PATH" "$MODEL_NAME" "$MODEL_DISPLAY_NAME" "$MODEL_DESCRIPTION" "$API_KEY_IDENTIFIER"
 )"
 
-[[ -z "$API_KEY_VALUE" ]] && die "manage.py shell returned no API key value"
+[[ -z "$API_KEY_VALUE" ]] && die "could not get API key value"
 info "APIKey value (first 10 chars): ${API_KEY_VALUE:0:10}..."
 
 # =============================================================================
