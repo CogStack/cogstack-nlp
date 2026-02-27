@@ -1,7 +1,7 @@
 [project]
-name = "cogstack-documentation"
+name = "medcat-trainer-documentation"
 version = "0.1.0"
-description = "CogStack Documentation"
+description = "MedCAT Trainer Documentation"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
