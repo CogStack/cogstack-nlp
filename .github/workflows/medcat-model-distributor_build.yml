@@ -86,7 +86,7 @@ jobs:
             type=sha
             # Create version tag based on tag prefix
             type=match,pattern=medcat-model-distributor/v(\d+\.\d+\.\d+),group=1
-          flavor: latest=false
+            type=raw,value=latest
 
       - name: Build and push Docker medcat-model-distributor image
         id: docker_build
