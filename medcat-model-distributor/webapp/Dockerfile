@@ -52,6 +52,6 @@ RUN python manage.py collectstatic --noinput
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 # this does migration and cron job
-ENTRYPOINT ["/entrypoint.sh"]
+ENTRYPOINT ["/webapp/entrypoint.sh"]
 # and then, finally runs the (flexible) runserver command
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
