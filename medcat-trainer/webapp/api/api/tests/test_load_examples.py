@@ -12,7 +12,7 @@ WEBAPP_DIR = Path(__file__).resolve().parents[2].parent  # api/tests -> api -> a
 if str(WEBAPP_DIR) not in sys.path:
     sys.path.insert(0, str(WEBAPP_DIR))
 
-# GitHub permalinks for test data (raw content). During CI this test runs in a docker container, so doesnt have access to these files. 
+# GitHub permalinks for test data (raw content). During CI this test runs in a docker container, so doesnt have access to these files.
 CARDIO_CSV_URL = "https://raw.githubusercontent.com/CogStack/cogstack-nlp/051edf6cbd94fa83436fab807aff49d78dd68e59/medcat-trainer/notebook_docs/example_data/cardio.csv"
 MODEL_PACK_ZIP_URL = "https://raw.githubusercontent.com/CogStack/cogstack-nlp/051edf6cbd94fa83436fab807aff49d78dd68e59/medcat-service/models/examples/example-medcat-v2-model-pack.zip"
 
@@ -136,7 +136,7 @@ class LoadExamplesLiveAPITestCase(LiveServerTestCase):
         try:
             with env_set(API_URL=api_url, LOAD_EXAMPLES="1", PROVISIONING_CONFIG_PATH=config_path):
                 with provisioning_temp_files() as (mp_path, ds_path):
-                    main(initial_wait=0, model_pack_tmp_file=mp_path, dataset_tmp_file=ds_path)
+                    main(model_pack_tmp_file=mp_path, dataset_tmp_file=ds_path)
 
             projects = get_project_list(api_url)
             self.assertIn(
@@ -188,9 +188,7 @@ class RunProvisioningWithConfigTestCase(LiveServerTestCase):
         api_url = self.live_server_url + "/api/"
         project_name = "Unit Test Project (Model Pack)"
 
-        config = ProvisioningConfig(
-            projects=[_spec_with_model_pack(project_name, MODEL_PACK_ZIP_URL, CARDIO_CSV_URL)]
-        )
+        config = ProvisioningConfig(projects=[_spec_with_model_pack(project_name, MODEL_PACK_ZIP_URL, CARDIO_CSV_URL)])
         with provisioning_temp_files() as (mp_path, ds_path):
             run_provisioning(config, api_url, model_pack_tmp_file=mp_path, dataset_tmp_file=ds_path)
 
