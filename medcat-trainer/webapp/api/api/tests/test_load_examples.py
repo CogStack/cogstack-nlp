@@ -3,8 +3,6 @@ import sys
 import tempfile
 from contextlib import contextmanager
 from pathlib import Path
-from unittest.mock import MagicMock, patch
-
 import requests
 from django.contrib.auth.models import User
 from django.test import LiveServerTestCase, TestCase
@@ -14,13 +12,11 @@ WEBAPP_DIR = Path(__file__).resolve().parents[2].parent  # api/tests -> api -> a
 if str(WEBAPP_DIR) not in sys.path:
     sys.path.insert(0, str(WEBAPP_DIR))
 
-# Paths for mocking S3 in tests
-MEDCAT_TRAINER_ROOT = Path(__file__).resolve().parents[4]  # .../api/api/tests -> medcat-trainer
-S3_MOCK_CARDIO_CSV = "https://github.com/CogStack/cogstack-nlp/blob/051edf6cbd94fa83436fab807aff49d78dd68e59/medcat-trainer/notebook_docs/example_data/cardio.csv"
-S3_MOCK_MODEL_PACK_ZIP = "https://github.com/CogStack/cogstack-nlp/blob/051edf6cbd94fa83436fab807aff49d78dd68e59/medcat-service/models/examples/example-medcat-v2-model-pack.zip"
+# GitHub permalinks for test data (raw content). During CI this test runs in a docker container, so doesnt have access to these files. 
+CARDIO_CSV_URL = "https://raw.githubusercontent.com/CogStack/cogstack-nlp/051edf6cbd94fa83436fab807aff49d78dd68e59/medcat-trainer/notebook_docs/example_data/cardio.csv"
+MODEL_PACK_ZIP_URL = "https://raw.githubusercontent.com/CogStack/cogstack-nlp/051edf6cbd94fa83436fab807aff49d78dd68e59/medcat-service/models/examples/example-medcat-v2-model-pack.zip"
 
-from scripts.load_examples import _DEFAULT_PROVISIONING_PATH, main, run_provisioning  # noqa: E402
-from scripts.provisioning import load_example_projects_config  # noqa: E402
+from scripts.load_examples import main, run_provisioning  # noqa: E402
 from scripts.provisioning.model import (  # noqa: E402
     DatasetSpec,
     ModelPackSpec,
@@ -49,27 +45,6 @@ def get_project_list(api_url: str) -> list[dict]:
     )
     resp.raise_for_status()
     return resp.json()["results"]
-
-
-def make_mock_get(url_responses: dict[str, tuple[Path, bool]], real_get=requests.get):
-    """
-    Build a mock requests.get that serves file content for given URLs.
-    url_responses: url -> (file_path, as_bytes). as_bytes True => .content, False => .text.
-    """
-
-    def mock_get(url, **kwargs):
-        if url in url_responses:
-            path, as_bytes = url_responses[url]
-            resp = MagicMock()
-            if as_bytes:
-                resp.content = path.read_bytes()
-            else:
-                resp.text = path.read_text()
-            resp.raise_for_status = lambda: None
-            return resp
-        return real_get(url, **kwargs)
-
-    return mock_get
 
 
 @contextmanager
@@ -123,23 +98,54 @@ class LoadExamplesLiveAPITestCase(LiveServerTestCase):
 
     def test_main_calls_live_api(self):
         api_url = self.live_server_url + "/api/"
-        config = load_example_projects_config(_DEFAULT_PROVISIONING_PATH)
+        # Use a temp YAML that points at GitHub permalinks so main() downloads without mocking
+        config = ProvisioningConfig(
+            projects=[
+                ProvisioningProjectSpec(
+                    model_pack=ModelPackSpec(name="Example Model Pack", url=MODEL_PACK_ZIP_URL),
+                    dataset=DatasetSpec(
+                        name="M-IV_NeuroNotes",
+                        url=CARDIO_CSV_URL,
+                        description="Clinical texts from MIMIC-IV",
+                    ),
+                    project=ProjectSpec(
+                        name="Example Project - Model Pack (Diseases / Symptoms / Findings)",
+                        description="Example project",
+                        annotation_guideline_link="https://example.com/guide",
+                    ),
+                ),
+            ],
+        )
         spec = config.projects[0]
-        assert spec.model_pack is not None  # default YAML uses model pack
-        mock_get = make_mock_get({
-            spec.model_pack.url: (S3_MOCK_MODEL_PACK_ZIP, True),
-            spec.dataset.url: (S3_MOCK_CARDIO_CSV, False),
-        })
-
-        with env_set(API_URL=api_url, LOAD_EXAMPLES="1"):
-            with provisioning_temp_files() as (mp_path, ds_path):
-                with patch("scripts.load_examples.requests.get", side_effect=mock_get):
+        assert spec.model_pack is not None
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            # Write YAML with GitHub permalink URLs (camelCase keys)
+            f.write("projects:\n")
+            f.write("  - modelPack:\n")
+            f.write(f'      name: "{spec.model_pack.name}"\n')
+            f.write(f'      url: "{MODEL_PACK_ZIP_URL}"\n')
+            f.write("    dataset:\n")
+            f.write(f'      name: "{spec.dataset.name}"\n')
+            f.write(f'      url: "{CARDIO_CSV_URL}"\n')
+            f.write(f'      description: "{spec.dataset.description}"\n')
+            f.write("    project:\n")
+            f.write(f'      name: "{spec.project.name}"\n')
+            f.write(f'      description: "{spec.project.description}"\n')
+            f.write(f'      annotationGuidelineLink: "{spec.project.annotation_guideline_link}"\n')
+            config_path = f.name
+        try:
+            with env_set(API_URL=api_url, LOAD_EXAMPLES="1", PROVISIONING_CONFIG_PATH=config_path):
+                with provisioning_temp_files() as (mp_path, ds_path):
                     main(initial_wait=0, model_pack_tmp_file=mp_path, dataset_tmp_file=ds_path)
 
-        projects = get_project_list(api_url)
-        self.assertIn(
-            spec.project.name, [p["name"] for p in projects], f"Project list: {[p['name'] for p in projects]}"
-        )
+            projects = get_project_list(api_url)
+            self.assertIn(
+                spec.project.name,
+                [p["name"] for p in projects],
+                f"Project list: {[p['name'] for p in projects]}",
+            )
+        finally:
+            Path(config_path).unlink(missing_ok=True)
 
 
 def _spec_with_model_pack(project_name: str, model_pack_url: str, dataset_url: str) -> ProvisioningProjectSpec:
@@ -178,38 +184,30 @@ class RunProvisioningWithConfigTestCase(LiveServerTestCase):
         User.objects.create_user(username="admin", password="admin", is_staff=True)
 
     def test_run_provisioning_with_model_pack_creates_project(self):
-        """ProvisioningConfig with use_model_service=False: mock S3, assert project is created."""
+        """ProvisioningConfig with model pack: download from GitHub permalinks, assert project is created."""
         api_url = self.live_server_url + "/api/"
         project_name = "Unit Test Project (Model Pack)"
-        model_pack_url = "https://trainer-example-data.s3.example.com/test_model.zip"
-        dataset_url = "https://trainer-example-data.s3.example.com/test_ds.csv"
 
-        config = ProvisioningConfig(projects=[_spec_with_model_pack(project_name, model_pack_url, dataset_url)])
-        mock_get = make_mock_get({
-            model_pack_url: (S3_MOCK_MODEL_PACK_ZIP, True),
-            dataset_url: (S3_MOCK_CARDIO_CSV, False),
-        })
-
+        config = ProvisioningConfig(
+            projects=[_spec_with_model_pack(project_name, MODEL_PACK_ZIP_URL, CARDIO_CSV_URL)]
+        )
         with provisioning_temp_files() as (mp_path, ds_path):
-            with patch("scripts.load_examples.requests.get", side_effect=mock_get):
-                run_provisioning(config, api_url, model_pack_tmp_file=mp_path, dataset_tmp_file=ds_path)
+            run_provisioning(config, api_url, model_pack_tmp_file=mp_path, dataset_tmp_file=ds_path)
 
         projects = get_project_list(api_url)
         self.assertIn(project_name, [p["name"] for p in projects], f"Project list: {[p['name'] for p in projects]}")
 
     def test_run_provisioning_with_model_service_url_creates_project(self):
-        """ProvisioningConfig with use_model_service=True: no model pack download, assert project is created."""
+        """ProvisioningConfig with use_model_service=True: dataset from GitHub permalink, assert project is created."""
         api_url = self.live_server_url + "/api/"
         project_name = "Unit Test Project (Remote Model Service)"
         model_service_url = "http://medcat-service:8000"
-        dataset_url = "https://trainer-example-data.s3.example.com/remote_ds.csv"
 
-        config = ProvisioningConfig(projects=[_spec_with_remote_service(project_name, model_service_url, dataset_url)])
-        mock_get = make_mock_get({dataset_url: (S3_MOCK_CARDIO_CSV, False)})
-
+        config = ProvisioningConfig(
+            projects=[_spec_with_remote_service(project_name, model_service_url, CARDIO_CSV_URL)]
+        )
         with provisioning_temp_files() as (mp_path, ds_path):
-            with patch("scripts.load_examples.requests.get", side_effect=mock_get):
-                run_provisioning(config, api_url, model_pack_tmp_file=mp_path, dataset_tmp_file=ds_path)
+            run_provisioning(config, api_url, model_pack_tmp_file=mp_path, dataset_tmp_file=ds_path)
 
         projects = get_project_list(api_url)
         self.assertIn(project_name, [p["name"] for p in projects], f"Project list: {[p['name'] for p in projects]}")
