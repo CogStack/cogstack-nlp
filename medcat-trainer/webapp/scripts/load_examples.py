@@ -8,6 +8,14 @@ import requests
 from time import sleep
 import json
 
+# Ensure the parent directory of the `scripts` package is on sys.path so that
+# `from scripts....` imports work both when running as a module
+# (python -m scripts.load_examples) and when executing the file directly
+# (python /path/to/scripts/load_examples.py).
+# SCRIPTS_PARENT = Path(__file__).resolve().parent.parent
+# if str(SCRIPTS_PARENT) not in sys.path:
+#     sys.path.insert(0, str(SCRIPTS_PARENT))
+
 from scripts.provisioning import load_example_projects_config, ProvisioningConfig
 from scripts.provisioning.model import ProvisioningProjectSpec
 
@@ -54,7 +62,8 @@ def wait_for_api_ready(api_url: str, max_wait_seconds: int = 300, interval: int 
                 return
         except (ConnectionRefusedError, requests.exceptions.ConnectionError):
             pass
-        logger.info(f"API not ready yet, retrying in {interval}s ({waited + interval}/{max_wait_seconds})")
+        logger.info(
+            f"API {health_ready_url} not ready yet, retrying in {interval}s ({waited + interval}/{max_wait_seconds})")
         sleep(interval)
         waited += interval
     logger.error(f"FATAL - API ${health_ready_url} did not return 200 within {max_wait_seconds}s. Exiting.")
@@ -67,7 +76,7 @@ def get_headers(url: str) -> dict:
     otherwise Token from DRF api-token-auth. Returns None if DRF auth fails.
     """
     use_oidc = os.environ.get("USE_OIDC")
-    logger.info("Checking for environment variable USE_OIDC...")
+    logger.debug("Checking for environment variable USE_OIDC...")
     if use_oidc is not None and use_oidc in "1":
         logger.info("Found environment variable USE_OIDC is set to truthy value. Will load data using JWT")
         token = get_keycloak_access_token()
@@ -203,7 +212,6 @@ def main(
     port: int = 8001,
     model_pack_tmp_file: str = "/home/model_pack.zip",
     dataset_tmp_file: str = "/home/ds.csv",
-    initial_wait: int = 15,
 ) -> None:
     """Entrypoint: check LOAD_EXAMPLES, load config from file, then run_provisioning."""
     logger.info("Checking for environment variable LOAD_EXAMPLES...")
@@ -223,7 +231,7 @@ def main(
 
     api_url = os.environ.get("API_URL") or f"http://localhost:{port}/api/"
     logger.info("Found Env Var LOAD_EXAMPLES, waiting for API to be ready...")
-    sleep(initial_wait)
+
     run_provisioning(provisioning_config, api_url, model_pack_tmp_file, dataset_tmp_file)
 
 

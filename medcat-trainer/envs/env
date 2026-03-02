@@ -18,7 +18,7 @@ DEBUG=1
 ### Load example CDB, Vocab ###
 LOAD_EXAMPLES=1
 # URL that examples will be sent to
-API_URL=http://localhost:8001/api/
+API_URL=http://localhost:8000/api/
 
 ### Dataset conf ###
 UNIQUE_DOC_NAMES_IN_DATASETS=True

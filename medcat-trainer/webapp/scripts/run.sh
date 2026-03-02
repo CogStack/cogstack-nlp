@@ -35,7 +35,8 @@ if not User.objects.filter(username=admin_username).exists():
 
 if [ $LOAD_EXAMPLES ]; then
   echo "Loading examples..."
-  uv run python /home/scripts/load_examples.py >> /dev/stdout 2>> /dev/stderr &
+  cd /home
+  uv run python -m scripts.load_examples >> /dev/stdout 2>> /dev/stderr &
 fi
 
 # Creating a default user group that can manage projects and annotate but not delete
