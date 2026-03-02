@@ -74,6 +74,7 @@ Host-level Compose variables (for example port overrides) can be set by copying
 | `SOLR_PORT` | Host port for Solr admin (default `8983`). |
 | `MEDCAT_CONFIG_FILE` | MedCAT config file path inside the container. |
 | `LOAD_EXAMPLES` | Load example model pack + dataset + project on startup (`1`/`0`). |
+| `PROVISIONING_CONFIG_PATH` | File path of a yaml defining projects to create on startup |
 | `REMOTE_MODEL_SERVICE_TIMEOUT` | Timeout (seconds) for remote model-service calls. |
 | `MCTRAINER_BOOTSTRAP_ADMIN_USERNAME` | Bootstrap admin username (default `admin`). |
 | `MCTRAINER_BOOTSTRAP_ADMIN_EMAIL` | Bootstrap admin email. |
