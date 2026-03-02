@@ -47,3 +47,11 @@ RUN chmod 0644 /etc/cron.d/db-backup-cron && crontab /etc/cron.d/db-backup-cron
 
 # Run collect static (could be in entrypoint script)
 RUN python manage.py collectstatic --noinput
+
+# setup entrypoint
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+# this does migration and cron job
+ENTRYPOINT ["/entrypoint.sh"]
+# and then, finally runs the (flexible) runserver command
+CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
