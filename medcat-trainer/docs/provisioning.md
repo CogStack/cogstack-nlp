@@ -3,7 +3,7 @@
 On startup, MedCAT Trainer can create example projects, datasets, and (optionally) model packs from a YAML config. The provisioner runs after the API is up.
 
 !!! warning
-   Provisioning only takes place if there are no preexisting projects/datasets/model packs.
+    Provisioning only takes place if there are no preexisting projects/datasets/model packs.
 
 ## Environment variables
 
