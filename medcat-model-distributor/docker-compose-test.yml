@@ -2,11 +2,6 @@ services:
   medcatweb:
     build:
       context: ./webapp
-    command: >
-      bash -c "
-          python manage.py migrate --noinput &&
-          /etc/init.d/cron start &&
-          python manage.py runserver 0.0.0.0:8000"
     volumes:
       - ../medcat-v2/tests/resources:/webapp/models
     ports:

@@ -1,11 +1,6 @@
 services:
   medcatweb:
     image: cogstacksystems/medcat-model-distributor
-    command: >
-      bash -c "
-          python manage.py migrate --noinput &&
-          /etc/init.d/cron start &&
-          python manage.py runserver 0.0.0.0:8000"
     volumes:
       - ./webapp/data:/webapp/data
       - ./webapp/db:/webapp/db
