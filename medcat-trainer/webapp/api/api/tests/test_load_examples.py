@@ -16,10 +16,8 @@ if str(WEBAPP_DIR) not in sys.path:
 
 # Paths for mocking S3 in tests
 MEDCAT_TRAINER_ROOT = Path(__file__).resolve().parents[4]  # .../api/api/tests -> medcat-trainer
-S3_MOCK_CARDIO_CSV = MEDCAT_TRAINER_ROOT / "notebook_docs" / "example_data" / "cardio.csv"
-S3_MOCK_MODEL_PACK_ZIP = (
-    MEDCAT_TRAINER_ROOT.parent / "medcat-service" / "models" / "examples" / "example-medcat-v2-model-pack.zip"
-)
+S3_MOCK_CARDIO_CSV = "https://github.com/CogStack/cogstack-nlp/blob/051edf6cbd94fa83436fab807aff49d78dd68e59/medcat-trainer/notebook_docs/example_data/cardio.csv"
+S3_MOCK_MODEL_PACK_ZIP = "https://github.com/CogStack/cogstack-nlp/blob/051edf6cbd94fa83436fab807aff49d78dd68e59/medcat-service/models/examples/example-medcat-v2-model-pack.zip"
 
 from scripts.load_examples import _DEFAULT_PROVISIONING_PATH, main, run_provisioning  # noqa: E402
 from scripts.provisioning import load_example_projects_config  # noqa: E402
