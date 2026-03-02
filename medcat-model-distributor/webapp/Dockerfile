@@ -49,8 +49,8 @@ RUN chmod 0644 /etc/cron.d/db-backup-cron && crontab /etc/cron.d/db-backup-cron
 RUN python manage.py collectstatic --noinput
 
 # setup entrypoint
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+COPY entrypoint.sh /webapp/entrypoint.sh
+RUN chmod +x /webapp/entrypoint.sh
 # this does migration and cron job
 ENTRYPOINT ["/webapp/entrypoint.sh"]
 # and then, finally runs the (flexible) runserver command
