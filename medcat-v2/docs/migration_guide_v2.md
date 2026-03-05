@@ -12,6 +12,7 @@ Though APIs for training (both supervised and unsupervised) have been **refactor
 ## Why v2?
 
 MedCAT v2 is a refactor designed to:
+
 - Increase modularity
   - The core library is a lot more light weight and only includes essential components
   - Additional features (many of which were always provided in v1) that need to explicitly be specified upon install
@@ -44,6 +45,7 @@ MedCAT v2 is a refactor designed to:
 ## Who should read this?
 
 If you're:
+
 - Using MedCAT v1 (almost everything prior to **August 2025**)
 - Loading or training models saved before that date
 - Calling internal APIs (beyond basic `cat.get_entities`)
@@ -107,6 +109,7 @@ This is just a small summary
 MedCAT v2 supports loading v1 models.
 There is no need to retrain them.
 However, loading will:
+
 - be significantly slower due to on-the-fly conversion
 - show a warning message about this slowdown
 
@@ -135,6 +138,7 @@ The v2-supporting releases are those from **v3** on the trainer side.
 We’d love your input / feedback!
 Please report any issues or feature requests you encounter.
 That includes (but is not limited to)
+
 - Inability to use / run / load old models
 - Missing or unclear documentation
 - Unexpected errors or regressions

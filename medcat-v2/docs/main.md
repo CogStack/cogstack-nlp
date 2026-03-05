@@ -3,7 +3,7 @@
 **There's a number of breaking changes in MedCAT v2 compared to v1.**
 Details are outlined [here](breaking_changes.md).
 
-[![Build Status](https://github.com/CogStack/cogstack-nlp/actions/workflows/medcat-v2_main.yml)](https://github.com/CogStack/cogstack-nlp/actions/workflows/medcat-v2_main.yml)
+[![Build Status](https://github.com/CogStack/cogstack-nlp/actions/workflows/medcat-v2_main.yml/badge.svg?branch=main)](https://github.com/CogStack/cogstack-nlp/actions/workflows/medcat-v2_main.yml/badge.svg?branch=main)
 [![Documentation Status](https://readthedocs.org/projects/cogstack-nlp/badge/?version=latest)](https://readthedocs.org/projects/cogstack-nlp/badge/?version=latest)
 [![Latest release](https://img.shields.io/github/v/release/CogStack/cogstack-nlp?filter=medcat/*)](https://github.com/CogStack/cogstack-nlp/releases/latest)
 [![pypi Version](https://img.shields.io/pypi/v/medcat.svg?style=flat-square&logo=pypi&logoColor=white)](https://pypi.org/project/medcat/)
@@ -83,9 +83,11 @@ Access to v2 models is upcoming. They will initially (probably) be converted mod
 A basic trained model is made public. It contains ~ 35K concepts available in `MedMentions`. This was compiled from MedMentions and does not have any data from [NLM](https://www.nlm.nih.gov/research/umls/) as that data is not publicaly available.
 
 Model packs:
+
 - MedMentions with Status (Is Concept Affirmed or Negated/Hypothetical) [Download](https://cogstack-medcat-example-models.s3.eu-west-2.amazonaws.com/medcat-example-models/medmen_wstatus_2021_oct.zip)
 
 Separate models:
+
 - Vocabulary [Download](https://cogstack-medcat-example-models.s3.eu-west-2.amazonaws.com/medcat-example-models/vocab.dat) - Built from MedMentions
 - CDB [Download](https://cogstack-medcat-example-models.s3.eu-west-2.amazonaws.com/medcat-example-models/cdb-medmen-v1.dat) - Built from MedMentions
 - MetaCAT Status [Download](https://cogstack-medcat-example-models.s3.eu-west-2.amazonaws.com/medcat-example-models/mc_status.zip) - Built from a sample from MIMIC-III, detects is an annotation Affirmed (Positve) or Other (Negated or Hypothetical) -->
@@ -94,7 +96,6 @@ Separate models:
 Entity extraction was trained on [MedMentions](https://github.com/chanzuckerberg/MedMentions) In total it has ~ 35K entites from UMLS
 
 The vocabulary was compiled from [Wiktionary](https://en.wiktionary.org/wiki/Wiktionary:Main_Page) In total ~ 800K unique words
-
 
 ## Powered By
 A big thank you goes to [spaCy](https://spacy.io/) and [Hugging Face](https://huggingface.co/) - who made life a million times easier.

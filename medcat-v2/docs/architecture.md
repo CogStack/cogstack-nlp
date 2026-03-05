@@ -21,6 +21,7 @@ MedCAT is built on a flexible, registry-based architecture that allows you to cu
 
 ### Registry System
 All components are registered in a central registry. This means you can:
+
 - Swap out default implementations with your own
 - Choose between multiple NER or linking strategies
 - Add custom processing stages to the pipeline
@@ -375,6 +376,7 @@ This is **not** required when creating a new model pack from scratch.
 ### Component Dependencies
 
 Components can depend on each other:
+
 - **Linkers** receive entities from NER as input
 - **Addons** receive fully annotated documents from NER + Linker
 - All components receive the tokenizer, CDB, and vocab
@@ -394,6 +396,7 @@ class MyNER(AbstractEntityProvidingComponent):
 ### Error Handling
 
 Components should handle errors gracefully:
+
 - Return empty lists rather than raising exceptions when no entities are found
 - Log warnings for configuration issues
 - Validate inputs in `create_new_component()`

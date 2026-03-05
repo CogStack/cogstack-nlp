@@ -19,7 +19,6 @@
   max-width: 50px;
 }
 
-.wy-side-nav-search>a::before {
-  content:url('_static/cat-logo.svg');
-  width: 20;
+.wy-nav-content {
+  max-width: 1200px !important;
 }
