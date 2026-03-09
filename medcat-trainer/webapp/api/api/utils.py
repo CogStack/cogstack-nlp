@@ -23,6 +23,7 @@ logger = logging.getLogger('trainer')
 
 class RemoteEntity:
     """A simple class to mimic spaCy entity structure for remote API responses."""
+
     def __init__(self, entity_data, text):
         self.cui = entity_data.get('cui', '')
         self.start_char_index = entity_data.get('start', 0)
@@ -41,11 +42,29 @@ class RemoteEntity:
 
 class RemoteSpacyDoc:
     """A simple class to mimic spaCy document structure for remote API responses."""
+
     def __init__(self, linked_ents):
         self.linked_ents = linked_ents
 
 
 def call_remote_model_service(service_url, text):
+    """
+    Call the remote MedCAT service API to process text.
+
+    There are two service types, with different input and output formats.
+
+    This should be temporary until we determine which one is meant to be used. 
+    """
+    service_type = os.getenv('REMOTE_MODEL_SERVICE_TYPE', 'spacy')
+    if service_type == 'spacy':
+        return call_remote_model_service_spacy(service_url, text)
+    elif service_type == 'medcat':
+        return call_remote_model_service_medcat(service_url, text)
+    else:
+        raise ValueError(f"Invalid service type: {service_type}")
+
+
+def call_remote_model_service_spacy(service_url, text):
     """
     Call the remote MedCAT service API to process text.
 
@@ -68,6 +87,9 @@ def call_remote_model_service(service_url, text):
     timeout = int(os.getenv('REMOTE_MODEL_SERVICE_TIMEOUT', '60'))
 
     try:
+        logger.info(
+            f"Calling remote model service at {api_url} (text length: {len(payload['text'])} chars)"
+        )
         response = requests.post(api_url, json=payload, timeout=timeout)
         response.raise_for_status()
         result = response.json()
@@ -78,6 +100,62 @@ def call_remote_model_service(service_url, text):
 
         for _, entity_data in entities_data.items():
             linked_ents.append(RemoteEntity(entity_data, text))
+
+        return RemoteSpacyDoc(linked_ents)
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error calling remote model service at {api_url}: {e}")
+        raise Exception(f"Failed to call remote model service: {str(e)}") from e
+    except Exception as e:
+        logger.error(f"Error processing remote model service response: {e}")
+        raise Exception(f"Failed to process remote model service response: {str(e)}") from e
+
+
+def call_remote_model_service_medcat(service_url, text):
+    """
+    Call the remote MedCAT service API to process text.
+    Uses the medcat-service response shape: { "medcat_info", "result": { "text", "annotations", ... } }.
+
+    Args:
+        service_url: Base URL of the remote service (e.g., http://medcat-service:8000)
+        text: Text to process
+
+    Returns:
+        RemoteSpacyDoc object with linked_ents
+    """
+    service_url = service_url.rstrip('/')
+    api_url = f"{service_url}/api/process"
+
+    payload = {
+        "content": {
+            "text": text
+        },
+    }
+
+    timeout = int(os.getenv('REMOTE_MODEL_SERVICE_TIMEOUT', '60'))
+
+    try:
+        logger.info(
+            f"Calling remote model service for medcat at {api_url} (text length: {len(payload['content']['text'])} chars)"
+        )
+        response = requests.post(api_url, json=payload, timeout=timeout)
+        response.raise_for_status()
+        body = response.json()
+
+        # API returns { "medcat_info": {...}, "result": { "text", "annotations", ... } }
+        data = body.get('result')
+        if data is None:
+            raise Exception("Remote model service response missing 'result'")
+        if 'errors' in data:
+            raise Exception(f"Remote model service returned errors: {data['errors']}")
+
+        result_text = data.get('text', text)
+        annotations = data.get('annotations', [])
+        linked_ents = []
+        for ann_item in annotations:
+            if not isinstance(ann_item, dict):
+                continue
+            for entity_data in ann_item.values():
+                linked_ents.append(RemoteEntity(entity_data, result_text))
 
         return RemoteSpacyDoc(linked_ents)
     except requests.exceptions.RequestException as e:
@@ -106,6 +184,7 @@ def remove_annotations(document, project, partial=False):
 
 class SimpleFilters:
     """Simple filter object for remote service when cat is not available."""
+
     def __init__(self, cuis=None, cuis_exclude=None):
         self.cuis = cuis or set()
         self.cuis_exclude = cuis_exclude or set()
@@ -127,23 +206,27 @@ def add_annotations(spacy_doc, user, project, document, existing_annotations, ca
     """
     spacy_doc.linked_ents.sort(key=lambda x: len(x.text), reverse=True)
 
-    tkns_in = []
     ents = []
-    existing_annos_intervals = [(ann.start_ind, ann.end_ind) for ann in existing_annotations]
+
+    # NOTE: The code to create metatask2obj and metataskvals2obj is currently unused.
+    # Note if this is uncommented, this will error out with remote model services.
+    # Choosing to keep this commented out for now until the usage of it is required.
+    # tkns_in = []
+    # existing_annos_intervals = [(ann.start_ind, ann.end_ind) for ann in existing_annotations]
     # all MetaTasks and associated values
     # that can be produced are expected to have available models
-    try:
-        metatask2obj = {task_name: MetaTask.objects.get(name=task_name)
-                        for task_name in spacy_doc.linked_ents[0].get_addon_data('meta_cat_meta_anns').keys()}
-        metataskvals2obj = {task_name: {v.name: v for v in MetaTask.objects.get(name=task_name).values.all()}
-                            for task_name in spacy_doc.linked_ents[0].get_addon_data('meta_cat_meta_anns').keys()}
-    except (AttributeError, IndexError, UnregisteredDataPathException):
-        # IndexError: ignore if there are no annotations in this doc
-        # AttributeError: ignore meta_anns that are not present - i.e. non model pack preds
-        # or model pack preds with no meta_anns
-        metatask2obj = {}
-        metataskvals2obj = {}
-        pass
+    # try:
+    #     metatask2obj = {task_name: MetaTask.objects.get(name=task_name)
+    #                     for task_name in spacy_doc.linked_ents[0].get_addon_data('meta_cat_meta_anns').keys()}
+    #     metataskvals2obj = {task_name: {v.name: v for v in MetaTask.objects.get(name=task_name).values.all()}
+    #                         for task_name in spacy_doc.linked_ents[0].get_addon_data('meta_cat_meta_anns').keys()}
+    # except (AttributeError, IndexError, UnregisteredDataPathException):
+    #     # IndexError: ignore if there are no annotations in this doc
+    #     # AttributeError: ignore meta_anns that are not present - i.e. non model pack preds
+    #     # or model pack preds with no meta_anns
+    #     metatask2obj = {}
+    #     metataskvals2obj = {}
+    #     pass
 
     # Get filters and similarity threshold
     if cat is not None:
@@ -177,10 +260,10 @@ def add_annotations(spacy_doc, user, project, document, existing_annotations, ca
             entity = Entity.objects.get(label=label)
 
         ann_ent = AnnotatedEntity.objects.filter(project=project,
-                                                  document=document,
-                                                  entity=entity,
-                                                  start_ind=ent.start_char_index,
-                                                  end_ind=ent.end_char_index).first()
+                                                 document=document,
+                                                 entity=entity,
+                                                 start_ind=ent.start_char_index,
+                                                 end_ind=ent.end_char_index).first()
         if ann_ent is None:
             # If this entity doesn't exist already
             ann_ent = AnnotatedEntity()
@@ -350,7 +433,8 @@ def prep_docs(project_id: List[int], doc_ids: List[int], user_id: int):
         logger.info('Using remote model service in bg process for project: %s', project.id)
         filters = SimpleFilters(cuis=cuis)
         for doc in docs:
-            logger.info('Running remote MedCAT service for project %s:%s over doc: %s', project.id, project.name, doc.id)
+            logger.info('Running remote MedCAT service for project %s:%s over doc: %s',
+                        project.id, project.name, doc.id)
             spacy_doc = call_remote_model_service(project.model_service_url, doc.text)
             anns = AnnotatedEntity.objects.filter(document=doc).filter(project=project)
             with transaction.atomic():
@@ -401,7 +485,6 @@ def save_project_anno(sender, instance, **kwargs):
         instance.cuis = ','.join(set(cui_list) - set(cuis_from_file))
         instance.save()
         post_save.connect(save_project_anno, sender=ProjectAnnotateEntities)
-
 
 
 def env_str_to_bool(var: str, default: bool):

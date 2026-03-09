@@ -47,12 +47,15 @@ logger = logging.getLogger(__name__)
 # Get the basic version of MedCAT
 cat = None
 
+
 def index(request):
     return render(request, 'index.html')
 
 
 class TextInFilter(drf.BaseInFilter, drf.CharFilter):
     pass
+
+
 class NumInFilter(drf.BaseInFilter, drf.NumberFilter):
     pass
 
@@ -92,6 +95,7 @@ class ProjectGroupFilter(drf.FilterSet):
     class Meta:
         model = ProjectGroup
         fields = ['id', 'name', 'description']
+
 
 class ProjectGroupViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
@@ -225,6 +229,7 @@ class DatasetViewSet(viewsets.ModelViewSet):
 class ResetPasswordView(PasswordResetView):
     email_template_name = 'password_reset_email.html'
     subject_template_name = 'password_reset_subject.txt'
+
     def post(self, request, *args, **kwargs):
         try:
             return super().post(request, *args, **kwargs)
@@ -233,9 +238,11 @@ class ResetPasswordView(PasswordResetView):
                                            Please visit https://medcattrainer.readthedocs.io for more information to resolve this. <br>
                                            You can also ask a question at: https://discourse.cogstack.org/c/medcat/5''')
 
+
 class ResetPasswordView(PasswordResetView):
     email_template_name = 'password_reset_email.html'
     subject_template_name = 'password_reset_subject.txt'
+
     def post(self, request, *args, **kwargs):
         try:
             return super().post(request, *args, **kwargs)
@@ -243,6 +250,7 @@ class ResetPasswordView(PasswordResetView):
             return HttpResponseServerError('''SMTP settings are not configured correctly. <br>
                                            Please visit https://medcattrainer.readthedocs.io for more information to resolve this. <br>
                                            You can also ask a question at: https://discourse.cogstack.org/c/medcat/5''')
+
 
 @api_view(http_method_names=['GET'])
 def get_anno_tool_conf(_):
@@ -275,9 +283,9 @@ def prepare_documents(request):
             cuis.update(json.load(open(project.cuis_file.path)))
         except FileNotFoundError:
             return Response({'message': 'Missing CUI filter file',
-                                   'description': 'Missing CUI filter file, %s, cannot be found on the filesystem, '
-                                                  'but is still set on the project. To fix remove and reset the '
-                                                  'cui filter file' % project.cuis_file}, status=500)
+                             'description': 'Missing CUI filter file, %s, cannot be found on the filesystem, '
+                             'but is still set on the project. To fix remove and reset the '
+                             'cui filter file' % project.cuis_file}, status=500)
     try:
         for d_id in d_ids:
             document = Document.objects.get(id=d_id)
@@ -338,7 +346,7 @@ def prepare_documents(request):
     except Exception as e:
         logger.warning('Error preparing documents for project %s', p_id, exc_info=e)
         return Response({'message': e.args[0] if len(e.args) > 0 else 'Internal Server Error',
-                         'description': e.args[1] if len(e.args) > 1 else '',}, status=500)
+                         'description': e.args[1] if len(e.args) > 1 else '', }, status=500)
     return Response({'message': 'Documents prepared successfully'})
 
 
@@ -382,7 +390,8 @@ def prepare_docs_bg_task(request, proj_id):
         try:
             proj = ProjectAnnotateEntities.objects.get(id=proj_id)
             prepd_docs_count = proj.prepared_documents.count()
-            ds_total_count = Document.objects.filter(dataset=ProjectAnnotateEntities.objects.get(id=proj_id).dataset.id).count()
+            ds_total_count = Document.objects.filter(
+                dataset=ProjectAnnotateEntities.objects.get(id=proj_id).dataset.id).count()
             return Response({'proj_id': proj_id, 'dataset_len': ds_total_count, 'prepd_docs_len': prepd_docs_count})
         except ObjectDoesNotExist:
             return HttpResponseBadRequest('No Project found for the given ID')
@@ -394,6 +403,7 @@ def prepare_docs_bg_task(request, proj_id):
             return Response("Successfully stopped running response")
         else:
             return HttpResponseBadRequest('Could not find running BG Process to stop')
+
 
 @api_view(http_method_names=['POST'])
 def add_annotation(request):
@@ -443,10 +453,9 @@ def add_concept(request):
 
     if project.use_model_service:
         # Use remote model service
-        logger.error('Adding concepts is not supported for remote model service'\
+        logger.error('Adding concepts is not supported for remote model service'
                      'projects, you likely want to use a local model')
         raise NotImplementedError('Adding concepts is not supported for remote model service projects')
-
 
     cat = get_medcat(project=project)
 
@@ -473,11 +482,11 @@ def add_concept(request):
             end = start + len(source_val)
             # Find tokens that overlap with the span [start, end)
             # A token overlaps if: token_start < end AND token_end > start
-            spacy_entity = [tkn for tkn in spacy_doc if tkn.char_index < end and (tkn.char_index + len(tkn.text)) > start]
+            spacy_entity = [tkn for tkn in spacy_doc if tkn.char_index <
+                            end and (tkn.char_index + len(tkn.text)) > start]
     # if len(spacy_entity) == 0:
     #     spacy_entity = None
     cat.trainer.add_and_train_concept(cui=cui, name=name, name_status='P', mut_doc=spacy_doc, mut_entity=spacy_entity)
-
 
     id = create_annotation(source_val=source_val,
                            selection_occurrence_index=sel_occur_idx,
@@ -514,7 +523,7 @@ def _submit_document(project: ProjectAnnotateEntities, document: Document):
         if project.use_model_service:
             # TODO: Implement this, already available in CMS / gateway instances.
             # interim model training not supported for remote model service projects
-           logger.warning('Interim model training is not supported for remote model service projects')
+            logger.warning('Interim model training is not supported for remote model service projects')
         else:
             cat = get_medcat(project=project)
             train_medcat(cat, project, document)
@@ -619,17 +628,17 @@ def update_meta_annotation(request):
     meta_task_id = request.data['meta_task_id']
     meta_task_value = request.data['meta_task_value']
 
-    annotation = AnnotatedEntity.objects.filter(project= project_id, entity=entity_id, document=document_id)[0]
+    annotation = AnnotatedEntity.objects.filter(project=project_id, entity=entity_id, document=document_id)[0]
     annotation.correct = True
     annotation.validated = True
     logger.debug(annotation)
 
     annotation.save()
 
-    meta_task = MetaTask.objects.filter(id = meta_task_id)[0]
-    meta_task_value = MetaTaskValue.objects.filter(id = meta_task_value)[0]
+    meta_task = MetaTask.objects.filter(id=meta_task_id)[0]
+    meta_task_value = MetaTaskValue.objects.filter(id=meta_task_value)[0]
 
-    meta_annotation_list = MetaAnnotation.objects.filter(annotated_entity = annotation)
+    meta_annotation_list = MetaAnnotation.objects.filter(annotated_entity=annotation)
 
     logger.debug(meta_annotation_list)
 
@@ -806,14 +815,14 @@ def upload_deployment(request):
 
     try:
         upload_projects_export(deployment_upload,
-                                cdb_id,
-                                vocab_id,
-                                modelpack_id,
-                                project_name_suffix,
-                                cdb_search_filter_id,
-                                members,
-                                import_project_name_suffix,
-                                set_validated_docs)
+                               cdb_id,
+                               vocab_id,
+                               modelpack_id,
+                               project_name_suffix,
+                               cdb_search_filter_id,
+                               members,
+                               import_project_name_suffix,
+                               set_validated_docs)
         return Response("successfully uploaded", 200)
     except Exception as e:
         logger.error(f"Failed to upload projects export: {e}", exc_info=e)
@@ -824,6 +833,11 @@ def upload_deployment(request):
 def cache_project_model(request, project_id):
     try:
         project = ProjectAnnotateEntities.objects.get(id=project_id)
+        # For projects using a remote MedCAT service, there is no local model
+        # cache to warm or clear; treat cache operations as no-ops.
+        if project.use_model_service:
+            return Response('success', 200)
+
         is_loaded = is_model_loaded(project)
         if request.method == 'GET':
             if not is_loaded:
@@ -838,6 +852,7 @@ def cache_project_model(request, project_id):
     except ProjectAnnotateEntities.DoesNotExist:
         return Response(f'Project with id:{project_id} does not exist', 404)
     except Exception as e:
+        logger.error('cache_project_model failed for project_id=%s: %s', project_id, e, exc_info=e)
         return Response({'message': f'{str(e)}'}, 500)
 
 
@@ -856,8 +871,8 @@ def cache_modelpack(request, modelpack_id: int):
     except ModelPack.DoesNotExist:
         return Response(f'ModelPack with id:{modelpack_id} does not exist', 404)
     except Exception as e:
+        logger.error('cache_modelpack failed for modelpack_id=%s: %s', modelpack_id, e, exc_info=e)
         return Response({'message': f'{str(e)}'}, 500)
-
 
 
 @api_view(http_method_names=['GET'])
@@ -954,7 +969,8 @@ def view_metrics(request, report_id):
         running_pending_report = Task.objects.filter(id=report_id, queue='metrics').first()
         completed_report = CompletedTask.objects.filter(id=report_id, queue='metrics').first()
         if running_pending_report is None and completed_report is None:
-            HttpResponseBadRequest(f'Cannot find report_id:{report_id} in either pending, running or complete report lists. ')
+            HttpResponseBadRequest(
+                f'Cannot find report_id:{report_id} in either pending, running or complete report lists. ')
         elif running_pending_report is not None:
             HttpResponseBadRequest(f'Cannot view a running or pending metrics report with id:{report_id}')
         pm_obj = ProjectMetrics.objects.filter(report_name_generated=completed_report.verbose_name).first()
@@ -1024,7 +1040,7 @@ def generate_concept_filter_flat_json(request):
         for cui in cuis:
             ch_nodes = get_all_ch(cui, cdb)
             final_filter += [n for n in ch_nodes if n not in excluded_nodes]
-        final_filter = {cui:1 for cui in final_filter}.keys()
+        final_filter = {cui: 1 for cui in final_filter}.keys()
         filter_json = json.dumps(final_filter)
         response = HttpResponse(filter_json, content_type='application/json')
         response['Content-Disposition'] = 'attachment; filename=filter.json'
@@ -1157,9 +1173,9 @@ def project_admin_detail(request, project_id):
 
         # Convert string booleans to actual booleans
         boolean_fields = ['project_locked', 'annotation_classification', 'require_entity_validation',
-                         'train_model_on_submit', 'add_new_entities', 'restrict_concept_lookup',
-                         'terminate_available', 'irrelevant_available', 'enable_entity_annotation_comments',
-                         'use_model_service']
+                          'train_model_on_submit', 'add_new_entities', 'restrict_concept_lookup',
+                          'terminate_available', 'irrelevant_available', 'enable_entity_annotation_comments',
+                          'use_model_service']
         for field in boolean_fields:
             if field in data:
                 if isinstance(data[field], str):

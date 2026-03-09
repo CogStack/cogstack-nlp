@@ -200,6 +200,15 @@ def get_cached_medcat(project, cat_map: Dict[str, CAT]=CAT_MAP):
     if project.model_pack is not None:
         cat_id = 'mp' + str(project.model_pack.id)
     else:
+        # Guard against misconfigured projects that don't have a CDB/Vocab set
+        if project.use_model_service:
+            raise ValueError(
+                "get_cached_medcat should not be called for projects where use_model_service=True"
+            )
+        if project.concept_db is None or project.vocab is None:
+            raise Exception(
+                f"Project is misconfigured: concept_db is {project.concept_db} and vocab is {project.vocab}"
+            )
         cdb_id = project.concept_db.id
         vocab_id = project.vocab.id
         cat_id = str(cdb_id) + "-" + str(vocab_id)
