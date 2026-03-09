@@ -25,6 +25,7 @@ services:
     environment:
       - MCT_VERSION=latest
       - MCT_DEV_LIVERELOAD=1
+      - REMOTE_MODEL_SERVICE_TYPE=medcat
       # OIDC Settings
       - USE_OIDC=0
       - KEYCLOAK_URL=http://keycloak.cogstack.localhost
