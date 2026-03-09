@@ -45,4 +45,11 @@ fi
 # RESET any Env vars to original stat
 export RESUBMIT_ALL_ON_STARTUP=$TMP_RESUBMIT_ALL_VAR
 
-exec uv run uwsgi --http-timeout 360s --http :8000 --master --chdir /home/api/  --module core.wsgi
+# Dev live-reload: runserver restarts and re-imports on file change; uWSGI py-autoreload only restarts workers (old code in memory).
+if [ ${MCT_DEV_LIVERELOAD:-0} -eq 1 ]; then
+  echo "Starting with Django runserver (live reload)"
+  cd /home/api
+  exec uv run python manage.py runserver 0.0.0.0:8000
+else
+  exec uv run uwsgi --http-timeout 360s --http :8000 --master --chdir /home/api/  --module core.wsgi
+fi
