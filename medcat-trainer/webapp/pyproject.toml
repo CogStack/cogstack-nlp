@@ -19,8 +19,34 @@ dependencies = [
     "drf-oidc-auth>=3.0",
     "django-health-check>=3.22",
     "requests>=2.31",
+    "opentelemetry-sdk>=1.40.0",
+    "opentelemetry-distro[otlp]>=0.61b0",
+    "opentelemetry-resource-detector-containerid==0.61b0",
+    "opentelemetry-instrumentation-asyncio>=0.61b0",
+    "opentelemetry-instrumentation-dbapi>=0.61b0",
+    "opentelemetry-instrumentation-logging>=0.61b0",
+    "opentelemetry-instrumentation-sqlite3>=0.61b0",
+    "opentelemetry-instrumentation-threading>=0.61b0",
+    "opentelemetry-instrumentation-urllib>=0.61b0",
+    "opentelemetry-instrumentation-wsgi>=0.61b0",
+    "opentelemetry-instrumentation-aiohttp-client>=0.61b0",
+    "opentelemetry-instrumentation-aiohttp-server>=0.61b0",
+    "opentelemetry-instrumentation-asgi>=0.61b0",
+    "opentelemetry-instrumentation-click>=0.61b0",
+    "opentelemetry-instrumentation-django>=0.61b0",
+    "opentelemetry-instrumentation-jinja2>=0.61b0",
+    "opentelemetry-instrumentation-psycopg>=0.61b0",
+    "opentelemetry-instrumentation-requests>=0.61b0",
+    "opentelemetry-instrumentation-system-metrics>=0.61b0",
+    "opentelemetry-instrumentation-tortoiseorm>=0.61b0",
+    "opentelemetry-instrumentation-urllib3>=0.61b0",
 ]
 
-[tool.uv]
-extra-index-url = ["https://download.pytorch.org/whl/cpu/"]
-index-strategy = "unsafe-best-match"
+[tool.uv.sources]
+# Only pull torch (and its direct deps) from PyTorch; everything else from PyPI.
+torch = { index = "pytorch-cpu" }
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu/"
+explicit = true

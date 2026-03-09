@@ -6,6 +6,13 @@ import sys
 
 def main():
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')
+
+    if os.environ.get('MCT_ENABLE_TRACING', 'False').lower() == 'true':
+        from opentelemetry.instrumentation import auto_instrumentation
+
+        print("Initializing OpenTelemetry instrumentation")
+        auto_instrumentation.initialize()
+
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:

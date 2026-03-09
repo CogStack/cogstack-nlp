@@ -31,8 +31,10 @@ RUN npm install
 # Install uv and Python dependencies
 WORKDIR /home
 COPY pyproject.toml uv.lock* ./
-RUN pip install uv \
-    && uv sync --frozen --no-install-project
+# Install dependencies using a buildkit cache mount for speed on repeat
+RUN --mount=type=cache,target=/root/.cache/uv \
+    pip install uv && \
+    uv sync --frozen --cache-dir=/root/.cache/uv --no-install-project
 
 # Ensure venv has pip (uv venvs don't include it; spacy download needs it)
 RUN uv run python -m ensurepip --upgrade
