@@ -19,7 +19,8 @@ dependencies = [
     "drf-oidc-auth>=3.0",
     "django-health-check>=3.22",
     "requests>=2.31",
-    "opentelemetry-api>=1",
+    "opentelemetry-api>=1.0.0,<2",
+    "opentelemetry-semantic-conventions>=0.61b0",
 ]
 
 [project.optional-dependencies]
