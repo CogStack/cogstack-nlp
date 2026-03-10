@@ -20,6 +20,10 @@ dependencies = [
     "django-health-check>=3.22",
     "requests>=2.31",
     "opentelemetry-sdk>=1.40.0",
+]
+
+[project.optional-dependencies]
+observability = [
     "opentelemetry-distro[otlp]>=0.61b0",
     "opentelemetry-resource-detector-containerid==0.61b0",
     "opentelemetry-instrumentation-logging>=0.61b0",
