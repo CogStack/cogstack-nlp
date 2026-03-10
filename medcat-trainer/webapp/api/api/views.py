@@ -19,7 +19,7 @@ from rest_framework.response import Response
 from medcat.components.ner.trf.deid import DeIdModel
 from medcat.utils.cdb_utils import ch2pt_from_pt2ch, get_all_ch, snomed_ct_concept_path
 from medcat.utils.config_utils import temp_changed_config
-
+from opentelemetry import trace
 
 from .admin import download_projects_with_text, download_projects_without_text, \
     import_concepts_from_cdb
@@ -32,7 +32,7 @@ from .solr_utils import collections_available, search_collection, ensure_concept
 from .utils import add_annotations, remove_annotations, train_medcat, create_annotation, prep_docs
 
 logger = logging.getLogger(__name__)
-
+tracer = trace.get_tracer("medcat-trainer")
 # For local testing, put envs
 """
 from environs import Env
@@ -257,6 +257,7 @@ def get_anno_tool_conf(_):
     return Response({k: v for k, v in os.environ.items()})
 
 
+@tracer.start_as_current_span("prepare_documents")
 @api_view(http_method_names=['POST'])
 def prepare_documents(request):
     # Get the user
@@ -274,6 +275,12 @@ def prepare_documents(request):
     # Should we update
     update = request.data.get('update', 0)
 
+    trace.get_current_span().set_attributes({
+        "project_id": project.id,
+        "document_ids": d_ids,
+        "force": force,
+        "update": update,
+    })
     cuis = set()
     if project.cuis is not None and project.cuis:
         cuis = set([str(cui).strip() for cui in project.cuis.split(",")])
@@ -660,6 +667,7 @@ def update_meta_annotation(request):
     return Response({'meta_annotation': 'added meta annotation'})
 
 
+@tracer.start_as_current_span("annotate_text")
 @api_view(http_method_names=['POST'])
 def annotate_text(request):
     message = request.data.get('message')
@@ -682,7 +690,9 @@ def annotate_text(request):
             return HttpResponseBadRequest('ModelPack does not exist for project')
     else:
         project = ProjectAnnotateEntities.objects.get(id=p_id)
+        trace.get_current_span().add_event("Getting medcat from project")
         cat = get_medcat(project=project)
+        trace.get_current_span().add_event("Got medcat from project")
 
     # Normalise cuis to a set[str]
     if isinstance(cuis, str):

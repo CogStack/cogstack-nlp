@@ -13,12 +13,14 @@ from medcat.cat import CAT
 from medcat.cdb import CDB
 from medcat.components.ner.trf.deid import DeIdModel
 from medcat.tokenizing.tokens import UnregisteredDataPathException
+from opentelemetry import trace
 
 from .model_cache import get_medcat
 from .models import Entity, AnnotatedEntity, ProjectAnnotateEntities, \
     MetaAnnotation, MetaTask, Document
 
 logger = logging.getLogger('trainer')
+tracer = trace.get_tracer("medcat-trainer")
 
 
 class RemoteEntity:
@@ -47,6 +49,7 @@ class RemoteSpacyDoc:
         self.linked_ents = linked_ents
 
 
+@tracer.start_as_current_span("call_remote_model_service")
 def call_remote_model_service(service_url, text):
     """
     Call the remote MedCAT service API to process text.
@@ -55,6 +58,7 @@ def call_remote_model_service(service_url, text):
 
     This should be temporary until we determine which one is meant to be used. 
     """
+    trace.get_current_span().set_attributes({"server.address": service_url, "text_length": len(text)})
     service_type = os.getenv('REMOTE_MODEL_SERVICE_TYPE', 'spacy')
     if service_type == 'spacy':
         return call_remote_model_service_spacy(service_url, text)
@@ -190,6 +194,7 @@ class SimpleFilters:
         self.cuis_exclude = cuis_exclude or set()
 
 
+@tracer.start_as_current_span("add_annotations")
 def add_annotations(spacy_doc, user, project, document, existing_annotations, cat=None, filters=None, similarity_threshold=0.3):
     """
     Add annotations from spacy_doc to the database.

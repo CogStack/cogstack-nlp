@@ -35,18 +35,6 @@ services:
       - KEYCLOAK_INTERNAL_SERVICE_URL=http://keycloak:8080
       - KEYCLOAK_BACKEND_CLIENT_ID=cogstack-medcattrainer-backend
       - KEYCLOAK_BACKEND_CLIENT_SECRET=***
-      - MCT_ENABLE_TRACING=True
-      # OpenTelemetry settings
-      
-      # OTLP HTTP (port 4318); use http/protobuf — grpc can trigger "Unsupported OTLP protocol" in this stack
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
-      - OTEL_TRACES_EXPORTER=otlp
-      - OTEL_SERVICE_NAME=medcat-trainer
-      - OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
-      - OTEL_METRICS_EXPORTER=none
-      - OTEL_LOGS_EXPORTER=none
-      - OTEL_PYTHON_DJANGO_EXCLUDED_URLS=/api/health/*,/metrics
-      - OTEL_EXPERIMENTAL_RESOURCE_DETECTORS=containerid,os
     command: /usr/bin/supervisord -c /etc/supervisord.conf
 
   nginx:
