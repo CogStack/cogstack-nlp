@@ -10,7 +10,6 @@ def main():
     if os.environ.get('MCT_ENABLE_TRACING', 'False').lower() == 'true':
         from opentelemetry.instrumentation import auto_instrumentation
 
-        print("Initializing OpenTelemetry instrumentation")
         auto_instrumentation.initialize()
 
     try:
