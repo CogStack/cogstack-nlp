@@ -126,7 +126,7 @@ def anoncat_demo_interface() -> gr.Blocks:
             inputs=[input_text, redact],
             outputs=[highlighted, dataframe, deidentified_text],
         )
-        annotate_btn.click(lambda: (annotation_details_placeholder_text), outputs=[annotation_details])
+        annotate_btn.click(lambda: annotation_details_placeholder_text, outputs=[annotation_details])
 
         clear_btn.click(
             lambda: ("", None, None, annotation_details_placeholder_text),
@@ -162,7 +162,7 @@ def medcat_demo_interface() -> gr.Blocks:
             with gr.Column():
                 highlighted, annotation_details, dataframe = output_details_interface()
 
-        annotate_btn.click(lambda: (annotation_details_placeholder_text), outputs=[annotation_details])
+        annotate_btn.click(lambda: annotation_details_placeholder_text, outputs=[annotation_details])
         annotate_btn.click(
             medcat_demo_perform_named_entity_resolution, inputs=input_text, outputs=[highlighted, dataframe]
         )
@@ -187,4 +187,4 @@ def mount_gradio_app(app: FastAPI, path: str) -> None:
 
     io = anoncat_demo_interface() if settings.deid_mode else medcat_demo_interface()
 
-    gr.mount_gradio_app(app, io, path=path, theme=theme, css=highlighted_text_css)
+    gr.mount_gradio_app(app, io, path=path, theme=theme, css=highlighted_text_css, head=demo_content.head)
