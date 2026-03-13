@@ -12,6 +12,23 @@ class EmbeddingLinking(Linking):
     train: bool = False
     """The embedding linker never needs to be trained in its 
     current implementation."""
+    use_projection_layer: bool = True
+    """Whether to use a projection layer in the embedding linker. This
+    option can only be used on trainable embedding models. """
+    top_n_layers_to_unfreeze: int = -1
+    """The number of top layers of the embedding model to unfreeze for training.
+    Set to -1 to unfreeze all layers, 0 to freeze all layers, or any positive integer 
+    to unfreeze that many top layers. Only used if train is True."""
+    negative_sampling_k: int = 10
+    """The number of negative samples to generate during training."""
+    negative_sampling_temperature: float = 0.1
+    """The temperature parameter for negative sampling. Higher values will make the 
+    sampling distribution more uniform, while lower values will make it more 
+    focused on the top-ranked candidates."""
+    embed_per_n_batches: int = 200
+    """How often to re-embed names during training, in terms of number of batches. This 
+    is due to re-embedding being very expensive, and you can afford to get away with stale names
+    for a time."""
     long_similarity_threshold: float = 0.0
     """Used in the inference step to choose the best CUI given the
     link candidates. Testing shows a threshold of 0.7 increases precision
