@@ -4,6 +4,7 @@ from medcat.components.types import CoreComponentType
 from medcat.components.types import AbstractEntityProvidingComponent
 from medcat.tokenizing.tokens import MutableEntity, MutableDocument
 from medcat.tokenizing.tokenizers import BaseTokenizer
+from medcat_embedding_linker.transformer_context_model import ModelForEmbeddingLinking
 from typing import Optional, Iterator, Set
 from medcat.vocab import Vocab
 from medcat.utils.postprocessing import filter_linked_annotations
@@ -205,7 +206,7 @@ class Linker(AbstractEntityProvidingComponent):
         ):
             self.cnf_l.embedding_model_name = embedding_model_name
             self.tokenizer = AutoTokenizer.from_pretrained(embedding_model_name)
-            self.model = AutoModel.from_pretrained(embedding_model_name)
+            self.model = ModelForEmbeddingLinking.from_pretrained(embedding_model_name)
             self.model.eval()
             gpu_device = self.cnf_l.gpu_device
             self.device = torch.device(
@@ -227,10 +228,6 @@ class Linker(AbstractEntityProvidingComponent):
             return_tensors="pt",
         ).to(device)
         outputs = self.model(**batch_dict)
-        outputs = self._last_token_pool(
-            outputs.last_hidden_state, batch_dict["attention_mask"]
-        )
-        outputs = F.normalize(outputs, p=2, dim=1)
         return outputs.half()
 
     def _get_context(
@@ -550,20 +547,6 @@ class Linker(AbstractEntityProvidingComponent):
             return context_similarity >= threshold
         else:
             return True
-
-    def _last_token_pool(
-        self, last_hidden_states: Tensor, attention_mask: Tensor
-    ) -> Tensor:
-        left_padding = attention_mask[:, -1].sum() == attention_mask.shape[0]
-        if left_padding:
-            return last_hidden_states[:, -1]
-        else:
-            sequence_lengths = attention_mask.sum(dim=1) - 1
-            batch_size = last_hidden_states.shape[0]
-            return last_hidden_states[
-                torch.arange(batch_size, device=last_hidden_states.device),
-                sequence_lengths,
-            ]
 
     def _build_context_matrices(self) -> None:
         if "name_embeddings" in self.cdb.addl_info:
