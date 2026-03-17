@@ -1,3 +1,4 @@
+import contextlib
 import time
 import unittest
 from unittest.mock import MagicMock, patch
@@ -5,11 +6,18 @@ from medcat.tokenizing.tokens import MutableDocument
 from medcat.pipeline import Pipeline
 from medcat.components.types import BaseComponent
 
+
+import cProfile
+from unittest.mock import patch, MagicMock
+from medcat.components.types import CoreComponentType
+
 from medcat.pipeline.speed_utils import (
     TimedComponent,
     AveragingTimedComponent,
     pipeline_per_doc_timer,
     pipeline_timer_averaging_docs,
+    ProfiledComponent,
+    profile_pipeline_component,
 )
 
 
@@ -247,6 +255,174 @@ class TestDocAverageTimedValidation(unittest.TestCase):
             with pipeline_timer_averaging_docs(pipeline, show_frequency_docs=10):
                 raise RuntimeError("boom")
         self.assertEqual(pipeline._components, original)
+
+
+def make_mock_core_component(name: str = "test_component") -> MagicMock:
+    comp = MagicMock(spec=BaseComponent)
+    comp.full_name = name
+    comp.side_effect = lambda doc: doc
+    return comp
+
+
+class TestProfiledComponent(unittest.TestCase):
+
+    def test_underlying_component_called(self):
+        comp = make_mock_component()
+        doc = make_mock_doc()
+        profiled = ProfiledComponent(comp)
+        profiled(doc)
+        comp.assert_called_once_with(doc)
+
+    def test_returns_result_of_underlying_component(self):
+        comp = make_mock_component()
+        doc = make_mock_doc()
+        expected = make_mock_doc()
+        comp.side_effect = lambda d: expected
+        profiled = ProfiledComponent(comp)
+        result = profiled(doc)
+        self.assertIs(result, expected)
+
+    def test_profiler_is_cprofile_instance(self):
+        comp = make_mock_component()
+        profiled = ProfiledComponent(comp)
+        self.assertIsInstance(profiled._profiler, cProfile.Profile)
+
+    @patch("medcat.pipeline.speed_utils.logger")
+    def test_show_stats_logs_tottime_and_cumtime(self, mock_logger):
+        comp = make_mock_component()
+        doc = make_mock_doc()
+        profiled = ProfiledComponent(comp)
+        profiled(doc)
+        profiled.show_stats(limit=5)
+        # Should log once for tottime, once for cumtime
+        self.assertEqual(mock_logger.info.call_count, 2)
+        logged_messages = mock_logger.info.call_args_list
+        print("LOGGED:", logged_messages)
+        self.assertTrue(any("tottime" in part for record in logged_messages for part in record))
+        self.assertTrue(any("cumtime" in part for record in logged_messages for part in record))
+
+    @patch("medcat.pipeline.speed_utils.logger")
+    def test_show_stats_includes_component_name(self, mock_logger):
+        comp = make_mock_component("my_component")
+        doc = make_mock_doc()
+        profiled = ProfiledComponent(comp)
+        profiled(doc)
+        profiled.show_stats()
+        for c in mock_logger.info.call_args_list:
+            self.assertIn("my_component", c.args[1])
+
+    @patch("medcat.pipeline.speed_utils.logger")
+    def test_show_stats_without_any_calls_does_not_raise(self, mock_logger):
+        comp = make_mock_component()
+        profiled = ProfiledComponent(comp)
+        try:
+            profiled.show_stats()
+        except Exception as e:
+            self.fail(f"show_stats raised unexpectedly: {e}")
+
+
+class TestProfileComponent(unittest.TestCase):
+
+    @contextlib.contextmanager
+    def _pipe_with_data(self, pipeline, comp_type, do_call: bool = True):
+        with profile_pipeline_component(pipeline, comp_type):
+            if do_call:
+                doc = make_mock_doc()
+                for comp in pipeline._components + pipeline._addons:
+                    comp(doc)
+            yield
+
+
+    def _make_core_pipeline(self, comp_type: CoreComponentType) -> MagicMock:
+        pipeline = MagicMock(spec=Pipeline)
+        comp = make_mock_component()
+        pipeline._components = [comp]
+        pipeline._addons = []
+        pipeline.get_component.return_value = comp
+        pipeline.iter_addons.return_value = iter([])
+        return pipeline
+
+    def _make_addon_pipeline(self, addon_type) -> tuple[MagicMock, MagicMock]:
+        pipeline = MagicMock(spec=Pipeline)
+        addon = MagicMock(spec=addon_type)
+        addon.full_name = "test_addon"
+        addon.side_effect = lambda doc: doc
+        pipeline._components = []
+        pipeline._addons = [addon]
+        pipeline.get_component.side_effect = RuntimeError("not a core comp")
+        pipeline.iter_addons.return_value = iter([addon])
+        return pipeline, addon
+
+    def test_core_component_wrapped_inside_context(self):
+        comp_type = MagicMock(spec=CoreComponentType)
+        pipeline = self._make_core_pipeline(comp_type)
+        with self._pipe_with_data(pipeline, comp_type):
+            self.assertTrue(
+                any(isinstance(c, ProfiledComponent)
+                    for c in pipeline._components))
+
+    def test_core_component_restored_after_context(self):
+        comp_type = MagicMock(spec=CoreComponentType)
+        pipeline = self._make_core_pipeline(comp_type)
+        original = list(pipeline._components)
+        with self._pipe_with_data(pipeline, comp_type):
+            pass
+        self.assertEqual(pipeline._components, original)
+
+    def test_core_component_restored_after_exception(self):
+        comp_type = MagicMock(spec=CoreComponentType)
+        pipeline = self._make_core_pipeline(comp_type)
+        original = list(pipeline._components)
+        with self.assertRaises(RuntimeError):
+            with self._pipe_with_data(pipeline, comp_type):
+                raise RuntimeError("boom")
+        self.assertEqual(pipeline._components, original)
+
+    def test_addon_component_wrapped_inside_context(self):
+        addon_type = type(MagicMock())
+        pipeline, _ = self._make_addon_pipeline(addon_type)
+        with self._pipe_with_data(pipeline, addon_type):
+            self.assertTrue(
+                any(isinstance(a, ProfiledComponent)
+                    for a in pipeline._addons))
+
+    def test_addon_component_restored_after_context(self):
+        addon_type = type(MagicMock())
+        pipeline, _ = self._make_addon_pipeline(addon_type)
+        original = list(pipeline._addons)
+        with self._pipe_with_data(pipeline, addon_type):
+            pass
+        self.assertEqual(pipeline._addons, original)
+
+    def test_underlying_component_still_called(self):
+        comp_type = MagicMock(spec=CoreComponentType)
+        pipeline = self._make_core_pipeline(comp_type)
+        original_comp = pipeline.get_component.return_value
+        doc = make_mock_doc()
+        with self._pipe_with_data(pipeline, comp_type, do_call=False):
+            pipeline._components[0](doc)
+        original_comp.assert_called_once_with(doc)
+
+    @patch("medcat.pipeline.speed_utils.logger")
+    def test_show_stats_called_on_exit(self, mock_logger):
+        comp_type = MagicMock(spec=CoreComponentType)
+        pipeline = self._make_core_pipeline(comp_type)
+        doc = make_mock_doc()
+        with self._pipe_with_data(pipeline, comp_type):
+            pipeline._components[0](doc)
+        # tottime + cumtime = 2 log calls
+        self.assertEqual(mock_logger.info.call_count, 2)
+
+    @patch("medcat.pipeline.speed_utils.logger")
+    def test_show_stats_called_on_exit_after_exception(self, mock_logger):
+        comp_type = MagicMock(spec=CoreComponentType)
+        pipeline = self._make_core_pipeline(comp_type)
+        doc = make_mock_doc()
+        with self.assertRaises(RuntimeError):
+            with self._pipe_with_data(pipeline, comp_type):
+                pipeline._components[0](doc)
+                raise RuntimeError("boom")
+        self.assertEqual(mock_logger.info.call_count, 2)
 
 
 if __name__ == "__main__":
