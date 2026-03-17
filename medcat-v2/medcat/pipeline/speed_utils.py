@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 from io import StringIO
 import cProfile
 from pstats import Stats
+import statistics
 
 from medcat.components.addons.addons import AddonComponent
 from medcat.components.types import BaseComponent, CoreComponent, CoreComponentType
@@ -68,12 +69,21 @@ class AveragingTimedComponent(BaseTimedComponent):
         total_docs = len(self._to_average)
         if total_docs == 0:
             mean_elapsed = 0
+            min_elapsed = 0
+            median_elapsed = 0
+            max_elapsed = 0
         else:
             mean_elapsed = sum(self._to_average) / total_docs
+            min_elapsed = min(self._to_average)
+            median_elapsed = statistics.median(self._to_average)
+            max_elapsed = max(self._to_average)
         time_elapsed = time.perf_counter() - self._last_show
-        logger.info("Component %s took on average %.3fms "
+        logger.info("Component %s took (min/mean/median/average): "
+                    "%.3fms / %.3fms / %.3fms / %.3fms"
                     "over %d docs and a total of %.3fs",
-                    self.full_name, mean_elapsed, total_docs, time_elapsed)
+                    self.full_name,
+                    min_elapsed, mean_elapsed, median_elapsed, max_elapsed,
+                    total_docs, time_elapsed)
 
     def _maybe_show_time(self, elapsed_ms: float):
         self._to_average.append(elapsed_ms)
