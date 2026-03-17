@@ -114,6 +114,9 @@ class ProfiledComponent(BaseTimedComponent):
         return result
 
     def _show_type(self, stats_type: str, limit: int):
+        if not self._profiler.getstats():
+            logger.info("Component %s has no profiling data", self.full_name)
+            return
         stream = StringIO()
         stats = Stats(self._profiler, stream=stream)
         stats.sort_stats(stats_type).print_stats(limit)
