@@ -10,6 +10,9 @@ from medcat.tokenizing.tokens import MutableDocument
 
 logger = logging.getLogger(__name__)
 
+logger.setLevel(logging.DEBUG)
+logger.addHandler(logging.StreamHandler())
+
 
 class BaseTimedComponent(ABC):
 
