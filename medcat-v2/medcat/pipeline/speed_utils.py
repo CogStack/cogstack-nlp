@@ -1,12 +1,17 @@
-from typing import Callable
+from typing import Callable, Union, Type, cast
 import time
 import contextlib
 import logging
 from abc import ABC, abstractmethod
+from io import StringIO
+import cProfile
+from pstats import Stats
 
-from medcat.components.types import BaseComponent
+from medcat.components.addons.addons import AddonComponent
+from medcat.components.types import BaseComponent, CoreComponent, CoreComponentType
 from medcat.pipeline import Pipeline
 from medcat.tokenizing.tokens import MutableDocument
+from medcat.cat import AddonType
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +88,31 @@ class AveragingTimedComponent(BaseTimedComponent):
         elapsed_ms = (time.perf_counter() - start) * 1000
         self._maybe_show_time(elapsed_ms)
         return result
+
+
+class ProfiledComponent(BaseTimedComponent):
+
+    def __init__(self, component: BaseComponent):
+        super().__init__(component)
+        self._profiler = cProfile.Profile()
+
+
+    def __call__(self, doc: MutableDocument) -> MutableDocument:
+        self._profiler.enable()
+        result = self._component(doc)
+        self._profiler.disable()
+        return result
+
+    def _show_type(self, stats_type: str, limit: int):
+        stream = StringIO()
+        stats = Stats(self._profiler, stream=stream)
+        stats.sort_stats(stats_type).print_stats(limit)
+        logger.info("Component %s profile (by %s):\n%s",
+                self.full_name, stats_type, stream.getvalue())
+
+    def show_stats(self, limit: int = 20):
+        self._show_type('tottime', limit)
+        self._show_type('cumtime', limit)
 
 
 @contextlib.contextmanager
@@ -172,3 +202,67 @@ def doc_average_timed(
             if comp._to_average:
                 comp._show_time()
                 comp._reset()
+
+
+@contextlib.contextmanager
+def profile_component(
+        pipeline: Pipeline,
+        comp_type: Union[CoreComponentType, Type[AddonType]],
+        limit: int = 20,
+    ):
+    """Time a specific component of the pipeline.
+
+    This can profile either a core component or an addon component.
+    But notably, in case of addon components, all components of the
+    same type will be profiled.
+
+    Args:
+        pipeline (Pipeline): The pipeline to time.
+        comp_type (Union[CoreComponentType, Type[AddonType]]): The type of
+            component to profile. This can be either a core component
+            or an addon component.
+        limit (int): The number of function calls to show in output.
+            Defaults to 20.
+
+    Yields:
+        Pipeline: The same pipeline.
+    """
+    original_components = pipeline._components
+    original_addons = pipeline._addons
+
+    updated_addons: list[AddonComponent]
+    updated_core_comps: list[CoreComponent]
+    if isinstance(comp_type, CoreComponentType):
+        changed_comp = pipeline.get_component(comp_type)
+        updated_core_comps = [
+            comp if comp != changed_comp else
+            cast(CoreComponent, ProfiledComponent(changed_comp))
+            for comp in original_components
+        ]  # type ignore
+        updated_addons = original_addons
+    else:
+        changed_comps = [
+            addon for addon in pipeline.iter_addons()
+            if isinstance(addon, comp_type)
+        ]
+        updated_core_comps = original_components
+        updated_addons = [
+            addon if addon not in changed_comps
+            else cast(AddonComponent, ProfiledComponent(addon))
+            for addon in original_addons
+        ]
+    profiled_comps = [
+        comp for comp in updated_core_comps + updated_addons
+        if isinstance(comp, ProfiledComponent)
+    ]
+
+    pipeline._components = updated_core_comps
+    pipeline._addons = updated_addons
+
+    try:
+        yield pipeline
+    finally:
+        pipeline._components = original_components
+        pipeline._addons = original_addons
+        for comp in profiled_comps:
+            comp.show_stats(limit)
