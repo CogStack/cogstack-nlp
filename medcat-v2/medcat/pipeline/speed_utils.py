@@ -129,11 +129,16 @@ class ProfiledComponent(BaseTimedComponent):
 
 
 @contextlib.contextmanager
-def pipeline_per_doc_timer(pipeline: Pipeline):
+def pipeline_per_doc_timer(
+        pipeline: Pipeline,
+        timer_init: Callable[[BaseComponent], BaseTimedComponent] = TimedComponent
+    ):
     """Time the pipeline on a per document basis.
 
     Args:
         pipeline (Pipeline): The pipeline to time.
+        timer_init (Callable[[BaseComponent], BaseTimedComponent])): The
+            initialiser for the timer. Defaults to TimedComponent.
 
     Yields:
         Pipeline: The same pipeline.
@@ -142,9 +147,9 @@ def pipeline_per_doc_timer(pipeline: Pipeline):
     original_addons = pipeline._addons
 
     pipeline._components = [
-        TimedComponent(c) for c in original_components]  # type: ignore
+        timer_init(c) for c in original_components]  # type: ignore
     pipeline._addons = [
-        TimedComponent(a) for a in original_addons]  # type: ignore
+        timer_init(a) for a in original_addons]  # type: ignore
 
     try:
         yield pipeline
