@@ -8,8 +8,8 @@ from medcat.components.types import BaseComponent
 from medcat.pipeline.speed_utils import (
     TimedComponent,
     AveragingTimedComponent,
-    per_doc_timed,
-    doc_average_timed,
+    pipeline_per_doc_timer,
+    pipeline_timer_averaging_docs,
 )
 
 
@@ -80,7 +80,7 @@ class TestPerDocTimed(unittest.TestCase):
     def test_components_replaced_inside_context(self):
         pipeline = make_mock_pipeline("comp_a", "comp_b")
         original = list(pipeline._components)
-        with per_doc_timed(pipeline):
+        with pipeline_per_doc_timer(pipeline):
             for comp in pipeline._components:
                 self.assertIsInstance(comp, TimedComponent)
             self.assertNotEqual(pipeline._components, original)
@@ -88,7 +88,7 @@ class TestPerDocTimed(unittest.TestCase):
     def test_components_restored_after_context(self):
         pipeline = make_mock_pipeline("comp_a")
         original = list(pipeline._components)
-        with per_doc_timed(pipeline):
+        with pipeline_per_doc_timer(pipeline):
             pass
         self.assertEqual(pipeline._components, original)
 
@@ -96,7 +96,7 @@ class TestPerDocTimed(unittest.TestCase):
         pipeline = make_mock_pipeline("comp_a")
         original = list(pipeline._components)
         with self.assertRaises(RuntimeError):
-            with per_doc_timed(pipeline):
+            with pipeline_per_doc_timer(pipeline):
                 raise RuntimeError("boom")
         self.assertEqual(pipeline._components, original)
 
@@ -104,7 +104,7 @@ class TestPerDocTimed(unittest.TestCase):
         pipeline = make_mock_pipeline()
         pipeline._addons = [make_mock_component("addon_a")]
         original_addons = list(pipeline._addons)
-        with per_doc_timed(pipeline):
+        with pipeline_per_doc_timer(pipeline):
             for addon in pipeline._addons:
                 self.assertIsInstance(addon, TimedComponent)
         self.assertEqual(pipeline._addons, original_addons)
@@ -113,7 +113,7 @@ class TestPerDocTimed(unittest.TestCase):
         pipeline = make_mock_pipeline("comp_a")
         original_comp = pipeline._components[0]
         doc = make_mock_doc()
-        with per_doc_timed(pipeline):
+        with pipeline_per_doc_timer(pipeline):
             for _ in range(3):
                 pipeline._components[0](doc)
         self.assertEqual(original_comp.call_count, 3)
@@ -122,7 +122,7 @@ class TestPerDocTimed(unittest.TestCase):
     def test_logs_once_per_doc_per_component(self, mock_logger):
         pipeline = make_mock_pipeline("comp_a", "comp_b")
         doc = make_mock_doc()
-        with per_doc_timed(pipeline):
+        with pipeline_per_doc_timer(pipeline):
             for comp in pipeline._components:
                 comp(doc)
                 comp(doc)
@@ -194,7 +194,7 @@ class TestAveragingTimedComponent(unittest.TestCase):
         pipeline = make_mock_pipeline("comp_a")
         doc = make_mock_doc()
         # Condition never fires during processing
-        with doc_average_timed(pipeline, show_frequency_docs=100):
+        with pipeline_timer_averaging_docs(pipeline, show_frequency_docs=100):
             for _ in range(5):
                 pipeline._components[0](doc)
         # Should have flushed the 5 accumulated docs on exit
@@ -203,7 +203,7 @@ class TestAveragingTimedComponent(unittest.TestCase):
     @patch("medcat.pipeline.speed_utils.logger")
     def test_no_flush_on_exit_if_nothing_accumulated(self, mock_logger):
         pipeline = make_mock_pipeline("comp_a")
-        with doc_average_timed(pipeline, show_frequency_docs=100):
+        with pipeline_timer_averaging_docs(pipeline, show_frequency_docs=100):
             pass  # no docs processed
         mock_logger.info.assert_not_called()
 
@@ -213,19 +213,19 @@ class TestDocAverageTimedValidation(unittest.TestCase):
     def test_raises_if_docs_is_zero(self):
         pipeline = make_mock_pipeline()
         with self.assertRaises(ValueError):
-            with doc_average_timed(pipeline, show_frequency_docs=0):
+            with pipeline_timer_averaging_docs(pipeline, show_frequency_docs=0):
                 pass
 
     def test_raises_if_secs_is_zero(self):
         pipeline = make_mock_pipeline()
         with self.assertRaises(ValueError):
-            with doc_average_timed(pipeline, show_frequency_secs=0):
+            with pipeline_timer_averaging_docs(pipeline, show_frequency_secs=0):
                 pass
 
     def test_raises_if_both_specified(self):
         pipeline = make_mock_pipeline()
         with self.assertRaises(ValueError):
-            with doc_average_timed(
+            with pipeline_timer_averaging_docs(
                     pipeline,
                     show_frequency_docs=10,
                     show_frequency_secs=5.0):
@@ -235,7 +235,7 @@ class TestDocAverageTimedValidation(unittest.TestCase):
         pipeline = make_mock_pipeline("comp_a")
         doc = make_mock_doc()
         with patch("medcat.pipeline.speed_utils.logger") as mock_logger:
-            with doc_average_timed(pipeline):
+            with pipeline_timer_averaging_docs(pipeline):
                 for _ in range(100):
                     pipeline._components[0](doc)
             mock_logger.info.assert_called_once()
@@ -244,7 +244,7 @@ class TestDocAverageTimedValidation(unittest.TestCase):
         pipeline = make_mock_pipeline("comp_a")
         original = list(pipeline._components)
         with self.assertRaises(RuntimeError):
-            with doc_average_timed(pipeline, show_frequency_docs=10):
+            with pipeline_timer_averaging_docs(pipeline, show_frequency_docs=10):
                 raise RuntimeError("boom")
         self.assertEqual(pipeline._components, original)
 

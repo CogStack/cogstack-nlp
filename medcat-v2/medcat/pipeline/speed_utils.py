@@ -116,7 +116,7 @@ class ProfiledComponent(BaseTimedComponent):
 
 
 @contextlib.contextmanager
-def per_doc_timed(pipeline: Pipeline):
+def pipeline_per_doc_timer(pipeline: Pipeline):
     """Time the pipeline on a per document basis.
 
     Args:
@@ -141,7 +141,7 @@ def per_doc_timed(pipeline: Pipeline):
 
 
 @contextlib.contextmanager
-def doc_average_timed(
+def pipeline_timer_averaging_docs(
         pipeline: Pipeline,
         show_frequency_docs: int = -1,
         show_frequency_secs: float = -1):
@@ -205,7 +205,7 @@ def doc_average_timed(
 
 
 @contextlib.contextmanager
-def profile_component(
+def profile_pipeline_component(
         pipeline: Pipeline,
         comp_type: Union[CoreComponentType, Type[AddonType]],
         limit: int = 20,
@@ -238,7 +238,7 @@ def profile_component(
             comp if comp != changed_comp else
             cast(CoreComponent, ProfiledComponent(changed_comp))
             for comp in original_components
-        ]  # type ignore
+        ]
         updated_addons = original_addons
     else:
         changed_comps = [
