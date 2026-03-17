@@ -146,10 +146,15 @@ def pipeline_per_doc_timer(
     original_components = pipeline._components
     original_addons = pipeline._addons
 
-    pipeline._components = [
-        timer_init(c) for c in original_components]  # type: ignore
-    pipeline._addons = [
-        timer_init(a) for a in original_addons]  # type: ignore
+    updated_core_components = [
+        cast(CoreComponent, timer_init(c))
+        for c in original_components]
+    updated_addons = [
+        cast(AddonComponent, timer_init(a))
+        for a in original_addons]
+
+    pipeline._components = updated_core_components
+    pipeline._addons = updated_addons
 
     try:
         yield pipeline
