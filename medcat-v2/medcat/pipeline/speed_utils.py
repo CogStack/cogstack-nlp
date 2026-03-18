@@ -1,4 +1,4 @@
-from typing import Callable, Protocol, Union, Type, cast
+from typing import Callable, Literal, Protocol, Union, Type, cast
 import time
 import contextlib
 import logging
@@ -319,7 +319,7 @@ def pipeline_timer_averaging_docs(
 @contextlib.contextmanager
 def profile_pipeline_component(
         pipeline: Pipeline,
-        comp_type: Union[CoreComponentType, Type[AddonType]],
+        comp_type: Union[CoreComponentType, Type[AddonType], Literal['tokenizer']],
         limit: int = 20,
     ):
     """Time a specific component of the pipeline.
@@ -330,21 +330,23 @@ def profile_pipeline_component(
 
     Args:
         pipeline (Pipeline): The pipeline to time.
-        comp_type (Union[CoreComponentType, Type[AddonType]]): The type of
-            component to profile. This can be either a core component
-            or an addon component.
+        comp_type (Union[CoreComponentType, Type[AddonType], Literal['tokenizer']]):
+            The type of component to profile. This can be either a core component
+            or an addon component, ot the tokenizer.
         limit (int): The number of function calls to show in output.
             Defaults to 20.
 
     Yields:
         Pipeline: The same pipeline.
     """
+    original_tokenizer = pipeline._tokenizer
     original_components = pipeline._components
     original_addons = pipeline._addons
 
     updated_addons: list[AddonComponent]
     updated_core_comps: list[CoreComponent]
     if isinstance(comp_type, CoreComponentType):
+        updated_tokenizer = original_tokenizer
         changed_comp = pipeline.get_component(comp_type)
         updated_core_comps = [
             comp if comp != changed_comp else
@@ -352,7 +354,12 @@ def profile_pipeline_component(
             for comp in original_components
         ]
         updated_addons = original_addons
+    elif comp_type == 'tokenizer':
+        updated_tokenizer = cast(BaseTokenizer, ProfiledTokenizer(original_tokenizer))
+        updated_core_comps = original_components
+        updated_addons = original_addons
     else:
+        updated_tokenizer = original_tokenizer
         changed_comps = [
             addon for addon in pipeline.iter_addons()
             if isinstance(addon, comp_type)
@@ -364,16 +371,18 @@ def profile_pipeline_component(
             for addon in original_addons
         ]
     profiled_comps = [
-        comp for comp in updated_core_comps + updated_addons
-        if isinstance(comp, ProfiledComponent)
+        comp for comp in updated_core_comps + updated_addons + [updated_tokenizer,]
+        if isinstance(comp, ProfiledObject)
     ]
 
+    pipeline._tokenizer = updated_tokenizer
     pipeline._components = updated_core_comps
     pipeline._addons = updated_addons
 
     try:
         yield pipeline
     finally:
+        pipeline._tokenizer = original_tokenizer
         pipeline._components = original_components
         pipeline._addons = original_addons
         for comp in profiled_comps:
