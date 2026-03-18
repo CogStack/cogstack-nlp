@@ -16,8 +16,34 @@ from medcat.cat import AddonType
 
 logger = logging.getLogger(__name__)
 
-logger.setLevel(logging.DEBUG)
-logger.addHandler(logging.StreamHandler())
+
+@contextlib.contextmanager
+def _with_logging():
+    has_stream_handler = any(
+        type(h) is logging.StreamHandler
+        for h in logger.handlers
+    )
+    handler = None
+    original_level = logger.level
+    if not has_stream_handler:
+        handler = logging.StreamHandler()
+        logger.addHandler(handler)
+        logger.setLevel(logging.INFO)
+    try:
+        yield
+    finally:
+        if handler is not None:
+            logger.removeHandler(handler)
+            logger.setLevel(original_level)
+
+
+def with_logging(func):
+    @contextlib.wraps(func)
+    @contextlib.contextmanager
+    def wrapper(*args, **kwargs):
+        with _with_logging():
+            yield from func(*args, **kwargs)
+    return wrapper
 
 
 class BaseTimedObjectProtocol(Protocol):
@@ -225,6 +251,7 @@ class ProfiledTokenizer(ProfiledObject):
         return result
 
 
+@with_logging
 @contextlib.contextmanager
 def pipeline_per_doc_timer(
         pipeline: Pipeline,
@@ -269,6 +296,7 @@ def pipeline_per_doc_timer(
         pipeline._addons = original_addons
 
 
+@with_logging
 @contextlib.contextmanager
 def pipeline_timer_averaging_docs(
         pipeline: Pipeline,
@@ -342,6 +370,7 @@ def pipeline_timer_averaging_docs(
                 comp._reset()
 
 
+@with_logging
 @contextlib.contextmanager
 def profile_pipeline_component(
         pipeline: Pipeline,
