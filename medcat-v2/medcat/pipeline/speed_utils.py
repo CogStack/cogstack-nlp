@@ -37,7 +37,7 @@ def _with_logging():
             logger.setLevel(original_level)
 
 
-def with_logging(func):
+def context_manager_with_logging(func):
     @contextlib.wraps(func)
     @contextlib.contextmanager
     def wrapper(*args, **kwargs):
@@ -251,8 +251,7 @@ class ProfiledTokenizer(ProfiledObject):
         return result
 
 
-@with_logging
-@contextlib.contextmanager
+@context_manager_with_logging
 def pipeline_per_doc_timer(
         pipeline: Pipeline,
         timer_init: Callable[[BaseComponent],
@@ -296,8 +295,7 @@ def pipeline_per_doc_timer(
         pipeline._addons = original_addons
 
 
-@with_logging
-@contextlib.contextmanager
+@context_manager_with_logging
 def pipeline_timer_averaging_docs(
         pipeline: Pipeline,
         show_frequency_docs: int = -1,
@@ -370,8 +368,7 @@ def pipeline_timer_averaging_docs(
                 comp._reset()
 
 
-@with_logging
-@contextlib.contextmanager
+@context_manager_with_logging
 def profile_pipeline_component(
         pipeline: Pipeline,
         comp_type: Union[CoreComponentType, Type[AddonType], Literal['tokenizer']],
