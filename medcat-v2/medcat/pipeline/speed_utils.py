@@ -1,8 +1,7 @@
-from typing import Callable, Union, Type, cast
+from typing import Callable, Protocol, Union, Type, cast
 import time
 import contextlib
 import logging
-from abc import ABC, abstractmethod
 from io import StringIO
 import cProfile
 from pstats import Stats
@@ -11,6 +10,7 @@ import statistics
 from medcat.components.addons.addons import AddonComponent
 from medcat.components.types import BaseComponent, CoreComponent, CoreComponentType
 from medcat.pipeline import Pipeline
+from medcat.tokenizing.tokenizers import BaseTokenizer
 from medcat.tokenizing.tokens import MutableDocument
 from medcat.cat import AddonType
 
@@ -20,42 +20,69 @@ logger.setLevel(logging.DEBUG)
 logger.addHandler(logging.StreamHandler())
 
 
-class BaseTimedComponent(ABC):
+class BaseTimedObject:
 
-    def __init__(self, component: BaseComponent):
+    def __init__(self, component: Union[BaseComponent, BaseTokenizer]):
         self._component = component
-
-    @property
-    def full_name(self):
-        return self._component.full_name
 
     def __getattr__(self, name: str):
         if name == '_component':
             raise AttributeError('_component not set')
         return getattr(self._component, name)
 
-    @abstractmethod
-    def __call__(self, doc: MutableDocument) -> MutableDocument:
-        pass
+    @property
+    def full_name(self):
+        if isinstance(self._component, BaseComponent):
+            return self._component.full_name
+        else:
+            return f"Tokenizer:{self._component.__class__.__name__}"
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self._component!r})"
 
 
-class TimedComponent(BaseTimedComponent):
-    """Wraps a component and logs the time spent in it."""
+class BaseTimedComponent(Protocol):
 
     def __call__(self, doc: MutableDocument) -> MutableDocument:
+        pass
+
+
+class PerDocTimedObject(BaseTimedObject):
+
+    def time_it(self, to_run: Callable[[], MutableDocument]) -> MutableDocument:
         start = time.perf_counter()
-        result = self._component(doc)
+        result = to_run()
         elapsed_ms = (time.perf_counter() - start) * 1000
         logger.info("Component %s took %.3fms", self.full_name, elapsed_ms)
         return result
 
 
-class AveragingTimedComponent(BaseTimedComponent):
+class TimedComponent(PerDocTimedObject):
+    """Wraps a component and logs the time spent in it."""
 
     def __init__(self, component: BaseComponent,
+                 ) -> None:
+        super().__init__(component)
+        self._component: BaseComponent
+
+    def __call__(self, doc: MutableDocument) -> MutableDocument:
+        return self.time_it(lambda: self._component(doc))
+
+
+class TimedTokenizer(PerDocTimedObject):
+
+    def __init__(self, component: BaseTokenizer,
+                 ) -> None:
+        super().__init__(component)
+        self._component: BaseTokenizer
+
+    def __call__(self, text: str) -> MutableDocument:
+        return self.time_it(lambda: self._component(text))
+
+
+class AveragingTimedObject(BaseTimedObject):
+
+    def __init__(self, component: Union[BaseComponent, BaseTokenizer],
                  condition: Callable[[int, float], bool]):
         super().__init__(component)
         self._condition = condition
@@ -78,8 +105,8 @@ class AveragingTimedComponent(BaseTimedComponent):
             median_elapsed = statistics.median(self._to_average)
             max_elapsed = max(self._to_average)
         time_elapsed = time.perf_counter() - self._last_show
-        logger.info("Component %s took (min/mean/median/average): "
-                    "%.3fms / %.3fms / %.3fms / %.3fms"
+        logger.info("Component %s took (min/mean/median/max): "
+                    "%.3fms / %.3fms / %.3fms / %.3fms "
                     "over %d docs and a total of %.3fs",
                     self.full_name,
                     min_elapsed, mean_elapsed, median_elapsed, max_elapsed,
@@ -92,6 +119,15 @@ class AveragingTimedComponent(BaseTimedComponent):
             self._show_time()
             self._reset()
 
+
+class AveragingTimedComponent(AveragingTimedObject):
+
+    def __init__(self, component: BaseComponent,
+                 condition: Callable[[int, float], bool]
+                 ) -> None:
+        super().__init__(component, condition)
+        self._component: BaseComponent
+
     def __call__(self, doc: MutableDocument) -> MutableDocument:
         start = time.perf_counter()
         result = self._component(doc)
@@ -100,18 +136,27 @@ class AveragingTimedComponent(BaseTimedComponent):
         return result
 
 
-class ProfiledComponent(BaseTimedComponent):
+class AveragingTimedTokenizer(AveragingTimedObject):
 
-    def __init__(self, component: BaseComponent):
+    def __init__(self, component: BaseTokenizer,
+                 condition: Callable[[int, float], bool]
+                 ) -> None:
+        super().__init__(component, condition)
+        self._component: BaseTokenizer
+
+    def __call__(self, text: str) -> MutableDocument:
+        start = time.perf_counter()
+        result = self._component(text)
+        elapsed_ms = (time.perf_counter() - start) * 1000
+        self._maybe_show_time(elapsed_ms)
+        return result
+
+
+class ProfiledObject(BaseTimedObject):
+
+    def __init__(self, component: Union[BaseComponent, BaseTokenizer]):
         super().__init__(component)
         self._profiler = cProfile.Profile()
-
-
-    def __call__(self, doc: MutableDocument) -> MutableDocument:
-        self._profiler.enable()
-        result = self._component(doc)
-        self._profiler.disable()
-        return result
 
     def _show_type(self, stats_type: str, limit: int):
         if not self._profiler.getstats():
@@ -128,10 +173,39 @@ class ProfiledComponent(BaseTimedComponent):
         self._show_type('cumtime', limit)
 
 
+class ProfiledComponent(ProfiledObject):
+
+    def __init__(self, component: BaseComponent,
+                 ) -> None:
+        super().__init__(component)
+        self._component: BaseComponent
+
+    def __call__(self, doc: MutableDocument) -> MutableDocument:
+        self._profiler.enable()
+        result = self._component(doc)
+        self._profiler.disable()
+        return result
+
+
+class ProfiledTokenizer(ProfiledObject):
+
+    def __init__(self, component: BaseTokenizer,
+                 ) -> None:
+        super().__init__(component)
+        self._component: BaseTokenizer
+
+    def __call__(self, text: str) -> MutableDocument:
+        self._profiler.enable()
+        result = self._component(text)
+        self._profiler.disable()
+        return result
+
+
 @contextlib.contextmanager
 def pipeline_per_doc_timer(
         pipeline: Pipeline,
-        timer_init: Callable[[BaseComponent], BaseTimedComponent] = TimedComponent
+        timer_init: Callable[[BaseComponent], BaseTimedComponent] = TimedComponent,
+        tknzer_timer_init: Callable[[BaseTokenizer], TimedTokenizer] = TimedTokenizer,
     ):
     """Time the pipeline on a per document basis.
 
@@ -139,10 +213,13 @@ def pipeline_per_doc_timer(
         pipeline (Pipeline): The pipeline to time.
         timer_init (Callable[[BaseComponent], BaseTimedComponent])): The
             initialiser for the timer. Defaults to TimedComponent.
+        tknzer_timer_init (Callable[[BaseTokenizer], TimedTokenizer): The
+            initialiser for the timer for the tokenizer. Defaults to TimedTokenizer.
 
     Yields:
         Pipeline: The same pipeline.
     """
+    original_tokenizer = pipeline._tokenizer
     original_components = pipeline._components
     original_addons = pipeline._addons
 
@@ -153,12 +230,15 @@ def pipeline_per_doc_timer(
         cast(AddonComponent, timer_init(a))
         for a in original_addons]
 
+    pipeline._tokenizer = cast(
+        BaseTokenizer, tknzer_timer_init(original_tokenizer))
     pipeline._components = updated_core_components
     pipeline._addons = updated_addons
 
     try:
         yield pipeline
     finally:
+        pipeline._tokenizer = original_tokenizer
         pipeline._components = original_components
         pipeline._addons = original_addons
 
@@ -198,6 +278,7 @@ def pipeline_timer_averaging_docs(
     if show_frequency_secs == -1 and show_frequency_docs == -1:
         show_frequency_docs = 100
 
+    original_tokenizer = pipeline._tokenizer
     original_components = pipeline._components
     original_addons = pipeline._addons
 
@@ -212,16 +293,24 @@ def pipeline_timer_averaging_docs(
     wrapped_addons = [
         AveragingTimedComponent(addon, wrapper_condition)
         for addon in original_addons]
+    wrapped_tokenizer = AveragingTimedTokenizer(
+            original_tokenizer, wrapper_condition)
 
+    pipeline._tokenizer = wrapped_tokenizer  # type: ignore
     pipeline._components = wrapped_core_comps  # type: ignore
     pipeline._addons = wrapped_addons  # type: ignore
 
     try:
         yield pipeline
     finally:
+        pipeline._tokenizer = original_tokenizer
         pipeline._components = original_components
         pipeline._addons = original_addons
-        for comp in [*wrapped_core_comps, *wrapped_addons]:
+        timed_objects: list[AveragingTimedObject] = [
+            wrapped_tokenizer, *wrapped_core_comps, *wrapped_addons
+        ]
+
+        for comp in timed_objects:
             if comp._to_average:
                 comp._show_time()
                 comp._reset()
