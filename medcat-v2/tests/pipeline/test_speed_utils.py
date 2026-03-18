@@ -2,22 +2,26 @@ import contextlib
 import time
 import unittest
 from unittest.mock import MagicMock, patch
+from medcat.tokenizing.tokenizers import BaseTokenizer
 from medcat.tokenizing.tokens import MutableDocument
 from medcat.pipeline import Pipeline
 from medcat.components.types import BaseComponent
 
-
+import logging
 import cProfile
 from unittest.mock import patch, MagicMock
 from medcat.components.types import CoreComponentType
 
 from medcat.pipeline.speed_utils import (
+    AveragingTimedTokenizer,
     TimedComponent,
     AveragingTimedComponent,
+    TimedTokenizer,
     pipeline_per_doc_timer,
     pipeline_timer_averaging_docs,
     ProfiledComponent,
     profile_pipeline_component,
+    logger,
 )
 
 
@@ -427,6 +431,181 @@ class TestProfileComponent(unittest.TestCase):
                 raise RuntimeError("boom")
         self.assertEqual(mock_logger.info.call_count, 2)
 
+
+def make_mock_tokenizer(name: str = "test_tokenizer") -> MagicMock:
+    tokenizer = MagicMock(spec=BaseTokenizer)
+    tokenizer.side_effect = lambda text: make_mock_doc()
+    return tokenizer
+
+
+def make_mock_pipeline_with_tokenizer(*component_names: str) -> MagicMock:
+    pipeline = make_mock_pipeline(*component_names)
+    pipeline._tokenizer = make_mock_tokenizer()
+    return pipeline
+
+
+class TestTimedTokenizer(unittest.TestCase):
+
+    def test_underlying_tokenizer_called(self):
+        tokenizer = make_mock_tokenizer()
+        timed = TimedTokenizer(tokenizer)
+        timed("some text")
+        tokenizer.assert_called_once_with("some text")
+
+    def test_returns_result_of_underlying_tokenizer(self):
+        tokenizer = make_mock_tokenizer()
+        expected = make_mock_doc()
+        tokenizer.side_effect = lambda text: expected
+        timed = TimedTokenizer(tokenizer)
+        result = timed("some text")
+        self.assertIs(result, expected)
+
+    def test_full_name_includes_class_name(self):
+        tokenizer = make_mock_tokenizer()
+        timed = TimedTokenizer(tokenizer)
+        self.assertIn("Tokenizer", timed.full_name)
+
+    @patch("medcat.pipeline.speed_utils.logger")
+    def test_logs_once_per_call(self, mock_logger):
+        tokenizer = make_mock_tokenizer()
+        timed = TimedTokenizer(tokenizer)
+        timed("text one")
+        timed("text two")
+        self.assertEqual(mock_logger.info.call_count, 2)
+
+
+class TestAveragingTimedTokenizer(unittest.TestCase):
+
+    def _every_n(self, n: int):
+        return lambda num_docs, time_spent: num_docs >= n
+
+    def test_underlying_tokenizer_called(self):
+        tokenizer = make_mock_tokenizer()
+        timed = AveragingTimedTokenizer(tokenizer, self._every_n(1))
+        timed("some text")
+        tokenizer.assert_called_once_with("some text")
+
+    @patch("medcat.pipeline.speed_utils.logger")
+    def test_logs_after_n_calls(self, mock_logger):
+        tokenizer = make_mock_tokenizer()
+        timed = AveragingTimedTokenizer(tokenizer, self._every_n(3))
+        for _ in range(3):
+            timed("text")
+        mock_logger.info.assert_called_once()
+
+    @patch("medcat.pipeline.speed_utils.logger")
+    def test_does_not_log_before_n_calls(self, mock_logger):
+        tokenizer = make_mock_tokenizer()
+        timed = AveragingTimedTokenizer(tokenizer, self._every_n(3))
+        for _ in range(2):
+            timed("text")
+        mock_logger.info.assert_not_called()
+
+
+class TestTokenizerInPipelinePerDocTimer(unittest.TestCase):
+
+    def test_tokenizer_replaced_inside_context(self):
+        pipeline = make_mock_pipeline_with_tokenizer("comp_a")
+        original = pipeline._tokenizer
+        with pipeline_per_doc_timer(pipeline):
+            self.assertIsInstance(pipeline._tokenizer, TimedTokenizer)
+            self.assertIsNot(pipeline._tokenizer, original)
+
+    def test_tokenizer_restored_after_context(self):
+        pipeline = make_mock_pipeline_with_tokenizer("comp_a")
+        original = pipeline._tokenizer
+        with pipeline_per_doc_timer(pipeline):
+            pass
+        self.assertIs(pipeline._tokenizer, original)
+
+    def test_tokenizer_restored_after_exception(self):
+        pipeline = make_mock_pipeline_with_tokenizer("comp_a")
+        original = pipeline._tokenizer
+        with self.assertRaises(RuntimeError):
+            with pipeline_per_doc_timer(pipeline):
+                raise RuntimeError("boom")
+        self.assertIs(pipeline._tokenizer, original)
+
+    def test_underlying_tokenizer_called(self):
+        pipeline = make_mock_pipeline_with_tokenizer("comp_a")
+        original_tokenizer = pipeline._tokenizer
+        with pipeline_per_doc_timer(pipeline):
+            pipeline._tokenizer("some text")
+        original_tokenizer.assert_called_once_with("some text")
+
+
+class TestTokenizerInPipelineTimerAveragingDocs(unittest.TestCase):
+
+    def test_tokenizer_replaced_inside_context(self):
+        pipeline = make_mock_pipeline_with_tokenizer("comp_a")
+        original = pipeline._tokenizer
+        with pipeline_timer_averaging_docs(pipeline, show_frequency_docs=10):
+            self.assertIsInstance(pipeline._tokenizer, AveragingTimedTokenizer)
+            self.assertIsNot(pipeline._tokenizer, original)
+
+    def test_tokenizer_restored_after_context(self):
+        pipeline = make_mock_pipeline_with_tokenizer("comp_a")
+        original = pipeline._tokenizer
+        with pipeline_timer_averaging_docs(pipeline, show_frequency_docs=10):
+            pass
+        self.assertIs(pipeline._tokenizer, original)
+
+    @patch("medcat.pipeline.speed_utils.logger")
+    def test_tokenizer_flushed_on_exit(self, mock_logger):
+        pipeline = make_mock_pipeline_with_tokenizer()
+        with pipeline_timer_averaging_docs(pipeline, show_frequency_docs=100):
+            for _ in range(5):
+                pipeline._tokenizer("text")
+        mock_logger.info.assert_called_once()
+
+
+class TestWithLogging(unittest.TestCase):
+
+    def test_stream_handler_added_when_none_present(self):
+        logger.handlers.clear()
+        with pipeline_per_doc_timer(make_mock_pipeline_with_tokenizer()):
+            self.assertTrue(
+                any(type(h) is logging.StreamHandler for h in logger.handlers))
+
+    def test_stream_handler_removed_after_context(self):
+        logger.handlers.clear()
+        with pipeline_per_doc_timer(make_mock_pipeline_with_tokenizer()):
+            pass
+        self.assertFalse(
+            any(type(h) is logging.StreamHandler for h in logger.handlers))
+
+    def test_stream_handler_not_added_if_already_present(self):
+        logger.handlers.clear()
+        existing = logging.StreamHandler()
+        logger.addHandler(existing)
+        with pipeline_per_doc_timer(make_mock_pipeline_with_tokenizer()):
+            stream_handlers = [
+                h for h in logger.handlers
+                if type(h) is logging.StreamHandler
+            ]
+            self.assertEqual(len(stream_handlers), 1)
+        logger.removeHandler(existing)
+
+    def test_log_level_restored_after_context(self):
+        original_level = logger.level
+        with pipeline_per_doc_timer(make_mock_pipeline_with_tokenizer()):
+            pass
+        self.assertEqual(logger.level, original_level)
+
+    def test_log_level_restored_after_exception(self):
+        original_level = logger.level
+        with self.assertRaises(RuntimeError):
+            with pipeline_per_doc_timer(make_mock_pipeline_with_tokenizer()):
+                raise RuntimeError("boom")
+        self.assertEqual(logger.level, original_level)
+
+    def test_stream_handler_removed_after_exception(self):
+        logger.handlers.clear()
+        with self.assertRaises(RuntimeError):
+            with pipeline_per_doc_timer(make_mock_pipeline_with_tokenizer()):
+                raise RuntimeError("boom")
+        self.assertFalse(
+            any(type(h) is logging.StreamHandler for h in logger.handlers))
 
 if __name__ == "__main__":
     unittest.main()
