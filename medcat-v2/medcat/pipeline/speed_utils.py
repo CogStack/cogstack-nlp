@@ -20,6 +20,18 @@ logger.setLevel(logging.DEBUG)
 logger.addHandler(logging.StreamHandler())
 
 
+class BaseTimedObjectProtocol(Protocol):
+    @property
+    def full_name(self) -> str:
+        pass
+
+    def __getattr__(self, name: str):
+        pass
+
+    def __repr__(self) -> str:
+        pass
+
+
 class BaseTimedObject:
 
     def __init__(self, component: Union[BaseComponent, BaseTokenizer]):
@@ -45,6 +57,18 @@ class BaseTimedComponent(Protocol):
 
     def __call__(self, doc: MutableDocument) -> MutableDocument:
         pass
+
+
+class BaseTimedTokenizer(Protocol):
+
+    def __call__(self, text: str) -> MutableDocument:
+        pass
+
+class TimedComponentProtocol(BaseTimedObjectProtocol, BaseTimedComponent, Protocol):
+    pass
+
+class TimedTokenizerProtocol(BaseTimedObjectProtocol, BaseTimedTokenizer, Protocol):
+    pass
 
 
 class PerDocTimedObject(BaseTimedObject):
@@ -204,16 +228,18 @@ class ProfiledTokenizer(ProfiledObject):
 @contextlib.contextmanager
 def pipeline_per_doc_timer(
         pipeline: Pipeline,
-        timer_init: Callable[[BaseComponent], BaseTimedComponent] = TimedComponent,
-        tknzer_timer_init: Callable[[BaseTokenizer], TimedTokenizer] = TimedTokenizer,
+        timer_init: Callable[[BaseComponent],
+                             TimedComponentProtocol] = TimedComponent,
+        tknzer_timer_init: Callable[[BaseTokenizer],
+                                    TimedTokenizerProtocol] = TimedTokenizer,
     ):
     """Time the pipeline on a per document basis.
 
     Args:
         pipeline (Pipeline): The pipeline to time.
-        timer_init (Callable[[BaseComponent], BaseTimedComponent])): The
+        timer_init (Callable[[BaseComponent], TimedComponentProtocol])): The
             initialiser for the timer. Defaults to TimedComponent.
-        tknzer_timer_init (Callable[[BaseTokenizer], TimedTokenizer): The
+        tknzer_timer_init (Callable[[BaseTokenizer], TimedTokenizerProtocol): The
             initialiser for the timer for the tokenizer. Defaults to TimedTokenizer.
 
     Yields:
