@@ -34,6 +34,7 @@ def make_mock_pipeline(*component_names: str) -> MagicMock:
     pipeline = MagicMock(spec=Pipeline)
     pipeline._components = [make_mock_component(n) for n in component_names]
     pipeline._addons = []
+    pipeline._tokenizer = None
     return pipeline
 
 
@@ -338,6 +339,7 @@ class TestProfileComponent(unittest.TestCase):
         comp = make_mock_component()
         pipeline._components = [comp]
         pipeline._addons = []
+        pipeline._tokenizer = None
         pipeline.get_component.return_value = comp
         pipeline.iter_addons.return_value = iter([])
         return pipeline
@@ -349,6 +351,7 @@ class TestProfileComponent(unittest.TestCase):
         addon.side_effect = lambda doc: doc
         pipeline._components = []
         pipeline._addons = [addon]
+        pipeline._tokenizer = None
         pipeline.get_component.side_effect = RuntimeError("not a core comp")
         pipeline.iter_addons.return_value = iter([addon])
         return pipeline, addon
