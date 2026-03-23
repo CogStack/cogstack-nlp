@@ -214,7 +214,10 @@ class SupportedBundles(Enum):
         )
     UK_DRUG_EXT = BundleDescriptor(
         extensions=[SupportedExtension.UK_DRUG, SupportedExtension.UK_EDITION],
-        )
+    )
+    AU_EXT = BundleDescriptor(
+        extensions=[SupportedExtension.AU,]
+    )
 
 
 def match_partials_with_folders(exp_names: list[tuple[str, Optional[str]]],
