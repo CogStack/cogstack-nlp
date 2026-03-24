@@ -77,7 +77,7 @@ class FakeMutDoc:
         ]
 
     def __iter__(self):
-        yield from self.get_tokens(0, 1)
+        yield from self.get_tokens(0, len(self.text))
 
 
 class FakeComponent:
@@ -247,9 +247,9 @@ class TrainerSupervisedTests(TrainerUnsupervisedTests):
         with unittest.mock.patch.object(self.trainer, "add_and_train_concept") as mock_add_and_train_concept:
             self.train(self.TRAIN_DATA)
         for num, args in enumerate(mock_add_and_train_concept.call_args_list):
-            mock_add_and_train_concept.assert_called()
-            doc, ent = args.kwargs['mut_doc'], args.kwargs['mut_entity']
             with self.subTest(str(num)):
+                mock_add_and_train_concept.assert_called()
+                doc, ent = args.kwargs['mut_doc'], args.kwargs['mut_entity']
                 self.assertIn(ent, doc.linked_ents)
 
 
