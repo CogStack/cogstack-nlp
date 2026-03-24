@@ -1,6 +1,7 @@
 from typing import Optional, Iterable, Union
 import logging
 import os
+import warnings
 
 from medcat.utils.defaults import COMPONENTS_FOLDER
 from medcat.tokenizing.tokenizers import BaseTokenizer, create_tokenizer
@@ -43,6 +44,13 @@ class DelegatingTokenizer(BaseTokenizer):
             doc, token_start_index, token_end_index, label)
 
     def entity_from_tokens(self, tokens: list[MutableToken]) -> MutableEntity:
+        warnings.warn(
+            "The `medcat.pipeline.pipeline.entity_from_tokens` method is"
+            "depreacated and subject to removal in a future release. Please "
+            "use `medcat.pipeline.pipeline.entity_from_tokens_in_doc` instead.",
+            DeprecationWarning,
+            stacklevel=2
+        )
         return self.tokenizer.entity_from_tokens(tokens)
 
     def entity_from_tokens_in_doc(
