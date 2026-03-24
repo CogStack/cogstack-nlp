@@ -1,6 +1,7 @@
 import re
 from typing import cast, Optional, Iterator, overload, Union, Any, Type
 from collections import defaultdict
+import warnings
 
 from medcat.tokenizing.tokens import (
     BaseToken, BaseEntity, BaseDocument,
@@ -340,6 +341,13 @@ class RegexTokenizer(BaseTokenizer):
         # return Entity(span)
 
     def entity_from_tokens(self, tokens: list[MutableToken]) -> MutableEntity:
+        warnings.warn(
+            "The `medcat.tokenizing.tokenizers.Tokenizer.entity_from_tokens` method is"
+            "depreacated and subject to removal in a future release. Please use "
+            "`medcat.tokenizing.tokenizers.Tokenizer.entity_from_tokens_in_doc` instead.",
+            DeprecationWarning,
+            stacklevel=2
+        )
         if not tokens:
             raise ValueError("Need at least one token for an entity")
         doc = cast(Token, tokens[0])._doc
