@@ -7,6 +7,7 @@ from medcat.vocab import Vocab
 from medcat.data.mctexport import MedCATTrainerExport
 
 import unittest
+import unittest.mock
 
 import random
 import pandas as pd
@@ -177,6 +178,33 @@ class TrainerSupervisedTests(TrainerUnsupervisedTests):
             }
         ]
     }
+    TRAIN_DATA_MULTI: MedCATTrainerExport = {
+        "projects": [
+            *TRAIN_DATA['projects'],
+            {
+                'cuis': '',
+                'tuis': '',
+                'documents': [
+                    {
+                        'id': "P2D1",
+                        'name': "Project#2Doc#1",
+                        'last_modified': 'N/A',
+                        'text': 'Some long text',
+                        'annotations': [
+                            {
+                                'cui': "C1",
+                                'start': 0,
+                                'end': 4,
+                                'value': 'SOME',
+                            }
+                        ]
+                    }
+                ],
+                'id': "PID#2",
+                'name': "PROJECT#2",
+            }
+        ]
+    }
 
     @classmethod
     def setUpClass(cls):
@@ -184,6 +212,11 @@ class TrainerSupervisedTests(TrainerUnsupervisedTests):
 
     def test_training_gets_remembered_gen(self):
         pass  # NOTE: no generation for supervised training
+
+    def test_trains_all_projects(self):
+        with unittest.mock.patch.object(self.trainer, "_train_supervised_for_project") as mock_train_project:
+            self.train(self.TRAIN_DATA_MULTI)
+        self.assertTrue(mock_train_project.call_count, 2)
 
 
 class FromSratchBase(TrainedModelTests):
