@@ -45,6 +45,10 @@ class DelegatingTokenizer(BaseTokenizer):
     def entity_from_tokens(self, tokens: list[MutableToken]) -> MutableEntity:
         return self.tokenizer.entity_from_tokens(tokens)
 
+    def entity_from_tokens_in_doc(
+            self, tokens: list[MutableToken], doc: MutableDocument) -> MutableEntity:
+        return self.tokenizer.entity_from_tokens_in_doc(tokens, doc)
+
     def __call__(self, text: str) -> MutableDocument:
         doc = self.tokenizer(text)
         for comp in self.components:
@@ -341,6 +345,23 @@ class Pipeline:
             MutableEntity: The resulting entity.
         """
         return self._tokenizer.entity_from_tokens(tokens)
+
+    def entity_from_tokens_in_doc(self, tokens: list[MutableToken],
+                                  doc: MutableDocument) -> MutableEntity:
+        """Get the entity from the list of tokens in a document.
+
+        This effectively turns a list of (consecutive) documents
+        into an entity. But it is also designed to reuse existing
+        instances on the document instead of creating new ones.
+
+        Args:
+            tokens (list[MutableToken]): The tokens to use.
+            doc (MutableDocument): The document for these tokens.
+
+        Returns:
+            MutableEntity: The resulting entity.
+        """
+        return self._tokenizer.entity_from_tokens_in_doc(tokens, doc)
 
     def get_component(self, ctype: CoreComponentType) -> CoreComponent:
         """Get the core component by the component type.

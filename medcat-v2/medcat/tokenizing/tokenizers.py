@@ -44,6 +44,20 @@ class BaseTokenizer(Protocol):
         """
         pass
 
+    def entity_from_tokens_in_doc(self, tokens: list[MutableToken],
+                                  doc: MutableDocument) -> MutableEntity:
+        """Get an entity from the list of tokens in the specified document.
+
+        This method is designed to reuse entities where possible.
+
+        Args:
+            tokens (list[MutableToken]): List of tokens.
+            doc (MutableDocument): The document for these tokens.
+
+        Returns:
+            MutableEntity: The resulting entity.
+        """
+
     def __call__(self, text: str) -> MutableDocument:
         pass
 

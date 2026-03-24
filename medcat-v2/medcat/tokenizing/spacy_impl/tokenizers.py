@@ -84,6 +84,23 @@ class SpacyTokenizer(BaseTokenizer):
                     spacy_tokens[-1].index + 1)
         return Entity(span)
 
+    def _get_existing_entity(self, tokens: list[MutableToken],
+                             doc: MutableDocument) -> Optional[MutableEntity]:
+        if not tokens:
+            return None
+        for ent in doc.ner_ents + doc.linked_ents:
+            if (ent.base.start_index == tokens[0].base.index and
+                    ent.base.end_index == tokens[-1].base.index):
+                return ent
+        return None
+
+    def entity_from_tokens_in_doc(self, tokens: list[MutableToken],
+                                  doc: MutableDocument) -> MutableEntity:
+        existing_ent = self._get_existing_entity(tokens, doc)
+        if existing_ent:
+            return existing_ent
+        return self.entity_from_tokens(tokens)
+
     def __call__(self, text: str) -> MutableDocument:
         if self._avoid_pipe:
             doc = Document(self._nlp.make_doc(text))

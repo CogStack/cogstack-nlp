@@ -347,6 +347,23 @@ class RegexTokenizer(BaseTokenizer):
         end_index = doc._tokens.index(tokens[-1])
         return _entity_from_tokens(doc, tokens, start_index, end_index)
 
+    def _get_existing_entity(self, tokens: list[MutableToken],
+                             doc: MutableDocument) -> Optional[MutableEntity]:
+        if not tokens:
+            return None
+        for ent in doc.ner_ents + doc.linked_ents:
+            if (ent.base.start_index == tokens[0].base.index and
+                    ent.base.end_index == tokens[-1].base.index):
+                return ent
+        return None
+
+    def entity_from_tokens_in_doc(self, tokens: list[MutableToken],
+                                  doc: MutableDocument) -> MutableEntity:
+        existing_ent = self._get_existing_entity(tokens, doc)
+        if existing_ent:
+            return existing_ent
+        return self.entity_from_tokens(tokens)
+
     def _get_tokens_matches(self, text: str) -> list[re.Match[str]]:
         tokens = self.REGEX.finditer(text)
         return list(tokens)
