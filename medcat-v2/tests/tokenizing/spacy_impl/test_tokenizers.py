@@ -79,3 +79,4 @@ class TokenizerTests(unittest.TestCase):
                 tokens = list(ent)
                 got_ent = self.tokenizer.entity_from_tokens_in_doc(tokens, self.doc)
                 self.assertIs(got_ent, ent)
+                self.assertIn(got_ent, self.doc.ner_ents)
