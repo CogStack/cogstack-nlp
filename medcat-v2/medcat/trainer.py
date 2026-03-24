@@ -11,7 +11,7 @@ from medcat.utils.config_utils import temp_changed_config
 from medcat.utils.data_utils import make_mc_train_test, get_false_positives
 from medcat.utils.filters import project_filters
 from medcat.data.mctexport import (
-    MedCATTrainerExport, MedCATTrainerExportProject,
+    MedCATTrainerExport, MedCATTrainerExportAnnotation, MedCATTrainerExportProject,
     MedCATTrainerExportDocument, count_all_annotations, iter_anns)
 from medcat.preprocessors.cleaners import prepare_name, NameDescriptor
 from medcat.components.types import CoreComponentType, TrainableComponent
@@ -397,6 +397,20 @@ class Trainer:
                     docs, current_document, train_from_false_positives,
                     devalue_others)
 
+    def _prepare_doc_with_anns(
+            self, doc: MutableDocument,
+            anns: list[MedCATTrainerExportAnnotation]) -> None:
+        ents = []
+        for ann in anns:
+            tkns = doc.get_tokens(ann['start'], ann['end'])
+            ents.append(self._pipeline.entity_from_tokens_in_doc(tkns, doc))
+        # set NER ents
+        doc.ner_ents.clear()
+        doc.ner_ents.extend(ents)
+        # duplicate for linked as well, but in a a separate list
+        doc.linked_ents.clear()
+        doc.linked_ents.extend(ents)
+
     def _train_supervised_for_project2(self,
                                        docs: list[MedCATTrainerExportDocument],
                                        current_document: int,
@@ -412,9 +426,10 @@ class Trainer:
             with temp_changed_config(self.config.components.linking,
                                      'train', False):
                 mut_doc = self.caller(doc['text'])
+            self._prepare_doc_with_anns(mut_doc, doc['annotations'])
 
             # Compatibility with old output where annotations are a list
-            for ann in doc['annotations']:
+            for ann, mut_entity in zip(doc['annotations'], mut_doc.linked_ents):
                 if ann.get('killed', False):
                     continue
                 logger.info("    Annotation %s (%s) [%d:%d]",
@@ -422,7 +437,6 @@ class Trainer:
                 cui = ann['cui']
                 start = ann['start']
                 end = ann['end']
-                mut_entity = mut_doc.get_tokens(start, end)
                 if not mut_entity:
                     logger.warning(
                         "When looking for CUI '%s' (value '%s') [%d...%d] "
