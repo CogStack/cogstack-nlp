@@ -243,6 +243,15 @@ class TrainerSupervisedTests(TrainerUnsupervisedTests):
             self.train(self.TRAIN_DATA_MULTI)
         self.assertTrue(mock_train_project.call_count, 2)
 
+    def test_training_happens_on_linked_ents_on_doc(self):
+        with unittest.mock.patch.object(self.trainer, "add_and_train_concept") as mock_add_and_train_concept:
+            self.train(self.TRAIN_DATA)
+        for num, args in enumerate(mock_add_and_train_concept.call_args_list):
+            mock_add_and_train_concept.assert_called()
+            doc, ent = args.kwargs['mut_doc'], args.kwargs['mut_entity']
+            with self.subTest(str(num)):
+                self.assertIn(ent, doc.linked_ents)
+
 
 class FromSratchBase(TrainedModelTests):
     RNG_SEED = 42
