@@ -1,6 +1,7 @@
 import os
 import json
 
+from medcat.tokenizing.tokens import MutableDocument
 from medcat.trainer import Trainer
 from medcat.config import Config
 from medcat.vocab import Vocab
@@ -26,6 +27,22 @@ class FakeCDB(BFakeCDB):
         pass
 
 
+class FakeMutToken:
+
+    def __init__(self, doc: 'FakeMutDoc',
+                 index: int, start_char_index: int,
+                 end_char_index: int) -> None:
+        self.index = index
+        self.char_index = start_char_index
+        self.text = doc.text[start_char_index: end_char_index]
+        self.to_skip = False
+        self.base = self
+
+    @property
+    def lower(self):
+        return self.text.lower()
+
+
 class FakeMutEnt:
 
     def __init__(self, doc: 'FakeMutDoc',
@@ -47,15 +64,20 @@ class FakeMutDoc:
     def __init__(self, text: str):
         self.text = text
         self.base = self
+        self.ner_ents = []
+        self.linked_ents = []
 
     def isupper(self) -> bool:
         return self.text.isupper()
 
-    def get_tokens(self, start_index: int, end_index: int):
-        return FakeMutEnt(self, start_index, end_index)
+    def get_tokens(self, start_index: int, end_index: int, chars_per_tkns: int = 5):
+        return [
+            FakeMutToken(self, (cstart // chars_per_tkns), cstart, cstart + chars_per_tkns)
+            for cstart in range(start_index, end_index, chars_per_tkns)
+        ]
 
     def __iter__(self):
-        yield self.get_tokens(0, 1)
+        yield from self.get_tokens(0, 1)
 
 
 class FakeComponent:
@@ -72,6 +94,9 @@ class FakePipeline:
 
     def get_component(self, comp_type):
         return FakeComponent
+
+    def entity_from_tokens_in_doc(self, tkns: list, doc: MutableDocument) -> FakeMutEnt:
+        return FakeMutEnt(doc, tkns[0].index, tkns[-1].index)
 
 
 class TrainerTestsBase(unittest.TestCase):
