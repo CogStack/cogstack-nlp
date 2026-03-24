@@ -81,7 +81,8 @@ class SpacyTokenizer(BaseTokenizer):
         warnings.warn(
             "The `medcat.tokenizing.tokenizers.Tokenizer.entity_from_tokens` method is"
             "depreacated and subject to removal in a future release. Please use "
-            "`medcat.tokenizing.tokenizers.Tokenizer.entity_from_tokens_in_doc` instead.",
+            "`medcat.tokenizing.tokenizers.Tokenizer.entity_from_tokens_in_doc` "
+            "instead.",
             DeprecationWarning,
             stacklevel=2
         )
