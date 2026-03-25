@@ -4,8 +4,8 @@ simplejson==3.19.3
 setuptools-rust==1.11.0
 medcat[meta-cat,spacy,deid]~=2.6.0
 # pinned because of issues with de-id models and past models (it will not do any de-id)
-transformers>=4.34.0,<5.0.0
-requests==2.32.4
+transformers>=4.34.0,<6.0.0
+requests==2.32.5
 fastapi[standard]==0.128.0
 pydantic>=2.11.10,<2.12.5
 pydantic-settings==2.10.1
