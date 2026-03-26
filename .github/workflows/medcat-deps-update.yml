@@ -50,4 +50,4 @@ jobs:
           python .github/scripts/bump_dependants.py \
             --version "${{ steps.version.outputs.version }}" \
             --package "medcat" \
-            --dependants "medcat-scripts" "medcat-v2-tutorials"
+            --dependants "medcat-scripts" "medcat-v2-tutorials" "medcat-service"
