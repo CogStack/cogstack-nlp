@@ -4,7 +4,7 @@ import os
 
 import torch
 from torch import nn
-from transformers.models.llama import LlamaModel
+from transformers import LlamaModel
 
 from medcat.config.config_rel_cat import ConfigRelCAT
 from medcat.components.addons.relation_extraction.llama.config import (

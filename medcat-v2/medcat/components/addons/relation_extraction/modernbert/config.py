@@ -2,7 +2,7 @@ import logging
 import os
 from typing import cast
 
-from transformers.models.modernbert import ModernBertConfig
+from transformers import ModernBertConfig
 
 from medcat.config.config_rel_cat import ConfigRelCAT
 from medcat.components.addons.relation_extraction.config import (

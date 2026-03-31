@@ -1,6 +1,6 @@
 import os
 from typing import Optional
-from transformers.models.bert.tokenization_bert_fast import BertTokenizerFast
+from transformers import BertTokenizerFast
 from transformers import PreTrainedTokenizerFast
 import logging
 

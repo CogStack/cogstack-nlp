@@ -1,7 +1,7 @@
 import logging
 import os
 from typing import Optional, Union, overload
-from transformers.models.bert.tokenization_bert_fast import BertTokenizerFast
+from transformers import BertTokenizerFast
 
 from medcat.components.addons.meta_cat.mctokenizers.tokenizers import (
     TokenizerWrapperBase)
@@ -15,7 +15,7 @@ class TokenizerWrapperBERT(TokenizerWrapperBase):
     MetaCAT models.
 
     Args:
-        transformers.models.bert.tokenization_bert_fast.BertTokenizerFast:
+        transformers.BertTokenizerFast:
             A huggingface Fast BERT.
     """
     name = 'bert-tokenizer'

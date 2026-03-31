@@ -1,7 +1,7 @@
 import os
 import logging
 
-from transformers.models.bert.tokenization_bert_fast import BertTokenizerFast
+from transformers import BertTokenizerFast
 
 from medcat.config.config_rel_cat import ConfigRelCAT
 from medcat.components.addons.relation_extraction.tokenizer import (

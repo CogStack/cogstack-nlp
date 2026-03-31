@@ -3,7 +3,7 @@ import torch
 import os
 
 from torch import nn
-from transformers.models.modernbert import ModernBertModel
+from transformers import ModernBertModel
 
 from medcat.config.config_rel_cat import ConfigRelCAT
 from medcat.components.addons.relation_extraction.ml_utils import (
