@@ -17,7 +17,10 @@ class RelExtrBertConfig(RelExtrBaseConfig):
 
     name = 'bert-config'
     pretrained_model_name_or_path = "bert-base-uncased"
-    hf_model_config: BertConfig
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.hf_model_config: BertConfig
 
     @classmethod
     def load(cls, pretrained_model_name_or_path: str,
