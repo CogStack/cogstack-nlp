@@ -1,4 +1,5 @@
 from medcat_embedding_linker import embedding_linker
+from medcat_embedding_linker import trainable_embedding_linker
 from medcat.components import types
 from medcat.config import Config
 from medcat.data.entities import Entity
@@ -12,15 +13,19 @@ from .helper import ComponentInitTests
 
 from . import UNPACKED_EXAMPLE_MODEL_PACK_PATH
 
+
 class FakeDocument:
     linked_ents = []
     ner_ents = []
+
     def __init__(self, text):
         self.text = text
+
 
 class FakeTokenizer:
     def __call__(self, text: str) -> FakeDocument:
         return FakeDocument(text)
+
 
 class FakeCDB:
     def __init__(self, config: Config):
@@ -37,7 +42,7 @@ class FakeCDB:
 class EmbeddingLinkerInitTests(ComponentInitTests, unittest.TestCase):
     expected_def_components = len(DEF_LINKING)
     comp_type = types.CoreComponentType.linking
-    default = 'embedding_linker'
+    default = "embedding_linker"
     default_cls = embedding_linker.Linker
     default_creator = embedding_linker.Linker.create_new_component
     module = embedding_linker
@@ -57,6 +62,7 @@ class EmbeddingLinkerInitTests(ComponentInitTests, unittest.TestCase):
         registered_names = [name for name, _ in avail_components]
         self.assertIn("embedding_linker", registered_names)
 
+
 class NonTrainableEmbeddingLinkerTests(unittest.TestCase):
     cnf = Config()
     cnf.components.linking = embedding_linker.EmbeddingLinking()
@@ -71,6 +77,18 @@ class NonTrainableEmbeddingLinkerTests(unittest.TestCase):
         self.linker(doc)
 
 
+class TrainableEmbeddingLinkerTests(unittest.TestCase):
+    cnf = Config()
+    cnf.components.linking = embedding_linker.EmbeddingLinking()
+    cnf.components.linking.comp_name = (
+        trainable_embedding_linker.TrainableEmbeddingLinker.name
+    )
+    linker = trainable_embedding_linker.TrainableEmbeddingLinker(FakeCDB(cnf), cnf)
+
+    def test_linker_is_trainable(self):
+        self.assertIsInstance(self.linker, TrainableComponent)
+
+
 class EmbeddingModelDisambiguationTests(unittest.TestCase):
     PLACEHOLDER = "{SOME_PLACEHOLDER}"
     TEXT = f"""The issue has a lot to do with the {PLACEHOLDER}"""
@@ -81,7 +99,8 @@ class EmbeddingModelDisambiguationTests(unittest.TestCase):
         cls.model.config.components.linking = embedding_linker.EmbeddingLinking()
         cls.model._recreate_pipe()
         linker: embedding_linker.Linker = cls.model.pipe.get_component(
-            types.CoreComponentType.linking)
+            types.CoreComponentType.linking
+        )
         linker.create_embeddings()
         cls.linker = linker
 
@@ -89,14 +108,12 @@ class EmbeddingModelDisambiguationTests(unittest.TestCase):
         self.assertIsInstance(self.linker, embedding_linker.Linker)
 
     def assert_has_name(self, out_ents: dict[int, Entity], name: str):
-        self.assertTrue(
-            any(ent["source_value"] == name for ent in out_ents.values())
-        )
+        self.assertTrue(any(ent["source_value"] == name for ent in out_ents.values()))
 
     def test_does_disambiguation(self):
         used_names = 0
         for name, info in self.model.cdb.name2info.items():
-            if len(info['per_cui_status']) <= 1:
+            if len(info["per_cui_status"]) <= 1:
                 continue
             used_names += 1
             with self.subTest(name):
@@ -104,4 +121,3 @@ class EmbeddingModelDisambiguationTests(unittest.TestCase):
                 out_ents = self.model.get_entities(cur_text)["entities"]
                 self.assert_has_name(out_ents, name)
         self.assertGreater(used_names, 0)
-
