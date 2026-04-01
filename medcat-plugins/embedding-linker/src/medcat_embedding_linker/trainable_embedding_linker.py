@@ -203,11 +203,6 @@ class TrainableEmbeddingLinker(Linker, AbstractManualSerialisable):
         Runs a contrastive forward pass through the context encoder, computes
         cross-entropy loss over one positive and k negative CUI embeddings, and
         performs a single optimizer step.
-
-        Args:
-            training_batch (list[tuple]): Each element is either
-                (doc, entity, positive_cui_idx)
-                or (doc, entity, positive_cui_idx, all_positive_cui_idxs).
         """
         if self.training_batch == []:
             return
@@ -251,7 +246,6 @@ class TrainableEmbeddingLinker(Linker, AbstractManualSerialisable):
             training_batch (list[tuple]):
                 Name mode: (doc, entity, positive_name_idx, all_positive_name_idxs)
                 CUI mode: (doc, entity, positive_cui_idx)
-                or (doc, entity, positive_cui_idx, all_positive_cui_idxs)
         """
         if self.training_batch == []:
             return
