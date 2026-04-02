@@ -1,4 +1,5 @@
 from typing import Optional, Union
+from medcat_embedding_linker.config import EmbeddingLinking
 from torch import Tensor
 from medcat.cdb import CDB
 from medcat.config.config import Config, ComponentConfig
@@ -27,12 +28,12 @@ class TrainableEmbeddingLinker(Linker, AbstractManualSerialisable):
     _MODEL_STATE_FILE_NAME = "model_state.pt"
 
     def __init__(self, cdb: CDB, config: Config) -> None:
-        linking_cfg = config.components.linking
+        self.cnf_l: EmbeddingLinking = config.components.linking
         # these by default are True, and 0
         # so a projection layer is used, but only the projection is trained
         model_init_kwargs = {
-            "use_projection_layer": linking_cfg.use_projection_layer,
-            "top_n_layers_to_unfreeze": linking_cfg.top_n_layers_to_unfreeze,
+            "use_projection_layer": self.cnf_l.use_projection_layer,
+            "top_n_layers_to_unfreeze": self.cnf_l.top_n_layers_to_unfreeze,
         }
         super().__init__(
             cdb,
@@ -42,7 +43,7 @@ class TrainableEmbeddingLinker(Linker, AbstractManualSerialisable):
         self.training_batch: list[tuple] = []
         self.number_of_batches = 0
         self.negative_sampling_candidate_pool_size = (
-            linking_cfg.negative_sampling_candidate_pool_size
+            self.cnf_l.negative_sampling_candidate_pool_size
         )
         self.scaler = torch.amp.GradScaler()  # for FP16 training stability
         self.optimizer = torch.optim.AdamW(

@@ -48,6 +48,7 @@ class Linker(AbstractEntityProvidingComponent):
         if not isinstance(config.components.linking, EmbeddingLinking):
             raise TypeError("Linking config must be an EmbeddingLinking instance")
         self.cnf_l: EmbeddingLinking = config.components.linking
+        self.max_length: Optional[int] = self.cnf_l.max_token_length
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         resolved_model_init_kwargs: dict[str, Any] = dict(
@@ -139,7 +140,7 @@ class Linker(AbstractEntityProvidingComponent):
 
     def _get_context(
         self, entity: MutableEntity, doc: MutableDocument, size: int
-    ) -> str:
+    ) -> tuple[str, tuple[int, int]]:
         """Get context tokens for an entity
 
         Args:
@@ -148,8 +149,8 @@ class Linker(AbstractEntityProvidingComponent):
             size (int): The size of the entity.
 
         Returns:
-            tuple[list[BaseToken], list[BaseToken], list[BaseToken]]:
-                The tokens on the left, centre, and right.
+            tuple[str, tuple[int, int]]:
+                The context text and the span of the entity within that text.
         """
         # Token indices of the entity
         start_token_idx = entity.base.start_index

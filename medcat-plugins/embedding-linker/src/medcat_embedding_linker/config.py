@@ -1,5 +1,4 @@
 from typing import Optional, Any
-
 from medcat.config import Linking
 
 
