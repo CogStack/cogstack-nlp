@@ -28,6 +28,8 @@ class TrainableEmbeddingLinker(Linker, AbstractManualSerialisable):
     _MODEL_STATE_FILE_NAME = "model_state.pt"
 
     def __init__(self, cdb: CDB, config: Config) -> None:
+        if not isinstance(config.components.linking, EmbeddingLinking):
+            raise TypeError("Linking config must be an EmbeddingLinking instance")
         self.cnf_l: EmbeddingLinking = config.components.linking
         # these by default are True, and 0
         # so a projection layer is used, but only the projection is trained
