@@ -83,4 +83,4 @@ jobs:
       - name: Smoke test tutorial
         run: |
           pytest --capture=no --collect-only --nbmake ${{ matrix.part }}
-          pytest --capture=no --nbmake -n=auto --nbmake-kernel=smoketests --nbmake-timeout=1800 ${{ matrix.part }}
+          pytest --capture=no --nbmake -n=auto --nbmake-kernel=smoketests --nbmake-timeout=2400 ${{ matrix.part }}

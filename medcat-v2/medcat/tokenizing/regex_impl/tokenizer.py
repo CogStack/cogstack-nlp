@@ -1,6 +1,7 @@
 import re
 from typing import cast, Optional, Iterator, overload, Union, Any, Type
 from collections import defaultdict
+import warnings
 
 from medcat.tokenizing.tokens import (
     BaseToken, BaseEntity, BaseDocument,
@@ -340,12 +341,37 @@ class RegexTokenizer(BaseTokenizer):
         # return Entity(span)
 
     def entity_from_tokens(self, tokens: list[MutableToken]) -> MutableEntity:
+        warnings.warn(
+            "The `medcat.tokenizing.tokenizers.Tokenizer.entity_from_tokens` method is"
+            "depreacated and subject to removal in a future release. Please use "
+            "`medcat.tokenizing.tokenizers.Tokenizer.entity_from_tokens_in_doc` "
+            "instead.",
+            DeprecationWarning,
+            stacklevel=2
+        )
         if not tokens:
             raise ValueError("Need at least one token for an entity")
         doc = cast(Token, tokens[0])._doc
         start_index = doc._tokens.index(tokens[0])
         end_index = doc._tokens.index(tokens[-1])
         return _entity_from_tokens(doc, tokens, start_index, end_index)
+
+    def _get_existing_entity(self, tokens: list[MutableToken],
+                             doc: MutableDocument) -> Optional[MutableEntity]:
+        if not tokens:
+            return None
+        for ent in doc.ner_ents + doc.linked_ents:
+            if (ent.base.start_index == tokens[0].base.index and
+                    ent.base.end_index == tokens[-1].base.index):
+                return ent
+        return None
+
+    def entity_from_tokens_in_doc(self, tokens: list[MutableToken],
+                                  doc: MutableDocument) -> MutableEntity:
+        existing_ent = self._get_existing_entity(tokens, doc)
+        if existing_ent:
+            return existing_ent
+        return self.entity_from_tokens(tokens)
 
     def _get_tokens_matches(self, text: str) -> list[re.Match[str]]:
         tokens = self.REGEX.finditer(text)

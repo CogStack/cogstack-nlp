@@ -7,6 +7,7 @@ from collections import Counter
 from contextlib import contextmanager
 
 from medcat import cat
+from medcat.data.mctexport import count_all_annotations, iter_anns
 from medcat.data.model_card import ModelCard
 from medcat.vocab import Vocab
 from medcat.config import Config
@@ -576,7 +577,7 @@ class CATSupTrainingTests(CATUnsupTrainingTests):
         os.path.dirname(__file__), 'resources', 'supervised_mct_export.json'
     )
     # NOTE: should remain consistent unless we change the model or data
-    EXPECTED_HASH = "7bfe01e8e36eb07d"
+    EXPECTED_HASH = "9c299628c9e6c220"
 
     @classmethod
     def _get_cui_counts(cls) -> dict[str, int]:
@@ -619,6 +620,21 @@ class CATSupTrainingTests(CATUnsupTrainingTests):
             self.assertEqual(self.cat.cdb.get_name2count_train(), {})
             self.assertEqual(self.cat.config.meta.unsup_trained, [])
             self.assertEqual(self.cat.config.meta.sup_trained, [])
+
+    def test_training_happens_in_correct_order(self):
+        with captured_state_cdb(self.cat.cdb):
+            with unittest.mock.patch.object(
+                    self.cat.trainer, "add_and_train_concept") as mock_add_and_train_concept:
+                self._perform_training()
+        mct_export = self._get_data()
+        called_ents = [
+            args.kwargs['mut_entity'] for args in mock_add_and_train_concept.call_args_list
+        ]
+        self.assertEqual(len(called_ents), count_all_annotations(mct_export))
+        for (_, _, ann), ent in zip(iter_anns(mct_export), called_ents):
+            with self.subTest(f"Ann: {ann} vs Ent: {ent}"):
+                self.assertEqual(ann['start'], ent.base.start_char_index)
+                self.assertEqual(ann['end'], ent.base.end_char_index)
 
 
 class CATWithDictNERSupTrainingTests(CATSupTrainingTests):
