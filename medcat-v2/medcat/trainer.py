@@ -336,8 +336,15 @@ class Trainer:
         cat_name = cnf.general.get_applicable_category_name(ann_names)
         if cat_name in ann_names:
             logger.debug("Training MetaCAT %s", cnf.general.category_name)
+            # Provide a save directory for auto_save_model support —
+            # train_raw requires save_dir_path when auto_save_model is True
+            save_dir = None
+            if cnf.train.auto_save_model:
+                import tempfile
+                save_dir = tempfile.mkdtemp(
+                    prefix=f"metacat_{cnf.general.category_name}_")
             # NOTE: this is a mypy quirk - the types are compatible
-            addon.mc.train_raw(cast(dict, data))
+            addon.mc.train_raw(cast(dict, data), save_dir_path=save_dir)
 
     def _train_addons(self, data: MedCATTrainerExport):
         logger.info("Training addons within train_supervised_raw")
