@@ -126,6 +126,10 @@ def _prepare_from_json_loop(document: dict,
                         else:
                             ctoken_idx.append(ind)
 
+                if not ctoken_idx:
+                    # Entity span did not map to any tokens
+                    continue
+
                 _start = max(0, ctoken_idx[0] - cntx_left)
                 _end = min(len(doc_text['input_ids']),
                            ctoken_idx[-1] + 1 + cntx_right)
