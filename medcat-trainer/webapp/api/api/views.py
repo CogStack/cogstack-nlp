@@ -581,7 +581,7 @@ def save_models(request):
 
     if project.concept_db is not None:
         # CDB / vocab based
-        cat.cdb.save(project.concept_db.cdb_file.path)
+        cat.cdb.save(project.concept_db.cdb_file.path, overwrite=True)
     else:
         cat.save_model_pack(project.model_pack.path,
                             add_hash_to_pack_name=True)
