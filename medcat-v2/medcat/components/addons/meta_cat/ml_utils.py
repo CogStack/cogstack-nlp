@@ -512,10 +512,10 @@ def _eval_predictions(
         info = "Predicted: {}, True: {}".format(pred, y)
         if pred != y:
             # We made a mistake
-            examples['FN'][y] = examples['FN'].get(y, []) + [(info, text)]
-            examples['FP'][pred] = examples['FP'].get(pred, []) + [(info, text)]
+            examples['FN'].setdefault(y, []).append((info, text))
+            examples['FP'].setdefault(pred, []).append((info, text))
         else:
-            examples['TP'][y] = examples['TP'].get(y, []) + [(info, text)]
+            examples['TP'].setdefault(y, []).append((info, text))
 
     return {'precision': precision, 'recall': recall, 'f1': f1,
             'examples': examples, 'confusion matrix': confusion}
