@@ -583,7 +583,8 @@ def save_models(request):
         # CDB / vocab based
         cat.cdb.save(project.concept_db.cdb_file.path)
     else:
-        cat.save_model_pack(project.model_pack.path)
+        cat.save_model_pack(project.model_pack.path,
+                            add_hash_to_pack_name=True)
 
     return Response({'message': 'Models saved'})
 
