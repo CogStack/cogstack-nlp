@@ -1,4 +1,5 @@
 from typing import Iterator, Union, Optional, overload, cast, Any
+from bisect import bisect_left, bisect_right
 import logging
 
 from spacy.tokens import Token as SpacyToken
@@ -196,6 +197,7 @@ class Document:
 
     def __init__(self, delegate: SpacyDoc) -> None:
         self._delegate = delegate
+        self._char_indices: Optional[list[int]] = None
         self.ner_ents: list[MutableEntity] = []
         self.linked_ents: list[MutableEntity] = []
 
@@ -225,14 +227,17 @@ class Document:
     def __len__(self) -> int:
         return len(self._delegate)
 
+    def _ensure_char_indices(self) -> list[int]:
+        if self._char_indices is None:
+            self._char_indices = [tkn.idx for tkn in self._delegate]
+        return self._char_indices
+
     def get_tokens(self, start_index: int, end_index: int
                    ) -> list[MutableToken]:
-        tkns = []
-        for tkn in self:
-            if (tkn.base.char_index >= start_index and
-                    tkn.base.char_index <= end_index):
-                tkns.append(tkn)
-        return tkns
+        char_indices = self._ensure_char_indices()
+        lo = bisect_left(char_indices, start_index)
+        hi = bisect_right(char_indices, end_index)
+        return [Token(self._delegate[i]) for i in range(lo, hi)]
 
     def set_addon_data(self, path: str, val: Any) -> None:
         if not self._delegate.has_extension(path):
