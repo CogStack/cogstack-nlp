@@ -132,10 +132,11 @@ class TwoStepLinker(AbstractCoreComponent):
                         per_doc_valid_token_cache=per_doc_valid_token_cache)
 
     def _train_for_tuis(self, doc: MutableDocument) -> None:
-        # Run training
+        # Run training — share cache across all entities in the document
+        per_doc_valid_token_cache = PerDocumentTokenCache()
         for entity in doc.ner_ents:
             self._process_entity_train_tuis(
-                doc, entity, PerDocumentTokenCache())
+                doc, entity, per_doc_valid_token_cache)
 
     def _check_similarity(self, cui: str, context_similarity: float) -> bool:
         th_type = self.config.components.linking.similarity_threshold_type
