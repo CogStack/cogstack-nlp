@@ -1,8 +1,9 @@
 import logging
 import os
 from smtplib import SMTPException
-from tempfile import NamedTemporaryFile
+from tempfile import NamedTemporaryFile, TemporaryDirectory
 from typing import Any
+import shutil
 
 from background_task.models import Task, CompletedTask
 from django.contrib.auth.views import PasswordResetView
@@ -578,13 +579,35 @@ def save_models(request):
     p_id = request.data['project_id']
     project = ProjectAnnotateEntities.objects.get(id=p_id)
     cat = get_medcat(project=project)
+    from pathlib import Path
+    path = Path()
+    path.parent.mkdir()
 
     if project.concept_db is not None:
         # CDB / vocab based
         cat.cdb.save(project.concept_db.cdb_file.path, overwrite=True)
     else:
-        cat.save_model_pack(project.model_pack.path,
-                            add_hash_to_pack_name=True)
+        # NOTE: cannot overwrite, so working around
+        with TemporaryDirectory() as tmp_dir:
+            # making new folder name so that it's copied
+            # to the specific path rather than into the folder
+            temp_folder = os.path.join(tmp_dir, "model_copy")
+            shutil.move(project.model_pack.path, temp_folder)
+            try:
+                cat.save_model_pack(
+                    os.path.dirname(project.model_pack.path),
+                    pack_name=os.path.basename(project.model_pack.path),
+                    add_hash_to_pack_name=False)
+            except Exception as e:
+                logger.warning("Unable to save model pack. Restoring previous state")
+                if os.path.exists(project.model_pack.path):
+                    shutil.rmtree(project.model_pack.path)  # remove partial/corrupt output
+                # restore original
+                try:
+                    shutil.move(temp_folder, project.model_pack.path)
+                except Exception as restore_err:
+                    logger.error("Failed to restore model pack:", exc_info=restore_err)
+                raise
 
     return Response({'message': 'Models saved'})
 
