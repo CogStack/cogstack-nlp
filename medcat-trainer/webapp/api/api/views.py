@@ -579,37 +579,38 @@ def save_models(request):
     p_id = request.data['project_id']
     project = ProjectAnnotateEntities.objects.get(id=p_id)
     cat = get_medcat(project=project)
-    from pathlib import Path
-    path = Path()
-    path.parent.mkdir()
 
     if project.concept_db is not None:
         # CDB / vocab based
         cat.cdb.save(project.concept_db.cdb_file.path, overwrite=True)
     else:
-        # NOTE: cannot overwrite, so working around
-        with TemporaryDirectory() as tmp_dir:
-            # making new folder name so that it's copied
-            # to the specific path rather than into the folder
-            temp_folder = os.path.join(tmp_dir, "model_copy")
-            shutil.move(project.model_pack.path, temp_folder)
-            try:
-                cat.save_model_pack(
-                    os.path.dirname(project.model_pack.path),
-                    pack_name=os.path.basename(project.model_pack.path),
-                    add_hash_to_pack_name=False)
-            except Exception as e:
-                logger.warning("Unable to save model pack. Restoring previous state")
-                if os.path.exists(project.model_pack.path):
-                    shutil.rmtree(project.model_pack.path)  # remove partial/corrupt output
-                # restore original
-                try:
-                    shutil.move(temp_folder, project.model_pack.path)
-                except Exception as restore_err:
-                    logger.error("Failed to restore model pack:", exc_info=restore_err)
-                raise
+        _overwrite_model_pack(cat, project.model_pack.path)
 
     return Response({'message': 'Models saved'})
+
+
+def _overwrite_model_pack(cat, model_path: str):
+    # NOTE: cannot overwrite, so working around
+    with TemporaryDirectory() as tmp_dir:
+        # making new folder name so that it's copied
+        # to the specific path rather than into the folder
+        temp_folder = os.path.join(tmp_dir, "model_copy")
+        shutil.move(model_path, temp_folder)
+        try:
+            cat.save_model_pack(
+                os.path.dirname(model_path),
+                pack_name=os.path.basename(model_path),
+                add_hash_to_pack_name=False)
+        except Exception as e:
+            logger.warning("Unable to save model pack. Restoring previous state")
+            if os.path.exists(model_path):
+                shutil.rmtree(model_path)  # remove partial/corrupt output
+            # restore original
+            try:
+                shutil.move(temp_folder, model_path)
+            except Exception as restore_err:
+                logger.error("Failed to restore model pack:", exc_info=restore_err)
+            raise
 
 
 @api_view(http_method_names=['POST'])
