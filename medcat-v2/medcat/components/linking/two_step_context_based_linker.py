@@ -285,10 +285,11 @@ class TwoStepLinker(AbstractCoreComponent):
             return
         per_cui_type_sims = pew[ent]
         cnf_2step = self.two_step_config
+        cui_to_idx = {c: i for i, c in enumerate(cuis)}
         for cui, type_sim in per_cui_type_sims.items():
-            if cui not in cuis:
+            if cui not in cui_to_idx:
                 continue
-            cui_index = cuis.index(cui)
+            cui_index = cui_to_idx[cui]
             cui_sim = similarities[cui_index]
             ts_coef = sigmoid(
                 cnf_2step.alpha_sharpness * (
