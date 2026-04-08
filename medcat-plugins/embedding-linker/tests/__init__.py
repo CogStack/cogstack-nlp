@@ -6,7 +6,8 @@ import shutil
 
 RESOURCES_PATH = os.path.join(os.path.dirname(__file__), "resources")
 EXAMPLE_MODEL_PACK_ZIP = os.path.join(RESOURCES_PATH, "mct2_model_pack.zip")
-UNPACKED_EXAMPLE_MODEL_PACK_PATH = os.path.join(RESOURCES_PATH, "mct2_model_pack")
+UNPACKED_EXAMPLE_MODEL_PACK_PATH = os.path.join(
+    RESOURCES_PATH, "mct2_model_pack")
 
 
 # unpack model pack at start so we can access stuff like Vocab

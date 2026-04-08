@@ -239,7 +239,7 @@ class TrainableEmbeddingLinker(Linker, AbstractManualSerialisable):
             all_positive_name_idxs_per_row,
         )
 
-    def train_on_batch(self) -> None:
+    def _train_on_batch(self) -> None:
         """Train on the current batch, dispatching to names or CUI mode.
 
         This should also be called manually at the end of training to flush any 
@@ -326,9 +326,15 @@ class TrainableEmbeddingLinker(Linker, AbstractManualSerialisable):
             if positive_cui_idx is None:
                 return
             self.training_batch.append((doc, entity, positive_cui_idx))
-        # Train as soon as the batch is full.
-        if len(self.training_batch) >= self.cnf_l.training_batch_size:
-            self.train_on_batch()
+        if (
+            len(self.training_batch) >= self.cnf_l.training_batch_size 
+            or entity is doc.ner_ents[-1]
+        ):
+            logger.debug(
+                "End of document reached; training on final batch of size %s",
+                len(self.training_batch),
+            )
+            self._train_on_batch()
             self.training_batch = []
             self.number_of_batches += 1
         # If you've got as many batches as you want before re-embedding, 
@@ -337,10 +343,9 @@ class TrainableEmbeddingLinker(Linker, AbstractManualSerialisable):
             self.cnf_l.embed_per_n_batches > 0
             and self.number_of_batches > self.cnf_l.embed_per_n_batches
         ):
-            print(
-                "Re-embedding names and CUIs after training on {} batches.".format(
-                    self.number_of_batches
-                )
+            logger.debug(
+                "Re-embedding names and CUIs after training on %s batches.",
+                self.number_of_batches,
             )
             self.refresh_structure()
             # Always refresh both embeddings to keep CDB and embeddings in sync.
@@ -367,7 +372,6 @@ class TrainableEmbeddingLinker(Linker, AbstractManualSerialisable):
         # Ensure final partial batch is not dropped before saving model state.
         logger.info("Flushing final training batch before saving model.")
         logger.info("This is grandfathered in from trainer.py restraints.")
-        self.train_on_batch()
 
         os.makedirs(folder_path, exist_ok=True)
         model_folder = os.path.join(folder_path, self._MODEL_FOLDER_NAME)

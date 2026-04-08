@@ -414,13 +414,13 @@ class Linker(AbstractEntityProvidingComponent):
             if len(link_candidates) == 1:
                 best_idx = self._cui_to_idx[link_candidates[0]]
                 predicted_cui = link_candidates[0]
-                if best_idx < 0 or best_idx >= names_scores.shape[1]:
+                if best_idx < 0 or best_idx >= cui_scores.shape[1]:
                     logger.warning(
                         "Skipping entity '%s': single-candidate index %s is out of "
-                        "bounds for names_scores width %s.",
+                        "bounds for cui_scores width %s.",
                         entity.detected_name,
                         best_idx,
-                        names_scores.shape[1],
+                        cui_scores.shape[1],
                     )
                     continue
                 similarity = cui_scores[i, best_idx].item()
@@ -581,6 +581,7 @@ class Linker(AbstractEntityProvidingComponent):
             logger.warning(
                 "Attemping to train a static embedding linker. "
                 "This is not possible / required."
+                "Use the `trainable_embedding_linker` instead."
             )
         if self.cnf_l.filters.cuis and self.cnf_l.filters.cuis_exclude:
             logger.warning(

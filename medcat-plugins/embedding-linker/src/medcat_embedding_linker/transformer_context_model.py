@@ -327,10 +327,6 @@ class ContextModel(AbstractSerialisable):
         self._refresh_cdb_keys()  # ensure _cui_keys is up to date before embedding
         self.load_transformers(target_model)
 
-        # TODO: test preffered names instead of longest names
-        # cui_names = [
-        # 	max(self.cdb.cui2info[cui]["names"], key=len) for cui in self._cui_keys
-        # ]
         cui_names = [self.cdb.get_name(cui) for cui in self._cui_keys]
         total_batches = math.ceil(len(cui_names) / self.cnf_l.embedding_batch_size)
         all_embeddings = []

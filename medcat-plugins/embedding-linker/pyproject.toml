@@ -55,7 +55,7 @@ classifiers = [
 # For an analysis of this field vs pip's requirements files see:
 # https://packaging.python.org/discussions/install-requires-vs-requirements/
 dependencies = [
-  "medcat[spacy]>=2.5",
+  "medcat[spacy]>=2.7",
   "transformers>=4.41.0,<5.0", # avoid major bump
   "torch>=2.4.0,<3.0",
   "tqdm",
