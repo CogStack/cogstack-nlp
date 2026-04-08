@@ -5,6 +5,8 @@ services:
     restart: unless-stopped
     environment:
       # Uses a preloaded model pack example inside the image
-      - APP_MEDCAT_MODEL_PACK=/cat/models/examples/example-medcat-v2-model-pack.zip 
+      - APP_MEDCAT_MODEL_PACK=/cat/models/examples/example-medcat-v2-model-pack.zip
+      - APP_ENABLE_METRICS=True
+      - APP_ENABLE_DEMO_UI=True
     ports:
       - "5555:5000"

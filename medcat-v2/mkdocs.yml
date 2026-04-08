@@ -1,0 +1,76 @@
+# yaml-language-server: $schema=https://squidfunk.github.io/mkdocs-material/schema.json
+site_name: MedCAT Documentation
+site_url: https://docs.cogstack.org/
+
+theme:
+  name: material
+  favicon: _static/img/cat-logo.svg
+  logo: _static/img/cat-logo.svg
+  icon:
+    logo:  _static/img/cat-logo.svg
+  palette:
+    primary: white
+
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.indexes
+    - navigation.tracking
+    - navigation.footer
+    - header.autohide
+    - content.tooltips
+    - search.highlight
+    - search.share
+    - search.suggest
+    - toc.follow
+    - attr_list
+
+repo_url: https://github.com/CogStack/cogstack-nlp
+repo_name: cogstack-nlp
+
+docs_dir: docs
+
+nav:
+  - Home: index.md
+  - Architecture: architecture.md
+  - Migration guide (v2): migration_guide_v2.md
+  - Breaking changes: breaking_changes.md
+
+plugins:
+  - search
+  - termynal
+  - mkdocstrings:
+      handlers:
+        python:
+          inventories:
+            - https://docs.python.org/3/objects.inv
+          options:
+            annotations_path: brief  # Short type names; cross-refs still resolve
+            docstring_section_style: list # or "table"
+            docstring_style: "google"  # Matches codebase: Args/Returns with "name (type): desc"
+            filters: ["!^_"]
+            heading_level: 1
+            merge_init_into_class: true
+            parameter_headings: true
+            separate_signature: true
+            show_root_heading: true
+            show_signature_annotations: true
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            signature_crossrefs: true  # Make types in signatures clickable (Entities, OnlyCUIEntities, etc.)
+            show_if_no_docstring: true
+            summary: true
+  - autorefs  # Resolves cross-refs from mkdocstrings so type links work across pages
+  - api-autonav:
+      modules: ['medcat']
+
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg

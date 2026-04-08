@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 from medcat_den.base import ModelInfo
 
 
@@ -40,8 +42,8 @@ MODEL_CARD_WITH_NEW_KEYS = {
 def test_validates_with_old_format():
     model = ModelInfo(
         model_id="test_id",
-        model_card=MODEL_CARD_NO_NEW_KEYS,
-            base_model=None,
+        model_card=deepcopy(MODEL_CARD_NO_NEW_KEYS),
+        base_model=None,
         model_name="test_model",
         model_num=1,
     )
@@ -51,8 +53,8 @@ def test_validates_with_old_format():
 def test_validates_with_new_format():
     model = ModelInfo(
         model_id="test_id",
-        model_card=MODEL_CARD_WITH_NEW_KEYS,
-            base_model=None,
+        model_card=deepcopy(MODEL_CARD_WITH_NEW_KEYS),
+        base_model=None,
         model_name="test_model",
         model_num=1,
     )
@@ -62,11 +64,41 @@ def test_validates_with_new_format():
 def test_new_format_keeps_values():
     model = ModelInfo(
         model_id="test_id",
-        model_card=MODEL_CARD_WITH_NEW_KEYS,
-            base_model=None,
+        model_card=deepcopy(MODEL_CARD_WITH_NEW_KEYS),
+        base_model=None,
         model_name="test_model",
         model_num=1,
     )
     mc = model.model_card
     for key, exp_value in NEW_KV.items():
         assert exp_value == mc[key]
+
+
+def test_new_format_does_not_change_dict():
+    model = ModelInfo(
+        model_id="test_id",
+        model_card=deepcopy(MODEL_CARD_WITH_NEW_KEYS),
+        base_model=None,
+        model_name="test_model",
+        model_num=1,
+    )
+    assert model.model_card == MODEL_CARD_WITH_NEW_KEYS
+
+
+def test_old_format_will_not_change_twice():
+    model_with_fixed_mc = ModelInfo(
+        model_id="test_id",
+        model_card=deepcopy(MODEL_CARD_NO_NEW_KEYS),
+        base_model=None,
+        model_name="test_model",
+        model_num=1,
+    )
+    model = ModelInfo(
+        model_id="test_id",
+        model_card=model_with_fixed_mc.model_card,
+        base_model=None,
+        model_name="test_model",
+        model_num=1,
+    )
+    assert model.model_card == model_with_fixed_mc.model_card
+    assert model.model_card != MODEL_CARD_NO_NEW_KEYS

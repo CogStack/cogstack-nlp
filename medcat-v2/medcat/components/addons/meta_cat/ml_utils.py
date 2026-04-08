@@ -63,14 +63,15 @@ def create_batch_piped_data(data: list[tuple[list[int], int, Optional[int]]],
         y (Optional[torch.Tensor]):
             class label of the data
     """
-    max_seq_len = max([len(x[0]) for x in data])
+    batch = data[start_ind:end_ind]
+    max_seq_len = max(len(x[0]) for x in batch)
     x = [x[0][0:max_seq_len] + [pad_id] * max(0, max_seq_len - len(x[0]))
-         for x in data[start_ind:end_ind]]
-    cpos = [x[1] for x in data[start_ind:end_ind]]
+         for x in batch]
+    cpos = [x[1] for x in batch]
     y = None
     if len(data[0]) == 3:
         # Means we have the y column
-        y = torch.tensor([x[2] for x in data[start_ind:end_ind]],
+        y = torch.tensor([x[2] for x in batch],
                          dtype=torch.long).to(device)
 
     x2 = torch.tensor(x, dtype=torch.long).to(device)
@@ -144,14 +145,11 @@ def split_list_train_test(data: list, test_size: float, shuffle: bool = True
     Returns:
         tuple: The train data, and the test data.
     """
-    if shuffle:
-        random.shuffle(data)
-
     X_features = [x[:-1] for x in data]
     y_labels = [x[-1] for x in data]
 
     X_train, X_test, y_train, y_test = train_test_split(
-        X_features, y_labels, test_size=test_size, random_state=42)
+        X_features, y_labels, test_size=test_size, shuffle=shuffle)
 
     train_data = [x + [y] for x, y in zip(X_train, y_train)]
     test_data = [x + [y] for x, y in zip(X_test, y_test)]
@@ -514,10 +512,10 @@ def _eval_predictions(
         info = "Predicted: {}, True: {}".format(pred, y)
         if pred != y:
             # We made a mistake
-            examples['FN'][y] = examples['FN'].get(y, []) + [(info, text)]
-            examples['FP'][pred] = examples['FP'].get(pred, []) + [(info, text)]
+            examples['FN'].setdefault(y, []).append((info, text))
+            examples['FP'].setdefault(pred, []).append((info, text))
         else:
-            examples['TP'][y] = examples['TP'].get(y, []) + [(info, text)]
+            examples['TP'].setdefault(y, []).append((info, text))
 
     return {'precision': precision, 'recall': recall, 'f1': f1,
             'examples': examples, 'confusion matrix': confusion}

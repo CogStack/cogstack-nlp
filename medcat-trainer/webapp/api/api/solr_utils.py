@@ -5,18 +5,28 @@ from typing import List, Dict
 
 import requests
 from django.http import HttpResponseServerError
+from opentelemetry import trace
 from medcat.cdb import CDB
 from medcat.cdb.concepts import CUIInfo
 from rest_framework.response import Response
-
+from opentelemetry.semconv.attributes import server_attributes
+from opentelemetry.semconv._incubating.attributes import service_attributes
 from api.models import ConceptDB
 from core.settings import SOLR_HOST, SOLR_PORT
 
 SOLR_INDEX_SCHEMA = {}
 
 logger = logging.getLogger(__name__)
+tracer = trace.get_tracer("medcat-trainer")
+
+solr_trace_attributes = {
+    service_attributes.SERVICE_PEER_NAME: "medcat-trainer-solr",
+    server_attributes.SERVER_ADDRESS: SOLR_HOST,
+    server_attributes.SERVER_PORT: int(SOLR_PORT),
+}
 
 
+@tracer.start_as_current_span("cache_solr_collection_schema_types", attributes=solr_trace_attributes)
 def _cache_solr_collection_schema_types(collection):
     url = f'http://{SOLR_HOST}:{SOLR_PORT}/solr/{collection}/schema'
     logger.info(f'Retrieving solr schema: {url}')
@@ -30,6 +40,7 @@ def _cache_solr_collection_schema_types(collection):
         raise e
 
 
+@tracer.start_as_current_span("collections_available", attributes=solr_trace_attributes)
 def collections_available(cdbs: List[int]):
     url = f'http://{SOLR_HOST}:{SOLR_PORT}/solr/admin/collections?action=LIST'
     logger.info(f'Retrieving all SOLR collections: {url}')
@@ -64,6 +75,7 @@ def _process_result_repsonse(resp: Dict):
     return uniq_results_map
 
 
+@tracer.start_as_current_span("search_collection", attributes=solr_trace_attributes)
 def search_collection(cdbs: List[int], raw_query: str):
     query = raw_query.strip().replace(r'\s+', r'\s').split(' ')
     if len(query) == 1 and query[0] == '':
@@ -74,6 +86,8 @@ def search_collection(cdbs: List[int], raw_query: str):
         for cdb in cdbs:
             cdb_model = ConceptDB.objects.get(id=cdb)
             collection_name = f'{cdb_model.name}_id_{cdb_model.id}'
+            trace.get_current_span().add_event("Searching collection for CDB",
+                                               attributes={"collection_name": collection_name, "cdb_id": cdb_model.id, "cdb_name": cdb_model.name, "query": raw_query})
             if collection_name not in SOLR_INDEX_SCHEMA:
                 _cache_solr_collection_schema_types(collection_name)
             try:
@@ -107,10 +121,14 @@ def search_collection(cdbs: List[int], raw_query: str):
     return Response({'results': res})
 
 
+@tracer.start_as_current_span("import_all_concepts", attributes=solr_trace_attributes)
 def import_all_concepts(cdb: CDB, cdb_model: ConceptDB):
     collection_name = f'{cdb_model.name}_id_{cdb_model.id}'
     base_url = f'http://{SOLR_HOST}:{SOLR_PORT}/solr'
-
+    trace.get_current_span().add_event("Importing all concepts for CDB",
+                                       attributes={
+                                           "collection_name": collection_name, "cdb_id": str(cdb_model.id), "cdb_name": str(cdb_model.name)
+                                       })
     # check if solr collections already exists.
     url = f'{base_url}/admin/collections?action=LIST'
     resp = requests.get(url)
@@ -162,7 +180,7 @@ def drop_collection(cdb_model: ConceptDB):
     else:
         logger.warning(f'Error dropping concept collection {collection_name}, error: {resp.text}')
 
-
+@tracer.start_as_current_span("ensure_concept_searchable", attributes=solr_trace_attributes)
 def ensure_concept_searchable(cui, cdb: CDB, cdb_model: ConceptDB):
     """
     Adds a single cui and associated metadata is available in the associated solr search index.

@@ -7,18 +7,34 @@
             "display_name": "MedCAT-gliner",
             "description": "Gliner based NER for MedCAT",
             "source_spec": {
-                "source": "git@github.com:CogStack/cogstack-ops.git",
-                "source_type": "github_ssh_subdir",
-                "subdirectory": "medcat-gliner"
+                "source": "medcat-gliner",
+                "source_type": "pypi"
             },
             "homepage": "https://github.com/CogStack/cogstack-ops/tree/main/medcat-gliner",
             "compatibility": [
                 {
                     "medcat_version": ">=2.5.0,<3.0.0",
-                    "plugin_version": "main"
+                    "plugin_version": "0.2.0"
                 }
             ],
-            "requires_auth": true
+            "requires_auth": false
+        },
+        "medcat-embedding-linker": {
+            "name": "medcat-embedding-linker",
+            "display_name": "MedCAT-embedding-linker",
+            "description": "Embedding based linker for MedCAT",
+            "source_spec": {
+                "source": "medcat-embedding-linker",
+                "source_type": "pypi"
+            },
+            "homepage": "https://github.com/CogStack/cogstack-nlp/tree/main/medcat-plugins/medcat-embedding-linker",
+            "compatibility": [
+                {
+                    "medcat_version": ">=2.5.0,<3.0.0",
+                    "plugin_version": "0.1.0"
+                }
+            ],
+            "requires_auth": false
         }
     }
 }

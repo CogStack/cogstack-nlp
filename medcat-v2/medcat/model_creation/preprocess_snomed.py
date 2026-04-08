@@ -124,7 +124,7 @@ class ExtensionDescription:
 
 SNOMED_FOLDER_NAME_PATTERN = re.compile(
     # within:     EXTENSION      PRODUCTION     RELEASE
-    r"^SnomedCT_([A-Za-z0-9]+)_([A-Za-z0-9]+)_(\d{8}T\d{6}Z$)")
+    r"^SnomedCT_([A-Za-z0-9]+)_([A-Za-z0-9]+)_(\d{8}(?:T\d{6}Z)?)$")
 PER_FILE_TYPE_PATHS = {
     RefSetFileType.concept: os.path.join("Snapshot", "Terminology"),
     RefSetFileType.description: os.path.join("Snapshot", "Terminology"),
@@ -214,7 +214,10 @@ class SupportedBundles(Enum):
         )
     UK_DRUG_EXT = BundleDescriptor(
         extensions=[SupportedExtension.UK_DRUG, SupportedExtension.UK_EDITION],
-        )
+    )
+    AU_EXT = BundleDescriptor(
+        extensions=[SupportedExtension.AU,]
+    )
 
 
 def match_partials_with_folders(exp_names: list[tuple[str, Optional[str]]],

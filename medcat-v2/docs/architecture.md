@@ -10,17 +10,18 @@ MedCAT is built on a flexible, registry-based architecture that allows you to cu
 **Components** are the building blocks of MedCAT. They fall into two categories:
 
 - **Core components**: Essential components that provide entity recognition and linking
-  - **NER** (Named Entity Recognition): Identifies medical entities in text
-  - **Linker**: Links identified entities to concepts in your medical database (CDB)
-  - Also: Token normalizers and taggers
+    - **NER** (Named Entity Recognition): Identifies medical entities in text
+    - **Linker**: Links identified entities to concepts in your medical database (CDB)
+    - Also: Token normalizers and taggers
 
 - **Addon components**: Optional components that add functionality beyond NER and linking
-  - **MetaCAT**: Adds meta-annotation (e.g., experiencer, negation, temporality)
-  - **RelCAT**: Extracts relationships between entities
-  - Custom addons for domain-specific tasks
+    - **MetaCAT**: Adds meta-annotation (e.g., experiencer, negation, temporality)
+    - **RelCAT**: Extracts relationships between entities
+    - Custom addons for domain-specific tasks
 
 ### Registry System
 All components are registered in a central registry. This means you can:
+
 - Swap out default implementations with your own
 - Choose between multiple NER or linking strategies
 - Add custom processing stages to the pipeline
@@ -32,9 +33,9 @@ MedCAT v2 also includes a **curated plugin catalog** and an **installer**:
 
 - `medcat.plugins.catalog.PluginCatalog` maintains a list of known plugins, their metadata, and MedCAT compatibility rules (e.g. “this plugin supports `>=2.5.0,<3.0.0`”).
 - `medcat.plugins.installer.PluginInstallationManager` uses that catalog to select a compatible version and install it (currently via `pip`), with support for:
-  - PyPI packages
-  - Git repositories (including subdirectories such as monorepo layouts)
-  - Direct URLs (e.g. wheels or tarballs)
+    - PyPI packages
+    - Git repositories (including subdirectories such as monorepo layouts)
+    - Direct URLs (e.g. wheels or tarballs)
 
 The curated catalog can be updated from a remote JSON file, and plugins can be installed either programmatically or via the `python -m medcat plugins install ...` CLI.
 
@@ -375,6 +376,7 @@ This is **not** required when creating a new model pack from scratch.
 ### Component Dependencies
 
 Components can depend on each other:
+
 - **Linkers** receive entities from NER as input
 - **Addons** receive fully annotated documents from NER + Linker
 - All components receive the tokenizer, CDB, and vocab
@@ -394,6 +396,7 @@ class MyNER(AbstractEntityProvidingComponent):
 ### Error Handling
 
 Components should handle errors gracefully:
+
 - Return empty lists rather than raising exceptions when no entities are found
 - Log warnings for configuration issues
 - Validate inputs in `create_new_component()`

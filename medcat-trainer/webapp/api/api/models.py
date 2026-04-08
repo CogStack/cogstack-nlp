@@ -136,7 +136,11 @@ class ModelPack(models.Model):
             super().save(*args, **kwargs)
         else:
             # For new objects, just update the FK fields without full save
-            # Fixes psycopg.errors.UniqueViolation: duplicate key value violates unique constraint "api_modelpack_pkey" 
+            # Remove force_insert if present and set force_update to ensure Django treats this as an update
+            # Removing the kwarg fixes error "Cannot force both insert and updating in model saving."
+            # Setting update_fields fixes errorpsycopg.errors.UniqueViolation: duplicate key value violates unique constraint "api_modelpack_pkey"
+            kwargs.pop('force_insert', None)
+            kwargs['force_update'] = True
             super().save(*args, update_fields=['concept_db', 'vocab'], **kwargs)
 
     def __str__(self):

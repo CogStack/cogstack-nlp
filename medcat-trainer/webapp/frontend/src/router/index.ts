@@ -9,9 +9,10 @@ import ProjectAdmin from '../views/ProjectAdmin.vue'
 import { isOidcEnabled } from '../runtimeConfig'
 
 
-const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
-  routes: [
+const initialiseRouter = () => {
+  return createRouter({
+    history: createWebHistory(import.meta.env.BASE_URL),
+    routes: [
       {
           path: '/train-annotations/:projectId/:docId?',
           name: 'train-annotations',
@@ -50,7 +51,7 @@ const router = createRouter({
             // For OIDC: backend will handle permission check
             const useOidc = isOidcEnabled()
             let isAdmin = false
-            
+
             if (!useOidc) {
               // Check cookie for admin status
               const cookies = document.cookie.split(';').reduce((acc, cookie) => {
@@ -64,7 +65,7 @@ const router = createRouter({
               // The backend API endpoint already checks permissions
               isAdmin = true
             }
-            
+
             if (isAdmin) {
               next()
             } else {
@@ -78,9 +79,11 @@ const router = createRouter({
           name: 'home',
           component: Home
       }
-  ]
-})
+    ]
+  })
+}
 
-export default router
+
+export { initialiseRouter }
 
 

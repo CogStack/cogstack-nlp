@@ -132,10 +132,11 @@ class TwoStepLinker(AbstractCoreComponent):
                         per_doc_valid_token_cache=per_doc_valid_token_cache)
 
     def _train_for_tuis(self, doc: MutableDocument) -> None:
-        # Run training
+        # Run training — share cache across all entities in the document
+        per_doc_valid_token_cache = PerDocumentTokenCache()
         for entity in doc.ner_ents:
             self._process_entity_train_tuis(
-                doc, entity, PerDocumentTokenCache())
+                doc, entity, per_doc_valid_token_cache)
 
     def _check_similarity(self, cui: str, context_similarity: float) -> bool:
         th_type = self.config.components.linking.similarity_threshold_type
@@ -284,10 +285,11 @@ class TwoStepLinker(AbstractCoreComponent):
             return
         per_cui_type_sims = pew[ent]
         cnf_2step = self.two_step_config
+        cui_to_idx = {c: i for i, c in enumerate(cuis)}
         for cui, type_sim in per_cui_type_sims.items():
-            if cui not in cuis:
+            if cui not in cui_to_idx:
                 continue
-            cui_index = cuis.index(cui)
+            cui_index = cui_to_idx[cui]
             cui_sim = similarities[cui_index]
             ts_coef = sigmoid(
                 cnf_2step.alpha_sharpness * (

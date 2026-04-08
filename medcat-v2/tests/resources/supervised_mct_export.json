@@ -58,7 +58,7 @@
                         {
                             "cui": "C04",
                             "start": 81,
-                            "end": 87,
+                            "end": 88,
                             "value": "fittest"
                         }
                     ],
@@ -125,7 +125,7 @@
                     "id": "ID-3",
                     "last_modified": "2024-08-21",
                     "name": "Doc#4",
-                    "text": "The RHS male is healthy as considered by all available tests. There are no indications that the patient is not fittest."
+                    "text": "The RHS male is healthy as considered by all available tests. There are no indications that the patient is not fittest"
                 }
             ],
             "id": "Project#0",

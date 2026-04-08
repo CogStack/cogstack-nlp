@@ -69,7 +69,7 @@ jobs:
         run: python -m build
 
       - name: Upload wheel artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: medcat-v2-wheel
           path: |
@@ -129,7 +129,7 @@ jobs:
 #          cp req-gpu.txt bundle-gpu/requirements.txt
 
       - name: Download built medcat wheel for inclusion in bundles
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: medcat-v2-wheel
           path: medcat-v2/built-wheel
@@ -148,7 +148,7 @@ jobs:
 #          tar -czf medcat-v${{ needs.build.outputs.version_only }}-${{ matrix.python-version }}-gpu.tar.gz -C bundle-gpu .
 
       - name: Upload bundles as artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: bundles-${{ matrix.python-version }}
           path: |
@@ -161,7 +161,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           path: medcat-v2/artifacts
 
@@ -173,7 +173,7 @@ jobs:
           ls -l dist/
 
       - name: Download built wheel
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: medcat-v2-wheel
           path: medcat-v2/dist-wheel

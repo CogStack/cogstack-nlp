@@ -8,10 +8,13 @@ medcat/v2.2.3 for instance.
 import importlib.metadata
 import tempfile
 import zipfile
+import os
+import sys
 from pathlib import Path
 import requests
 import logging
 import argparse
+import re
 
 
 logger = logging.getLogger(__name__)
@@ -67,7 +70,7 @@ def _determine_url(overwrite_url: str | None,
         else:
             tag = _find_latest_scripts_tag(version)
 
-        logger.info("Fetching scripts for MedCAT %s → tag %s}",
+        logger.info("Fetching scripts for MedCAT %s → tag %s",
                     version, tag)
 
         # Download the GitHub auto-generated zipball
@@ -75,12 +78,13 @@ def _determine_url(overwrite_url: str | None,
     return zip_url
 
 
-def _download_zip(zip_url: str, tmp: tempfile._TemporaryFileWrapper):
-    with requests.get(zip_url, stream=True, timeout=30) as r:
-        r.raise_for_status()
-        for chunk in r.iter_content(chunk_size=8192):
-            tmp.write(chunk)
-        tmp.flush()
+def _download_zip(zip_url: str, tmp_path: str):
+    with open(tmp_path, 'wb') as tmp:
+        with requests.get(zip_url, stream=True, timeout=30) as r:
+            r.raise_for_status()
+            for chunk in r.iter_content(chunk_size=8192):
+                tmp.write(chunk)
+            tmp.flush()
 
 
 def _extract_zip(dest: Path, zip_path: Path):
@@ -110,6 +114,23 @@ def _extract_zip(dest: Path, zip_path: Path):
     logger.info("Scripts extracted to: %s", dest)
 
 
+def _fix_requirements(dest: Path, current_version: str):
+    requirements_file = dest / "requirements.txt"
+    original = requirements_file.read_text(encoding="utf-8")
+
+    updated, count = re.subn(
+        pattern=r"(medcat\[.*?\])[><=!~]+[\d.]+",
+        repl=rf"\1~={current_version}",
+        string=original,
+    )
+
+    if count == 0:
+        return
+
+    requirements_file.write_text(updated, encoding="utf-8")
+
+
+
 def fetch_scripts(destination: str | Path = ".",
                   overwrite_url: str | None = None,
                   overwrite_tag: str | None = None) -> Path:
@@ -127,9 +148,15 @@ def fetch_scripts(destination: str | Path = ".",
     dest.mkdir(parents=True, exist_ok=True)
 
     zip_url = _determine_url(overwrite_url, overwrite_tag)
-    with tempfile.NamedTemporaryFile() as tmp:
-        _download_zip(zip_url, tmp)
-        _extract_zip(dest, Path(tmp.name))
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        zip_path = os.path.join(tmp_dir, 'downloaded_scripts.zip')
+        _download_zip(zip_url, zip_path)
+        _extract_zip(dest, Path(zip_path))
+    _fix_requirements(dest, _get_medcat_version())
+    logger.info(
+        "You also need to install the requiements by doing:\n"
+        "%s -m pip install -r %s/requirements.txt",
+        sys.executable, str(destination))
     return dest
 
 

@@ -110,10 +110,11 @@ class Linker(AbstractEntityProvidingComponent):
     def _train_on_doc(self, doc: MutableDocument,
                       ner_ents: list[MutableEntity]
                       ) -> Iterator[MutableEntity]:
-        # Run training
+        # Run training — share cache across all entities in the document
+        per_doc_valid_token_cache = PerDocumentTokenCache()
         for entity in ner_ents:
             yield from self._process_entity_train(
-                doc, entity, PerDocumentTokenCache())
+                doc, entity, per_doc_valid_token_cache)
 
     def _process_entity_nt_w_name(
             self, doc: MutableDocument,

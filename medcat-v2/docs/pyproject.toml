@@ -1,0 +1,19 @@
+[project]
+name = "medcat-v2-documentation"
+version = "0.1.0"
+description = "MedCAT v2 Documentation"
+requires-python = ">=3.10"
+dependencies = [
+    "mkdocs-api-autonav>=0.4.0",
+    "mkdocs-material>=9.7.0",
+    "mkdocstrings-python>=2.0.3",
+    "termynal>=0.13.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.12.11",
+]
+
+[tool.ruff]
+line-length = 120

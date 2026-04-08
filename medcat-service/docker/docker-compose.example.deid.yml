@@ -8,5 +8,7 @@ services:
       - APP_MEDCAT_MODEL_PACK=/cat/models/examples/example-deid-model-pack.zip 
       - DEID_MODE=True
       - DEID_REDACT=True
+      - APP_ENABLE_METRICS=True
+      - APP_ENABLE_DEMO_UI=True
     ports:
       - "5555:5000"

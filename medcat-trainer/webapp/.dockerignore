@@ -1,0 +1,12 @@
+# Don't copy host venv — image builds its own in Dockerfile.
+# Copying it would overwrite the Linux venv with host (e.g. macOS) binaries.
+.venv/
+.venv
+__pycache__/
+*.pyc
+.git
+.gitignore
+*.md
+.pytest_cache
+.mypy_cache
+node_modules/
