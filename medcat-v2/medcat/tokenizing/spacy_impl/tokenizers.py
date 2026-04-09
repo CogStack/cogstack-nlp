@@ -3,7 +3,6 @@ import re
 import os
 import shutil
 import logging
-import warnings
 
 import spacy
 from spacy.tokens import Span

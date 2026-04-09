@@ -2,7 +2,6 @@ import re
 from typing import cast, Optional, Iterator, overload, Union, Any, Type
 from collections import defaultdict
 from bisect import bisect_left, bisect_right
-import warnings
 
 from medcat.tokenizing.tokens import (
     BaseToken, BaseEntity, BaseDocument,
