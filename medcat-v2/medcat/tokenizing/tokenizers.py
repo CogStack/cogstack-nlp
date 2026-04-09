@@ -34,7 +34,18 @@ class BaseTokenizer(Protocol):
         pass
 
     def entity_from_tokens(self, tokens: list[MutableToken]) -> MutableEntity:
-        """Deprecated: use entity_from_tokens_in_doc instead."""
+        """Get an entity from the list of tokens.
+
+        This will create a new instance instead of looking for existing entity.
+        This method should be used only if/when there was no existing entity
+        within the specified document for the given span of tokens.
+
+        Args:
+            tokens (list[MutableToken]): List of tokens.
+
+        Returns:
+            MutableEntity: The resulting entity.
+        """
         pass
 
     def entity_from_tokens_in_doc(self, tokens: list[MutableToken],
