@@ -1,4 +1,4 @@
-medcat[spacy,deid,meta-cat,rel-cat]~=v2.6.0
+medcat[spacy,deid,meta-cat,rel-cat]~=2.7.0
 medcat-den
 ipython
 plotly

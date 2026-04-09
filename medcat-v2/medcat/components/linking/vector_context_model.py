@@ -231,10 +231,9 @@ class ContextModel(AbstractSerialisable):
             pref_freq = self.config.prefer_frequent_concepts
             scales = [np.log10(cnt / m) * pref_freq if cnt > 10 else 0
                       for cnt in cnts]
-            old_sims = list(similarities)
-            similarities.clear()
-            similarities += [float(min(0.99, sim + sim * scale))
-                             for sim, scale in zip(old_sims, scales)]
+            for i, scale in enumerate(scales):
+                similarities[i] = float(min(0.99,
+                                            similarities[i] + similarities[i] * scale))
 
     def get_all_similarities(self, cuis: list[str], entity: MutableEntity,
                              name: str, doc: MutableDocument,

@@ -3,7 +3,6 @@ import re
 import os
 import shutil
 import logging
-import warnings
 
 import spacy
 from spacy.tokens import Span
@@ -78,14 +77,6 @@ class SpacyTokenizer(BaseTokenizer):
         return Entity(span)
 
     def entity_from_tokens(self, tokens: list[MutableToken]) -> MutableEntity:
-        warnings.warn(
-            "The `medcat.tokenizing.tokenizers.Tokenizer.entity_from_tokens` method is"
-            "depreacated and subject to removal in a future release. Please use "
-            "`medcat.tokenizing.tokenizers.Tokenizer.entity_from_tokens_in_doc` "
-            "instead.",
-            DeprecationWarning,
-            stacklevel=2
-        )
         if not tokens:
             raise ValueError("Need at least one token for an entity")
         spacy_tokens = cast(list[Token], tokens)

@@ -106,7 +106,7 @@ def open_pr(branch: str, title: str, body: str, base: str = "main"):
 def main():
     args = parse_args()
     package = args.package
-    new_version = args.version
+    new_version = args.version.removeprefix("v")
     repo_root = Path(__file__).resolve().parents[2]
 
     run(["git", "config", "user.name", "github-actions[bot]"])

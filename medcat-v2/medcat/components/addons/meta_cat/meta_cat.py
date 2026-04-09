@@ -736,6 +736,10 @@ class MetaCAT(AbstractSerialisable):
 
             # Start where the last ent was found, cannot be before it as we've
             # sorted
+            if not ctoken_idx:
+                # Entity span did not map to any tokens (e.g. entity at
+                # document boundary or beyond tokenised text length)
+                continue
             last_ind += ind  # If we did not start from 0 in the for loop
 
             _start = max(0, ctoken_idx[0] - cntx_left)
@@ -825,6 +829,9 @@ class MetaCAT(AbstractSerialisable):
         ents = self.get_ents(doc)
 
         for ent in ents:
+            if ent.id not in ent_id2ind:
+                # Entity was skipped in prepare_document (no token mapping)
+                continue
             ent_ind = ent_id2ind[ent.id]
             value = id2category_value[predictions[ent_ind]]
             confidence = confidences[ent_ind]

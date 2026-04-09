@@ -126,6 +126,10 @@ def _prepare_from_json_loop(document: dict,
                         else:
                             ctoken_idx.append(ind)
 
+                if not ctoken_idx:
+                    # Entity span did not map to any tokens
+                    continue
+
                 _start = max(0, ctoken_idx[0] - cntx_left)
                 _end = min(len(doc_text['input_ids']),
                            ctoken_idx[-1] + 1 + cntx_right)
@@ -315,10 +319,9 @@ def undersample_data(data: list, category_value2id: dict, label_data_,
             label_data_counter[sample[-1]] += 1
 
     label_data = {v: 0 for v in category_value2id.values()}
-    for i in range(len(data_undersampled)):
-        if data_undersampled[i][2] in category_value2id.values():
-            label_data[data_undersampled[i][2]] = (
-                label_data[data_undersampled[i][2]] + 1)
+    for sample in data_undersampled:
+        if sample[2] in label_data:
+            label_data[sample[2]] += 1
     logger.info("Updated number of samples per label (for 2-phase learning):"
                 " %s", label_data)
     return data_undersampled
@@ -410,9 +413,9 @@ def encode_category_values(data: list[tuple[list, list, str]],
 
     # Creating dict with labels and its number of samples
     label_data_ = {v: 0 for v in category_value2id.values()}
-    for i in range(len(data)):
-        if data[i][2] in category_value2id.values():
-            label_data_[data[i][2]] = label_data_[data[i][2]] + 1
+    for sample in data:
+        if sample[2] in label_data_:
+            label_data_[sample[2]] += 1
 
     logger.info("Original number of samples per label: %s", label_data_)
 

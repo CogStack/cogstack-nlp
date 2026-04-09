@@ -252,6 +252,30 @@ class TrainerSupervisedTests(TrainerUnsupervisedTests):
                 doc, ent = args.kwargs['mut_doc'], args.kwargs['mut_entity']
                 self.assertIn(ent, doc.linked_ents)
 
+    def test_empty_token_annotation_is_skipped_when_not_strict(self):
+        self.trainer.strict_train = False
+        with unittest.mock.patch.object(
+                self.trainer._pipeline, "entity_from_tokens_in_doc",
+                side_effect=ValueError("No tokens found in span")), \
+                unittest.mock.patch.object(
+                FakeMutDoc, "get_tokens", return_value=[]), \
+                unittest.mock.patch.object(self.trainer, "add_and_train_concept"):
+            try:
+                self.train(self.TRAIN_DATA)
+            except ValueError as err:
+                self.fail(f"Unexpected ValueError for empty-token annotation: {err}")
+
+    def test_empty_token_annotation_raises_when_strict(self):
+        self.trainer.strict_train = True
+        with unittest.mock.patch.object(
+                self.trainer._pipeline, "entity_from_tokens_in_doc",
+                side_effect=ValueError("No tokens found in span")), \
+                unittest.mock.patch.object(
+                FakeMutDoc, "get_tokens", return_value=[]), \
+                unittest.mock.patch.object(self.trainer, "add_and_train_concept"):
+            with self.assertRaises(ValueError):
+                self.train(self.TRAIN_DATA)
+
 
 class FromSratchBase(TrainedModelTests):
     RNG_SEED = 42

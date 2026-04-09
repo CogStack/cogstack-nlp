@@ -482,14 +482,16 @@ class CAT(AbstractSerialisable):
             saver: Optional[BatchAnnotationSaver],
             ) -> Iterator[tuple[str, Union[dict, Entities, OnlyCUIEntities]]]:
         external_processes = n_process - 1
+        mp_context = None
         if self.FORCE_SPAWN_MP:
             import multiprocessing as mp
             logger.info(
-                "Forcing multiprocessing start method to 'spawn' "
+                "Using 'spawn' multiprocessing context "
                 "due to known compatibility issues with 'fork' and "
                 "libraries using threads or native extensions.")
-            mp.set_start_method("spawn", force=True)
-        with ProcessPoolExecutor(max_workers=external_processes) as executor:
+            mp_context = mp.get_context("spawn")
+        with ProcessPoolExecutor(max_workers=external_processes,
+                                 mp_context=mp_context) as executor:
             while True:
                 try:
                     yield from self._mp_one_batch_per_process(

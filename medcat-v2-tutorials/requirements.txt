@@ -1,4 +1,4 @@
-medcat~=2.6.0
+medcat~=2.7.0
 ipykernel
 pytest-xdist~=3.6.0
 nbmake<1.6
