@@ -405,12 +405,18 @@ class Trainer:
                     devalue_others)
 
     def _prepare_doc_with_anns(
-            self, doc: MutableDocument,
+            self, doc: MutableDocument, ann_doc: MedCATTrainerExportDocument,
             anns: list[MedCATTrainerExportAnnotation]) -> None:
         ents = []
         for ann in anns:
             tkns = doc.get_tokens(ann['start'], ann['end'])
-            ents.append(self._pipeline.entity_from_tokens_in_doc(tkns, doc))
+            try:
+                ents.append(self._pipeline.entity_from_tokens_in_doc(tkns, doc))
+            except ValueError as err:
+                self._warn_on_error(
+                    err, doc.base.text,
+                    (ann['cui'], ann['value'], ann['start'], ann['end']),
+                    (None, ann_doc['id'], ann_doc['name']))
         # set NER ents
         doc.ner_ents.clear()
         doc.ner_ents.extend(ents)
@@ -418,6 +424,34 @@ class Trainer:
         doc.linked_ents.clear()
         doc.linked_ents.extend(ents)
 
+    def _warn_on_error(self, ve: BaseException, cur_text: str,
+                       mut_context_start: tuple[str, str, int, int],
+                       mut_context_end: tuple[MutableEntity | None, str, str]):
+        start, end = mut_context_start[2:]
+        context_window = 20  # characters
+        splitter_left, splitter_right = "<", ">"
+        context_start = max(start - context_window, 0)
+        context_end = min(end + context_window, len(cur_text) - 1)
+        context = (cur_text[context_start: start] +
+                    splitter_left +
+                    cur_text[start: end] +
+                    splitter_right +
+                    cur_text[end: context_end])
+        if context_start > 0:
+            context = "[...]" + context
+        if context_end < len(cur_text) - 1:
+            context += "[...]"
+        msg_template = (
+            "Failed to identify '%s' (%s) ([%d:%d]) "
+            "in '%s' %s within document %s | %s, "
+            "skipping training for this example")
+        msg_context = (
+            *mut_context_start, context, *mut_context_end)
+        if self.strict_train:
+            raise ValueError(msg_template % msg_context) from ve
+        else:
+            logger.warning(msg_template, *msg_context, exc_info=ve)
+# 480+ project
     def _train_supervised_for_project2(self,
                                        docs: list[MedCATTrainerExportDocument],
                                        current_document: int,
@@ -433,7 +467,7 @@ class Trainer:
             with temp_changed_config(self.config.components.linking,
                                      'train', False):
                 mut_doc = self.caller(doc['text'])
-            self._prepare_doc_with_anns(mut_doc, doc['annotations'])
+            self._prepare_doc_with_anns(mut_doc, doc, doc['annotations'])
 
             # Compatibility with old output where annotations are a list
             for ann, mut_entity in zip(doc['annotations'], mut_doc.linked_ents):
@@ -461,31 +495,10 @@ class Trainer:
                         mut_entity=mut_entity, negative=deleted,
                         devalue_others=devalue_others)
                 except (ValueError, KeyError) as ve:
-                    context_window = 20  # characters
-                    splitter_left, splitter_right = "<", ">"
-                    cur_text = doc['text']
-                    context_start = max(start - context_window, 0)
-                    context_end = min(end + context_window, len(cur_text) - 1)
-                    context = (cur_text[context_start: start] +
-                               splitter_left +
-                               cur_text[start: end] +
-                               splitter_right +
-                               cur_text[end: context_end])
-                    if context_start > 0:
-                        context = "[...]" + context
-                    if context_end < len(cur_text) - 1:
-                        context += "[...]"
-                    msg_template = (
-                        "Failed to identify '%s' (%s) ([%d:%d]) "
-                        "in '%s' %s within document %s | %s, "
-                        "skipping training for this example")
-                    msg_context = (
-                        cui, ann['value'], ann['start'], ann['end'],
-                        context, mut_entity, doc['id'], doc['name'])
-                    if self.strict_train:
-                        raise ValueError(msg_template % msg_context) from ve
-                    else:
-                        logger.warning(msg_template, *msg_context, exc_info=ve)
+                    self._warn_on_error(
+                        ve, doc['text'],
+                        (cui, ann['value'], ann['start'], ann['end']),
+                        (mut_entity, doc['id'], doc['name']))
             if train_from_false_positives:
                 fps: list[MutableEntity] = get_false_positives(doc, mut_doc)
 
