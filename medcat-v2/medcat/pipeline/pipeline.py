@@ -345,6 +345,14 @@ class Pipeline:
         Returns:
             MutableEntity: The resulting entity.
         """
+        warnings.warn(
+            "The `medcat.pipeline.pipeline.Pipeline.entity_from_tokens` method is"
+            "depreacated is subject to removal in a future release. Please use "
+            "`medcat.pipeline.pipeline.Pipeline.entity_from_tokens_in_doc` "
+            "instead.",
+            DeprecationWarning,
+            stacklevel=2
+        )
         return self._tokenizer.entity_from_tokens(tokens)
 
     def entity_from_tokens_in_doc(self, tokens: list[MutableToken],
