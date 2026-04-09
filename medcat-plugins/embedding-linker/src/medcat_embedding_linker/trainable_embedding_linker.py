@@ -328,10 +328,11 @@ class TrainableEmbeddingLinker(Linker, AbstractManualSerialisable):
             self.training_batch.append((doc, entity, positive_cui_idx))
         if (
             len(self.training_batch) >= self.cnf_l.training_batch_size 
-            or entity is doc.ner_ents[-1]
+            or entity is doc.linked_ents[-1]
         ):
             logger.debug(
-                "End of document reached; training on final batch of size %s",
+                "End of document reached or full batch; " \
+                "training on a batch of size %s",
                 len(self.training_batch),
             )
             self._train_on_batch()
