@@ -263,8 +263,7 @@ class TrainerSupervisedTests(TrainerUnsupervisedTests):
             try:
                 self.train(self.TRAIN_DATA)
             except ValueError as err:
-                raise err
-                # self.fail(f"Unexpected ValueError for empty-token annotation: {err}")
+                self.fail(f"Unexpected ValueError for empty-token annotation: {err}")
 
     def test_empty_token_annotation_raises_when_strict(self):
         self.trainer.strict_train = True
