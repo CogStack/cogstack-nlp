@@ -592,6 +592,8 @@ def save_models(request):
 
 def _overwrite_model_pack(cat, model_path: str):
     # NOTE: cannot overwrite, so working around
+    #       currently CAT.save_model_pack does not provide a method to
+    #       allow overwriting an existing model pack
     with TemporaryDirectory() as tmp_dir:
         # making new folder name so that it's copied
         # to the specific path rather than into the folder
