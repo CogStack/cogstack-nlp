@@ -603,7 +603,7 @@ def _overwrite_model_pack(cat, model_path: str):
                 pack_name=os.path.basename(model_path),
                 add_hash_to_pack_name=False)
         except Exception as e:
-            logger.warning("Unable to save model pack. Restoring previous state")
+            logger.warning("Unable to save model pack. Restoring previous state. Issue while saving model:", exc_info=e)
             if os.path.exists(model_path):
                 shutil.rmtree(model_path)  # remove partial/corrupt output
             # restore original
