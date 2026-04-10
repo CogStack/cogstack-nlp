@@ -584,6 +584,7 @@ def save_models(request):
         # CDB / vocab based
         cat.cdb.save(project.concept_db.cdb_file.path, overwrite=True)
     else:
+        # ModelPack based project
         _overwrite_model_pack(cat, project.model_pack.path)
 
     return Response({'message': 'Models saved'})
