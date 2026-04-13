@@ -15,7 +15,8 @@ def unitvec(vec: np.ndarray) -> np.ndarray:
     Returns:
         np.ndarray: The new unit vector.
     """
-    return vec / np.linalg.norm(vec)
+    vec /= np.sqrt(vec @ vec)
+    return vec
 
 
 @overload
