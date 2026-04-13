@@ -91,9 +91,10 @@ class ContextModel(AbstractSerialisable):
 
         return tokens_left, tokens_center, tokens_right
 
-    def _tokens2vecs(self, tokens: Sequence[Union[MutableToken, str]]
-                     ) -> Iterable[np.ndarray]:
-        for step, tkn in enumerate(tokens):
+    def _tokens2vecs(self, tokens: Sequence[Union[MutableToken, str]],
+                    step_start: int = 0
+                    ) -> Iterable[np.ndarray]:
+        for step, tkn in enumerate(tokens, start=step_start):
             lower = tkn.lower() if isinstance(tkn, str) else tkn.base.lower
             if lower not in self.vocab:
                 continue
@@ -137,26 +138,52 @@ class ContextModel(AbstractSerialisable):
         """
         vectors: dict[str, np.ndarray] = {}
 
-        context_vector_sizes = self.config.context_vector_sizes
-        for context_type, window_size in context_vector_sizes.items():
+        # Sort ascending so each iteration is a superset of the previous
+        sorted_contexts = sorted(
+            self.config.context_vector_sizes.items(), key=lambda x: x[1])
+
+        prev_left: list[MutableToken] = []
+        prev_right: list[MutableToken] = []
+        # Accumulated weighted vecs from previous (smaller) windows,
+        # excluding center (center is the same for all window sizes)
+        prev_left_vecs: list[np.ndarray] = []
+        prev_right_vecs: list[np.ndarray] = []
+        center_vecs: Optional[list[np.ndarray]] = None  # same for all windows
+
+        for context_type, window_size in sorted_contexts:
             tokens_left, tokens_center, tokens_right = self.get_context_tokens(
                 entity, doc, window_size, per_doc_valid_token_cache)
 
-            values: list[np.ndarray] = []
-            # Add left
-            values.extend(self._tokens2vecs(tokens_left))
+            # New outer tokens only — the inner ones were already processed
+            new_left = tokens_left[:len(tokens_left) - len(prev_left)]
+            new_right = tokens_right[len(prev_right):]
 
-            if not self.config.context_ignore_center_tokens:
-                # Add center
-                values.extend(
-                    self._preprocess_center_tokens(cui, tokens_center))
+            # step_start for new left tokens: they are further from centre
+            # so their step index is
+            # len(tokens_left) - len(new_left) ... len(tokens_left)-1
+            # i.e. the new tokens are the outermost, highest-step ones
+            new_left_vecs = list(self._tokens2vecs(
+                new_left, step_start=len(prev_left)))
+            new_right_vecs = list(self._tokens2vecs(
+                new_right, step_start=len(prev_right)))
 
-            # Add right
-            values.extend(self._tokens2vecs(tokens_right))
+            prev_left_vecs = new_left_vecs + prev_left_vecs
+            prev_right_vecs = prev_right_vecs + new_right_vecs
+            prev_left = tokens_left
+            prev_right = tokens_right
 
+            # Center is identical for all window sizes, only compute once
+            if center_vecs is None:
+                if not self.config.context_ignore_center_tokens:
+                    center_vecs = list(
+                        self._preprocess_center_tokens(cui, tokens_center))
+                else:
+                    center_vecs = []
+
+            values = prev_left_vecs + center_vecs + prev_right_vecs
             if values:
-                value = np.average(values, axis=0)
-                vectors[context_type] = value
+                vectors[context_type] = np.average(values, axis=0)
+
         return vectors
 
     def similarity(self, cui: str, entity: MutableEntity, doc: MutableDocument,
