@@ -370,10 +370,6 @@ class TrainableEmbeddingLinker(Linker, AbstractManualSerialisable):
         return cls(cdb, cdb.config)
 
     def serialise_to(self, folder_path: str) -> None:
-        # Ensure final partial batch is not dropped before saving model state.
-        logger.info("Flushing final training batch before saving model.")
-        logger.info("This is grandfathered in from trainer.py restraints.")
-
         os.makedirs(folder_path, exist_ok=True)
         model_folder = os.path.join(folder_path, self._MODEL_FOLDER_NAME)
         os.makedirs(model_folder, exist_ok=True)
