@@ -511,7 +511,7 @@ def update_context_vectors(to_update: dict[str, np.ndarray], cui: str,
                          "Is Negative: %s, LR: %.5f, b: %.3f", cui,
                          context_type, similarity, negative, lr, b)
             cv = to_update[context_type]
-            similarity_after = np.dot(unitvec(cv.copy()), unitvec(vector))
+            similarity_after = np.dot(unitvec(cv), unitvec(vector))
             logger.debug("Similarity before vs after: %.5f vs %.5f",
                          similarity, similarity_after)
         else:
