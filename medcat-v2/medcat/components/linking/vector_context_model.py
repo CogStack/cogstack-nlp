@@ -155,7 +155,7 @@ class ContextModel(AbstractSerialisable):
                 entity, doc, window_size, per_doc_valid_token_cache)
 
             # New outer tokens only — the inner ones were already processed
-            new_left = tokens_left[:len(tokens_left) - len(prev_left)]
+            new_left = tokens_left[len(prev_left):]
             new_right = tokens_right[len(prev_right):]
 
             # step_start for new left tokens: they are further from centre
