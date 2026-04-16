@@ -168,6 +168,17 @@ HashableComponet = HashableComponent
 @runtime_checkable
 class TrainableComponent(Protocol):
 
+    def train_unsupervised(self, doc: MutableDocument) -> None:
+        """Train unsupervised based on the given document.
+
+        If this component doesn't support unsupervised training,
+        this method can be a no-op.
+
+        Args:
+            doc (MutableDocument): The document to train on.
+        """
+        pass
+
     def train(self, cui: str,
               entity: MutableEntity,
               doc: MutableDocument,
