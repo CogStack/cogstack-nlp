@@ -64,10 +64,8 @@ class Trainer:
         with self.config.meta.prepare_and_report_training(
             data_iterator, nepochs, False
         ) as wrapped_iter:
-            with temp_changed_config(self.config.components.linking,
-                                     'train', True):
-                self._train_unsupervised(wrapped_iter, nepochs, fine_tune,
-                                         progress_print)
+            self._train_unsupervised(wrapped_iter, nepochs, fine_tune,
+                                     progress_print)
 
     def _train_unsupervised(self,
                             data_iterator: Iterable,
@@ -91,11 +89,18 @@ class Trainer:
                 # Convert to string
                 line = str(line).strip()
 
+
+                # inference run for the document
                 try:
-                    _ = self.caller(line)
+                    doc = self.caller(line)
                 except Exception as e:
                     logger.warning("LINE: '%s...' \t WAS SKIPPED", line[0:100])
                     logger.warning("BECAUSE OF:", exc_info=e)
+                    continue
+                for comp in self._pipeline.iter_all_components():
+                    if isinstance(comp, TrainableComponent):
+                        logger.debug("Training on component %s", comp.full_name)
+                        comp.train_unsupervised(doc)
             else:
                 logger.warning("EMPTY LINE WAS DETECTED AND SKIPPED")
 
