@@ -84,6 +84,20 @@ class FakeComponent:
     pass
 
 
+class FakeTrainableNERComponent:
+
+    full_name = "ner:fake"
+
+    def __init__(self):
+        self.docs_trained_on = []
+
+    def train_unsupervised(self, doc: MutableDocument) -> None:
+        self.docs_trained_on.append(doc)
+
+    def train(self, *args, **kwargs) -> None:
+        return
+
+
 class FakePipeline:
 
     def tokenizer(self, text: str) -> FakeMutDoc:
@@ -100,6 +114,15 @@ class FakePipeline:
 
     def entity_from_tokens_in_doc(self, tkns: list, doc: MutableDocument) -> FakeMutEnt:
         return FakeMutEnt(doc, tkns[0].index, tkns[-1].index)
+
+
+class FakePipelineWithComponents(FakePipeline):
+
+    def __init__(self, components: list):
+        self._components = components
+
+    def iter_all_components(self):
+        return self._components
 
 
 class TrainerTestsBase(unittest.TestCase):
@@ -175,6 +198,35 @@ class TrainerUnsupervisedTests(TrainerTestsBase):
         self.assert_remembers_training_data(self.DATA_CNT, self.NEPOCHS,
                                             exp_total=repeats,
                                             unsup=self.UNSUP)
+
+    def test_unsup_training_trains_non_linking_component(self):
+        ner_component = FakeTrainableNERComponent()
+        trainer = Trainer(
+            self.cdb,
+            self.caller,
+            FakePipelineWithComponents([ner_component]),
+        )
+        trainer.config = self.cnf
+
+        trainer.train_unsupervised(self.TRAIN_DATA, nepochs=1)
+
+        self.assertEqual(len(ner_component.docs_trained_on), self.DATA_CNT)
+        self.assertTrue(
+            all(isinstance(doc, FakeMutDoc) for doc in ner_component.docs_trained_on)
+        )
+
+    def test_unsup_training_skips_non_trainable_components(self):
+        ner_component = FakeTrainableNERComponent()
+        trainer = Trainer(
+            self.cdb,
+            self.caller,
+            FakePipelineWithComponents([FakeComponent(), ner_component, object()]),
+        )
+        trainer.config = self.cnf
+
+        trainer.train_unsupervised(self.TRAIN_DATA, nepochs=1)
+
+        self.assertEqual(len(ner_component.docs_trained_on), self.DATA_CNT)
 
 
 class TrainerSupervisedTests(TrainerUnsupervisedTests):
@@ -340,3 +392,4 @@ class TrainFromScratchSupervisedTests(TrainFromScratchTests):
             with self.subTest(cui):
                 info = self.model.cdb.cui2info[cui]
                 self.assertGreater(info['count_train'], prev_count)
+
