@@ -637,18 +637,15 @@ class Trainer:
 
         if mut_entity is None or mut_doc is None:
             return
-        linker = self._pipeline.get_component(
-            CoreComponentType.linking)
-        if not isinstance(linker, TrainableComponent):
-            logger.warning(
-                "Linker cannot be trained during add_and_train_concept"
-                "because it has no train method: %s", linker)
-        else:
+        trained_comps = 0
+        for component in self._pipeline.iter_all_components():
+            if not isinstance(component, TrainableComponent):
+                continue
             # Train Linking
             if isinstance(mut_entity, list):
                 mut_entity = self._pipeline.entity_from_tokens(mut_entity)
-            linker.train(cui=cui, entity=mut_entity, doc=mut_doc,
-                         negative=negative, names=names)
+            component.train(cui=cui, entity=mut_entity, doc=mut_doc,
+                            negative=negative, names=names)
 
             if not negative and devalue_others:
                 # Find all cuis
@@ -663,8 +660,12 @@ class Trainer:
                 # Add negative training for all other CUIs that link to
                 # these names
                 for _cui in cuis:
-                    linker.train(cui=_cui, entity=mut_entity, doc=mut_doc,
-                                 negative=True)
+                    component.train(cui=_cui, entity=mut_entity, doc=mut_doc,
+                                    negative=True)
+        if trained_comps == 0:
+            logger.warning(
+                "Nothing was trained during add_and_train_concept because "
+                "no components followed the TrainableComponent protocol")
 
     @property
     def _pn_configs(self) -> tuple[General, Preprocessing, CDBMaker]:
