@@ -37,7 +37,7 @@ class _CheatingComponent(AbstractEntityProvidingComponent):
     def create_new_component(
             cls, cnf: ComponentConfig, tokenizer: BaseTokenizer,
             cdb: CDB, vocab: Vocab, model_load_path: Optional[str]) -> Self:
-        raise ValueError("Cannot create new compnoent of this type")
+        raise ValueError("Cannot create new component of this type")
 
 @contextmanager
 def cheating_component(
@@ -82,6 +82,7 @@ def _create_general_predictor(
             ent = tokens2entity(tkns, doc)
             if set_cui:
                 ent.cui = ann["cui"]
+            ents.append(ent)
         return ents
     return predict
 
@@ -124,9 +125,9 @@ def _check_dataset(dataset: MedCATTrainerExport):
         raise ValueError(
             "Dataset contains documents with identical texts. "
             "This means it cannot be used for dataset aware components "
-            "because the identification of the document isn't trivial. "
-            "The check found %d different texts within %d documents",
-            num_texts, num_docs)
+            "because the identification of the document is not trivial. "
+            f"The check found {num_texts} different texts within {num_docs} "
+            "documents")
 
 
 @contextmanager
@@ -137,4 +138,5 @@ def dataset_aware_component(
     _check_dataset(dataset)
     tokens2entity = cat.pipe.tokenizer.entity_from_tokens_in_doc
     predictor = _create_predictor(comp_type, dataset, tokens2entity)
-    yield cheating_component(cat, comp_type, predictor)
+    with cheating_component(cat, comp_type, predictor):
+        yield
