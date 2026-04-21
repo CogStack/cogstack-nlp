@@ -19,10 +19,10 @@ class _CheatingComponent(AbstractEntityProvidingComponent):
     def __init__(self,
             comp_type: CoreComponentType,
             predictor: Callable[[MutableDocument], list[MutableEntity]]):
+        self._comp_type = comp_type
         super().__init__(
             comp_type == CoreComponentType.linking,
             comp_type == CoreComponentType.linking)
-        self._comp_type = comp_type
         self._predictor = predictor
 
     def get_type(self) -> CoreComponentType:
