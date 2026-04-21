@@ -15,7 +15,7 @@ from medcat.data.mctexport import (
     MedCATTrainerExport, MedCATTrainerExportAnnotation, MedCATTrainerExportProject,
     MedCATTrainerExportDocument, count_all_annotations, iter_anns)
 from medcat.preprocessors.cleaners import prepare_name, NameDescriptor
-from medcat.components.types import CoreComponentType, TrainableComponent
+from medcat.components.types import TrainableComponent
 from medcat.components.addons.addons import AddonComponent
 from medcat.pipeline import Pipeline
 
