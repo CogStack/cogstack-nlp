@@ -44,6 +44,16 @@ def cheating_component(
         cat: CAT,
         comp_type: CoreComponentType,
         predictor: Callable[[MutableDocument], list[MutableEntity]]):
+    """Creates and uses a cheating component within the pipe.
+
+    This component will "predict" entities as per the predictor it is given.
+
+    Args:
+        cat (CAT): The model pack.
+        comp_type (CoreComponentType): The component type (generally NER or linker).
+        predictor (Callable[[MutableDocument], list[MutableEntity]]):
+            The predictor to use.
+    """
     comps_list = cat.pipe._components
     # find original index
     original_comp = cat.pipe.get_component(comp_type)
@@ -135,6 +145,17 @@ def dataset_aware_component(
         cat: CAT,
         comp_type: CoreComponentType,
         dataset: MedCATTrainerExport):
+    """Creates and uses a dataset aware component within the pipe.
+
+    This simplfies trainin for and evaluating one component at
+    a time by swapping out the other component for one that has
+    perfect performance since it knows the dataset.
+
+    Args:
+        cat (CAT): The model pack.
+        comp_type (CoreComponentType): The component type.
+        dataset (MedCATTrainerExport): The dataset in question.
+    """
     _check_dataset(dataset)
     tokens2entity = cat.pipe.tokenizer.entity_from_tokens_in_doc
     predictor = _create_predictor(comp_type, dataset, tokens2entity)
