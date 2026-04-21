@@ -1,4 +1,5 @@
 import unittest
+import unittest.mock
 
 from medcat.config import Config
 from medcat.components.types import CoreComponentType, AbstractEntityProvidingComponent
@@ -92,12 +93,13 @@ class _TrainablePassThroughLinker(_PassThroughLinker):
     def __init__(self):
         super().__init__()
         self.unsup_train_calls = 0
+        self.sup_train_calls = 0
 
     def train_unsupervised(self, doc):
         self.unsup_train_calls += 1
 
     def train(self, *args, **kwargs):
-        return
+        self.sup_train_calls += 1
 
 
 class _TrainableNER(_EmptyNER):
@@ -107,12 +109,13 @@ class _TrainableNER(_EmptyNER):
     def __init__(self):
         super().__init__()
         self.unsup_train_calls = 0
+        self.sup_train_calls = 0
 
     def train_unsupervised(self, doc):
         self.unsup_train_calls += 1
 
     def train(self, *args, **kwargs):
-        return
+        self.sup_train_calls += 1
 
 
 class _FakeFilters:
@@ -140,6 +143,12 @@ class _FakePipeline:
     def iter_all_components(self):
         return self._components
 
+    def entity_from_tokens_in_doc(self, tkns, doc):
+        return self.tokenizer.entity_from_tokens_in_doc(tkns, doc)
+
+    def tokenizer_with_tag(self, text):
+        return _FakeDoc(text, {})
+
     def __call__(self, doc):
         for comp in self._components:
             doc = comp(doc)
@@ -154,6 +163,9 @@ class _FakeCDB:
         self.cui2info = {}
 
     def reset_training(self):
+        return
+
+    def _add_concept(self, *args, **kwargs):
         return
 
 
@@ -238,3 +250,29 @@ class TrainingUtilsTests(unittest.TestCase):
 
         self.assertEqual(ner.unsup_train_calls, 1)
         self.assertEqual(linker.unsup_train_calls, 0)
+
+    def test_train_supervised_can_train_only_linker_when_ner_is_cheating(self):
+        ner = _TrainableNER()
+        linker = _TrainablePassThroughLinker()
+        cat = _FakeCat(self.DATASET, [ner, linker])
+        trainer = Trainer(cat.cdb, cat.__call__, cat.pipe)
+
+        with unittest.mock.patch("medcat.trainer.prepare_name", return_value={"abc": {}}):
+            with dataset_aware_component(cat, CoreComponentType.ner, self.DATASET):
+                trainer.train_supervised_raw(self.DATASET, disable_progress=True)
+
+        self.assertEqual(ner.sup_train_calls, 0)
+        self.assertEqual(linker.sup_train_calls, 1)
+
+    def test_train_supervised_can_train_only_ner_when_linker_is_cheating(self):
+        ner = _TrainableNER()
+        linker = _TrainablePassThroughLinker()
+        cat = _FakeCat(self.DATASET, [ner, linker])
+        trainer = Trainer(cat.cdb, cat.__call__, cat.pipe)
+
+        with unittest.mock.patch("medcat.trainer.prepare_name", return_value={"abc": {}}):
+            with dataset_aware_component(cat, CoreComponentType.linking, self.DATASET):
+                trainer.train_supervised_raw(self.DATASET, disable_progress=True)
+
+        self.assertEqual(ner.sup_train_calls, 1)
+        self.assertEqual(linker.sup_train_calls, 0)
