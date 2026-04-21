@@ -92,6 +92,9 @@ class FakePipeline:
     def tokenizer_with_tag(self, text: str) -> FakeMutDoc:
         return FakeMutDoc(text)
 
+    def iter_all_components(self):
+        return []
+
     def get_component(self, comp_type):
         return FakeComponent
 
