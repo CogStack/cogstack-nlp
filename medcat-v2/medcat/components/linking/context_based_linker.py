@@ -232,7 +232,7 @@ class Linker(AbstractEntityProvidingComponent):
     # TrainableComponent
 
     def train_unsupervised(self, doc: MutableDocument) -> None:
-        self._train_on_doc(doc, doc.ner_ents)
+        list(self._train_on_doc(doc, doc.ner_ents))
 
     def train(self, cui: str,
               entity: MutableEntity,
