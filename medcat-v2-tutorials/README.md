@@ -20,6 +20,7 @@ For every day usage (e.g inference) the [medcat-scripts](../medcat-scripts) port
 | 1.   |  [Building a Concept Database and a Vocab](notebooks/introductory/basic/1._Build_a_Concept_Database_and_a_Vocabulary.ipynb)                                    |
 | 2.   | [Unsupervised training on model](notebooks/introductory/basic/2._Unsupervised_training_on_model.ipynb) |
 | 3.   | [Supervised training on model](notebooks/introductory/basic/3._Supervised_training_on_model.ipynb) |
+| 4.   | [Evaluating perfromance on dataset](notebooks/introductory/basic/4._Evaluating_performance_on_dataset.ipynb) |
 
 ### MetaCAT (meta-annotation) tutorials
 
