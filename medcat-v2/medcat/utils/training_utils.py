@@ -1,4 +1,5 @@
-from typing import Callable, Optional, Self
+from typing import Callable, Optional
+from typing_extensions import Self
 from contextlib import contextmanager
 
 from medcat.cat import CAT
