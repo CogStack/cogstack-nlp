@@ -73,7 +73,7 @@ jobs:
         run: source tests/resources/model_compatibility/check_backwards_compatibility.sh
       - name: Get the latest release version
         id: get_latest_release
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const latestRelease = await github.rest.repos.getLatestRelease({
@@ -136,7 +136,7 @@ jobs:
           .
 
       - name: Publish dev distribution to Test PyPI
-        uses: pypa/gh-action-pypi-publish@v1.13.0
+        uses: pypa/gh-action-pypi-publish@v1.14.0
         with:
           password: ${{ secrets.TEST_PYPI_API_TOKEN }}
           repository_url: https://test.pypi.org/legacy/

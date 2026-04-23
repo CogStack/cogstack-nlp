@@ -28,19 +28,21 @@ pip install medcat-embedding-linker
 
 ## Quick Start
 
+### Replacing current linker with a static embedding linker
+
 ```python
 from medcat.cat import CAT
 from medcat.config import Config
 from medcat.components.types import CoreComponentType
-
-from medcat_embedding_linker import EmbeddingLinking
+from medcat_embedding_linker.embedding_linker import Linker as StaticEmbeddingLinker
+from medcat_embedding_linker.config import EmbeddingLinking
 
 # Load your MedCAT model
 cat = CAT.load_model_pack("path/to/model_pack")
 
 # Configure the embedding linker
 cat.config.components.linking = EmbeddingLinking()
-cat.config.components.linking.embedding_model_name = "sentence-transformers/all-MiniLM-L6-v2"
+cat.config.components.linking.comp_name = StaticEmbeddingLinker.name
 
 # Recreate the pipeline to register the new linker
 cat._recreate_pipe()
@@ -54,11 +56,52 @@ linker.create_embeddings()
 entities = cat.get_entities("Patient presents with chest pain and dyspnea.")
 ```
 
+### Replacing current linker with a trainable embedding linker AND training
+
+```python
+from medcat.cat import CAT
+from medcat_embedding_linker.trainable_embedding_linker import TrainableEmbeddingLinker
+from medcat_embedding_linker.config import EmbeddingLinking
+
+# Load your MedCAT model
+cat = CAT.load_model_pack("path/to/model_pack")
+
+# Configure the embedding linker
+cat.config.components.linking = EmbeddingLinking()
+cat.config.components.linking.comp_name = TrainableEmbeddingLinker.name
+
+# Recreate the pipeline to register the new linker
+cat._recreate_pipe()
+
+# Generate embeddings for your concept database
+linker = self.get_component(CoreComponentType.linking)
+# create 
+linker.create_embeddings()
+
+# load required data into MedCATTrainerExport format
+train_projects, test_projects = your_dataset_loading_method()
+
+# Training loop - four is probably a nice stopping point
+num_epochs = 4
+
+# the first epoch is done out of the loop incase new concepts / names are detected
+cat.trainer.train_supervised_raw(train_projects, test_size=0, nepochs=1)
+# refreshing the structure here is required for new cuis/names that have been detected
+# so the efficient lookup lists need to be recreated
+linker.refresh_structure()
+linker.create_embeddings()
+get_stats(cat=cat, data=test_projects, use_project_filters=False)
+for i in range(num_epochs - 1):
+    cat.trainer.train_supervised_raw(train_projects, test_size=0, nepochs=1)
+    linker.create_embeddings()
+    get_stats(cat=cat, data=test_projects, use_project_filters=False)
+```
+
 ## How It Works
 
 ### Component Registration
 
-The embedding linker automatically registers itself as `embedding_linker` when `EmbeddingLinking` config is detected. It implements MedCAT's `AbstractEntityProvidingComponent` interface and is lazily loaded when the pipeline is created.
+The embedding linker automatically requires the name of the trainable or static component when `EmbeddingLinking` config is detected. It implements MedCAT's `AbstractEntityProvidingComponent` interface and is lazily loaded when the pipeline is created.
 
 ### Embedding Generation
 
@@ -87,8 +130,7 @@ For each detected entity:
 
 ## Configuration
 
-### Key Parameters
-
+### Key Parameters - Static and Trainable
 ```python
 config.components.linking = EmbeddingLinking(
     # Model settings
@@ -119,6 +161,21 @@ config.components.linking = EmbeddingLinking(
     gpu_device="cuda:0"  # or None for auto-detect
 )
 ```
+### Key Parameters - Trainable ONLY
+
+```python
+config.components.linking = EmbeddingLinking(
+    # Training settings
+    train_on_names: bool = True
+    training_batch_size: int = 32
+    embed_per_n_batches: int = 0
+
+    # Model settings
+    use_mention_attention: bool = True
+    use_projection_layer: bool = True
+    top_n_layers_to_unfreeze: int = 0
+)
+```
 
 ### Embedding Models
 
@@ -127,6 +184,7 @@ Any HuggingFace model compatible with sentence transformers will work. Popular o
 - `sentence-transformers/all-MiniLM-L6-v2` (default, fast and lightweight)
 - `sentence-transformers/all-mpnet-base-v2` (higher quality)
 - `UFNLP/gatortron-medium` (biomedical domain)
+- `abhinand/MedEmbed-small-v0.1` (often the best performing)
 - `microsoft/BiomedNLP-PubMedBERT-base-uncased-abstract-fulltext`
 
 ## Advanced Usage
@@ -171,11 +229,14 @@ cat.config.components.linking.filters.cuis_exclude = {"C0000001"}
 - **GPU recommended**: 10-50x faster inference with CUDA
 - **Batch sizes**: Increase if you have GPU memory available
 - **Model selection**: Smaller models (e.g., MiniLM) are faster but may be less accurate than larger domain-specific models
+- **Unfreezing layers**: The more layers you unfreeze of a model - the better the predictive power of the model _should_ increase. This will come at the cost of increased computation.
+- **Using a projection layer**: This will have no (or a slightly negative) impact on static embeddings. On trainable embeddings this will result in a large performance increase (i.e. 50-75% increase in recall or more). This is always trainable, as that is the point of it. The computational cost is minimal.
+- **Mention Attention**: This will generate embeddings for the tokens of interest based on the sourounding context - not the entire context of detected entity. This should always result in a performance increase, at zero computational cost. The only case where this might not be true is if the entire detected context is all of a detected entity, at which case performance will be exactly equal to not using mention attention.
+- **embed_per_n_batches**: This is how many training batches have been completed before re-embedding all names / cuis. Setting this to 0 means that re-embedding will never occur, and must be done manually. Re-embedding more often can result in a slight performance increase. However this is a long process and should probably be avoided / tested. It's recomended to set this to 0, and re-embed manually every epoch.
 
 ## Limitations
 
 - Does not support `prefer_frequent_concepts` or `prefer_primary_name` from the default linker (logs warnings if set)
-- Training mode is not applicable (logs warning if enabled)
 - Requires pre-computed embeddings before inference
 
 ## Citation
