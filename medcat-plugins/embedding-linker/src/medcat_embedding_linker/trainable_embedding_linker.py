@@ -7,7 +7,7 @@ from medcat.components.linking.vector_context_model import PerDocumentTokenCache
 from medcat.tokenizing.tokenizers import BaseTokenizer
 from medcat.tokenizing.tokens import MutableDocument, MutableEntity
 from medcat.vocab import Vocab
-from medcat_embedding_linker.embedding_linker import Linker
+from medcat_embedding_linker.embedding_linker import Linker as StaticEmbeddingLinker
 from medcat.storage.serialisables import AbstractManualSerialisable
 import logging
 import torch
@@ -17,13 +17,14 @@ import random
 logger = logging.getLogger(__name__)
 
 
-class TrainableEmbeddingLinker(Linker, AbstractManualSerialisable):
+class Linker(StaticEmbeddingLinker, AbstractManualSerialisable):
     """Trainable variant of the embedding linker.
     This class inherits inference and embedding behavior from Linker and provides
     method hooks for online/offline training.
     """
 
-    comp_name = "trainable_embedding_linker"
+    name = "trainable_embedding_linker"
+    
     _MODEL_FOLDER_NAME = "trainable_embedding_model"
     _MODEL_STATE_FILE_NAME = "model_state.pt"
 
@@ -47,10 +48,38 @@ class TrainableEmbeddingLinker(Linker, AbstractManualSerialisable):
         self.negative_sampling_candidate_pool_size = (
             self.cnf_l.negative_sampling_candidate_pool_size
         )
-        self.scaler = torch.amp.GradScaler()  # for FP16 training stability
+        self.reset_optimizer_and_scaler()
+
+    def reset_optimizer_and_scaler(
+        self,
+        learning_rate: Optional[float] = None,
+        weight_decay: Optional[float] = None,
+    ) -> None:
+        """Recreate training state bound to the current context model params.
+
+        Optionally update the learning rate and weight decay in the config.
+        If not provided, the current config values are used.
+
+        Args:
+            learning_rate: New learning rate. Updates config if provided.
+            weight_decay: New weight decay. Updates config if provided.
+        """
+        if learning_rate is not None:
+            self.cnf_l.learning_rate = learning_rate
+        if weight_decay is not None:
+            self.cnf_l.weight_decay = weight_decay
+        # Keep scaler and optimizer aligned with the currently loaded model.
+        self.scaler = torch.amp.GradScaler()
         self.optimizer = torch.optim.AdamW(
-            self.context_model.model.parameters(), lr=1e-4, weight_decay=0.01
+            self.context_model.model.parameters(),
+            lr=self.cnf_l.learning_rate,
+            weight_decay=self.cnf_l.weight_decay,
         )
+
+    def load_transformers(self, embedding_model_name: str) -> None:
+        """Switch embedding model and refresh optimizer/scaler to new params."""
+        self.context_model.load_transformers(embedding_model_name)
+        self.reset_optimizer_and_scaler()
 
     def _generate_negative_samples(
         self,
@@ -366,7 +395,7 @@ class TrainableEmbeddingLinker(Linker, AbstractManualSerialisable):
         cdb: CDB,
         vocab: Vocab,
         model_load_path: Optional[str],
-    ) -> "TrainableEmbeddingLinker":
+    ) -> "Linker":
         return cls(cdb, cdb.config)
 
     def serialise_to(self, folder_path: str) -> None:
@@ -386,7 +415,7 @@ class TrainableEmbeddingLinker(Linker, AbstractManualSerialisable):
     @classmethod
     def deserialise_from(
         cls, folder_path: str, **init_kwargs
-    ) -> "TrainableEmbeddingLinker":
+    ) -> "Linker":
         cdb = init_kwargs["cdb"]
         linker = cls(cdb, cdb.config)
 

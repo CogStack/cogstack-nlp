@@ -74,3 +74,9 @@ class EmbeddingLinking(Linking):
     use_ner_link_candidates: bool = True
     """Link candidates are provided by some NER steps. This will flag if 
     you want to trust them or not."""
+    learning_rate: float = 1e-4
+    """Learning rate for training the embedding linker. Only used if 
+    the embedding linker is trainable."""
+    weight_decay: float = 0.01
+    """Weight decay for training the embedding linker. Only used if
+    the embedding linker is trainable."""

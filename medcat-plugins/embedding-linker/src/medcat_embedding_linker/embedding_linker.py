@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 class Linker(AbstractEntityProvidingComponent):
-    comp_name = "embedding_linker"
+    name = "embedding_linker"
     _MODEL_FOLDER_NAME = "embedding_model"
     _STATE_FILE_NAME = "state.json"
 
@@ -124,12 +124,20 @@ class Linker(AbstractEntityProvidingComponent):
             )
             self.max_length = max_length
             self.cnf_l.max_token_length = max_length
+            self.context_model.max_length = max_length
 
-        self.context_model.embed_cuis(embedding_model_name)
-        self.context_model.embed_names(embedding_model_name)
+        # Route model swaps through linker-level hook so trainable variants can
+        # refresh optimizer/scaler when underlying params change.
+        self.load_transformers(embedding_model_name)
+        self.context_model.embed_cuis()
+        self.context_model.embed_names()
 
         self._names_context_matrix = None
         self._cui_context_matrix = None
+
+    def load_transformers(self, embedding_model_name: str) -> None:
+        """Pass through to the underlying transformer model for context embedding."""
+        self.context_model.load_transformers(embedding_model_name)
 
     def get_type(self) -> CoreComponentType:
         return CoreComponentType.linking

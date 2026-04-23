@@ -315,17 +315,12 @@ class ContextModel(AbstractSerialisable):
         outputs = self.model(**batch_dict)
         return outputs.half()
 
-    def embed_cuis(
-        self, embedding_model_name: Optional[Union[str, Path]] = None
-    ) -> None:
+    def embed_cuis(self) -> None:
         """Create embeddings for each CUI's longest name and store in CDB.
 
-        If ``embedding_model_name`` is provided, switch/load that model first.
-        Otherwise, reuse the currently loaded model (training-friendly default).
+        Switch the model first via ``load_transformers`` if needed.
         """
-        target_model = embedding_model_name or self.cnf_l.embedding_model_name
         self._refresh_cdb_keys()  # ensure _cui_keys is up to date before embedding
-        self.load_transformers(target_model)
 
         cui_names = [self.cdb.get_name(cui) for cui in self._cui_keys]
         total_batches = math.ceil(len(cui_names) / self.cnf_l.embedding_batch_size)
@@ -344,17 +339,12 @@ class ContextModel(AbstractSerialisable):
         self.cdb.addl_info["cui_embeddings"] = all_embeddings_matrix
         logger.debug("Embedding cui names done, total: %d", len(cui_names))
 
-    def embed_names(
-        self, embedding_model_name: Optional[Union[str, Path]] = None
-    ) -> None:
+    def embed_names(self) -> None:
         """Create embeddings for all names and store in CDB.
 
-        If ``embedding_model_name`` is provided, switch/load that model first.
-        Otherwise, reuse the currently loaded model (training-friendly default).
+        Switch the model first via ``load_transformers`` if needed.
         """
-        target_model = embedding_model_name or self.cnf_l.embedding_model_name
         self._refresh_cdb_keys()  # ensure _cui_keys is up to date before embedding
-        self.load_transformers(target_model)
 
         names = self._name_keys
         total_batches = math.ceil(len(names) / self.cnf_l.embedding_batch_size)
