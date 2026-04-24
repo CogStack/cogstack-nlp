@@ -148,7 +148,13 @@ class ContextModel(AbstractSerialisable):
         # excluding center (center is the same for all window sizes)
         prev_left_vecs: list[np.ndarray] = []
         prev_right_vecs: list[np.ndarray] = []
-        center_vecs: Optional[list[np.ndarray]] = None  # same for all windows
+
+        # Center is identical for all window sizes, only compute once
+        if not self.config.context_ignore_center_tokens:
+            center_vecs = list(
+                self._preprocess_center_tokens(cui, tokens_center))
+        else:
+            center_vecs = []
 
         for context_type, window_size in sorted_contexts:
             tokens_left, tokens_center, tokens_right = self.get_context_tokens(
@@ -173,14 +179,6 @@ class ContextModel(AbstractSerialisable):
             prev_right_vecs = prev_right_vecs + new_right_vecs
             prev_left = tokens_left
             prev_right = tokens_right
-
-            # Center is identical for all window sizes, only compute once
-            if center_vecs is None:
-                if not self.config.context_ignore_center_tokens:
-                    center_vecs = list(
-                        self._preprocess_center_tokens(cui, tokens_center))
-                else:
-                    center_vecs = []
 
             values = prev_left_vecs + center_vecs + prev_right_vecs
             if values:
