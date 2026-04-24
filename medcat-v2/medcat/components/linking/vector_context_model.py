@@ -155,7 +155,7 @@ class ContextModel(AbstractSerialisable):
 
         # Center is identical for all window sizes, only compute once
         if not self.config.context_ignore_center_tokens:
-            tokens_center =  list(
+            tokens_center = list(
                 cast(Iterable[MutableToken], entity))
             center_vecs = list(
                 self._preprocess_center_tokens(cui, tokens_center))
