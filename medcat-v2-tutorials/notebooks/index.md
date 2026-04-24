@@ -9,9 +9,9 @@ For every day usage (e.g inference) the [medcat-scripts](https://github.com/CogS
 
 Get started by going to the [basic tutorials](introductory/basic/). Here you will learn about Concept Databases, Vocabularies, and perform supervised and unsupervised training.
 
-After that you can continue to see the other features of medcat, such as configuring MetaCAT, RelCAT and other features of medcat.
+After that you can continue to see the other features of medcat, such as configuring MetaCAT and RelCAT.
 
-Finally you can look at advanced tutorials where you will configure the internals of MedCAT.
+Finally you can look at advanced tutorials where you will dig into the internals of MedCAT.
 
 ## Interactive Usage
 
