@@ -8,7 +8,7 @@ on:
   pull_request:
     paths:
       - 'medcat-plugins/medcat-embedding-linker/**'
-      - '.github/workflows/medcat-embedding-linker**'
+      - '.github/workflows/embedding-linker**'
 
 permissions:
   id-token: write
