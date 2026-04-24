@@ -7,7 +7,7 @@ on:
       - 'medcat-embedding-linker/v*.*.*'  
   pull_request:
     paths:
-      - 'medcat-plugins/medcat-embedding-linker/**'
+      - 'medcat-plugins/embedding-linker/**'
       - '.github/workflows/medcat-embedding-linker**'
 
 permissions:
