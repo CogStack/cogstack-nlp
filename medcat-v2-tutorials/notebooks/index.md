@@ -27,26 +27,26 @@ You can now open the notebook in vscode and run the tutorials. Alternatively you
 
 | Part | Title                                                                       |
 | ---- |-----------------------------------------------------------------------------|
-| 1.   |  [Migrate a v1 model to v2](notebooks/introductory/migration/1._Migrate_v1_model_to_v2.ipynb)                                    |
+| 1.   |  [Migrate a v1 model to v2](introductory/migration/1._Migrate_v1_model_to_v2/)                                    |
 
 ### Basic (regex-tokenizer) tutorials
 
 | Part | Title                                                                       |
 | ---- |-----------------------------------------------------------------------------|
-| 1.   |  [Building a Concept Database and a Vocab](notebooks/introductory/basic/1._Build_a_Concept_Database_and_a_Vocabulary.ipynb)                                    |
-| 2.   | [Unsupervised training on model](notebooks/introductory/basic/2._Unsupervised_training_on_model.ipynb) |
-| 3.   | [Supervised training on model](notebooks/introductory/basic/3._Supervised_training_on_model.ipynb) |
-| 4.   | [Evaluating perfromance on dataset](notebooks/introductory/basic/4._Evaluating_performance_on_dataset.ipynb) |
+| 1.   |  [Building a Concept Database and a Vocab](introductory/basic/1._Build_a_Concept_Database_and_a_Vocabulary/)                                    |
+| 2.   | [Unsupervised training on model](introductory/basic/2._Unsupervised_training_on_model/) |
+| 3.   | [Supervised training on model](introductory/basic/3._Supervised_training_on_model/) |
+| 4.   | [Evaluating perfromance on dataset](introductory/basic/4._Evaluating_performance_on_dataset/) |
 
 ### MetaCAT (meta-annotation) tutorials
 
 | Part | Title                                                                       |
 | ---- |-----------------------------------------------------------------------------|
-| 1.   |  [Add a MetaCAT to a Model](notebooks/introductory/meta/1._Add_a_MetaCat_to_a_Model.ipynb)                                    |
+| 1.   |  [Add a MetaCAT to a Model](introductory/meta/1._Add_a_MetaCat_to_a_Model/)                                    |
 
 ## Advanced tutorials
 
 | Part | Title                                                                       |
 | ---- |-----------------------------------------------------------------------------|
-| 1.   |  [Creating and using a custom tokenizer](notebooks/advanced/1._Creating_and_using_a_custom_tokenizer.ipynb)                               |
-| 2.   |  [Create and use component](notebooks/advanced/2._Create_and_use_component.ipynb)                                    |
+| 1.   |  [Creating and using a custom tokenizer](advanced/1._Creating_and_using_a_custom_tokenizer/)                               |
+| 2.   |  [Create and use component](advanced/2._Create_and_use_component/)                                    |
