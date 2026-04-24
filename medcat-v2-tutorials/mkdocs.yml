@@ -40,15 +40,9 @@ nav:
       - 2. Unsupervised training on model: introductory/basic/2._Unsupervised_training_on_model.ipynb
       - 3. Supervised training on model: introductory/basic/3._Supervised_training_on_model.ipynb
       - 4. Evaluating performance on dataset: introductory/basic/4._Evaluating_performance_on_dataset.ipynb
-    - Custom:
-      - README: introductory/custom/README.md
-      - 1. Create Modelpack with 2step linker: introductory/custom/1._Create_Modelpack_with_2step_linker.ipynb
     - MetaCAT:
       - README: introductory/meta/README.md
       - 1. Add a MetaCat to a Model: introductory/meta/1._Add_a_MetaCat_to_a_Model.ipynb
-    - Migration:
-      - README: introductory/migration/README.md
-      - 1. Migrate v1 model to v2: introductory/migration/1._Migrate_v1_model_to_v2.ipynb
     - RelCAT:
       - 1. Supervised Training Relation Extraction: introductory/relcat/1._Supervised_Training_Relation_Extraction.ipynb
       - 2. Infering relations from annotations with Relation toolkit: introductory/relcat/2._Infering_relations_from_annotations_with_Relation_toolkit.ipynb
@@ -56,6 +50,12 @@ nav:
   - Advanced Tutorials:
     - 1. Creating and using a custom tokenizer: advanced/1._Creating_and_using_a_custom_tokenizer.ipynb
     - 2. Create and use component: advanced/2._Create_and_use_component.ipynb
+    - Custom Components:
+      - README: introductory/custom/README.md
+      - 1. Create Modelpack with 2step linker: introductory/custom/1._Create_Modelpack_with_2step_linker.ipynb
+    - Migration:
+      - README: introductory/migration/README.md
+      - 1. Migrate v1 model to v2: introductory/migration/1._Migrate_v1_model_to_v2.ipynb
 
 plugins:
   - search
