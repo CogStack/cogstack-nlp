@@ -35,7 +35,7 @@ nav:
   - Home: index.md
   - Architecture: architecture.md
   - Tutorials: '!include ../medcat-v2-tutorials/mkdocs.yml'
-  - Upgrading
+  - Upgrading:
     - Migration guide (v2): migration_guide_v2.md
     - Breaking changes: breaking_changes.md
   
