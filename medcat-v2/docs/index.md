@@ -34,7 +34,7 @@ MedCAT(*v2*) can be used to extract information from Electronic Health Records (
 A demo application is available [here](https://medcatv2.rosalind.kcl.ac.uk).
 
 ## Tutorials
-Some guides on how to use MedCAT v2 are available at [MedCAT Tutorials](https://github.com/CogStack/cogstack-nlp/tree/main/medcat-v2-tutorials).
+See the tutorials page for guides on how to use medcat on [MedCAT Tutorials](medcat-tutorials)
 
 ## Related Projects
 - [MedCAT](https://github.com/CogStack/cogstack-nlp/blob/main/medcat-v2/) - the original version of MedCAT that this v2 is based one.

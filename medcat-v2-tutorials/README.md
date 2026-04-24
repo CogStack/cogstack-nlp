@@ -2,7 +2,7 @@
 
 The MedCAT Tutorials provide an interactive learning path for using MedCAT.
 
-*See the documentation on [index.md](notebooks/index.md) to get started with these tutorials.*
+See the cogstack documentation site to view these tutorials and all the documentation on [docs.cogstack.org](https://docs.cogstack.org)
 
 ## Developer Readme
 The following readmes are around the setup of the tutorials themselves aimed at a tutorial author.
