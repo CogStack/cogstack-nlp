@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, Optional
 from pathlib import Path
 
 from pydantic import BaseModel
@@ -16,7 +16,7 @@ class LocalDenConfig(DenConfig):
 
 class RemoteDenConfig(DenConfig):
     host: str
-    credentials: dict
+    credentials: Optional[dict] = None
     allow_local_fine_tune: bool
     allow_push_fine_tuned: bool
 
