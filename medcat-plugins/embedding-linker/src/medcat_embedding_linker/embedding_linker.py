@@ -585,7 +585,7 @@ class Linker(AbstractEntityProvidingComponent):
     def predict_entities(
         self, doc: MutableDocument, ents: list[MutableEntity] | None = None
     ) -> list[MutableEntity]:
-        if self.cnf_l.train and self.comp_name == "embedding_linker":
+        if self.cnf_l.train and self.name == "embedding_linker":
             logger.warning(
                 "Attemping to train a static embedding linker. "
                 "This is not possible / required."
