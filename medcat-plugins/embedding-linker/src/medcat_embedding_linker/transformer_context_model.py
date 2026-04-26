@@ -252,17 +252,17 @@ class ContextModel(AbstractSerialisable):
         """Convert character-level mention spans into a token-level mask."""
         offset_mapping = batch_dict["offset_mapping"]  # [B, seq_len, 2]
         token_starts = offset_mapping[:, :, 0]  # [B, seq_len]
-        token_ends   = offset_mapping[:, :, 1]  # [B, seq_len]
+        token_ends = offset_mapping[:, :, 1]  # [B, seq_len]
 
         spans_tensor = torch.tensor(
             mention_char_spans, dtype=torch.long, device=device
         )  # [B, 2]
         mention_starts = spans_tensor[:, 0].unsqueeze(1)  # [B, 1]
-        mention_ends   = spans_tensor[:, 1].unsqueeze(1)  # [B, 1]
+        mention_ends = spans_tensor[:, 1].unsqueeze(1)  # [B, 1]
 
         # Tokens with offset (0, 0) are special tokens (CLS, SEP) or padding.
         is_special = (token_starts == 0) & (token_ends == 0)
-        overlaps   = (token_ends > mention_starts) & (token_starts < mention_ends)
+        overlaps = (token_ends > mention_starts) & (token_starts < mention_ends)
         mask = (overlaps & ~is_special).float()
         return mask
 
