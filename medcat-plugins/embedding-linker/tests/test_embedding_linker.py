@@ -81,9 +81,9 @@ class TrainableEmbeddingLinkerTests(unittest.TestCase):
     cnf = Config()
     cnf.components.linking = embedding_linker.EmbeddingLinking()
     cnf.components.linking.comp_name = (
-        trainable_embedding_linker.TrainableEmbeddingLinker.name
+        trainable_embedding_linker.Linker.name
     )
-    linker = trainable_embedding_linker.TrainableEmbeddingLinker(FakeCDB(cnf), cnf)
+    linker = trainable_embedding_linker.Linker(FakeCDB(cnf), cnf)
 
     def test_linker_is_trainable(self):
         self.assertIsInstance(self.linker, TrainableComponent)

@@ -2,35 +2,27 @@
 
 The MedCAT Tutorials provide an interactive learning path for using MedCAT.
 
-NOTE: These tutorials are aimed at developers and / or people creating their own models.
-For every day usage (e.g inference) the [medcat-scripts](../medcat-scripts) portion would probably be more useful.
+See the cogstack documentation site to view these tutorials and all the documentation on [docs.cogstack.org](https://docs.cogstack.org)
 
-## Introductory tutorials
+## Developer Readme
+The following readmes are around the setup of the tutorials themselves aimed at a tutorial author.
 
-### Migration of v1 models
+### Documentation Build
 
-| Part | Title                                                                       |
-| ---- |-----------------------------------------------------------------------------|
-| 1.   |  [Migrate a v1 model to v2](notebooks/introductory/migration/1._Migrate_v1_model_to_v2.ipynb)                                    |
+The `medcat-v2` documentation site imports this project’s MkDocs navigation file directly. The relevant plugins are the mkdocs-monorepo-plugin and the mkdocs-jupyter plugin.
 
-### Basic (regex-tokenizer) tutorials
+In `medcat-v2/mkdocs.yml` the `Tutorials` section is wired in via an include:
 
-| Part | Title                                                                       |
-| ---- |-----------------------------------------------------------------------------|
-| 1.   |  [Building a Concept Database and a Vocab](notebooks/introductory/basic/1._Build_a_Concept_Database_and_a_Vocabulary.ipynb)                                    |
-| 2.   | [Unsupervised training on model](notebooks/introductory/basic/2._Unsupervised_training_on_model.ipynb) |
-| 3.   | [Supervised training on model](notebooks/introductory/basic/3._Supervised_training_on_model.ipynb) |
-| 4.   | [Evaluating perfromance on dataset](notebooks/introductory/basic/4._Evaluating_performance_on_dataset.ipynb) |
+```yaml
+nav:
+  - Tutorials: '!include ../medcat-v2-tutorials/mkdocs.yml'
+```
 
-### MetaCAT (meta-annotation) tutorials
+#### Run the docs locally (rendered site)
 
-| Part | Title                                                                       |
-| ---- |-----------------------------------------------------------------------------|
-| 1.   |  [Add a MetaCAT to a Model](notebooks/introductory/meta/1._Add_a_MetaCat_to_a_Model.ipynb)                                    |
+To preview the rendered docs site locally:
 
-## Advanced tutorials
-
-| Part | Title                                                                       |
-| ---- |-----------------------------------------------------------------------------|
-| 1.   |  [Creating and using a custom tokenizer](notebooks/advanced/1._Creating_and_using_a_custom_tokenizer.ipynb)                               |
-| 2.   |  [Create and use component](notebooks/advanced/2._Create_and_use_component.ipynb)                                    |
+```bash
+cd cogstack-nlp/medcat-v2-tutorials
+uv run mkdocs serve
+```

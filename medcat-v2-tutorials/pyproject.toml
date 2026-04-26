@@ -5,11 +5,10 @@ description = "MedCAT v2 Documentation"
 requires-python = ">=3.10"
 dependencies = [
     "mkdocs-api-autonav>=0.4.0",
-    "mkdocs-jupyter>=0.26.3",
     "mkdocs-material>=9.7.0",
-    "mkdocs-monorepo-plugin>=1.1.2",
     "mkdocstrings-python>=2.0.3",
     "termynal>=0.13.1",
+    "mkdocs-jupyter>=0.26.1",
 ]
 
 [project.optional-dependencies]
