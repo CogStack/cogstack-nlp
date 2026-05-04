@@ -84,5 +84,5 @@ volumes:
 
 networks:
   gateway-auth_gateway-net:
-    external: true
+  #  external: true
 

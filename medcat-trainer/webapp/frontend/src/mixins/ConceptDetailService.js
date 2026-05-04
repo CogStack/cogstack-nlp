@@ -19,12 +19,21 @@ export default {
       }
     },
     fetchConcept (selectedEnt, cdbSearchIndex, callback) {
-      this.$http.get(`/api/concepts/${cdbSearchIndex}/select?q=cui:${selectedEnt.cui}`).then(resp => {
-        if (selectedEnt && resp.data.response.docs.length > 0) {
-          const docEnt = resp.data.response.docs[0]
+      const cdbs = this.conceptSearchCdbs(cdbSearchIndex)
+      if (!cdbs) {
+        if (callback) {
+          callback()
+        }
+        return
+      }
+      const query = `search=${encodeURIComponent(selectedEnt.cui)}&cdbs=${encodeURIComponent(cdbs)}`
+      this.$http.get(`/api/search-concepts/?${query}`).then(resp => {
+        const results = resp.data?.results || []
+        if (selectedEnt && results.length > 0) {
+          const docEnt = results[0]
           selectedEnt.desc = docEnt.desc
           selectedEnt.type_ids = docEnt.type_ids
-          selectedEnt.pretty_name = docEnt.pretty_name[0]
+          selectedEnt.pretty_name = Array.isArray(docEnt.pretty_name) ? docEnt.pretty_name[0] : docEnt.pretty_name
           selectedEnt.synonyms = docEnt.synonyms
           if ((docEnt.icd10 || []).length > 0) {
             selectedEnt.icd10 = []
@@ -67,6 +76,17 @@ export default {
           callback()
         }
       })
+    },
+    conceptSearchCdbs (cdbSearchIndex) {
+      if (Array.isArray(cdbSearchIndex)) {
+        return cdbSearchIndex.filter(id => id).join(',')
+      }
+      if (!cdbSearchIndex) {
+        return null
+      }
+      const searchIndex = String(cdbSearchIndex)
+      const collectionMatch = searchIndex.match(/_id_(.+)$/)
+      return collectionMatch ? collectionMatch[1] : searchIndex
     }
   }
 }
