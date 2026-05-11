@@ -55,7 +55,7 @@ def get_keycloak_access_token(settings: KeycloakSettings) -> str:
             "scope": settings.scope,
         }
     try:
-        logger.info(f"Getting Keycloak access token from {token_url} with data: {data}")
+        logger.debug(f"Getting Keycloak token from {token_url}")
         resp = requests.post(token_url, data=data)
         resp.raise_for_status()
         return resp.json()["access_token"]
@@ -557,6 +557,8 @@ class MedCATTrainerSession:
             )
         try:
             payload = resp.json()
+            if not isinstance(payload, dict):
+                payload = json.loads(resp.text or "{}")
         except Exception as e:
             raise MCTUtilsException(
                 f"Failed to parse users response from MedCATTrainer instance running at: {self.server}",
