@@ -34,7 +34,7 @@ export MCTRAINER_PASSWORD=<password>
 ```
 
 ```python
-from mctclient import MedCATTrainerSession, MCTDataset, MCTConceptDB, MCTVocab, MCTModelPack, MCTMetaTask, MCTRelTask, MCTUser, MCTProject
+from mctclient import MedCATTrainerSession, KeycloakSettings, MCTDataset, MCTConceptDB, MCTVocab, MCTModelPack, MCTMetaTask, MCTRelTask, MCTUser, MCTProject
 
 # Connect to your MedCATTrainer instance
 session = MedCATTrainerSession(server="http://localhost:8001")
@@ -56,6 +56,31 @@ project = session.create_project(
     description="A new annotation project",
     members=[user],
     dataset=dataset
+)
+```
+
+## Authentication
+
+### OIDC / Keycloak (optional)
+
+You can pass a `KeycloakSettings` object to use OIDC Bearer auth. Any missing
+fields fall back to environment variables
+(`KEYCLOAK_URL`, `KEYCLOAK_REALM`, `KEYCLOAK_CLIENT_ID`, `KEYCLOAK_USERNAME`, `KEYCLOAK_PASSWORD`)
+and then the same defaults as `webapp/scripts/load_examples.py`.
+
+```python
+from mctclient import MedCATTrainerSession, KeycloakSettings
+
+session = MedCATTrainerSession(
+    server="http://localhost:8001",
+    use_oidc=True,
+    keycloak_settings=KeycloakSettings(
+        keycloak_url="http://keycloak.cogstack.localhost",
+        realm="cogstack-realm",
+        client_id="cogstack-medcattrainer-frontend",
+        username="admin",
+        password="admin",
+    ),
 )
 ```
 
