@@ -1083,7 +1083,7 @@ def generate_concept_filter_flat_json(request):
             ch_nodes = get_all_ch(cui, cdb)
             final_filter += [n for n in ch_nodes if n not in excluded_nodes]
         final_filter = {cui: 1 for cui in final_filter}.keys()
-        filter_json = json.dumps(final_filter)
+        filter_json = json.dumps(list(final_filter))
         response = HttpResponse(filter_json, content_type='application/json')
         response['Content-Disposition'] = 'attachment; filename=filter.json'
         return response
