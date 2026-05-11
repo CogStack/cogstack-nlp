@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class KeycloakSettings:
     """
-    Keycloak settings for OIDC password-grant token retrieval.
+    Keycloak settings for OIDC token retrieval.
 
     If a field is not provided, it falls back to environment variables and then
     the same defaults used by `webapp/scripts/load_examples.py`.
@@ -23,6 +23,7 @@ class KeycloakSettings:
     keycloak_url: Optional[str] = None
     realm: Optional[str] = None
     client_id: Optional[str] = None
+    client_secret: Optional[str] = None
     username: Optional[str] = None
     password: Optional[str] = None
     scope: str = "openid profile email"
@@ -31,20 +32,30 @@ class KeycloakSettings:
         self.keycloak_url = self.keycloak_url or os.environ.get("KEYCLOAK_URL", "http://keycloak.cogstack.localhost")
         self.realm = self.realm or os.environ.get("KEYCLOAK_REALM", "cogstack-realm")
         self.client_id = self.client_id or os.environ.get("KEYCLOAK_CLIENT_ID", "cogstack-medcattrainer-frontend")
+        self.client_secret = self.client_secret or os.environ.get("KEYCLOAK_CLIENT_SECRET")
         self.username = self.username or os.environ.get("KEYCLOAK_USERNAME", "admin")
         self.password = self.password or os.environ.get("KEYCLOAK_PASSWORD", "admin")
 
 
 def get_keycloak_access_token(settings: KeycloakSettings) -> str:
     token_url = f"{settings.keycloak_url}/realms/{settings.realm}/protocol/openid-connect/token"
-    data = {
-        "grant_type": "password",
-        "client_id": settings.client_id,
-        "username": settings.username,
-        "password": settings.password,
-        "scope": settings.scope,
-    }
+    if settings.client_secret:
+        data = {
+            "grant_type": "client_credentials",
+            "client_id": settings.client_id,
+            "client_secret": settings.client_secret,
+            "scope": settings.scope,
+        }
+    else:
+        data = {
+            "grant_type": "password",
+            "client_id": settings.client_id,
+            "username": settings.username,
+            "password": settings.password,
+            "scope": settings.scope,
+        }
     try:
+        logger.info(f"Getting Keycloak access token from {token_url} with data: {data}")
         resp = requests.post(token_url, data=data)
         resp.raise_for_status()
         return resp.json()["access_token"]
@@ -538,8 +549,21 @@ class MedCATTrainerSession:
         Returns:
             List[MCTUser]: A list of all users in the MedCATTrainer instance
         """
-        users = json.loads(requests.get(f'{self.server}/api/users/', headers=self.headers).text)['results']
-        return [MCTUser(id=u['id'], username=u['username']) for u in users]
+        resp = requests.get(f"{self.server}/api/users/", headers=self.headers)
+        if not (200 <= resp.status_code < 300):
+            raise MCTUtilsException(
+                f"Failed to get users from MedCATTrainer instance running at: {self.server}",
+                f"HTTP {resp.status_code}: {resp.text[:500]}",
+            )
+        try:
+            payload = resp.json()
+        except Exception as e:
+            raise MCTUtilsException(
+                f"Failed to parse users response from MedCATTrainer instance running at: {self.server}",
+                e,
+            )
+        users = payload.get("results", [])
+        return [MCTUser(id=u.get("id"), username=u.get("username")) for u in users]
 
     def get_models(self) -> Tuple[List[str], List[str]]:
         """Get all MedCAT cdb and vocab models in the MedCATTrainer instance.

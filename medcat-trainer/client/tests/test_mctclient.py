@@ -33,6 +33,32 @@ class TestMCTClient(unittest.TestCase):
         self.assertEqual(session.headers, {"Authorization": "Bearer jwt"})
 
     @patch('mctclient.requests.post')
+    def test_session_init_with_oidc_client_secret_uses_client_credentials_grant(self, mock_post):
+        def post_side_effect(url, *args, **kwargs):
+            if url.endswith('/protocol/openid-connect/token'):
+                self.assertEqual(kwargs.get("data", {}).get("grant_type"), "client_credentials")
+                self.assertEqual(kwargs.get("data", {}).get("client_id"), "client")
+                self.assertEqual(kwargs.get("data", {}).get("client_secret"), "secret")
+                return MagicMock(status_code=200, json=lambda: {"access_token": "jwt"})
+            return MagicMock(status_code=404, text='')
+
+        mock_post.side_effect = post_side_effect
+
+        session = MedCATTrainerSession(
+            server='http://localhost',
+            username='u',
+            password='p',
+            use_oidc=True,
+            keycloak_settings=KeycloakSettings(
+                keycloak_url="http://keycloak.example",
+                realm="test-realm",
+                client_id="client",
+                client_secret="secret",
+            ),
+        )
+        self.assertEqual(session.headers, {"Authorization": "Bearer jwt"})
+
+    @patch('mctclient.requests.post')
     @patch('mctclient.requests.get')
     def test_session_get_projects(self, mock_get, mock_post):
         # Mock authentication
