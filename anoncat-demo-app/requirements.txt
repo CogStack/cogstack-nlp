@@ -1,7 +1,7 @@
 --extra-index-url https://download.pytorch.org/whl/cpu/
-Django~=4.2
-django-cors-headers~=4.3
-djangorestframework~=3.14
-medcat~=1.10
-pydantic~=1.10
+Django~=6.0
+django-cors-headers~=4.9
+djangorestframework~=3.17
+medcat~=2.7
+pydantic~=2.13
 
