@@ -81,7 +81,7 @@ dependencies = [ # Optional
 # projects.
 [project.optional-dependencies] # Optional
 dev = [
-  "ruff~=0.1.7",
+  "ruff>=0.1.7,<0.16.0",
   "mypy",
   "types-tqdm",
   "types-setuptools",
@@ -91,7 +91,7 @@ spacy = [
   "spacy",
 ]
 meta_cat = [
-  "transformers>=4.41.0,<5.0", # avoid major bump
+  "transformers>=4.41.0,<6.0", # avoid major bump
   "peft>0.8.2,<1.0",
   "torch>=2.4.0,<3.0",
   "scikit-learn>=1.1.3,<2.0",
@@ -103,8 +103,8 @@ dict_ner = [
   "pyahocorasick>=2.1.0,<3.0"
 ]
 deid = [
-  "datasets>=2.2.2,<3.0.0",
-  "transformers>=4.41.0,<5.0", # avoid major bump
+  "datasets>=2.2.2,<5.0.0",
+  "transformers>=4.41.0,<6.0", # avoid major bump
   "scikit-learn>=1.1.3,<2.0",
   "torch>=2.4.0,<3.0",
   # since 3.13 we need to use later version of scipy for it
@@ -112,7 +112,7 @@ deid = [
   "scipy>=1.14; python_version >= '3.13'",
 ]
 rel_cat = [
-  "transformers>=4.41.0,<5.0", # avoid major bump
+  "transformers>=4.41.0,<6.0", # avoid major bump
   "scikit-learn>=1.1.3,<2.0",
   "torch>=2.4.0,<3.0",
 ]
