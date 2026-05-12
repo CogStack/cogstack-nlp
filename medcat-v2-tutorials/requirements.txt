@@ -1,5 +1,5 @@
 medcat~=2.7.0
 ipykernel
-pytest-xdist~=3.6.0
+pytest-xdist~=3.8.0
 nbmake<1.6
 nbconvert<8
