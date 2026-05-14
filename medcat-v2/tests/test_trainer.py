@@ -138,7 +138,7 @@ class TrainerTestsBase(unittest.TestCase):
         cls.cdb = FakeCDB(cls.cnf)
         cls.vocab = Vocab()
         cls.trainer = Trainer(cls.cdb,
-                              cls.caller, FakePipeline())
+                              cls.caller, cls.caller, FakePipeline())
 
     def setUp(self):
         self.cnf = Config()
@@ -204,6 +204,7 @@ class TrainerUnsupervisedTests(TrainerTestsBase):
         trainer = Trainer(
             self.cdb,
             self.caller,
+            self.caller,
             FakePipelineWithComponents([ner_component]),
         )
         trainer.config = self.cnf
@@ -219,6 +220,7 @@ class TrainerUnsupervisedTests(TrainerTestsBase):
         ner_component = FakeTrainableNERComponent()
         trainer = Trainer(
             self.cdb,
+            self.caller,
             self.caller,
             FakePipelineWithComponents([FakeComponent(), ner_component, object()]),
         )
