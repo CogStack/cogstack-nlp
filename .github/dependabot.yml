@@ -62,6 +62,26 @@ updates:
      pip-deps:
        patterns:
         - "*"
+ - package-ecosystem: "npm"
+   directory: "/anoncat-demo-app/app/frontend"
+   schedule:
+     interval: "weekly"
+   commit-message:
+     prefix: "build(anoncat-demo-app): "
+   allow:
+     - dependency-name: "*"
+       update-types:
+         - "version-update:semver-patch"
+         - "version-update:semver-minor"
+   groups:
+     npm-deps:
+       applies-to: version-updates
+       patterns:
+        - "*"
+     npm-security-deps:
+       applies-to: security-updates
+       patterns:
+        - "*"
  - package-ecosystem: "pip"
    directory: "/cogstack-es"
    schedule:
@@ -199,6 +219,26 @@ updates:
        patterns:
         - "*"
      uv-security-deps:
+       applies-to: security-updates
+       patterns:
+        - "*"
+ - package-ecosystem: "npm"
+   directory: "/medcat-trainer/webapp/frontend"
+   schedule:
+     interval: "weekly"
+   commit-message:
+     prefix: "build(medcat-trainer): "
+   allow:
+     - dependency-name: "*"
+       update-types:
+         - "version-update:semver-patch"
+         - "version-update:semver-minor"
+   groups:
+     npm-deps:
+       applies-to: version-updates
+       patterns:
+        - "*"
+     npm-security-deps:
        applies-to: security-updates
        patterns:
         - "*"
