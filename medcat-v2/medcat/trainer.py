@@ -419,7 +419,12 @@ class Trainer:
         for ann in anns:
             tkns = doc.get_tokens(ann['start'], ann['end'])
             try:
-                ents.append(self._pipeline.entity_from_tokens_in_doc(tkns, doc))
+                ent = self._pipeline.entity_from_tokens_in_doc(tkns, doc)
+                # avoid setting CUI so as to not show our hand
+                raw_name = ann['value'].lower().replace(
+                    " ", self.cdb.config.general.separator)
+                ent.detected_name = raw_name
+                ents.append(ent)
             except ValueError as err:
                 self._warn_on_error(
                     err, doc.base.text,
