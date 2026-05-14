@@ -231,7 +231,7 @@ class TrainingUtilsTests(unittest.TestCase):
         ner = _TrainableNER()
         linker = _TrainablePassThroughLinker()
         cat = _FakeCat(self.DATASET, [ner, linker])
-        trainer = Trainer(cat.cdb, cat.__call__, cat.pipe)
+        trainer = Trainer(cat.cdb, cat.pipe)
 
         with dataset_aware_component(cat, CoreComponentType.ner, self.DATASET):
             trainer.train_unsupervised(["abc def"], nepochs=1)
@@ -243,7 +243,7 @@ class TrainingUtilsTests(unittest.TestCase):
         ner = _TrainableNER()
         linker = _TrainablePassThroughLinker()
         cat = _FakeCat(self.DATASET, [ner, linker])
-        trainer = Trainer(cat.cdb, cat.__call__, cat.pipe)
+        trainer = Trainer(cat.cdb, cat.pipe)
 
         with dataset_aware_component(cat, CoreComponentType.linking, self.DATASET):
             trainer.train_unsupervised(["abc def"], nepochs=1)
@@ -255,7 +255,7 @@ class TrainingUtilsTests(unittest.TestCase):
         ner = _TrainableNER()
         linker = _TrainablePassThroughLinker()
         cat = _FakeCat(self.DATASET, [ner, linker])
-        trainer = Trainer(cat.cdb, cat.__call__, cat.pipe)
+        trainer = Trainer(cat.cdb, cat.pipe)
 
         with unittest.mock.patch("medcat.trainer.prepare_name", return_value={"abc": {}}):
             with dataset_aware_component(cat, CoreComponentType.ner, self.DATASET):
@@ -268,7 +268,7 @@ class TrainingUtilsTests(unittest.TestCase):
         ner = _TrainableNER()
         linker = _TrainablePassThroughLinker()
         cat = _FakeCat(self.DATASET, [ner, linker])
-        trainer = Trainer(cat.cdb, cat.__call__, cat.pipe)
+        trainer = Trainer(cat.cdb, cat.pipe)
 
         with unittest.mock.patch("medcat.trainer.prepare_name", return_value={"abc": {}}):
             with dataset_aware_component(cat, CoreComponentType.linking, self.DATASET):
