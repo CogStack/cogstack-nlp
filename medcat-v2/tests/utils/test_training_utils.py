@@ -4,6 +4,7 @@ import unittest.mock
 from medcat.config import Config
 from medcat.components.types import CoreComponentType, AbstractEntityProvidingComponent
 from medcat.stats.stats import get_stats
+from medcat.tokenizing.tokens import MutableDocument
 from medcat.trainer import Trainer
 from medcat.utils.training_utils import dataset_aware_component
 
@@ -58,6 +59,9 @@ class _FakeTokenizer:
         text = doc.text[start:end]
         cui = doc.cui_by_start.get(start, "C_WRONG")
         return _FakeEntity(start, end, text, cui)
+
+    def __call__(self, text: str) -> _FakeDoc:
+        return _FakeDoc(text, {})
 
 
 class _EmptyNER(AbstractEntityProvidingComponent):
@@ -139,6 +143,9 @@ class _FakePipeline:
             if comp.get_type() == comp_type:
                 return comp
         raise KeyError(comp_type)
+
+    def get_doc(self, text: str) -> MutableDocument:
+        return self(self.tokenizer(text))
 
     def iter_all_components(self):
         return self._components
