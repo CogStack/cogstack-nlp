@@ -655,6 +655,7 @@ class Trainer:
                 mut_entity = self._pipeline.entity_from_tokens(mut_entity)
             component.train(cui=cui, entity=mut_entity, doc=mut_doc,
                             negative=negative, names=names)
+            trained_comps += 1
 
             if not negative and devalue_others:
                 # Find all cuis
