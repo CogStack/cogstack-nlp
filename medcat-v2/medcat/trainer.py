@@ -420,10 +420,10 @@ class Trainer:
             tkns = doc.get_tokens(ann['start'], ann['end'])
             try:
                 ent = self._pipeline.entity_from_tokens_in_doc(tkns, doc)
-                # avoid setting CUI so as to not show our hand
                 raw_name = ann['value'].lower().replace(
                     " ", self.cdb.config.general.separator)
                 ent.detected_name = raw_name
+                ent.cui = ann['cui']
                 ents.append(ent)
             except ValueError as err:
                 self._warn_on_error(
