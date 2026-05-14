@@ -660,8 +660,10 @@ class CAT(AbstractSerialisable):
     def trainer(self):
         """The trainer object."""
         if not self._trainer:
+            tknzer = self._pipeline.tokenizer_with_tag.__call__
+            pipe = self._pipeline.get_doc
             self._trainer = Trainer(
-                self.cdb, self._pipeline.tokenizer_with_tag.__call__, self._pipeline)
+                self.cdb, tknzer, pipe, self._pipeline)
         return self._trainer
 
     def save_model_card(self, model_card_path: str) -> None:
