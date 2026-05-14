@@ -28,11 +28,14 @@ logger = logging.getLogger(__name__)
 class Trainer:
     strict_train: bool = False
 
-    def __init__(self, cdb: CDB, caller: Callable[[str], MutableDocument],
+    def __init__(self, cdb: CDB,
+                 tokenizer: Callable[[str], MutableDocument],
+                 pipe: Callable[[str], MutableDocument],
                  pipeline: Pipeline):
         self.cdb = cdb
         self.config = cdb.config
-        self.caller = caller
+        self.tokenizer = tokenizer
+        self.pipe = pipe
         self._pipeline = pipeline
 
     def train_unsupervised(self,
@@ -92,7 +95,7 @@ class Trainer:
 
                 # inference run for the document
                 try:
-                    doc = self.caller(line)
+                    doc = self.pipe(line)
                 except Exception as e:
                     logger.warning("LINE: '%s...' \t WAS SKIPPED", line[0:100])
                     logger.warning("BECAUSE OF:", exc_info=e)
@@ -471,7 +474,8 @@ class Trainer:
             doc = docs[idx_doc]
             with temp_changed_config(self.config.components.linking,
                                      'train', False):
-                mut_doc = self.caller(doc['text'])
+                # NOTE: only need tokenization here
+                mut_doc = self.tokenizer(doc['text'])
             self._prepare_doc_with_anns(mut_doc, doc, doc['annotations'])
 
             # Compatibility with old output where annotations are a list
