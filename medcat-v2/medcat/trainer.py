@@ -1,4 +1,4 @@
-from typing import Iterable, Callable, Optional, Union, cast
+from typing import Iterable, Optional, Union, cast
 import logging
 import tempfile
 from itertools import chain, repeat, islice
