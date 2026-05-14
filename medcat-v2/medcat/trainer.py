@@ -420,9 +420,16 @@ class Trainer:
             tkns = doc.get_tokens(ann['start'], ann['end'])
             try:
                 ent = self._pipeline.entity_from_tokens_in_doc(tkns, doc)
-                raw_name = ann['value'].lower().replace(
-                    " ", self.cdb.config.general.separator)
-                ent.detected_name = raw_name
+                pn_dict = prepare_name(ann['value'], self._pipeline.tokenizer, {},
+                                 self._pn_configs)
+                processed_names = list(pn_dict.keys())
+                if len(processed_names) > 1:
+                    logger.info("Got multiple processed names for %s: %s",
+                                ann['value'], processed_names)
+                elif not processed_names:
+                    # NOTE: shouldn't really happen
+                    raise ValueError(f"Could not process {ann['value']} into names")
+                ent.detected_name = processed_names[0]
                 ent.cui = ann['cui']
                 ents.append(ent)
             except ValueError as err:
