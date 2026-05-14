@@ -56,7 +56,7 @@ classifiers = [
 # https://packaging.python.org/discussions/install-requires-vs-requirements/
 dependencies = [
   "medcat[spacy]>=2.7",
-  "transformers>=4.41.0,<5.0", # avoid major bump
+  "transformers>=4.41.0,<5.0", # SemVer major is 4.x→5.x; use <5.0 (not <6.0) to stay on transformers 4.x
   "torch>=2.4.0,<3.0",
   "tqdm",
 ]
