@@ -9,25 +9,15 @@ updates:
  - package-ecosystem: "devcontainers"
    directory: "/"
    commit-message:
-     prefix: "chore: "
+     prefix: "build: "
    schedule:
      interval: weekly
-   allow:
-     - dependency-name: "*"
-       update-types:
-         - "version-update:semver-patch"
-         - "version-update:semver-minor"
  - package-ecosystem: "github-actions"
    directory: "/"
    schedule:
      interval: "weekly"
    commit-message:
      prefix: "build: "
-   allow:
-     - dependency-name: "*"
-       update-types:
-         - "version-update:semver-patch"
-         - "version-update:semver-minor"
    groups:
      actions-deps:
        patterns:
