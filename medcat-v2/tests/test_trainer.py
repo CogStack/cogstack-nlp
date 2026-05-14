@@ -1,5 +1,6 @@
 import os
 import json
+from typing import Callable
 
 from medcat.tokenizing.tokens import MutableDocument
 from medcat.trainer import Trainer
@@ -100,6 +101,12 @@ class FakeTrainableNERComponent:
 
 class FakePipeline:
 
+    def __init__(self, caller: Callable[[str], MutableDocument] = None) -> None:
+        self._caller = caller or FakeMutDoc
+
+    def get_doc(self, text: str) -> FakeMutDoc:
+        return self._caller(text)
+
     def tokenizer(self, text: str) -> FakeMutDoc:
         return FakeMutDoc(text)
 
@@ -118,7 +125,8 @@ class FakePipeline:
 
 class FakePipelineWithComponents(FakePipeline):
 
-    def __init__(self, components: list):
+    def __init__(self, components: list, caller: Callable[[str], MutableDocument] = None):
+        super().__init__(caller)
         self._components = components
 
     def iter_all_components(self):
@@ -137,8 +145,7 @@ class TrainerTestsBase(unittest.TestCase):
         cls.cnf = Config()
         cls.cdb = FakeCDB(cls.cnf)
         cls.vocab = Vocab()
-        cls.trainer = Trainer(cls.cdb,
-                              cls.caller, cls.caller, FakePipeline())
+        cls.trainer = Trainer(cls.cdb, FakePipeline(cls.caller))
 
     def setUp(self):
         self.cnf = Config()
@@ -203,9 +210,7 @@ class TrainerUnsupervisedTests(TrainerTestsBase):
         ner_component = FakeTrainableNERComponent()
         trainer = Trainer(
             self.cdb,
-            self.caller,
-            self.caller,
-            FakePipelineWithComponents([ner_component]),
+            FakePipelineWithComponents([ner_component], self.caller),
         )
         trainer.config = self.cnf
 
@@ -220,9 +225,7 @@ class TrainerUnsupervisedTests(TrainerTestsBase):
         ner_component = FakeTrainableNERComponent()
         trainer = Trainer(
             self.cdb,
-            self.caller,
-            self.caller,
-            FakePipelineWithComponents([FakeComponent(), ner_component, object()]),
+            FakePipelineWithComponents([FakeComponent(), ner_component, object()], self.caller),
         )
         trainer.config = self.cnf
 
