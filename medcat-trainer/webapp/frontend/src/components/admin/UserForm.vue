@@ -6,9 +6,15 @@
         <span>Back</span>
       </button>
       <h3>{{ editing ? 'Edit User' : 'Add User' }}</h3>
+      <div class="form-header-actions">
+        <button type="submit" form="user-form" class="btn btn-primary" :disabled="saving">
+          <font-awesome-icon v-if="saving" icon="spinner" spin></font-awesome-icon>
+          <span>{{ saving ? 'Saving...' : 'Save User' }}</span>
+        </button>
+      </div>
     </div>
     <div class="form-content">
-      <form @submit.prevent="handleSubmit" class="admin-form">
+      <form id="user-form" @submit.prevent="handleSubmit" class="admin-form">
         <div class="form-sections-wrapper">
           <div class="form-section form-section-horizontal">
             <div class="form-group">
@@ -52,13 +58,6 @@
               </div>
             </div>
           </div>
-        </div>
-        <div class="form-actions">
-          <button type="button" class="btn btn-secondary" @click="$emit('close')">Cancel</button>
-          <button type="submit" class="btn btn-primary" :disabled="saving">
-            <font-awesome-icon v-if="saving" icon="spinner" spin></font-awesome-icon>
-            <span>{{ saving ? 'Saving...' : 'Save' }}</span>
-          </button>
         </div>
       </form>
     </div>

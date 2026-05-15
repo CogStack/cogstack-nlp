@@ -66,7 +66,7 @@
 
     <div v-else class="project-admin-content">
       <!-- Projects Tab -->
-      <div v-if="activeTab === 'projects'" class="tab-content">
+      <div v-if="activeTab === 'projects'" class="tab-content admin-section">
       <!-- Project List View -->
       <projects-list
         v-if="!showCreateForm && !editingProject"
@@ -87,9 +87,15 @@
             <span>Back</span>
           </button>
           <h3>{{ editingProject ? 'Edit Project' : 'Create New Project' }}</h3>
+          <div class="form-header-actions">
+            <button type="submit" form="project-admin-form" class="btn btn-primary" :disabled="saving">
+              <font-awesome-icon v-if="saving" icon="spinner" spin></font-awesome-icon>
+              <span>{{ saving ? 'Saving...' : 'Save Project' }}</span>
+            </button>
+          </div>
         </div>
         <div class="form-content">
-          <form @submit.prevent="saveProject" class="project-form">
+          <form id="project-admin-form" @submit.prevent="saveProject" class="project-form">
             <div class="form-sections-wrapper">
             <div class="form-section form-section-horizontal">
               <h4>Basic Information</h4>
@@ -372,13 +378,6 @@
                 <small class="form-text text-muted">Hold Ctrl/Cmd to select multiple</small>
               </div>
             </div>
-            </div>
-            <div class="form-actions">
-              <button type="button" class="btn btn-secondary" @click="closeForm">Cancel</button>
-              <button type="submit" class="btn btn-primary" :disabled="saving">
-                <font-awesome-icon v-if="saving" icon="spinner" spin></font-awesome-icon>
-                <span>{{ saving ? 'Saving...' : 'Save Project' }}</span>
-              </button>
             </div>
           </form>
         </div>
@@ -1340,7 +1339,7 @@ export default {
 @import '@/styles/admin.scss';
 
 .project-admin-view {
-  padding: 30px;
+  padding: 16px 20px;
   max-width: 1400px;
   margin: 0 auto;
   background: var(--color-background);
@@ -1349,6 +1348,10 @@ export default {
   max-height: calc(100vh - 100px);
   height: calc(100vh - 100px);
   overflow: hidden;
+
+  .admin-tabs {
+    margin: 8px 0 4px;
+  }
 }
 
 .project-admin-header {
@@ -1371,8 +1374,8 @@ export default {
     flex: 1;
 
     h2 {
-      margin-bottom: 8px;
-      font-size: 2rem;
+      margin-bottom: 4px;
+      font-size: 1.75rem;
       font-weight: 600;
       color: var(--color-heading);
       display: flex;
@@ -1409,137 +1412,6 @@ export default {
   }
 }
 
-.project-list-section {
-  background: white;
-  border-radius: 8px;
-  padding: 24px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-
-  .section-header {
-    margin-bottom: 20px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid var(--color-border);
-
-    h3 {
-      margin: 0;
-      font-size: 1.3rem;
-      font-weight: 600;
-      color: var(--color-heading);
-
-      .project-count {
-        font-size: 0.9rem;
-        font-weight: 400;
-        color: var(--color-text);
-        opacity: 0.6;
-        margin-left: 8px;
-      }
-    }
-  }
-}
-
-.projects-table-container {
-  overflow-x: auto;
-  border-radius: 6px;
-  border: 1px solid var(--color-border);
-
-  .projects-table {
-    :deep(.project-row) {
-      cursor: pointer;
-      transition: background-color 0.2s ease;
-
-      &:hover {
-        background-color: rgba(0, 114, 206, 0.05);
-      }
-    }
-
-    :deep(th) {
-      background-color: #f8f9fa;
-      font-weight: 600;
-      color: var(--color-heading);
-      text-transform: uppercase;
-      font-size: 0.7rem;
-      letter-spacing: 0.5px;
-      padding: 8px 12px;
-    }
-
-    :deep(td) {
-      padding: 8px 12px;
-      vertical-align: middle;
-    }
-  }
-}
-
-.project-name-cell {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-
-  .project-name {
-    font-size: 0.95rem;
-    color: var(--color-heading);
-    margin: 0;
-    font-weight: 500;
-  }
-
-  .project-description {
-    font-size: 0.8rem;
-    color: var(--color-text);
-    opacity: 0.6;
-    max-width: 400px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-}
-
-.dataset-name {
-  color: var(--color-text);
-  font-size: 0.9rem;
-}
-
-.no-projects {
-  padding: 60px 40px;
-  text-align: center;
-
-  .empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 20px;
-
-    h4 {
-      font-size: 1.5rem;
-      color: var(--color-heading);
-      margin: 0;
-    }
-
-    p {
-      color: var(--color-text);
-      opacity: 0.7;
-      font-size: 1rem;
-      margin: 0;
-      max-width: 400px;
-    }
-
-    .btn-create-empty {
-      margin-top: 10px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 12px 24px;
-      font-weight: 500;
-      border-radius: 6px;
-      transition: all 0.2s ease;
-      box-shadow: 0 2px 4px rgba(0, 114, 206, 0.2);
-
-      &:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 8px rgba(0, 114, 206, 0.3);
-      }
-    }
-  }
-}
-
 // Project Form Section (Full Screen)
 .project-form-section {
   background: white;
@@ -1553,7 +1425,7 @@ export default {
   overflow: hidden;
 
   .form-header {
-    padding: 8px 20px;
+    padding: 6px 16px;
     border-bottom: 1px solid var(--color-border);
     background: linear-gradient(135deg, $primary 0%, darken($primary, 10%) 100%);
     color: white;
@@ -1562,6 +1434,41 @@ export default {
     gap: 12px;
     border-radius: 12px 12px 0 0;
     flex-shrink: 0;
+
+    h3 {
+      flex: 1;
+      min-width: 0;
+      margin: 0;
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: white;
+    }
+
+    .form-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+
+      .btn {
+        padding: 6px 14px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        border-radius: 6px;
+        white-space: nowrap;
+      }
+
+      .btn-primary {
+        background: white;
+        color: $primary;
+        border: none;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+
+        &:hover:not(:disabled) {
+          background: #f0f7ff;
+        }
+      }
+    }
 
     .btn-back {
       background: rgba(255, 255, 255, 0.2);
@@ -1585,13 +1492,6 @@ export default {
       svg {
         font-size: 0.9rem;
       }
-    }
-
-    h3 {
-      margin: 0;
-      font-size: 1.1rem;
-      font-weight: 600;
-      color: white;
     }
   }
 
@@ -1621,13 +1521,13 @@ export default {
     overflow-y: auto;
     overflow-x: hidden;
     min-height: 0;
-    padding: 20px;
+    padding: 12px;
     background: #f8f9fa;
   }
 
   .form-section {
-    margin-bottom: 24px;
-    padding: 20px;
+    margin-bottom: 12px;
+    padding: 12px 14px;
     background: white;
     border: 1px solid #e0e0e0;
     border-radius: 12px;
@@ -1639,19 +1539,19 @@ export default {
     }
 
     h4 {
-      margin-bottom: 16px;
+      margin-bottom: 10px;
       margin-top: 0;
       color: var(--color-heading);
-      font-size: 1.05rem;
+      font-size: 1rem;
       font-weight: 600;
-      padding-bottom: 12px;
+      padding-bottom: 6px;
       border-bottom: 1px solid #f0f0f0;
     }
 
     &.form-section-horizontal {
       .form-row {
         display: flex;
-        gap: 20px;
+        gap: 12px;
         align-items: flex-end;
         flex-wrap: wrap;
 
@@ -1670,19 +1570,19 @@ export default {
       }
 
       .backup-options {
-        margin-top: 16px;
-        padding-top: 16px;
+        margin-top: 10px;
+        padding-top: 10px;
         border-top: 1px solid #f0f0f0;
       }
     }
   }
 
   .form-group {
-    margin-bottom: 16px;
+    margin-bottom: 10px;
 
     label {
       display: block;
-      margin-bottom: 6px;
+      margin-bottom: 4px;
       font-weight: 500;
       color: var(--color-heading);
       font-size: 0.9rem;
@@ -1852,17 +1752,6 @@ export default {
     gap: 8px;
   }
 
-  .form-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
-    margin-top: auto;
-    padding: 16px 20px;
-    border-top: 1px solid var(--color-border);
-    flex-shrink: 0;
-    background: white;
-    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
-  }
 }
 
 // Responsive design
@@ -1883,26 +1772,23 @@ export default {
     }
   }
 
-  .projects-table-container {
-    :deep(table) {
-      font-size: 0.85rem;
-    }
-
-    :deep(th),
-    :deep(td) {
-      padding: 6px 8px;
-    }
-  }
-
   .project-form-section {
     height: calc(100vh - 150px);
     max-height: calc(100vh - 150px);
 
     .form-header {
-      padding: 10px 16px;
+      flex-wrap: wrap;
+      padding: 8px 12px;
+      gap: 8px;
 
       h3 {
         font-size: 1rem;
+        flex: 1 1 auto;
+      }
+
+      .form-header-actions {
+        flex: 1 1 100%;
+        justify-content: flex-end;
       }
 
       .btn-back {
@@ -1916,22 +1802,22 @@ export default {
     }
 
     .form-sections-wrapper {
-      padding: 16px;
+      padding: 10px;
     }
 
     .form-section {
-      margin-bottom: 20px;
-      padding: 16px;
+      margin-bottom: 10px;
+      padding: 10px 12px;
 
       h4 {
-        font-size: 1rem;
-        margin-bottom: 12px;
-        padding-bottom: 10px;
+        font-size: 0.95rem;
+        margin-bottom: 8px;
+        padding-bottom: 6px;
       }
 
       .form-row {
         flex-direction: column;
-        gap: 16px;
+        gap: 10px;
 
         .form-group-inline {
           min-width: 100%;

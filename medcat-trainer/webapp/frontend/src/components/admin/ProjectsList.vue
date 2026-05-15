@@ -1,13 +1,6 @@
 <template>
-  <div class="project-list-section">
-    <div class="section-header">
-      <h3>
-        Your Projects
-        <span class="project-count">({{ projects.length }})</span>
-      </h3>
-    </div>
-
-    <div v-if="projects.length > 0" class="projects-table-container">
+  <div class="list-section">
+    <div v-if="projects.length > 0" class="table-container">
       <v-data-table
         :items="projects"
         :headers="tableHeaders"
@@ -15,8 +8,7 @@
         @click:row="handleRowClick"
         hide-default-footer
         :items-per-page="-1"
-        class="projects-table"
-        item-class="project-row"
+        class="admin-table"
         dense>
         <template #item.name="{ item }">
           <div class="project-name-cell">
@@ -29,7 +21,7 @@
           </span>
         </template>
         <template #item.dataset="{ item }">
-          <span class="dataset-name">{{ getDatasetName(item.dataset) }}</span>
+          <span>{{ getDatasetName(item.dataset) }}</span>
         </template>
         <template #item.actions="{ item }">
           <div class="action-buttons" @click.stop>
@@ -56,15 +48,13 @@
       </v-data-table>
     </div>
 
-    <div v-else class="no-projects">
-      <div class="empty-state">
-        <h4>No Projects Yet</h4>
-        <p>You don't have any projects yet. Create one to get started!</p>
-        <button class="btn btn-primary btn-create-empty" @click="$emit('create-project')">
-          <font-awesome-icon icon="plus"></font-awesome-icon>
-          <span>Create Your First Project</span>
-        </button>
-      </div>
+    <div v-else class="empty-state">
+      <h4>No Projects Yet</h4>
+      <p>You don't have any projects yet. Create one to get started!</p>
+      <button class="btn btn-primary btn-create-empty" @click="$emit('create-project')">
+        <font-awesome-icon icon="plus"></font-awesome-icon>
+        <span>Create Your First Project</span>
+      </button>
     </div>
   </div>
 </template>
@@ -126,62 +116,16 @@ export default {
 <style scoped lang="scss">
 @import '@/styles/admin.scss';
 
-// Component-specific styles
-.project-list-section {
-  background: white;
-  border-radius: 8px;
-  padding: 24px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-
-  .section-header {
-    padding-bottom: 12px;
-    border-bottom: 1px solid var(--color-border);
-
-    h3 {
-      font-size: 1.3rem;
-    }
-  }
-
-  .projects-table-container {
-    overflow-x: auto;
-  }
-
-  .projects-table {
-    :deep(.project-row) {
+.list-section {
+  .admin-table {
+    :deep(tbody tr) {
       cursor: pointer;
-      transition: background-color 0.2s ease;
-
-      &:hover {
-        background-color: #f8f9fa;
-      }
     }
-  }
-
-  .project-name-cell {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
   }
 
   .project-name {
     font-size: 0.95rem;
     color: var(--color-heading);
-  }
-
-  .project-description {
-    font-size: 0.85rem;
-    color: var(--color-text-secondary);
-    opacity: 0.8;
-  }
-
-  .dataset-name {
-    font-size: 0.9rem;
-    color: var(--color-text);
-  }
-
-  .no-projects {
-    padding: 60px 20px;
-    text-align: center;
   }
 }
 </style>
