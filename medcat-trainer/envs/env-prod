@@ -8,10 +8,10 @@ MAX_MEDCAT_MODELS=2
 ENV=prod
 
 # SECRET KEY - edit this for prod deployments,
-# SECRET_KEY=
+SECRET_KEY=QNh/dY8k1U9x/XZpAIv28p1qN2PsOq1tgIwcGqrlTKExrGOx3RulQILep6LGAVvJpJM=
 
 # Complete once this is deployed
-CSRF_TRUSTED_ORIGINS=
+CSRF_TRUSTED_ORIGINS=http://localhost:8001,http://127.0.0.1:8001
 
 # Django Debug mode should be False for prod
 DEBUG=0

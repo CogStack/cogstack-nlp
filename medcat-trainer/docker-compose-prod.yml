@@ -5,7 +5,7 @@ services:
     container_name: medcattrainer
     hostname: medcat
     restart: always
-    image: cogstacksystems/medcat-trainer:v3.4.1
+    image: cogstacksystems/medcat-trainer:latest
     volumes:
       - api-media:/home/api/media
       - api-static:/home/api/static
