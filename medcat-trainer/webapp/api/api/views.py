@@ -521,7 +521,7 @@ def import_cdb_concepts(request):
     user = request.user
     cdb_id = request.data.get('cdb_id')
     if cdb_id is None or not ConceptDB.objects.filter(id=cdb_id).exists():
-        return HttpResponseBadRequest(f'No CDB found for cdb_id {cdb_id}')
+        return HttpResponseBadRequest('No CDB found for the provided cdb_id')
 
     # Staff/superusers may import for any CDB. Other authenticated users must be a
     # project admin (member or group administrator) of at least one project that
