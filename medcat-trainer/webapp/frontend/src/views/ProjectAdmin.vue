@@ -141,7 +141,22 @@
                 </div>
                 <div class="form-group form-group-inline">
                   <label>Annotation Guideline Link</label>
-                  <input v-model="formData.annotation_guideline_link" type="url" class="form-control" placeholder="https://..." />
+                  <input
+                    v-model="formData.annotation_guideline_link"
+                    type="url"
+                    class="form-control"
+                    placeholder="https://..."
+                    :disabled="useDefaultGuideline"
+                  />
+                  <label class="checkbox-label default-guideline-toggle">
+                    <input
+                      v-model="useDefaultGuideline"
+                      type="checkbox"
+                      class="checkbox-input"
+                      @change="onUseDefaultGuidelineChange"
+                    />
+                    <span class="checkbox-text">Use Default Guideline</span>
+                  </label>
                 </div>
               </div>
             </div>
@@ -589,6 +604,8 @@ export default {
       cloneName: '',
       saving: false,
       useBackupOption: false,
+      useDefaultGuideline: false,
+      defaultAnnotationGuidelineUrl: 'https://docs.google.com/document/d/1U8qpw5hDZgMGRxF7J1ur1fy4krA7Ijbb8ip_SUS5z9c/edit?tab=t.0#heading=h.imad4ksd7q78',
       selectedCuiFilterConcepts: [],
       includeSubConcepts: false,
       showCuiFilterTextarea: false,
@@ -717,6 +734,7 @@ export default {
       }
       // Show backup options if CDB or Vocab are set
       this.useBackupOption = !!(project.concept_db || project.vocab)
+      this.useDefaultGuideline = project.annotation_guideline_link === this.defaultAnnotationGuidelineUrl
       // Initialize CUI filter concepts from existing cuis
       if (project.cuis) {
         this.syncPillsFromCuiText()
@@ -729,6 +747,7 @@ export default {
       this.showCreateForm = false
       this.editingProject = null
       this.useBackupOption = false
+      this.useDefaultGuideline = false
       this.validationErrors = {}
       this.selectedCuiFilterConcepts = []
       this.includeSubConcepts = false
@@ -768,9 +787,15 @@ export default {
         members: []
       }
       this.useBackupOption = false
+      this.useDefaultGuideline = false
       this.selectedCuiFilterConcepts = []
       this.includeSubConcepts = false
       this.showCuiFilterTextarea = false
+    },
+    onUseDefaultGuidelineChange() {
+      this.formData.annotation_guideline_link = this.useDefaultGuideline
+        ? this.defaultAnnotationGuidelineUrl
+        : ''
     },
     handleCuiFileChange(event) {
       const file = event.target.files[0]
@@ -924,6 +949,13 @@ export default {
         }
         payload.cdb_search_filter = conceptDbIdForFilter != null ? [conceptDbIdForFilter] : []
 
+        // Detect whether the project's underlying concept DB changed (covers new projects
+        // and model-pack swaps that point at a different CDB). Used after save to verify
+        // that the Solr "Concepts Imported" index exists for the resolved CDB.
+        const previousCdbId = this.editingProject?.cdb_search_filter?.[0] ?? null
+        const newCdbId = conceptDbIdForFilter
+        const cdbChanged = newCdbId != null && newCdbId !== previousCdbId
+
         // Ensure members are integers
         if (Array.isArray(payload.members)) {
           payload.members = payload.members
@@ -970,6 +1002,14 @@ export default {
 
         // If we get here, the request was successful
         this.$toast?.success(`Project ${this.editingProject ? 'updated' : 'created'} successfully`)
+
+        // When the resolved CDB changed (new project, or model pack now points at a
+        // different CDB), make sure "Concepts Imported" is green and trigger an import
+        // if it isn't. Failures here must not block the save flow.
+        if (cdbChanged) {
+          await this.ensureConceptsImported(newCdbId)
+        }
+
         this.closeForm()
         await this.fetchProjects()
       } catch (error) {
@@ -997,6 +1037,29 @@ export default {
         this.$toast?.error(errorMsg)
       } finally {
         this.saving = false
+      }
+    },
+    async ensureConceptsImported(cdbId) {
+      // Mirrors the "Concepts Imported" check from ProjectList.vue: ask Solr whether the
+      // CDB's collection exists, and if it doesn't, kick off the (background) import job
+      // exposed at /api/import-cdb-concepts/. The backend authorises project admins of
+      // any project that references this CDB (plus staff/superusers); errors surface as
+      // a toast and never block the save flow.
+      try {
+        const statusResp = await this.$http.get(`/api/concept-db-search-index-created/?cdbs=${cdbId}`)
+        const results = statusResp.data?.results || {}
+        if (results[cdbId]) {
+          return
+        }
+        await this.$http.post('/api/import-cdb-concepts/', { cdb_id: cdbId })
+        this.$toast?.success('Started importing concepts for the selected model. This may take a few minutes to complete.')
+      } catch (error) {
+        console.error('Error checking/importing concepts for cdb', cdbId, error)
+        const respData = error.response?.data
+        const errorMsg = typeof respData === 'string' && respData
+          ? respData
+          : (respData?.error || respData?.message || 'Failed to verify or trigger concept import for the selected model')
+        this.$toast?.error(errorMsg)
       }
     },
     cloneProject(project) {
@@ -1699,6 +1762,34 @@ export default {
       font-size: 0.85rem;
       color: var(--color-text);
       opacity: 0.7;
+    }
+
+    .default-guideline-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 6px 0 0 0;
+      padding: 0;
+      cursor: pointer;
+      font-size: 0.85rem;
+      color: var(--color-text);
+
+      .checkbox-input {
+        margin: 0;
+        width: 14px;
+        height: 14px;
+        accent-color: $primary;
+        cursor: pointer;
+        flex-shrink: 0;
+      }
+
+      .checkbox-text {
+        line-height: 1.4;
+      }
+
+      &:hover {
+        opacity: 0.85;
+      }
     }
   }
 
