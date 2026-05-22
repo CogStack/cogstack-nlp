@@ -206,9 +206,11 @@ jobs:
         with:
           packages-dir: medcat-v2/dist
 
-    # test-time models for download
-    upload-test-models:
-      needs: release
-      uses: ./.github/workflows/upload-test-models.yml
-      with:
-      tag: ${{ github.ref_name }}
+  # test-time models for download
+  upload-test-models:
+    needs: release
+    steps:
+      - name: Upload test models to release
+        uses: ./.github/workflows/upload-test-models.yml
+        with:
+          tag: ${{ github.ref_name }}
