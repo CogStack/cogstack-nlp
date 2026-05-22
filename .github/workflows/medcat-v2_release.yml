@@ -205,3 +205,10 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: medcat-v2/dist
+
+    # test-time models for download
+    upload-test-models:
+      needs: release
+      uses: ./.github/workflows/upload-test-models.yml
+      with:
+      tag: ${{ github.ref_name }}
