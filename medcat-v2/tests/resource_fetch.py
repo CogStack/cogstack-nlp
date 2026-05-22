@@ -1,3 +1,14 @@
+# NOTE: this file is designed to be copied across the following sub-folders
+#         1. medcat-v2/tests/resource_fetch.py
+#         2. medcat-den/tests/resource_fetch.py
+#       So if you make changes here, copy them over to the others as well.
+#
+#       NB! This does mean we have duplicate code. But to me the alternatives
+#           are note better:
+#            a) keep and install a separate local project - not portable
+#            b) publish and install from PyPI - extra maintenance burden
+
+
 import os
 import pooch
 import importlib
