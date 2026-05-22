@@ -52,6 +52,7 @@ jobs:
 
   # test-time models for download
   upload-test-models:
+    runs-on: ubuntu-latest
     needs: test-and-publish-to-PyPI
     steps:
       - name: Upload test models to release
