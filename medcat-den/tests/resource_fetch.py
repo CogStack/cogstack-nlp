@@ -56,7 +56,7 @@ def _download_resource(version: str, relative_path: str) -> str:
         ) from e
 
 
-def get_resource(relative_path: str | DefinedResource) -> str:
+def get_resource(relative_path: str | DefinedResource, project_name: str = 'medcat') -> str:
     """
     Returns a local path to the requested test resource.
     Prefers the central repo location (medcat-test-models/) if available,
@@ -74,5 +74,5 @@ def get_resource(relative_path: str | DefinedResource) -> str:
     if os.path.exists(central_path):
         return central_path
 
-    version = _get_version()
+    version = _get_version(project_name)
     return _download_resource(version, relative_path)
