@@ -4,12 +4,10 @@ import shutil
 
 from medcat.cat import CAT
 
+from .resource_fetch import get_resource
 
-MODEL_PATH = os.path.join(
-    os.path.dirname(__file__), "resources", "mct2_model_pack.zip")
-V1_MODEL_PATH = os.path.join(
-    os.path.dirname(MODEL_PATH), "mct_v1_model_pack.zip"
-)
+MODEL_PATH = get_resource("mct2_model_pack.zip", 'medcat_den')
+V1_MODEL_PATH = get_resource("mct_v1_model_pack.zip", 'medcat_den')
 
 
 # unpack
