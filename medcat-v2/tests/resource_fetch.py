@@ -1,9 +1,15 @@
 import os
 import pooch
 import importlib
+from enum import Enum
+
 
 _REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 _CENTRAL_RESOURCES = os.path.join(_REPO_ROOT, 'medcat-test-models')
+
+class DefinedResource(Enum):
+    v1_model = "mct_v1_model_pack.zip"
+    v2_model = "mct2_model_pack.zip"
 
 
 def _get_version(project_name: str = 'medcat') -> str:
@@ -39,12 +45,14 @@ def _download_resource(version: str, relative_path: str) -> str:
         ) from e
 
 
-def get_resource(relative_path: str) -> str:
+def get_resource(relative_path: str | DefinedResource) -> str:
     """
     Returns a local path to the requested test resource.
     Prefers the central repo location (medcat-test-models/) if available,
     falls back to downloading from the corresponding release via pooch.
     """
+    if isinstance(relative_path, DefinedResource):
+        relative_path = relative_path.value
     central_path = os.path.join(_CENTRAL_RESOURCES, relative_path)
 
     if os.path.exists(central_path):
