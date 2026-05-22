@@ -10,7 +10,10 @@ def _get_version(project_name: str = 'medcat') -> str:
     # NOTE: plan to use this for medcat-den as well
     try:
         pkg = importlib.import_module(project_name)
-        return "%2F".join((project_name, "v" + getattr(pkg, '__version__')))
+        ver = getattr(pkg, '__version__')
+        if ver is None:
+            raise
+        return "%2F".join((project_name, f"v{ver}"))
     except ImportError:
         raise RuntimeError(
             f"Could not determine version for '{project_name}'. "
