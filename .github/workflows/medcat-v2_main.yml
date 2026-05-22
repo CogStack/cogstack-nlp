@@ -14,8 +14,9 @@ jobs:
   test-resource-utils:
    runs-on: ubuntu-latest
    steps:
-    - name: Check test utils are in sync
-      run: diff tests/resource_fetch.py ../medcat-den/tests/resource_fetch.py
+      - uses: actions/checkout@v6
+      - name: Check test utils are in sync
+        run: diff tests/resource_fetch.py ../medcat-den/tests/resource_fetch.py
 
   base-install-imports:
     runs-on: ubuntu-latest
