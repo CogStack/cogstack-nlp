@@ -51,6 +51,9 @@ def get_resource(relative_path: str | DefinedResource) -> str:
     Prefers the central repo location (medcat-test-models/) if available,
     falls back to downloading from the corresponding release via pooch.
     """
+    # allow passing string version of defined resoure (e.g v1_model)
+    if isinstance(relative_path, str) and relative_path in DefinedResource._member_names_:
+        relative_path = DefinedResource[relative_path]
     if isinstance(relative_path, DefinedResource):
         relative_path = relative_path.value
     central_path = os.path.join(_CENTRAL_RESOURCES, relative_path)
