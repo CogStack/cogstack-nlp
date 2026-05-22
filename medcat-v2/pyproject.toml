@@ -86,6 +86,7 @@ dev = [
   "types-tqdm",
   "types-setuptools",
   "types-PyYAML",
+  "pooch",
 ]
 spacy = [
   "spacy",
