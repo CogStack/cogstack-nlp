@@ -52,8 +52,10 @@ def get_resource(relative_path: str | DefinedResource) -> str:
     falls back to downloading from the corresponding release via pooch.
     """
     # allow passing string version of defined resoure (e.g v1_model)
-    if isinstance(relative_path, str) and relative_path in DefinedResource._member_names_:
+    try:
         relative_path = DefinedResource[relative_path]
+    except KeyError:
+        pass  # treat as a literal path
     if isinstance(relative_path, DefinedResource):
         relative_path = relative_path.value
     central_path = os.path.join(_CENTRAL_RESOURCES, relative_path)
