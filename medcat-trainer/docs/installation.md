@@ -19,6 +19,7 @@ services:
 
 - Docker Engine
 - Docker Compose v2 (`docker compose` command)
+- `uv` (only needed for the local Django debug script)
 
 ## Quick start (prebuilt images)
 
@@ -46,6 +47,56 @@ docker compose -f docker-compose-dev.yml up --build
 
 This uses the local `webapp/` source tree and is the recommended setup for
 development work.
+
+### Local Django debug script
+
+For backend development where you want to run Django directly on your host
+machine, use the local debug helper:
+
+```bash
+./webapp/scripts/run_local_debug.sh
+```
+
+The script sources `envs/env`, syncs Python dependencies with `uv` when needed,
+runs migrations, creates a local admin user, ensures the default user group
+exists, and starts Django at `http://127.0.0.1:8001/`.
+
+By default it also starts only the `solr` service with Docker Compose:
+
+```bash
+docker compose -f docker-compose-dev.yml up -d solr
+```
+
+Before starting Solr, the script ensures the Compose gateway network exists. It
+uses `gateway-auth_gateway-net` by default, creating it if it is missing. If you
+are running MedCATtrainer alongside a different gateway stack, set the network
+name explicitly:
+
+```bash
+MCT_GATEWAY_NETWORK_NAME=my-gateway-net ./webapp/scripts/run_local_debug.sh
+```
+
+Available modes:
+
+```bash
+./webapp/scripts/run_local_debug.sh server
+./webapp/scripts/run_local_debug.sh worker
+./webapp/scripts/run_local_debug.sh shell
+./webapp/scripts/run_local_debug.sh bootstrap
+```
+
+Common overrides:
+
+| Variable | Description |
+|---|---|
+| `MCT_DEBUG_HOST` | Django bind host (default `0.0.0.0`). |
+| `MCT_DEBUG_PORT` | Django port (default `8001`). |
+| `MCT_ENV_FILE` | Env file to source instead of `envs/env`. |
+| `MCT_ADMIN_USERNAME` | Local admin username (default `admin`). |
+| `MCT_ADMIN_PASSWORD` | Local admin password (default `admin`). |
+| `MCT_START_SOLR` | Start Solr through Docker Compose (`1`/`0`, default `1`). |
+| `MCT_GATEWAY_NETWORK_NAME` | External Compose network to use/create for Solr. |
+| `MCT_SYNC_DEPS` | Run `uv sync --frozen` (`1`/`0`/`auto`, default `auto`). |
 
 ## Legacy MedCAT v0.x support
 

@@ -3,13 +3,64 @@ from datetime import datetime
 import json
 import os
 from abc import ABC
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import requests
 
 import logging
 
 logger = logging.getLogger(__name__)
+
+@dataclass
+class KeycloakSettings:
+    """
+    Keycloak settings for OIDC token retrieval.
+
+    If a field is not provided, it falls back to environment variables and then
+    the same defaults used by `webapp/scripts/load_examples.py`.
+    """
+
+    keycloak_url: Optional[str] = None
+    realm: Optional[str] = None
+    client_id: Optional[str] = None
+    client_secret: Optional[str] = None
+    username: Optional[str] = None
+    password: Optional[str] = None
+    scope: str = "openid profile email"
+
+    def __post_init__(self):
+        self.keycloak_url = self.keycloak_url or os.environ.get("KEYCLOAK_URL", "http://keycloak.cogstack.localhost")
+        self.realm = self.realm or os.environ.get("KEYCLOAK_REALM", "cogstack-realm")
+        self.client_id = self.client_id or os.environ.get("KEYCLOAK_CLIENT_ID", "cogstack-medcattrainer-frontend")
+        self.client_secret = self.client_secret or os.environ.get("KEYCLOAK_CLIENT_SECRET")
+        self.username = self.username or os.environ.get("KEYCLOAK_USERNAME", "admin")
+        self.password = self.password or os.environ.get("KEYCLOAK_PASSWORD", "admin")
+
+
+def get_keycloak_access_token(settings: KeycloakSettings) -> str:
+    token_url = f"{settings.keycloak_url}/realms/{settings.realm}/protocol/openid-connect/token"
+    if settings.client_secret:
+        data = {
+            "grant_type": "client_credentials",
+            "client_id": settings.client_id,
+            "client_secret": settings.client_secret,
+            "scope": settings.scope,
+        }
+    else:
+        data = {
+            "grant_type": "password",
+            "client_id": settings.client_id,
+            "username": settings.username,
+            "password": settings.password,
+            "scope": settings.scope,
+        }
+    try:
+        logger.debug(f"Getting Keycloak token from {token_url}")
+        resp = requests.post(token_url, data=data)
+        resp.raise_for_status()
+        return resp.json()["access_token"]
+    except Exception as e:
+        raise MCTUtilsException("Failed to get Keycloak access token", e)
 
 
 @dataclass
@@ -224,7 +275,7 @@ class MedCATTrainerSession:
     >>> annotations = session.get_project_annos(projects[0])
     """
 
-    def __init__(self, server=None, username=None, password=None):
+    def __init__(self, server=None, username=None, password=None, keycloak_settings=None, use_oidc: bool = False):
         """Initialize the MedCATTrainerSession.
 
         Args:
@@ -237,15 +288,31 @@ class MedCATTrainerSession:
         self.password = password or os.getenv("MCTRAINER_PASSWORD")
         self.server = server or 'http://localhost:8001'
 
+        env_use_oidc = os.getenv("MCTRAINER_USE_OIDC", "")
+        env_use_oidc_truthy = env_use_oidc.strip() == "1"
+        effective_use_oidc = bool(use_oidc) or bool(env_use_oidc_truthy)
+
+        if effective_use_oidc:
+            if keycloak_settings is None:
+                kc_settings = KeycloakSettings()
+            else:
+                if not isinstance(keycloak_settings, KeycloakSettings):
+                    raise TypeError("keycloak_settings must be a KeycloakSettings instance")
+                kc_settings = keycloak_settings
+
+            token = get_keycloak_access_token(kc_settings)
+            self.headers = {"Authorization": f"Bearer {token}"}
+            return
+
         payload = {"username": self.username, "password": self.password}
         resp = requests.post(f"{self.server}/api/api-token-auth/", json=payload)
         if 200 <= resp.status_code < 300:
             token = json.loads(resp.text)["token"]
             self.headers = {
-                'Authorization': f'Token {token}',
+                "Authorization": f"Token {token}",
             }
         else:
-            raise MCTUtilsException(f'Failed to login to MedCATtrainer instance running at: {self.server}')
+            raise MCTUtilsException(f"Failed to login to MedCATtrainer instance running at: {self.server}")
 
     def create_project(self, name: str,
                        description: str,
@@ -482,8 +549,23 @@ class MedCATTrainerSession:
         Returns:
             List[MCTUser]: A list of all users in the MedCATTrainer instance
         """
-        users = json.loads(requests.get(f'{self.server}/api/users/', headers=self.headers).text)['results']
-        return [MCTUser(id=u['id'], username=u['username']) for u in users]
+        resp = requests.get(f"{self.server}/api/users/", headers=self.headers)
+        if not (200 <= resp.status_code < 300):
+            raise MCTUtilsException(
+                f"Failed to get users from MedCATTrainer instance running at: {self.server}",
+                f"HTTP {resp.status_code}: {resp.text[:500]}",
+            )
+        try:
+            payload = resp.json()
+            if not isinstance(payload, dict):
+                payload = json.loads(resp.text or "{}")
+        except Exception as e:
+            raise MCTUtilsException(
+                f"Failed to parse users response from MedCATTrainer instance running at: {self.server}",
+                e,
+            )
+        users = payload.get("results", [])
+        return [MCTUser(id=u.get("id"), username=u.get("username")) for u in users]
 
     def get_models(self) -> Tuple[List[str], List[str]]:
         """Get all MedCAT cdb and vocab models in the MedCATTrainer instance.

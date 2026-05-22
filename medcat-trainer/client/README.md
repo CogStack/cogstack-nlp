@@ -34,7 +34,7 @@ export MCTRAINER_PASSWORD=<password>
 ```
 
 ```python
-from mctclient import MedCATTrainerSession, MCTDataset, MCTConceptDB, MCTVocab, MCTModelPack, MCTMetaTask, MCTRelTask, MCTUser, MCTProject
+from mctclient import MedCATTrainerSession, KeycloakSettings, MCTDataset, MCTConceptDB, MCTVocab, MCTModelPack, MCTMetaTask, MCTRelTask, MCTUser, MCTProject
 
 # Connect to your MedCATTrainer instance
 session = MedCATTrainerSession(server="http://localhost:8001")
@@ -59,6 +59,31 @@ project = session.create_project(
 )
 ```
 
+## Authentication
+
+### OIDC / Keycloak (optional)
+
+You can pass a `KeycloakSettings` object to use OIDC Bearer auth. Any missing
+fields fall back to environment variables
+(`KEYCLOAK_URL`, `KEYCLOAK_REALM`, `KEYCLOAK_CLIENT_ID`, `KEYCLOAK_USERNAME`, `KEYCLOAK_PASSWORD`)
+and then the same defaults as `webapp/scripts/load_examples.py`.
+
+```python
+from mctclient import MedCATTrainerSession, KeycloakSettings
+
+session = MedCATTrainerSession(
+    server="http://localhost:8001",
+    use_oidc=True,
+    keycloak_settings=KeycloakSettings(
+        keycloak_url="http://keycloak.cogstack.localhost",
+        realm="cogstack-realm",
+        client_id="cogstack-medcattrainer-frontend",
+        username="admin",
+        password="admin",
+    ),
+)
+```
+
 ### MedCATTrainerSession Methods
 
 - `create_project(name, description, members, dataset, cuis=[], cuis_file=None, concept_db=None, vocab=None, cdb_search_filter=None, modelpack=None, meta_tasks=[], rel_tasks=[])`
@@ -80,6 +105,51 @@ Each method returns the corresponding object or a list of objects.
 ## License
 
 This project is licensed under the Apache 2.0 License.
+
+## Developer Instructions
+
+### Local dev setup (uv)
+
+From the repo root:
+
+```sh
+cd medcat-trainer/client
+uv venv
+source .venv/bin/activate
+uv pip install -e .
+```
+
+### Run unit tests
+
+```sh
+cd medcat-trainer/client
+python -m unittest discover -s tests -p "test_*.py" -v
+```
+
+### Run integration test (real server)
+
+```sh
+cd medcat-trainer/client
+export MCTRAINER_SERVER="http://localhost:8000"
+export MCTRAINER_USERNAME="<username>"
+export MCTRAINER_PASSWORD="<password>"
+export MCTRAINER_EXPECTED_USERS="admin,alice,bob"  # optional
+python -m unittest tests.integration.test_integration_mctclient -v
+```
+
+Optional: use OIDC / Keycloak Bearer token auth:
+
+```sh
+export MCTRAINER_USE_OIDC=1
+export KEYCLOAK_URL="http://keycloak.cogstack.localhost"
+export KEYCLOAK_REALM="cogstack"
+export KEYCLOAK_CLIENT_ID="cogstack-medcattrainer-frontend"
+# If set, the client will use client-credentials grant; otherwise password grant.
+export KEYCLOAK_CLIENT_SECRET="<client_secret>"  # optional
+export KEYCLOAK_USERNAME="<keycloak_username>"   # used if no client_secret
+export KEYCLOAK_PASSWORD="<keycloak_password>"   # used if no client_secret
+python -m unittest tests.integration.test_integration_mctclient -v
+```
 
 ## Contributing
 

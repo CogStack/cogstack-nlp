@@ -412,10 +412,9 @@ def train_medcat(cat, project, document):
     irrelevant_anns = AnnotatedEntity.objects.filter(project=project, document=document, irrelevant=True)
     for ann in irrelevant_anns:
         cui = ann.entity.label
-        if 'cuis_exclude' not in cat.config.components.linking.filters:
-            cat.config.components.linking.filters['cuis_exclude'] = set()
-        cat.config.components.linking.filters.get('cuis_exclude').update([cui])
-
+        if cat.config.components.linking.filters.cuis_exclude is None:
+            cat.config.components.linking.filters.cuis_exclude = set()
+        cat.config.components.linking.filters.cuis_exclude.add(cui)
 
 @background(schedule=1, queue='doc_prep')
 def prep_docs(project_id: List[int], doc_ids: List[int], user_id: int):

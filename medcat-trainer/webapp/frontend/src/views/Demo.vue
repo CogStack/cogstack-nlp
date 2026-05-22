@@ -222,11 +222,7 @@ export default {
     },
     fetchCDBSearchIndex () {
       if (this.selectedProject?.cdb_search_filter?.length > 0) {
-        this.$http.get(`/api/concept-dbs/${this.selectedProject.cdb_search_filter[0]}/`).then(resp => {
-          if (resp.data) {
-            this.searchFilterDBIndex = `${resp.data.name}_id_${this.selectedProject.cdb_search_filter}`
-          }
-        })
+        this.searchFilterDBIndex = this.selectedProject.cdb_search_filter.join(',')
       } else {
         this.searchFilterDBIndex = null
       }

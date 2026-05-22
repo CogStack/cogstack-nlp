@@ -22,3 +22,133 @@ updates:
      actions-deps:
        patterns:
         - "*"
+ - package-ecosystem: "pip"
+   directory: "/anoncat-demo-app"
+   schedule:
+     interval: "weekly"
+   commit-message:
+     prefix: "build(anoncat-demo-app): "
+   groups:
+     pip-deps:
+       patterns:
+        - "*"
+ - package-ecosystem: "pip"
+   directory: "/anoncat-demo-app/app"
+   schedule:
+     interval: "weekly"
+   commit-message:
+     prefix: "build(anoncat-demo-app): "
+   groups:
+     pip-deps:
+       patterns:
+        - "*"
+ - package-ecosystem: "pip"
+   directory: "/cogstack-es"
+   schedule:
+     interval: "weekly"
+   commit-message:
+     prefix: "build(cogstack-es): "
+   groups:
+     pip-deps:
+       patterns:
+        - "*"
+ - package-ecosystem: "pip"
+   directory: "/medcat-den"
+   schedule:
+     interval: "weekly"
+   commit-message:
+     prefix: "build(medcat-den): "
+   groups:
+     pip-deps:
+       patterns:
+        - "*"
+ - package-ecosystem: "pip"
+   directory: "/medcat-model-distributor/webapp"
+   schedule:
+     interval: "weekly"
+   commit-message:
+     prefix: "build(medcat-model-distributor): "
+   groups:
+     pip-deps:
+       patterns:
+        - "*"
+ - package-ecosystem: "pip"
+   directory: "/medcat-plugins/embedding-linker"
+   schedule:
+     interval: "weekly"
+   commit-message:
+     prefix: "build(medcat-plugins): "
+   groups:
+     pip-deps:
+       patterns:
+        - "*"
+ - package-ecosystem: "pip"
+   directory: "/medcat-plugins/medcat-gliner"
+   schedule:
+     interval: "weekly"
+   commit-message:
+     prefix: "build(medcat-plugins): "
+   groups:
+     pip-deps:
+       patterns:
+        - "*"
+ - package-ecosystem: "pip"
+   directory: "/medcat-scripts"
+   schedule:
+     interval: "weekly"
+   commit-message:
+     prefix: "build(medcat-scripts): "
+   groups:
+     pip-deps:
+       patterns:
+        - "*"
+ - package-ecosystem: "pip"
+   directory: "/medcat-service"
+   schedule:
+     interval: "weekly"
+   commit-message:
+     prefix: "build(medcat-service): "
+   groups:
+     pip-deps:
+       patterns:
+        - "*"
+ - package-ecosystem: "pip"
+   directory: "/medcat-trainer/client"
+   schedule:
+     interval: "weekly"
+   commit-message:
+     prefix: "build(medcat-trainer): "
+   groups:
+     pip-deps:
+       patterns:
+        - "*"
+ - package-ecosystem: "uv"
+   directory: "/medcat-trainer/webapp"
+   schedule:
+     interval: "weekly"
+   commit-message:
+     prefix: "build(medcat-trainer): "
+   groups:
+     uv-deps:
+       patterns:
+        - "*"
+ - package-ecosystem: "uv"
+   directory: "/medcat-v2"
+   schedule:
+     interval: "weekly"
+   commit-message:
+     prefix: "build(medcat): "
+   groups:
+     uv-deps:
+       patterns:
+        - "*"
+ - package-ecosystem: "uv"
+   directory: "/medcat-v2-tutorials"
+   schedule:
+     interval: "weekly"
+   commit-message:
+     prefix: "build(medcat-tutorials): "
+   groups:
+     uv-deps:
+       patterns:
+        - "*"
