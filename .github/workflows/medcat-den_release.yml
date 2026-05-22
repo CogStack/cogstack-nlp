@@ -51,8 +51,10 @@ jobs:
           packages_dir: medcat-den/dist
 
     # test-time models for download
-    upload-test-models:
-      needs: test-and-publish-to-PyPI
-      uses: ./.github/workflows/upload-test-models.yml
-      with:
-      tag: ${{ github.ref_name }}
+  upload-test-models:
+    needs: test-and-publish-to-PyPI
+    steps:
+      - name: Upload test models to release
+        uses: ./.github/workflows/upload-test-models.yml
+        with:
+          tag: ${{ github.ref_name }}
