@@ -50,7 +50,7 @@ jobs:
         with:
           packages_dir: medcat-den/dist
 
-    # test-time models for download
+  # test-time models for download
   upload-test-models:
     needs: test-and-publish-to-PyPI
     steps:
