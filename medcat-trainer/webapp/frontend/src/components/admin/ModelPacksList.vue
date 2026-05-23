@@ -1,8 +1,5 @@
 <template>
   <div class="list-section">
-    <div class="section-header">
-      <h3>Model Packs <span class="item-count">({{ modelPacks.length }})</span></h3>
-    </div>
     <div v-if="modelPacks.length > 0" class="table-container">
       <v-data-table
         :items="modelPacks"

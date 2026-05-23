@@ -9,6 +9,7 @@ from background_task.models import Task, CompletedTask
 from django.contrib.auth.views import PasswordResetView
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
+from django.db.models import Q
 from django.http import HttpResponseBadRequest, HttpResponseServerError, HttpResponse
 from django.shortcuts import render
 from django.utils import timezone
@@ -515,13 +516,28 @@ def add_concept(request):
 
 
 @api_view(http_method_names=['POST'])
+@permission_classes([permissions.IsAuthenticated])
 def import_cdb_concepts(request):
     user = request.user
-    if not user.is_superuser:
-        return HttpResponseBadRequest('User is not super user, and not allowed to download project outputs')
     cdb_id = request.data.get('cdb_id')
-    if cdb_id is None or len(ConceptDB.objects.filter(id=cdb_id)) == 0:
-        return HttpResponseBadRequest(f'No CDB found for cdb_id{cdb_id}')
+    if cdb_id is None or not ConceptDB.objects.filter(id=cdb_id).exists():
+        return HttpResponseBadRequest('No CDB found for the provided cdb_id')
+
+    # Staff/superusers may import for any CDB. Other authenticated users must be a
+    # project admin (member or group administrator) of at least one project that
+    # already references this CDB via cdb_search_filter, so project setup doesn't
+    # require elevation.
+    if not (user.is_superuser or user.is_staff):
+        authorised = ProjectAnnotateEntities.objects.filter(
+            Q(cdb_search_filter__id=cdb_id),
+            Q(members=user) | Q(group__administrators=user),
+        ).exists()
+        if not authorised:
+            return Response(
+                {'error': 'You do not have permission to import concepts for this CDB'},
+                status=403,
+            )
+
     import_concepts_from_cdb(cdb_id)
     return Response({'message': 'submitted cdb import job.'})
 

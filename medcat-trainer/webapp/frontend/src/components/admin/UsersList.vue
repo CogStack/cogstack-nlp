@@ -1,8 +1,5 @@
 <template>
   <div class="list-section">
-    <div class="section-header">
-      <h3>Users <span class="item-count">({{ users.length }})</span></h3>
-    </div>
     <div v-if="users.length > 0" class="table-container">
       <v-data-table
         :items="users"

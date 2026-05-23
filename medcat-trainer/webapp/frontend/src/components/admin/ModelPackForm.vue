@@ -6,9 +6,15 @@
         <span>Back</span>
       </button>
       <h3>{{ editing ? 'Edit Model Pack' : 'Add Model Pack' }}</h3>
+      <div class="form-header-actions">
+        <button type="submit" form="model-pack-form" class="btn btn-primary" :disabled="saving">
+          <font-awesome-icon v-if="saving" icon="spinner" spin></font-awesome-icon>
+          <span>{{ saving ? 'Saving...' : 'Save Model Pack' }}</span>
+        </button>
+      </div>
     </div>
     <div class="form-content">
-      <form @submit.prevent="handleSubmit" class="admin-form">
+      <form id="model-pack-form" @submit.prevent="handleSubmit" class="admin-form">
         <div class="form-sections-wrapper">
           <div class="form-section form-section-horizontal">
             <div class="form-group">
@@ -85,13 +91,6 @@
               <small v-if="validationErrors.vocab" class="form-text text-danger">{{ validationErrors.vocab }}</small>
             </div>
           </div>
-        </div>
-        <div class="form-actions">
-          <button type="button" class="btn btn-secondary" @click="$emit('close')">Cancel</button>
-          <button type="submit" class="btn btn-primary" :disabled="saving">
-            <font-awesome-icon v-if="saving" icon="spinner" spin></font-awesome-icon>
-            <span>{{ saving ? 'Saving...' : 'Save' }}</span>
-          </button>
         </div>
       </form>
     </div>
