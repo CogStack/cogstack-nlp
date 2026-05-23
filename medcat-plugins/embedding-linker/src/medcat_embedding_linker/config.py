@@ -74,6 +74,11 @@ class EmbeddingLinking(Linking):
     use_ner_link_candidates: bool = True
     """Link candidates are provided by some NER steps. This will flag if 
     you want to trust them or not."""
+    do_pre_inference: bool = True
+    """Whether to use the pre-inference step to filter candidates before
+    calculating similarities. This can speed up inference by only calculating
+    similarities for candidates that are likely to be correct based direct on word 
+    matching."""
     learning_rate: float = 1e-4
     """Learning rate for training the embedding linker. Only used if 
     the embedding linker is trainable."""

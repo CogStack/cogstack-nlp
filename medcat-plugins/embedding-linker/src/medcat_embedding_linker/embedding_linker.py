@@ -412,6 +412,8 @@ class Linker(AbstractEntityProvidingComponent):
         sorted_indices = torch.argsort(names_scores, dim=1, descending=True)
 
         for i, entity in enumerate(entities):
+            # if entity.detected_name in ["Magnesium", "magnesium", "MAGNESIUM", "MG", "mg"]:
+            #     print("INFERENCE: Entity '%s' has candidates: %s", entity.detected_name, entity.link_candidates)
             link_candidates = entity.link_candidates
             if self.config.components.linking.filter_before_disamb:
                 link_candidates = [
@@ -419,7 +421,7 @@ class Linker(AbstractEntityProvidingComponent):
                     for cui in link_candidates
                     if self.cnf_l.filters.check_filters(cui)
                 ]
-            if len(link_candidates) == 1:
+            if len(link_candidates) == 1 and not self.cnf_l.do_pre_inference:
                 best_idx = self._cui_to_idx[link_candidates[0]]
                 predicted_cui = link_candidates[0]
                 if best_idx < 0 or best_idx >= cui_scores.shape[1]:
@@ -483,6 +485,10 @@ class Linker(AbstractEntityProvidingComponent):
             if self._check_similarity(similarity):
                 entity.cui = predicted_cui
                 entity.context_similarity = similarity
+                # if entity.detected_name in ["Magnesium", "magnesium", "MAGNESIUM", "MG", "mg"]:
+                #     print("**************************INFERENCE****************************")
+                #     print(f"Entity '{entity.detected_name}' has candidates: {entity.link_candidates}")
+                #     print(f"Entity final prediction: {entity.cui}")
                 yield entity
 
     def _check_similarity(self, context_similarity: float) -> bool:
@@ -547,6 +553,8 @@ class Linker(AbstractEntityProvidingComponent):
         avoid full inference step. If we want to calculate similarities, or not use
         link candidates then just return the entities"""
         all_ents = doc.ner_ents
+        if not self.cnf_l.do_pre_inference:
+            return [], all_ents
         if not self.cnf_l.use_ner_link_candidates:
             to_generate_link_candidates = all_ents
         else:
@@ -604,7 +612,7 @@ class Linker(AbstractEntityProvidingComponent):
             for entities in self._batch_data(to_infer, self.cnf_l.linking_batch_size):
                 le.extend(list(self._inference(doc, entities)))
 
-        return filter_linked_annotations(doc, le)
+        return filter_linked_annotations(doc, le, True)
 
     @property
     def names_context_matrix(self):

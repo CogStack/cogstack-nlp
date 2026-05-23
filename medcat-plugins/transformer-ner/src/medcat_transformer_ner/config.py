@@ -3,9 +3,11 @@ from medcat.config import Ner
 
 class TransformerNER(Ner):
     """The config exclusively used for the transformer NER"""
-    language_model_name: str = "nlpie/distil-clinicalbert"
+    language_model_name: str = "michiyasunaga/BioLinkBERT-large"
     """Name/path of the language model. It must be downloadable from 
-    huggingface linked from an appropriate file directory"""
+    huggingface or linked from an appropriate file directory. NOTE:
+    use ner_component.load_transformers to load the model, changing this
+    does nothing."""
     training_batch_size: int = 32
     """The size of the batch to be used for training."""
     max_token_length: int = 512

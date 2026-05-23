@@ -9,7 +9,7 @@ from medcat.vocab import Vocab
 from medcat.cdb import CDB
 from medcat.config.config import ComponentConfig
 from medcat.storage.serialisables import AbstractManualSerialisable
-from transformers import AutoTokenizer, AutoModelForTokenClassification
+from transformers import AutoTokenizer, AutoModelForTokenClassification, get_constant_schedule_with_warmup
 from medcat_transformer_ner.config import TransformerNER
 import logging
 import os
@@ -26,8 +26,7 @@ class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSe
     name = 'transformer_ner'
 
     comp_name = "transformer_ner"
-    _MODEL_FOLDER_NAME = "trainable_embedding_model"
-    _MODEL_STATE_FILE_NAME = "model_state.pt"
+    _MODEL_FOLDER_NAME = "transformer_ner_model"
 
     def __init__(self, tokenizer: BaseTokenizer,
                  cdb: CDB) -> None:
@@ -48,15 +47,6 @@ class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSe
         self.load_transformers(self.cnf_ner.language_model_name)
         self.max_token_length = self.cnf_ner.max_token_length
         self.overlap_chunking = self.cnf_ner.overlap_chunking
-        # class_weights = torch.tensor([
-        #     0.2,   # O
-        #     1.0,   # B-ENT
-        #     1.0    # I-ENT
-        # ], device=self.device)
-        # self.loss_fct = torch.nn.CrossEntropyLoss(
-        #     weight=class_weights,
-        #     ignore_index=-100
-        # )
 
     @staticmethod
     def _resolve_model_source(path_or_model_name: Union[str, Path]) -> str:
@@ -85,7 +75,7 @@ class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSe
             
             self.transformer_tokenizer = AutoTokenizer.from_pretrained(
                 model_source,
-                clean_up_tokenization_spaces=False # might be an issue
+                clean_up_tokenization_spaces=False
             )
             self.model = AutoModelForTokenClassification.from_pretrained(
                 model_source,
@@ -101,7 +91,11 @@ class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSe
             self.model.to(self.device)
             self._loaded_model_source = model_source
             self._loaded_model_init_kwargs = model_init_kwargs
-            self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=2e-5, weight_decay=0.01)
+            self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=1e-5, weight_decay=0.001)
+            self.scheduler = get_constant_schedule_with_warmup(
+                self.optimizer,
+                num_warmup_steps=20,
+            )
             logger.debug(
                 "Loaded embedding model: %s (resolved source: %s) with kwargs=%s " \
 				"on device: %s",
@@ -153,7 +147,7 @@ class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSe
                 chunk_entities = []
                 for ent in entities:
                     ent_start = ent.base.start_char_index
-                    ent_end = ent.base.end_char_index
+                    ent_end = ent.base.end_char_index # make end exclusive
 
                     if ent_end > char_start and ent_start < char_end:
                         chunk_entities.append({
@@ -251,20 +245,35 @@ class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSe
                 labels=labels
             )
             
+            # outputs.logits  # for debugging
+            # predictions = outputs.logits.argmax(dim=-1).cpu().tolist()
+            # for inputs, predictions, labels in zip(input_ids.cpu().tolist(), predictions, labels.cpu().tolist()):
+            #     for input_id, pred_id, label_id in zip(inputs, predictions, labels):
+            #         token = self.transformer_tokenizer.convert_ids_to_tokens(input_id)
+            #         pred_label = self.id2label[pred_id] if pred_id in self.id2label else "N/A"
+            #         true_label = self.id2label[label_id] if label_id in self.id2label else "N/A"
+            #         print(f"[{token}, {pred_label}, {true_label}]")
+            # import sys
+            # sys.exit(0)
             loss = outputs.loss
+            
             loss.backward()
-
+            torch.nn.utils.clip_grad_norm_(
+                self.model.parameters(),
+                1.0
+            )
+            self.optimizer.step()
+            self.scheduler.step()
+            print(f"NER training step - loss: {loss.item()}")
             logger.debug("NER training step - loss: ", 
                          loss.item())
-
-            self.optimizer.step()
 
     def _decode_chunk(self, preds, offsets_chunk, chunk_char_start):
         """For inference only. Decode a single chunk of predictions into entity 
         spans, then merge them across chunks."""
         spans = []
         current = None
-
+        # print("Predictions: ", preds)
         for pred_id, (tok_start, tok_end) in zip(preds, offsets_chunk):
 
             # skip padding / special tokens
@@ -287,11 +296,23 @@ class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSe
             abs_start = chunk_char_start + tok_start
             abs_end = chunk_char_start + tok_end
 
-            # if prefix is "B", we start a new entity span, closing any 
-            # open one first. If prefix is "I", we continue the current 
-            # span if it's the same entity type, otherwise we treat it 
-            # as a new "B" span (this handles broken BIO sequences).
+            # If prefix is "B" and a span is already open, extend it instead of
+            # starting a new one. If no span is open, start a new one.
+            # If prefix is "I", we continue the current span if it's the same
+            # entity type, otherwise we treat it as a new "B" span.
             if prefix == "B":
+                # Treat consecutive B/I predictions as a single span.
+                # this needs to be in most likely - but the model isn't
+                # very discerning at the moment. so make a model that isn't all
+                # B at the start of entities and see if this logic is sound.
+                # if current is not None:
+                #     current["end"] = abs_end
+                # else:
+                #     current = {
+                #         "start": abs_start,
+                #         "end": abs_end,
+                #         "label": ent_type
+                #     }
                 if current is not None:
                     spans.append(current)
                 current = {
@@ -300,8 +321,8 @@ class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSe
                     "label": ent_type
                 }
 
-            # if prefix is "I", we continue the current span if it's 
-            # the same entity type, otherwise we treat it as a new "B" 
+            # if prefix is "I", we continue the current span if it's
+            # the same entity type, otherwise we treat it as a new "B"
             # span (this handles broken BIO sequences).
             # TODO: other methods of handling broken BIO?
             elif prefix == "I":
@@ -320,7 +341,7 @@ class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSe
 
         return spans
 
-    def _merge_spans(self, spans):
+    def _merge_spans(self, spans, text: str) -> list[dict]:
         """Merge spans across chunk boundaries. This is required before creating 
         entities in the doc, otherwise we might have duplicates for the same 
         entity that got split across chunks. Used in inference only."""
@@ -332,54 +353,136 @@ class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSe
 
         for span in spans[1:]:
             last = merged[-1]
+            gap_text = text[last["end"]:span["start"]]
+            gap_is_soft_separator = not gap_text.strip() or gap_text.strip() in {"/", "-"}
 
-            if span["label"] == last["label"] and span["start"] <= last["end"]:
+            if span["label"] == last["label"] and (
+                span["start"] <= last["end"] or gap_is_soft_separator
+            ):
                 last["end"] = max(last["end"], span["end"])
             else:
                 merged.append(span)
 
         return merged
+    
+    
+    # Build segments in two modes:
+    # 1) keep half separators inside tokens, 2) split on half separators.
+    def _build_segments(self, 
+                        split_chars: set[str], 
+                        detected_string: str, 
+                        detected_start: int, 
+                        detected_end: int) -> list[tuple[int, int]]:
+        segs = []
+        seg_start = None
+        for idx, ch in enumerate(detected_string):
+            if ch in split_chars:
+                if seg_start is not None:
+                    segs.append((detected_start + seg_start, detected_start + idx))
+                    seg_start = None
+            elif seg_start is None:
+                seg_start = idx
+        if seg_start is not None:
+            segs.append((detected_start + seg_start, detected_end))
+        return segs
 
-    def _char_span_to_token_span(self, 
-                                 doc: MutableDocument, 
-                                 start_char: int, 
-                                 end_char: int) -> Optional[tuple[int, int]]:
-        """Compatibility with SpaCy tokenization - convert character span to token span. 
-        Used in inference only."""
-        spacy_doc = doc._delegate
-        # Prefer strict/inner alignment first
-        span = spacy_doc.char_span(start_char, end_char, alignment_mode="contract")
-        # This very rarely fails
-        # If it does, we've got expand then some manual token offset checking as a final fallback.
-        if span is None:
-            span = spacy_doc.char_span(start_char, end_char, alignment_mode="expand")
-        if span is not None:
-            return span.start, span.end
-
-        # derive token indices from token character offsets.
+    def _char_span_to_token_span(
+        self,
+        doc: MutableDocument,
+        start_char: int,
+        end_char: int,
+    ) -> Optional[tuple[int, int]]:
         token_start = None
         token_end = None
-        for tok in spacy_doc:
-            tok_start = tok.idx
-            tok_end = tok.idx + len(tok)
 
-            if tok_end <= start_char:
+        for token in doc:
+            if token.end_char_index <= start_char:
                 continue
-            if tok_start >= end_char and token_end is not None:
+            if token.char_index >= end_char:
                 break
 
-            if token_start is None and tok_end > start_char:
-                token_start = tok.i
-            if tok_start < end_char:
-                token_end = tok.i + 1
+            if token_start is None:
+                token_start = token.index
+            token_end = token.index + 1
 
-        if token_start is None or token_end is None or token_start >= token_end:
+        if token_start is None or token_end is None:
             return None
-        return token_start, token_end
 
-    def _preprocess_tokens(self, tokens: list[MutableToken]) -> str:
-        tokens_raw = ' '.join(tkn.text.lower() for tkn in tokens).strip()
-        return tokens_raw.replace(' ', self.config.general.separator)
+        return token_start, token_end
+       
+    def _span_inference(self, spans: list[dict], 
+                        doc: MutableDocument, 
+                        text: str) -> list[MutableEntity]:
+        ner_ents = []
+        seen_token_spans = set()
+        logger.debug("Num detected spans: %s", len(spans))
+        # print(f"Num detected spans: {len(spans)}")
+        for span in spans:
+            detected_start = span["start"]
+            detected_end = span["end"]
+            detected_string = text[detected_start:detected_end]
+            if not detected_string:
+                continue
+            # print(f"Detected span: [{detected_start}, {detected_end}] {repr(detected_string)}")
+            logger.debug(
+                "Detected span: [%s, %s] %r",
+                detected_start,
+                detected_end,
+                detected_string,
+            )
+
+            token_span = self._char_span_to_token_span(doc, detected_start, detected_end)
+            if token_span is None:
+                continue
+
+            token_start, token_end = token_span
+            # Loop through all contiguous token subspans [i:j]
+            for i in range(token_start, token_end):
+                for j in range(i + 1, token_end + 1):
+                    span_key = (i, j)
+                    if span_key in seen_token_spans:
+                        continue
+                    
+                    sub_tokens = list(doc[i:j])
+                    # there might be more cleaning required here
+                    detected_name = self.config.general.separator.join(
+                        token.text.lower() for token in sub_tokens
+                    )
+                    ent = None
+                    if detected_name in self.cdb.name2info:
+                        ent = annotate_name(
+                            self.tokenizer, 
+                            detected_name, 
+                            sub_tokens,
+                            doc, 
+                            self.cdb, 
+                            len(ner_ents), 
+                            detected_name
+                        )
+                    elif not self.cnf_ner.require_link_candidates:
+                        ent = self.tokenizer.create_entity(
+                            doc,
+                            i,
+                            j,
+                            detected_name,
+                        )
+                    
+                    if ent:
+                        # print(
+                        #     f"Created entity: raw_text={repr(ent.text)}, detected_name={repr(ent.detected_name)}, tokens=[{i}, {j}]"
+                        # )
+                        logger.debug(
+                            "Created entity: %r tokens [%s, %s]",
+                            ent.text,
+                            i,
+                            j,
+                            ent.base.start_char_index,
+                            ent.base.end_char_index,
+                        )
+                        ner_ents.append(ent)
+                        seen_token_spans.add(span_key)
+        
+        return ner_ents
 
     def predict_entities(self, doc: MutableDocument,
                          ents: list[MutableEntity] | None = None
@@ -400,19 +503,28 @@ class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSe
                 The NER'ed entities.
         """
         # Keep offset generation in the same coordinate space as spaCy char_span.
-        text = doc._delegate.text
+        text = doc.text
         input_ids, attention_masks, offset_mappings, chunk_char_starts, _ = self._chunk_and_encode(text)
 
         self.model.eval()
         with torch.no_grad():
             input_ids = input_ids.to(self.device)
             attention_masks = attention_masks.to(self.device)
-
+            
             outputs = self.model(
                 input_ids=input_ids,
                 attention_mask=attention_masks
             )
             predictions = outputs.logits.argmax(dim=-1).cpu().tolist()
+            
+        # debugging
+        # for inputs, preds in zip(input_ids.cpu().tolist(), predictions):
+        #     for input_id, pred_id in zip(inputs, preds):
+        #         token = self.transformer_tokenizer.convert_ids_to_tokens(input_id)
+        #         pred_label = self.id2label[pred_id] if pred_id in self.id2label else "N/A"
+        #         print(f"[{token}, {pred_label}]")
+        # import sys
+        # sys.exit(0)
             
         all_spans = []
         for preds, offsets_chunk, char_start in zip(
@@ -422,79 +534,9 @@ class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSe
         ):
             spans = self._decode_chunk(preds, offsets_chunk, char_start)
             all_spans.extend(spans)
-        final_spans = self._merge_spans(all_spans)
+        final_spans = self._merge_spans(all_spans, text)
         
-        ner_ents = []
-        seen_token_spans = set()
-        for span in final_spans:
-            token_char_end = max(span["start"], span["end"] - 1)
-            tokens = doc.get_tokens(span["start"], token_char_end)
-            if not tokens:
-                continue
-
-            # I'm not sure if this is required or beneficial.
-            # Essentially in the case where you don't require link candidates
-            # We only need the detected name, no candidates. So the span that is detected
-            # by the model can potentially be linked
-            if not self.cnf_ner.require_link_candidates:
-                token_start = tokens[0].base.index
-                token_end = tokens[-1].base.index + 1
-                span_key = (token_start, token_end)
-                if span_key not in seen_token_spans:
-                    ent = self.tokenizer.create_entity(
-                        doc,
-                        token_start,
-                        token_end,
-                        text[span["start"]:span["end"]]
-                    )
-                    if ent:
-                        ner_ents.append(ent)
-                        seen_token_spans.add(span_key)
-
-            for i in range(len(tokens)):
-                for j in range(i + 1, len(tokens) + 1):
-                    sub_tokens = tokens[i:j]
-                    preprocessed_sub_name = self._preprocess_tokens(sub_tokens)
-                    if preprocessed_sub_name not in self.cdb.name2info:
-                        continue
-
-                    token_start = sub_tokens[0].base.index
-                    token_end = sub_tokens[-1].base.index + 1
-                    span_key = (token_start, token_end)
-                    if span_key in seen_token_spans:
-                        continue
-
-                    ent = None
-                    if not self.cnf_ner.require_link_candidates:
-                        detected_name = text[
-                            sub_tokens[0].base.char_index:
-                            sub_tokens[-1].base.char_index + len(sub_tokens[-1].text)
-                        ]
-                        ent = self.tokenizer.create_entity(
-                            doc,
-                            token_start,
-                            token_end,
-                            detected_name
-                        )
-                    else:
-                        ent = annotate_name(
-                            self.tokenizer,
-                            preprocessed_sub_name,
-                            sub_tokens,
-                            doc,
-                            self.cdb,
-                            len(ner_ents),
-                            'concept'
-                        )
-
-                    if ent:
-                        detected_name = text[
-                            sub_tokens[0].base.char_index:
-                            sub_tokens[-1].base.char_index + len(sub_tokens[-1].text)
-                        ]
-                        ner_ents.append(ent)
-                        seen_token_spans.add(span_key)
-        return ner_ents
+        return self._span_inference(final_spans, doc, text)
 
     @classmethod
     def create_new_component(
@@ -506,12 +548,9 @@ class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSe
         os.makedirs(folder_path, exist_ok=True)
         model_folder = os.path.join(folder_path, self._MODEL_FOLDER_NAME)
         os.makedirs(model_folder, exist_ok=True)
-
-        torch.save(
-            # TODO: save gracefully when NER model done
-            self.model.state_dict(),
-            os.path.join(model_folder, self._MODEL_STATE_FILE_NAME),
-        )
+        
+        # Save in HuggingFace format for forward compatibility.
+        self.model.save_pretrained(model_folder)
 
     @classmethod
     def deserialise_from(
@@ -520,14 +559,15 @@ class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSe
         cdb = init_kwargs["cdb"]
         tokenizer = init_kwargs["tokenizer"]
         ner = cls(tokenizer, cdb)
-
-        model_state_path = os.path.join(
-            folder_path, cls._MODEL_FOLDER_NAME, cls._MODEL_STATE_FILE_NAME
+        model_folder = os.path.join(
+            folder_path, cls._MODEL_FOLDER_NAME
         )
-
-        # TODO: handle this gracefully when NER model done
-        if os.path.exists(model_state_path):
-            state_dict = torch.load(model_state_path, map_location=ner.device)
-            ner.model.load_state_dict(state_dict)
+        config_path = os.path.join(model_folder, "config.json")
+        if os.path.exists(config_path):
+            ner.model = AutoModelForTokenClassification.from_pretrained(model_folder)
+            ner.optimizer = torch.optim.AdamW(ner.model.parameters(), lr=1e-5, weight_decay=0.001)
+            ner.scheduler = get_constant_schedule_with_warmup(ner.optimizer, num_warmup_steps=20)
+        ner.model.to(ner.device)
+        ner.model.eval()
 
         return ner

@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Any, Iterator, Optional, Union
 from medcat.storage.serialisables import AbstractSerialisable
 from torch import Tensor, nn
+from torchcrf import CRF
 from transformers import AutoModel, AutoTokenizer
 from tqdm import tqdm
 import json
@@ -50,27 +51,7 @@ class ModelForBinaryNER(nn.Module):
     def device(self) -> torch.device:
         return next(self.parameters()).device
 
-    @staticmethod
-    def masked_mean_pooling(token_embeddings: Tensor, mask: Tensor) -> Tensor:
-        mask = mask.unsqueeze(-1).float()
-        summed = torch.sum(token_embeddings * mask, dim=1)
-        counts = torch.clamp(mask.sum(dim=1), min=1e-9)
-        return summed / counts
-
     def forward(self, **inputs) -> Tensor:
-        # Don't pass the mention_mask to the language model if it does exist
-        mention_mask = inputs.pop("mention_mask", None)
-        model_output = self.language_model(**inputs)
-
-        pooling_mask = (
-            mention_mask if mention_mask is not None else inputs["attention_mask"]
-        )
-        sentence_embeddings = self.masked_mean_pooling(
-            model_output.last_hidden_state, pooling_mask
-        )
-
-        # TODO: logic required
-
         pass
 
     def _freeze_all_parameters(self) -> None:
