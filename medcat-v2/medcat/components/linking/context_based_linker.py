@@ -110,10 +110,11 @@ class Linker(AbstractEntityProvidingComponent):
     def _train_on_doc(self, doc: MutableDocument,
                       ner_ents: list[MutableEntity]
                       ) -> Iterator[MutableEntity]:
-        # Run training
+        # Run training — share cache across all entities in the document
+        per_doc_valid_token_cache = PerDocumentTokenCache()
         for entity in ner_ents:
             yield from self._process_entity_train(
-                doc, entity, PerDocumentTokenCache())
+                doc, entity, per_doc_valid_token_cache)
 
     def _process_entity_nt_w_name(
             self, doc: MutableDocument,
@@ -209,7 +210,9 @@ class Linker(AbstractEntityProvidingComponent):
             raise ValueError("Need to have NER'ed entities provided")
 
         if cnf_l.train:
-            linked_entities = self._train_on_doc(doc, ents)
+            raise ValueError(
+                "Use the new train_unsupervised method for unsuperivsed training "
+                "instead of a regular inference call with a changed config entry.")
         else:
             linked_entities = self._inference(doc, ents)
         # evaluating generator here because the `all_ents` list gets
@@ -225,6 +228,11 @@ class Linker(AbstractEntityProvidingComponent):
 
         return filter_linked_annotations(
             doc, le, self.config.general.show_nested_entities)
+
+    # TrainableComponent
+
+    def train_unsupervised(self, doc: MutableDocument) -> None:
+        list(self._train_on_doc(doc, doc.ner_ents))
 
     def train(self, cui: str,
               entity: MutableEntity,

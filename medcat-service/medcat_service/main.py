@@ -1,12 +1,13 @@
+import medcat_service.utils.telemetry  # noqa , import to initialize telemetry before any other imports
+
 import logging
 import logging.config
 
-import gradio as gr
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from medcat_service.config import Settings
-from medcat_service.demo.gradio_demo import io
+from medcat_service.demo.gradio_demo import mount_gradio_app
 from medcat_service.dependencies import get_settings
 from medcat_service.log_config import log_config
 from medcat_service.routers import admin, health, process
@@ -35,8 +36,6 @@ app.include_router(admin.router)
 app.include_router(health.router)
 app.include_router(process.router)
 
-gr.mount_gradio_app(app, io, path="/demo")
-
 
 def configure_observability(settings: Settings, app: FastAPI):
     if settings.observability.enable_metrics:
@@ -48,6 +47,9 @@ def configure_observability(settings: Settings, app: FastAPI):
 
 
 configure_observability(settings, app)
+
+if settings.enable_demo_ui:
+    mount_gradio_app(app, path=settings.demo_ui_path)
 
 
 @app.exception_handler(HealthCheckFailedException)

@@ -235,6 +235,27 @@ class DeIDModelWorks(unittest.TestCase):
         for anon_text in processed:
             self.assert_deid_redact(anon_text)
 
+    def test_model_works_deid_text_with_entities(self):
+        anon_text, entities = self.deid_model.deid_text_with_entities(input_text)
+        self.assert_deid_annotations(anon_text)
+        self.assertIsInstance(anon_text, str)
+        self.assertIsInstance(entities, dict)
+        self.assertIn('entities', entities)
+        # ensure at least one entity was detected and has offsets
+        self.assertTrue(len(entities['entities']) > 0)
+        first_ent = next(iter(entities['entities'].values()))
+        self.assertIn('start', first_ent)
+        self.assertIn('end', first_ent)
+
+    def test_model_works_deid_text_with_entities_redact(self):
+        anon_text, entities = self.deid_model.deid_text_with_entities(
+            input_text, redact=True)
+        self.assert_deid_redact(anon_text)
+        self.assertIsInstance(anon_text, str)
+        self.assertIsInstance(entities, dict)
+        self.assertIn('entities', entities)
+        self.assertTrue(len(entities['entities']) > 0)
+
     # @timeout_decorator.timeout(3 * 60)  # 3 minutes max
     @unittest.skip("Deid Multiprocess is broken. Exits the process, no errors shown")
     def test_model_can_multiprocess_no_redact(self):

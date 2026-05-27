@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 from medcat.cat import CAT
@@ -26,3 +26,37 @@ class ModelInfo(BaseModel):
             model_card=mc,
             base_model=bm,
         )
+
+    @field_validator('model_card', mode='before')
+    @classmethod
+    def make_permissive(cls, v: dict) -> dict:
+        """Accept dict even if it's missing new optional fields"""
+        if isinstance(v, dict):
+            defaults = {
+                'Pipeline Description': {"core": {}, "addons": []},
+                'Required Plugins': [],
+                "Location": "N/A",
+                "Basic CDB Stats": {
+                    "Unsupervised training history": [],
+                    "Supervised training history": [],
+                },
+                "Source Ontology": ["unknown"],
+            }
+            out_dict = {**defaults, **v}  # v overwrites defaults
+            cls._check_key_value_recursively(out_dict, defaults)
+            return out_dict
+        return v
+
+    @classmethod
+    def _check_key_value_recursively(
+            cls, out_dict: dict, defaults: dict) -> None:
+        for key, def_val in defaults.items():
+            # NOTE: this should be mostly for nested stuff
+            if key not in out_dict:
+                out_dict[key] = def_val
+                continue
+            cur_val = out_dict[key]
+            if cur_val is None or type(cur_val) is not type(def_val):
+                out_dict[key] = def_val
+            elif isinstance(def_val, dict):
+                cls._check_key_value_recursively(cur_val, def_val)

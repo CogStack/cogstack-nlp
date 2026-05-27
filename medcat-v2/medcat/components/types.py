@@ -155,14 +155,29 @@ class AbstractEntityProvidingComponent(AbstractCoreComponent):
 
 
 @runtime_checkable
-class HashableComponet(Protocol):
+class HashableComponent(Protocol):
 
     def get_hash(self) -> str:
         pass
 
 
+# keep typo'd name!
+HashableComponet = HashableComponent
+
+
 @runtime_checkable
 class TrainableComponent(Protocol):
+
+    def train_unsupervised(self, doc: MutableDocument) -> None:
+        """Train unsupervised based on the given document.
+
+        If this component doesn't support unsupervised training,
+        this method can be a no-op.
+
+        Args:
+            doc (MutableDocument): The document to train on.
+        """
+        pass
 
     def train(self, cui: str,
               entity: MutableEntity,
@@ -210,9 +225,10 @@ _DEFAULT_LINKING: dict[str, tuple[str, str]] = {
     "medcat2_two_step_linker": (
         "medcat.components.linking.two_step_context_based_linker",
         "TwoStepLinker.create_new_component"),
-    "medcat2_embedding_linker": (
-        "medcat.components.linking.embedding_linker",
-        "Linker.create_new_component"),
+    # primary name only
+    "primary_name_only_linker": (
+        "medcat.components.linking.only_primary_name_linker",
+        "PrimNameLinker.create_new_component"),
 }
 
 
@@ -242,6 +258,36 @@ def register_core_component(comp_type: CoreComponentType,
         comp_clazz (ComplClass): The component creator.
     """
     _CORE_REGISTRIES[comp_type].register(comp_name, comp_clazz)
+
+
+def lazy_register_core_component(
+        comp_type: CoreComponentType,
+        comp_name: str,
+        comp_module: str,
+        comp_cls_and_init: str) -> None:
+    """Register a new core component in a lazy way.
+
+    This avoid importing the registered component and its
+    transitive imports unless the component is actually used.
+
+    For instance if your NER providing class `MySpecialNER`
+    is in the module `my_addon.my_module` and uses the class method
+    `create_new_component` to initialise (thus the complete path is
+    `my_addon.my_module.MySpecialNER.create_new_component`) we
+    would expect the following arguments:
+        comp_type=CoreComponentType.ner,
+        comp_name="my_special_ner",
+        comp_module="my_addon.my_module",
+        comp_cls_and_init="MySpecialNER.create_new_component"
+
+    Args:
+        comp_type (CoreComponentType): The component type.
+        comp_name (str): The component name.
+        comp_module (str): The path to the component module.
+        comp_cls_and_init (str): The component class and init method.
+    """
+    _CORE_REGISTRIES[comp_type].register_lazy(
+        comp_name, comp_module, comp_cls_and_init)
 
 
 def get_core_registry(comp_type: CoreComponentType) -> Registry[CoreComponent]:

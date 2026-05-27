@@ -22,4 +22,5 @@
 'pydantic>=2.0.0,<3.0' # avoid next major release
 "humanfriendly~=10.0"  # for human readable file / RAM sizes
 "peft>=0.8.2"
+"setuptools<82" # NOTE: 82 removes pkg_resources
 "setuptools-scm<9"  # NOTE: 9.1 has some compatibility issues due to our old setup.py based install

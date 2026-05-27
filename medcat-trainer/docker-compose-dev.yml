@@ -24,6 +24,17 @@ services:
       - ./envs/env
     environment:
       - MCT_VERSION=latest
+      - MCT_DEV_LIVERELOAD=1
+      - REMOTE_MODEL_SERVICE_TYPE=medcat
+      # OIDC Settings
+      - USE_OIDC=0
+      - KEYCLOAK_URL=http://keycloak.cogstack.localhost
+      - KEYCLOAK_REALM=cogstack-realm
+      - KEYCLOAK_FRONTEND_CLIENT_ID=cogstack-medcattrainer-frontend
+      - KEYCLOAK_LOGOUT_REDIRECT_URI=http://launch.cogstack.localhost/
+      - KEYCLOAK_INTERNAL_SERVICE_URL=http://keycloak:8080
+      - KEYCLOAK_BACKEND_CLIENT_ID=cogstack-medcattrainer-backend
+      - KEYCLOAK_BACKEND_CLIENT_SECRET=***
     command: /usr/bin/supervisord -c /etc/supervisord.conf
 
   nginx:
@@ -73,5 +84,5 @@ volumes:
 
 networks:
   gateway-auth_gateway-net:
+    name: ${MCT_GATEWAY_NETWORK_NAME:-gateway-auth_gateway-net}
     external: true
-

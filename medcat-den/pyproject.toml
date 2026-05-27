@@ -41,6 +41,7 @@ dev = [
     "ruff",
     "mypy",
     "diskcache-stubs",
+    "pooch",
 ]
 
 [project.urls]
@@ -53,6 +54,7 @@ root = ".."
 tag_regex = "^medcat-den/v(?P<version>[0-9]+(?:\\.[0-9]+)*)$"
 version_scheme = "guess-next-dev"
 local_scheme = "no-local-version"
+git_describe_command = "git describe --dirty --tags --long --match 'medcat-den/v*'"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
@@ -62,3 +64,7 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 "medcat_den" = ["py.typed"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
+

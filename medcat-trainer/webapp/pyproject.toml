@@ -1,0 +1,47 @@
+[project]
+name = "medcattrainer-webapp"
+version = "1.0.0"
+description = "MedCATtrainer Django web application"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+dependencies = [
+    "scipy>=1.7.0,<1.14; python_version < '3.13'", # pin for py<3.13 so macOS arm64 gets pre-built wheels
+    "uwsgi>=2.0,<3",
+    "Django>=5.2,<6",
+    "django-filter>=25.2",
+    "django-polymorphic>=4.0,<5",                  # 4.x uses importlib.metadata, no pkg_resources
+    "djangorestframework>=3.16,<4",
+    "django-background-tasks-updated>=1.2",
+    "openpyxl>=3.1",
+    "medcat[meta-cat,spacy,rel-cat,deid,dict-ner]>=2.7.0",
+    "psycopg[binary,pool]>=3.2",
+    "cryptography>=45",
+    "drf-oidc-auth>=3.0",
+    "django-health-check>=3.22",
+    "requests>=2.31",
+    "opentelemetry-api>=1.0.0,<2",
+    "opentelemetry-semantic-conventions>=0.61b0",
+]
+
+[project.optional-dependencies]
+observability = [
+    "opentelemetry-sdk>=1.40.0",
+    "opentelemetry-distro[otlp]>=0.61b0",
+    "opentelemetry-resource-detector-containerid==0.61b0",
+    "opentelemetry-instrumentation-logging>=0.61b0",
+    "opentelemetry-instrumentation-sqlite3>=0.61b0",
+    "opentelemetry-instrumentation-threading>=0.61b0",
+    "opentelemetry-instrumentation-django>=0.61b0",
+    "opentelemetry-instrumentation-psycopg>=0.61b0",
+    "opentelemetry-instrumentation-requests>=0.61b0",
+    "opentelemetry-instrumentation-system-metrics>=0.61b0",
+]
+
+[tool.uv.sources]
+# Only pull torch (and its direct deps) from PyTorch; everything else from PyPI.
+torch = { index = "pytorch-cpu" }
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu/"
+explicit = true

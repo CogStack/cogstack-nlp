@@ -4,8 +4,10 @@ import pandas as pd
 import json
 from typing import Optional, Any
 from collections import Counter
+from contextlib import contextmanager
 
 from medcat import cat
+from medcat.data.mctexport import count_all_annotations, iter_anns
 from medcat.data.model_card import ModelCard
 from medcat.vocab import Vocab
 from medcat.config import Config
@@ -18,8 +20,13 @@ from medcat.utils.cdb_state import captured_state_cdb
 from medcat.components.addons.meta_cat import MetaCATAddon
 from medcat.utils.defaults import AVOID_LEGACY_CONVERSION_ENVIRON
 from medcat.utils.defaults import LegacyConversionDisabledError
+from medcat.utils.config_utils import temp_changed_config
+from medcat.plugins.registry import create_empty_reg_comps, plugin_registry, PluginInfo
+from medcat.components.types import CoreComponentType, AbstractCoreComponent
+from medcat.components.addons.addons import AddonComponent
 
 import unittest
+from unittest.mock import MagicMock
 import tempfile
 import pickle
 import shutil
@@ -221,6 +228,60 @@ class InferenceFromLoadedTests(TrainedModelTests):
         for nr, ent in enumerate(ents.values()):
             with self.subTest(f"{nr}"):
                 ConvertedFunctionalityTests.assert_has_ent(ent)
+
+    @classmethod
+    @contextmanager
+    def _faster_spacy_inference(cls):
+        with temp_changed_config(
+            cls.model.config.general.nlp,
+            "faster_spacy_tokenization",
+            True
+        ):
+            with temp_changed_config(
+                cls.model.config.general.nlp,
+                "modelname",
+                "en_core_web_md"
+            ):
+                cls.model._recreate_pipe()
+                yield
+        cls.model._recreate_pipe()
+
+    def _is_spacy_model(self):
+        if self.model.config.general.nlp.provider != "spacy":
+            raise unittest.SkipTest("Only applicable for spacy models")
+
+    def test_default_spacy_runs_pipe(self):
+        self._is_spacy_model()
+        self.assertFalse(self.model.pipe._tokenizer._avoid_pipe)
+
+    def test_faster_spacy_inference_is_set(self):
+        self._is_spacy_model()
+        with self._faster_spacy_inference():
+            self.assertTrue(self.model.pipe._tokenizer._avoid_pipe)
+
+    def test_faster_spacy_inference_works(self):
+        self._is_spacy_model()
+        with self._faster_spacy_inference():
+            ents = self.model.get_entities(
+                ConvertedFunctionalityTests.TEXT)['entities']
+            self.assertTrue(ents)
+            for nr, ent in enumerate(ents.values()):
+                with self.subTest(f"{nr}"):
+                    ConvertedFunctionalityTests.assert_has_ent(ent)
+
+    def test_faster_spacy_inference_is_used(self):
+        self._is_spacy_model()
+        with self._faster_spacy_inference():
+            with unittest.mock.patch.object(
+                    self.model.pipe._tokenizer._nlp,
+                    '__call__') as dunder_call_mock:
+                with unittest.mock.patch.object(
+                        self.model.pipe._tokenizer._nlp,
+                        'make_doc') as make_doc_mock:
+                    self.model.get_entities(
+                        ConvertedFunctionalityTests.TEXT)
+                    dunder_call_mock.assert_not_called()
+                    make_doc_mock.assert_called()
 
     def test_entities_in_correct_order(self):
         # NOTE: the issue wouldn't show up with smaller amount of text
@@ -516,7 +577,7 @@ class CATSupTrainingTests(CATUnsupTrainingTests):
         os.path.dirname(__file__), 'resources', 'supervised_mct_export.json'
     )
     # NOTE: should remain consistent unless we change the model or data
-    EXPECTED_HASH = "7bfe01e8e36eb07d"
+    EXPECTED_HASH = "9c299628c9e6c220"
 
     @classmethod
     def _get_cui_counts(cls) -> dict[str, int]:
@@ -559,6 +620,29 @@ class CATSupTrainingTests(CATUnsupTrainingTests):
             self.assertEqual(self.cat.cdb.get_name2count_train(), {})
             self.assertEqual(self.cat.config.meta.unsup_trained, [])
             self.assertEqual(self.cat.config.meta.sup_trained, [])
+
+    def test_training_happens_in_correct_order(self):
+        with captured_state_cdb(self.cat.cdb):
+            with unittest.mock.patch.object(
+                    self.cat.trainer, "add_and_train_concept") as mock_add_and_train_concept:
+                self._perform_training()
+        mct_export = self._get_data()
+        called_ents = [
+            args.kwargs['mut_entity'] for args in mock_add_and_train_concept.call_args_list
+        ]
+        self.assertEqual(len(called_ents), count_all_annotations(mct_export))
+        for (_, _, ann), ent in zip(iter_anns(mct_export), called_ents):
+            with self.subTest(f"Ann: {ann} vs Ent: {ent}"):
+                self.assertEqual(ann['start'], ent.base.start_char_index)
+                self.assertEqual(ann['end'], ent.base.end_char_index)
+
+    def test_training_has_name_counts(self):
+        self.assertTrue(self.cat.cdb.get_cui2count_train())
+
+    def test_training_has_same_cui_and_name_counts(self):
+        cc = sum(self.cat.cdb.get_cui2count_train().values())
+        cn = sum(self.cat.cdb.get_name2count_train().values())
+        self.assertEqual(cc, cn)
 
 
 class CATWithDictNERSupTrainingTests(CATSupTrainingTests):
@@ -1027,6 +1111,7 @@ class CATSaveTests(CATIncludingTests):
         cls.temp_folder = tempfile.TemporaryDirectory()
         cls.saved_path = cls.cat.save_model_pack(
             cls.temp_folder.name, change_description=cls.DESCRIPTION)
+        cls.model_card_path = os.path.join(cls.saved_path, "model_card.json")
 
     @classmethod
     def tearDownClass(cls):
@@ -1038,6 +1123,29 @@ class CATSaveTests(CATIncludingTests):
 
     def test_model_adds_description(self):
         self.assertIn(self.DESCRIPTION, self.cat.config.meta.description)
+
+    def test_saved_has_model_card(self):
+        self.assertTrue(os.path.exists(self.model_card_path))
+
+    def test_model_card_is_json(self):
+        with open(self.model_card_path) as f:
+            mc = json.load(f)
+        self.assertIsInstance(mc, dict)
+
+    def test_model_card_has_pipe_description(self):
+        with open(self.model_card_path) as f:
+            mc = json.load(f)
+        self.assertIn('Pipeline Description', mc)
+        core_descr = mc["Pipeline Description"]["core"]
+        for cct in CoreComponentType:
+            with self.subTest(f"Core component {cct.name}"):
+                self.assertIn(cct.name, core_descr)
+
+    def test_model_card_has_empty_required_plugins_setion(self):
+        with open(self.model_card_path) as f:
+            mc = json.load(f)
+        self.assertIn('Required Plugins', mc)
+        self.assertFalse(mc['Required Plugins'])
 
 
 class BatchingTests(unittest.TestCase):
@@ -1149,3 +1257,230 @@ class BatchingTests(unittest.TestCase):
         # has same number of texts in each batch -> doc based
         self.assertEqual(max(batch_lens), min(batch_lens))
         self.assertEqual(max(batch_lens), exp_batches)
+
+class TestModelCardEnhancements(unittest.TestCase):
+
+    def setUp(self):
+        # Clear the plugin registry before each test
+        plugin_registry._plugins = {}
+
+        self.mock_config = MagicMock(spec=Config())
+        self.mock_config.general.nlp.provider = 'regex'
+        self.mock_config.meta.hash = "testhash123"
+        self.mock_config.meta.last_saved.isoformat.return_value = "2025-12-19T12:00:00"
+        self.mock_config.meta.history = ["testhash123"]
+        self.mock_config.meta.description = "Test description"
+        self.mock_config.meta.ontology = ["SNOMEDCT"]
+        self.mock_config.meta.location = "/path/to/model"
+        self.mock_config.meta.medcat_version = "1.0.0"
+        # these will be used in model card so need values
+        self.mock_config.components.ner.min_name_len = 3
+        self.mock_config.components.ner.upper_case_limit_len = 3
+        self.mock_config.components.linking.similarity_threshold = 0.3
+        self.mock_config.components.linking.filters.cuis = {}
+        self.mock_config.general.spell_check = True
+        self.mock_config.general.spell_check_len_limit = 3
+
+        self.mock_cdb = MagicMock(spec=CDB)
+        self.mock_cdb.get_basic_info.return_value = {"Number of concepts": 100}
+
+        self.mock_pipeline = MagicMock(spec=cat.Pipeline)
+        self.mock_pipeline.iter_all_components.return_value = [] # Default empty
+
+        self.mock_cat = cat.CAT(self.mock_cdb, config=self.mock_config)
+        self.mock_cat._pipeline = self.mock_pipeline # Override with our mock pipeline
+
+    def test_describe_pipeline_core_components(self):
+        mock_core_comp = MagicMock(spec=AbstractCoreComponent)
+        mock_core_comp.is_core.return_value = True
+        mock_core_comp.get_type.return_value = CoreComponentType.ner
+        mock_core_comp.name = "my_ner_component"
+        mock_core_comp.full_name = "core:ner:my_ner_component"
+
+        self.mock_pipeline.iter_all_components.return_value = [mock_core_comp]
+
+        pipeline_desc = self.mock_cat.describe_pipeline()
+
+        self.assertIn(CoreComponentType.ner.name, pipeline_desc["core"])
+        self.assertEqual(pipeline_desc["core"][CoreComponentType.ner.name]["name"], "my_ner_component")
+        self.assertEqual(pipeline_desc["core"][CoreComponentType.ner.name]["provider"], "medcat")
+
+    def test_describe_pipeline_addons(self):
+        mock_addon_comp = MagicMock(spec=AddonComponent)
+        mock_addon_comp.is_core.return_value = False
+        mock_addon_comp.name = "my_addon_component"
+        mock_addon_comp.full_name = "addon:my_addon_component"
+
+        self.mock_pipeline.iter_all_components.return_value = [mock_addon_comp]
+
+        pipeline_desc = self.mock_cat.describe_pipeline()
+
+        self.assertEqual(len(pipeline_desc["addons"]), 1)
+        self.assertEqual(pipeline_desc["addons"][0]["name"], "my_addon_component")
+        self.assertEqual(pipeline_desc["addons"][0]["provider"], "medcat")
+
+    def test_get_required_plugins(self):
+        # Mock a plugin in the registry
+        mock_plugin_info = PluginInfo(
+            name="MockPlugin",
+            version="1.0",
+            author="Mock Author",
+            url="http://mock.com",
+            registered_components={
+                "core": {CoreComponentType.ner.name: [("my_ner_component", "MockNER.create")]},
+                "addons": [("my_addon_component", "MockAddon.create")]
+            }
+        )
+        plugin_registry.register_plugin(mock_plugin_info)
+
+        # Mock pipeline components that this plugin provides
+        mock_core_comp = MagicMock(spec=AbstractCoreComponent)
+        mock_core_comp.is_core.return_value = True
+        mock_core_comp.get_type.return_value = CoreComponentType.ner
+        mock_core_comp.name = "my_ner_component"
+        mock_core_comp.full_name = "core:ner:my_ner_component"
+
+        mock_addon_comp = MagicMock(spec=AddonComponent)
+        mock_addon_comp.is_core.return_value = False
+        mock_addon_comp.name = "my_addon_component"
+        mock_addon_comp.full_name = "addon:my_addon_component"
+
+        self.mock_pipeline.iter_all_components.return_value = [mock_core_comp, mock_addon_comp]
+
+        required_plugins = self.mock_cat.get_required_plugins()
+
+        self.assertEqual(len(required_plugins), 1)
+        self.assertEqual(required_plugins[0]["name"], "MockPlugin")
+        self.assertIn(("ner", "my_ner_component"), required_plugins[0]["provides"])
+        self.assertIn(("addon", "my_addon_component"), required_plugins[0]["provides"])
+        self.assertEqual(required_plugins[0]["author"], "Mock Author")
+        self.assertEqual(required_plugins[0]["url"], "http://mock.com")
+
+    @unittest.mock.patch('medcat.cat.CAT.describe_pipeline')
+    @unittest.mock.patch('medcat.cat.CAT.get_required_plugins')
+    def test_get_model_card_with_pipeline_and_plugins(self, mock_get_required_plugins, mock_describe_pipeline):
+        mock_describe_pipeline.return_value = {"core": {CoreComponentType.ner.name: {"name": "test_ner", "provider": "medcat"}}, "addons": []}
+        mock_get_required_plugins.return_value = [{"name": "TestPlugin", "provides": [("ner", "test_ner")], "author": "Test Author", "url": "http://test.com"}]
+
+        model_card = self.mock_cat.get_model_card(as_dict=True)
+
+        self.assertIn("Pipeline Description", model_card)
+        self.assertEqual(model_card["Pipeline Description"], {"core": {CoreComponentType.ner.name: {"name": "test_ner", "provider": "medcat"}}, "addons": []})
+        self.assertIn("Required Plugins", model_card)
+        self.assertEqual(model_card["Required Plugins"], [{"name": "TestPlugin", "provides": [("ner", "test_ner")], "author": "Test Author", "url": "http://test.com"}])
+
+    @unittest.mock.patch('medcat.cat.CAT.describe_pipeline')
+    @unittest.mock.patch('medcat.cat.CAT.get_required_plugins')
+    def test_model_card_saved_and_loaded_from_disk(self, mock_get_required_plugins, mock_describe_pipeline):
+        # Setup mocks for content to be in the model card
+        mock_describe_pipeline.return_value = {"core": {CoreComponentType.ner.name: {"name": "test_ner_disk", "provider": "medcat"}}, "addons": []}
+        mock_get_required_plugins.return_value = [{"name": "TestPluginDisk", "provides": [("ner", "test_ner_disk")], "author": "Test Author Disk", "url": "http://test-disk.com"}]
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            model_card_path = os.path.join(temp_dir, "model_card.json")
+            # Save the model pack
+            self.mock_cat.save_model_card(model_card_path)
+
+            # Load the model card from disk
+            loaded_model_card = cat.CAT.load_model_card_off_disk(temp_dir, as_dict=True)
+
+            self.assertIn("Pipeline Description", loaded_model_card)
+            self.assertEqual(loaded_model_card["Pipeline Description"], {"core": {CoreComponentType.ner.name: {"name": "test_ner_disk", "provider": "medcat"}}, "addons": []})
+            self.assertIn("Required Plugins", loaded_model_card)
+            # NOTE: tuples get loaded as lists
+            self.assertEqual(loaded_model_card["Required Plugins"], [{"name": "TestPluginDisk", "provides": [["ner", "test_ner_disk"]], "author": "Test Author Disk", "url": "http://test-disk.com"}])
+
+    def test_describe_pipeline_with_module_path_fallback(self):
+        # Define a mock component class with a specific module path
+        class MockComponentWithModule(AbstractCoreComponent):
+            def is_core(self): return True
+            def get_type(self): return CoreComponentType.ner
+            name = "fallback_ner_component"
+            full_name = "core:ner:fallback_ner_component"
+            __module__ = "my_plugin_package.some_module"
+
+        # Register a plugin with a matching module path, but no explicit registration
+        mock_plugin_info = PluginInfo(
+            name="MyPluginPackage",
+            version="1.0",
+            author="Module Author",
+            url="http://module-plugin.com",
+            module_paths=["my_plugin_package"],
+            registered_components=create_empty_reg_comps(),
+        )
+        plugin_registry.register_plugin(mock_plugin_info)
+
+        # Mock the pipeline to return an instance of our component
+        mock_comp_instance = MockComponentWithModule()
+        self.mock_pipeline.iter_all_components.return_value = [mock_comp_instance]
+
+        pipeline_desc = self.mock_cat.describe_pipeline()
+
+        self.assertIn(CoreComponentType.ner.name, pipeline_desc["core"])
+        self.assertEqual(pipeline_desc["core"][CoreComponentType.ner.name]["name"], "fallback_ner_component")
+        self.assertEqual(pipeline_desc["core"][CoreComponentType.ner.name]["provider"], "MyPluginPackage")
+
+    @unittest.mock.patch("medcat.cat.deserialise")
+    @unittest.mock.patch('importlib.util.find_spec')
+    def test_load_model_pack_with_missing_plugin_raises_error(self, mock_find_spec, mock_deserialise):
+        mock_find_spec.return_value = None  # Simulate plugin not found
+        mock_deserialise.side_effect = ImportError
+        with tempfile.TemporaryDirectory() as temp_dir:
+            model_card_path = os.path.join(temp_dir, "model_card.json")
+            model_card_content = {
+                "Required Plugins": [{
+                    "name": "MissingPlugin",
+                    "provides": [["core", "test_core_comp"]],
+                    "author": "Missing Author",
+                    "url": "http://missing.com"
+                }]
+            }
+            # overwrite model card
+            with open(model_card_path, "w") as f:
+                json.dump(model_card_content, f)
+
+            with self.assertRaises(cat.MissingPluginError) as cm:
+                cat.CAT.load_model_pack(temp_dir)
+
+            self.assertEqual(len(cm.exception.missing_plugins), 1)
+            self.assertEqual(cm.exception.missing_plugins[0]["name"], "MissingPlugin")
+            self.assertIn("MissingPlugin", str(cm.exception))
+
+    @unittest.mock.patch('importlib.util.find_spec')
+    def test_load_model_pack_with_available_plugin_succeeds(self, mock_find_spec):
+        mock_find_spec.return_value = MagicMock()  # Simulate plugin found
+        with tempfile.TemporaryDirectory() as temp_dir:
+            model_card_path = os.path.join(temp_dir, "model_card.json")
+            model_card_content = {
+                "Required Plugins": [{
+                    "name": "AvailablePlugin",
+                    "provides": [["core", "test_core_comp"]],
+                    "author": "Available Author",
+                    "url": "http://available.com"
+                }]
+            }
+            with open(model_card_path, "w") as f:
+                json.dump(model_card_content, f)
+
+            # Mock deserialise to return a valid CAT object to avoid deeper loading issues
+            with unittest.mock.patch('medcat.cat.deserialise') as mock_deserialise:
+                mock_deserialise.return_value = self.mock_cat
+                loaded_cat = cat.CAT.load_model_pack(temp_dir)
+                self.assertIs(loaded_cat, self.mock_cat)
+
+    @unittest.mock.patch('importlib.util.find_spec')
+    def test_load_model_pack_with_no_required_plugins_succeeds(self, mock_find_spec):
+        mock_find_spec.return_value = None  # Should not be called if no required plugins
+        with tempfile.TemporaryDirectory() as temp_dir:
+            model_card_path = os.path.join(temp_dir, "model_card.json")
+            model_card_content = {
+                "Required Plugins": []
+            }
+            with open(model_card_path, "w") as f:
+                json.dump(model_card_content, f)
+
+            with unittest.mock.patch('medcat.cat.deserialise') as mock_deserialise:
+                mock_deserialise.return_value = self.mock_cat
+                loaded_cat = cat.CAT.load_model_pack(temp_dir)
+                self.assertIs(loaded_cat, self.mock_cat)
+

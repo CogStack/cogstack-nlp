@@ -89,6 +89,6 @@ class RelExtrModernBertModel(RelExtrBaseModel):
                 config=model_config.hf_model_config,
                 ignore_mismatched_sizes=True, **kwargs)
             logger.info("Loaded model from pretrained: %s",
-                        cls.pretrained_model_name_or_path)
+                        model.pretrained_model_name_or_path)
 
         return model

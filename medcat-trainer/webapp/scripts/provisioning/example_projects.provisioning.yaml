@@ -1,0 +1,28 @@
+# Example config for projects to load on startup.
+
+projects:
+  # Example using an uploaded model pack (useModelService defaults to false on project)
+  - modelPack:
+      name: "Example Model Pack"
+      url: "https://trainer-example-data.s3.eu-north-1.amazonaws.com/medcat2_model_pack_0f66077250cc2957.zip"
+    dataset:
+      name: "M-IV_NeuroNotes"
+      url: "https://trainer-example-data.s3.eu-north-1.amazonaws.com/dr_notes.csv"
+      description: "Clinical texts from MIMIC-IV"
+    project:
+      name: "Example Project - Model Pack (Diseases / Symptoms / Findings)"
+      description: "Example projects using example psychiatric clinical notes from https://www.mtsamples.com/"
+      annotationGuidelineLink: "https://docs.google.com/document/d/1xxelBOYbyVzJ7vLlztP2q1Kw9F5Vr1pRwblgrXPS7QM/edit?usp=sharing"
+
+  # Example using remote MedCAT service API (no model pack upload).
+  # Uncomment and set modelServiceUrl under project to your MedCAT service (e.g. http://medcat-service:8000).
+  # - dataset:
+  #     name: "M-IV_NeuroNotes-Remote"
+  #     url: "https://trainer-example-data.s3.eu-north-1.amazonaws.com/dr_notes.csv"
+  #     description: "Clinical texts from MIMIC-IV (remote model)"
+  #   project:
+  #     name: "Example Project - Remote Model Service"
+  #     description: "Uses remote MedCAT service for document processing (no local model pack)."
+  #     annotationGuidelineLink: "https://docs.google.com/document/d/1xxelBOYbyVzJ7vLlztP2q1Kw9F5Vr1pRwblgrXPS7QM/edit?usp=sharing"
+  #     useModelService: true
+  #     modelServiceUrl: "http://medcat-service:8000"

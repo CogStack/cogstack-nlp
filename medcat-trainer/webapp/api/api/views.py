@@ -1,34 +1,40 @@
 import logging
 import os
-import traceback
 from smtplib import SMTPException
-from tempfile import NamedTemporaryFile
+from tempfile import NamedTemporaryFile, TemporaryDirectory
+from typing import Any
+import shutil
 
 from background_task.models import Task, CompletedTask
 from django.contrib.auth.views import PasswordResetView
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
+from django.db.models import Q
 from django.http import HttpResponseBadRequest, HttpResponseServerError, HttpResponse
 from django.shortcuts import render
 from django.utils import timezone
 from django_filters import rest_framework as drf
 
 from rest_framework import viewsets
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from medcat.components.ner.trf.deid import DeIdModel
 from medcat.utils.cdb_utils import ch2pt_from_pt2ch, get_all_ch, snomed_ct_concept_path
+from medcat.utils.config_utils import temp_changed_config
+from opentelemetry import trace
 
 from .admin import download_projects_with_text, download_projects_without_text, \
     import_concepts_from_cdb
 from .data_utils import upload_projects_export
 from .metrics import calculate_metrics
-from .model_cache import get_medcat, get_cached_cdb, VOCAB_MAP, clear_cached_medcat, CAT_MAP, CDB_MAP, is_model_loaded
+from .model_cache import get_medcat, get_medcat_from_model_pack_id, get_cached_cdb, VOCAB_MAP, clear_cached_medcat, clear_cached_medcat_by_model_pack_id, is_model_pack_loaded, CAT_MAP, CDB_MAP, is_model_loaded
 from .permissions import *
 from .serializers import *
 from .solr_utils import collections_available, search_collection, ensure_concept_searchable
 from .utils import add_annotations, remove_annotations, train_medcat, create_annotation, prep_docs
 
+logger = logging.getLogger(__name__)
+tracer = trace.get_tracer("medcat-trainer")
 # For local testing, put envs
 """
 from environs import Env
@@ -43,12 +49,15 @@ logger = logging.getLogger(__name__)
 # Get the basic version of MedCAT
 cat = None
 
+
 def index(request):
     return render(request, 'index.html')
 
 
 class TextInFilter(drf.BaseInFilter, drf.CharFilter):
     pass
+
+
 class NumInFilter(drf.BaseInFilter, drf.NumberFilter):
     pass
 
@@ -88,6 +97,7 @@ class ProjectGroupFilter(drf.FilterSet):
     class Meta:
         model = ProjectGroup
         fields = ['id', 'name', 'description']
+
 
 class ProjectGroupViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
@@ -198,8 +208,22 @@ class ModelPackViewSet(viewsets.ModelViewSet):
 
 
 class DatasetViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing datasets.
+
+    File Schema Requirements:
+    - Format: .csv or .xlsx file
+    - Required columns:
+      * name: A unique identifier for each document
+      * text: The free-text content to annotate
+
+    Example CSV:
+    name,text
+    doc001,"First document text"
+    doc002,"Second document text"
+    """
     permission_classes = [permissions.IsAuthenticated]
-    http_method_names = ['get', 'post']
+    http_method_names = ['get', 'post', 'put', 'patch', 'delete']
     queryset = Dataset.objects.all()
     serializer_class = DatasetSerializer
 
@@ -207,6 +231,7 @@ class DatasetViewSet(viewsets.ModelViewSet):
 class ResetPasswordView(PasswordResetView):
     email_template_name = 'password_reset_email.html'
     subject_template_name = 'password_reset_subject.txt'
+
     def post(self, request, *args, **kwargs):
         try:
             return super().post(request, *args, **kwargs)
@@ -215,9 +240,11 @@ class ResetPasswordView(PasswordResetView):
                                            Please visit https://medcattrainer.readthedocs.io for more information to resolve this. <br>
                                            You can also ask a question at: https://discourse.cogstack.org/c/medcat/5''')
 
+
 class ResetPasswordView(PasswordResetView):
     email_template_name = 'password_reset_email.html'
     subject_template_name = 'password_reset_subject.txt'
+
     def post(self, request, *args, **kwargs):
         try:
             return super().post(request, *args, **kwargs)
@@ -225,12 +252,14 @@ class ResetPasswordView(PasswordResetView):
             return HttpResponseServerError('''SMTP settings are not configured correctly. <br>
                                            Please visit https://medcattrainer.readthedocs.io for more information to resolve this. <br>
                                            You can also ask a question at: https://discourse.cogstack.org/c/medcat/5''')
+
 
 @api_view(http_method_names=['GET'])
 def get_anno_tool_conf(_):
     return Response({k: v for k, v in os.environ.items()})
 
 
+@tracer.start_as_current_span("prepare_documents")
 @api_view(http_method_names=['POST'])
 def prepare_documents(request):
     # Get the user
@@ -248,6 +277,12 @@ def prepare_documents(request):
     # Should we update
     update = request.data.get('update', 0)
 
+    trace.get_current_span().set_attributes({
+        "project_id": project.id,
+        "document_ids": d_ids,
+        "force": force,
+        "update": update,
+    })
     cuis = set()
     if project.cuis is not None and project.cuis:
         cuis = set([str(cui).strip() for cui in project.cuis.split(",")])
@@ -257,9 +292,9 @@ def prepare_documents(request):
             cuis.update(json.load(open(project.cuis_file.path)))
         except FileNotFoundError:
             return Response({'message': 'Missing CUI filter file',
-                                   'description': 'Missing CUI filter file, %s, cannot be found on the filesystem, '
-                                                  'but is still set on the project. To fix remove and reset the '
-                                                  'cui filter file' % project.cuis_file}, status=500)
+                             'description': 'Missing CUI filter file, %s, cannot be found on the filesystem, '
+                             'but is still set on the project. To fix remove and reset the '
+                             'cui filter file' % project.cuis_file}, status=500)
     try:
         for d_id in d_ids:
             document = Document.objects.get(id=d_id)
@@ -278,27 +313,40 @@ def prepare_documents(request):
             with transaction.atomic():
                 # If the document is not already annotated, annotate it
                 if (len(anns) == 0 and not is_validated) or update:
-                    # Based on the project id get the right medcat
-                    cat = get_medcat(project=project)
-                    logger.info('loaded medcat model for project: %s', project.id)
-
-                    # Set CAT filters
-                    cat.config.components.linking.filters.cuis = cuis
-
-                    if not project.deid_model_annotation:
-                        spacy_doc = cat(document.text)
+                    if project.use_model_service:
+                        # Use remote model service
+                        logger.info('Using remote model service for project: %s', project.id)
+                        from .utils import call_remote_model_service, SimpleFilters
+                        spacy_doc = call_remote_model_service(project.model_service_url, document.text)
+                        filters = SimpleFilters(cuis=cuis)
+                        add_annotations(spacy_doc=spacy_doc,
+                                        user=user,
+                                        project=project,
+                                        document=document,
+                                        cat=None,
+                                        filters=filters,
+                                        similarity_threshold=0.3,
+                                        existing_annotations=anns)
                     else:
-                        deid = DeIdModel(cat)
-                        spacy_doc = deid(document.text)
+                        # Use local medcat model
+                        cat = get_medcat(project=project)
+                        logger.info('loaded medcat model for project: %s', project.id)
 
-                    spacy_doc = cat(document.text)
+                        # Set CAT filters
+                        cat.config.components.linking.filters.cuis = cuis
 
-                    add_annotations(spacy_doc=spacy_doc,
-                                    user=user,
-                                    project=project,
-                                    document=document,
-                                    cat=cat,
-                                    existing_annotations=anns)
+                        if not project.deid_model_annotation:
+                            spacy_doc = cat(document.text)
+                        else:
+                            deid = DeIdModel(cat)
+                            spacy_doc = deid(document.text)
+
+                        add_annotations(spacy_doc=spacy_doc,
+                                        user=user,
+                                        project=project,
+                                        document=document,
+                                        cat=cat,
+                                        existing_annotations=anns)
 
                 # add doc to prepared_documents
                 project.prepared_documents.add(document)
@@ -306,10 +354,8 @@ def prepare_documents(request):
 
     except Exception as e:
         logger.warning('Error preparing documents for project %s', p_id, exc_info=e)
-        stack = traceback.format_exc()
         return Response({'message': e.args[0] if len(e.args) > 0 else 'Internal Server Error',
-                         'description': e.args[1] if len(e.args) > 1 else '',
-                         'stacktrace': stack}, status=500)
+                         'description': e.args[1] if len(e.args) > 1 else '', }, status=500)
     return Response({'message': 'Documents prepared successfully'})
 
 
@@ -353,10 +399,11 @@ def prepare_docs_bg_task(request, proj_id):
         try:
             proj = ProjectAnnotateEntities.objects.get(id=proj_id)
             prepd_docs_count = proj.prepared_documents.count()
-            ds_total_count = Document.objects.filter(dataset=ProjectAnnotateEntities.objects.get(id=proj_id).dataset.id).count()
+            ds_total_count = Document.objects.filter(
+                dataset=ProjectAnnotateEntities.objects.get(id=proj_id).dataset.id).count()
             return Response({'proj_id': proj_id, 'dataset_len': ds_total_count, 'prepd_docs_len': prepd_docs_count})
         except ObjectDoesNotExist:
-            return HttpResponseBadRequest('No Project found for ID: %s', proj_id)
+            return HttpResponseBadRequest('No Project found for the given ID')
     else:
         running_doc_prep_tasks = {json.loads(task.task_params)[0][0]: task.id
                                   for task in Task.objects.filter(queue='doc_prep')}
@@ -365,6 +412,7 @@ def prepare_docs_bg_task(request, proj_id):
             return Response("Successfully stopped running response")
         else:
             return HttpResponseBadRequest('Could not find running BG Process to stop')
+
 
 @api_view(http_method_names=['POST'])
 def add_annotation(request):
@@ -382,15 +430,12 @@ def add_annotation(request):
     user = request.user
     project = ProjectAnnotateEntities.objects.get(id=p_id)
     document = Document.objects.get(id=d_id)
-
-    cat = get_medcat(project=project)
     id = create_annotation(source_val=source_val,
                            selection_occurrence_index=sel_occur_idx,
                            cui=cui,
                            user=user,
                            project=project,
-                           document=document,
-                           cat=cat)
+                           document=document)
     logger.debug('Annotation added.')
     return Response({'message': 'Annotation added successfully', 'id': id})
 
@@ -414,20 +459,42 @@ def add_concept(request):
     user = request.user
     project = ProjectAnnotateEntities.objects.get(id=p_id)
     document = Document.objects.get(id=d_id)
+
+    if project.use_model_service:
+        # Use remote model service
+        logger.error('Adding concepts is not supported for remote model service'
+                     'projects, you likely want to use a local model')
+        raise NotImplementedError('Adding concepts is not supported for remote model service projects')
+
     cat = get_medcat(project=project)
 
-    if cui in cat.cdb.cui2names:
-        err_msg = f'Cannot add a concept "{name}" with cui:{cui}. CUI already linked to {cat.cdb.cui2names[cui]}'
+    if cui in cat.cdb.cui2info:
+        err_msg = f'Cannot add a concept "{name}" with cui:{cui}. CUI already linked to {cat.cdb.cui2info[cui]["preferred_name"]}'
         logger.error(err_msg)
         return Response({'err': err_msg}, 400)
 
     spacy_doc = cat(document.text)
     spacy_entity = None
     if source_val in spacy_doc.text:
-        start = spacy_doc.text.index(source_val)
-        end = start + len(source_val)
-        spacy_entity = [tkn for tkn in spacy_doc if tkn.idx >= start and tkn.idx <= end]
+        # Find all occurrences of source_val in the text
+        all_occurrences_start_idxs = []
+        idx = 0
+        while idx != -1:
+            idx = spacy_doc.text.find(source_val, idx)
+            if idx != -1:
+                all_occurrences_start_idxs.append(idx)
+                idx += len(source_val)
 
+        # Use selection_idx to get the correct occurrence
+        if sel_occur_idx < len(all_occurrences_start_idxs):
+            start = all_occurrences_start_idxs[sel_occur_idx]
+            end = start + len(source_val)
+            # Find tokens that overlap with the span [start, end)
+            # A token overlaps if: token_start < end AND token_end > start
+            spacy_entity = [tkn for tkn in spacy_doc if tkn.char_index <
+                            end and (tkn.char_index + len(tkn.text)) > start]
+    # if len(spacy_entity) == 0:
+    #     spacy_entity = None
     cat.trainer.add_and_train_concept(cui=cui, name=name, name_status='P', mut_doc=spacy_doc, mut_entity=spacy_entity)
 
     id = create_annotation(source_val=source_val,
@@ -435,11 +502,10 @@ def add_concept(request):
                            cui=cui,
                            user=user,
                            project=project,
-                           document=document,
-                           cat=cat)
+                           document=document)
 
     # ensure new concept detail is available in SOLR search service
-    ensure_concept_searchable(cui, cat.cdb, project.concept_db)
+    ensure_concept_searchable(cui, cat.cdb, project.cdb_search_filter.first())
 
     # add to project cuis if required.
     if (project.cuis or project.cuis_file) and project.restrict_concept_lookup:
@@ -450,21 +516,41 @@ def add_concept(request):
 
 
 @api_view(http_method_names=['POST'])
+@permission_classes([permissions.IsAuthenticated])
 def import_cdb_concepts(request):
     user = request.user
-    if not user.is_superuser:
-        return HttpResponseBadRequest('User is not super user, and not allowed to download project outputs')
     cdb_id = request.data.get('cdb_id')
-    if cdb_id is None or len(ConceptDB.objects.filter(id=cdb_id)) == 0:
-        return HttpResponseBadRequest(f'No CDB found for cdb_id{cdb_id}')
+    if cdb_id is None or not ConceptDB.objects.filter(id=cdb_id).exists():
+        return HttpResponseBadRequest('No CDB found for the provided cdb_id')
+
+    # Staff/superusers may import for any CDB. Other authenticated users must be a
+    # project admin (member or group administrator) of at least one project that
+    # already references this CDB via cdb_search_filter, so project setup doesn't
+    # require elevation.
+    if not (user.is_superuser or user.is_staff):
+        authorised = ProjectAnnotateEntities.objects.filter(
+            Q(cdb_search_filter__id=cdb_id),
+            Q(members=user) | Q(group__administrators=user),
+        ).exists()
+        if not authorised:
+            return Response(
+                {'error': 'You do not have permission to import concepts for this CDB'},
+                status=403,
+            )
+
     import_concepts_from_cdb(cdb_id)
     return Response({'message': 'submitted cdb import job.'})
 
 
 def _submit_document(project: ProjectAnnotateEntities, document: Document):
     if project.train_model_on_submit:
-        cat = get_medcat(project=project)
-        train_medcat(cat, project, document)
+        if project.use_model_service:
+            # TODO: Implement this, already available in CMS / gateway instances.
+            # interim model training not supported for remote model service projects
+            logger.warning('Interim model training is not supported for remote model service projects')
+        else:
+            cat = get_medcat(project=project)
+            train_medcat(cat, project, document)
 
     # Add cuis to filter if they did not exist
     cuis = []
@@ -496,8 +582,9 @@ def submit_document(request):
 
     try:
         _submit_document(project, document)
-    except Exception as e:
-        HttpResponseServerError(e.message)
+    except Exception:
+        logger.exception("Error while submitting document")
+        return HttpResponseServerError("An internal error occurred while submitting the document.")
 
     return Response({'message': 'Document submited successfully'})
 
@@ -509,9 +596,40 @@ def save_models(request):
     project = ProjectAnnotateEntities.objects.get(id=p_id)
     cat = get_medcat(project=project)
 
-    cat.cdb.save(project.concept_db.cdb_file.path)
+    if project.concept_db is not None:
+        # CDB / vocab based
+        cat.cdb.save(project.concept_db.cdb_file.path, overwrite=True)
+    else:
+        # ModelPack based project
+        _overwrite_model_pack(cat, project.model_pack.path)
 
     return Response({'message': 'Models saved'})
+
+
+def _overwrite_model_pack(cat, model_path: str):
+    # NOTE: cannot overwrite, so working around
+    #       currently CAT.save_model_pack does not provide a method to
+    #       allow overwriting an existing model pack
+    with TemporaryDirectory() as tmp_dir:
+        # making new folder name so that it's copied
+        # to the specific path rather than into the folder
+        temp_folder = os.path.join(tmp_dir, "model_copy")
+        shutil.move(model_path, temp_folder)
+        try:
+            cat.save_model_pack(
+                os.path.dirname(model_path),
+                pack_name=os.path.basename(model_path),
+                add_hash_to_pack_name=False)
+        except Exception as e:
+            logger.warning("Unable to save model pack. Restoring previous state. Issue while saving model:", exc_info=e)
+            if os.path.exists(model_path):
+                shutil.rmtree(model_path)  # remove partial/corrupt output
+            # restore original
+            try:
+                shutil.move(temp_folder, model_path)
+            except Exception as restore_err:
+                logger.error("Failed to restore model pack:", exc_info=restore_err)
+            raise
 
 
 @api_view(http_method_names=['POST'])
@@ -565,17 +683,17 @@ def update_meta_annotation(request):
     meta_task_id = request.data['meta_task_id']
     meta_task_value = request.data['meta_task_value']
 
-    annotation = AnnotatedEntity.objects.filter(project= project_id, entity=entity_id, document=document_id)[0]
+    annotation = AnnotatedEntity.objects.filter(project=project_id, entity=entity_id, document=document_id)[0]
     annotation.correct = True
     annotation.validated = True
     logger.debug(annotation)
 
     annotation.save()
 
-    meta_task = MetaTask.objects.filter(id = meta_task_id)[0]
-    meta_task_value = MetaTaskValue.objects.filter(id = meta_task_value)[0]
+    meta_task = MetaTask.objects.filter(id=meta_task_id)[0]
+    meta_task_value = MetaTaskValue.objects.filter(id=meta_task_value)[0]
 
-    meta_annotation_list = MetaAnnotation.objects.filter(annotated_entity = annotation)
+    meta_annotation_list = MetaAnnotation.objects.filter(annotated_entity=annotation)
 
     logger.debug(meta_annotation_list)
 
@@ -597,19 +715,54 @@ def update_meta_annotation(request):
     return Response({'meta_annotation': 'added meta annotation'})
 
 
+@tracer.start_as_current_span("annotate_text")
 @api_view(http_method_names=['POST'])
 def annotate_text(request):
-    p_id = request.data['project_id']
-    message = request.data['message']
-    cuis = request.data['cuis']
-    if message is None or p_id is None:
+    message = request.data.get('message')
+    cuis = request.data.get('cuis', [])
+    p_id = request.data.get('project_id')
+    modelpack_id = request.data.get('modelpack_id')
+    include_sub_concepts = request.data.get('include_sub_concepts', False)
+
+    if message is None or (p_id is None and modelpack_id is None):
         return HttpResponseBadRequest('No message to annotate')
 
-    project = ProjectAnnotateEntities.objects.get(id=p_id)
+    if modelpack_id is not None:
+        try:
+            cat = get_medcat_from_model_pack_id(int(modelpack_id))
+        except (ValueError, TypeError):
+            logger.warning(f'Invalid modelpack_id received for project:{p_id}')
+            return HttpResponseBadRequest('Invalid modelpack_id for project')
+        except ModelPack.DoesNotExist:
+            logger.warning(f'ModelPack does not exist received for project:{p_id}')
+            return HttpResponseBadRequest('ModelPack does not exist for project')
+    else:
+        project = ProjectAnnotateEntities.objects.get(id=p_id)
+        trace.get_current_span().add_event("Getting medcat from project")
+        cat = get_medcat(project=project)
+        trace.get_current_span().add_event("Got medcat from project")
 
-    cat = get_medcat(project=project)
-    cat.config.components.linking.filters.cuis = set(cuis)
-    spacy_doc = cat(message)
+    # Normalise cuis to a set[str]
+    if isinstance(cuis, str):
+        cuis_set = {c.strip() for c in cuis.split(',') if c.strip()}
+    elif isinstance(cuis, (list, tuple, set)):
+        cuis_set = {str(c).strip() for c in cuis if str(c).strip()}
+    else:
+        cuis_set = set()
+
+    # Expand CUIs to include sub-concepts if requested
+    if include_sub_concepts and cuis_set and cat.cdb:
+        expanded_cuis = set(cuis_set)
+        for parent_cui in cuis_set:
+            try:
+                child_cuis = get_all_ch(parent_cui, cat.cdb)
+                expanded_cuis.update(child_cuis)
+            except Exception as e:
+                logger.warning(f'Failed to get children for CUI {parent_cui}: {e}')
+        cuis_set = expanded_cuis
+
+    with temp_changed_config(cat.config.components.linking, 'filters', cuis_set):
+        spacy_doc = cat(message)
 
     ents = []
     anno_tkns = []
@@ -617,6 +770,26 @@ def annotate_text(request):
         cnt = Entity.objects.filter(label=ent.cui).count()
         inc_ent = all(tkn not in anno_tkns for tkn in ent)
         if inc_ent and cnt != 0:
+            meta_annotations = []
+            if 'meta_cat_meta_anns' in ent.get_available_addon_paths():
+                meta_anns = ent.get_addon_data('meta_cat_meta_anns')
+                for meta_ann_task, pred in meta_anns.items():
+                    # Extract value and confidence from pred
+                    # pred can be a dict, object, or string
+                    if isinstance(pred, dict):
+                        pred_value = pred.get('value', str(pred))
+                        pred_confidence = pred.get('confidence', None)
+                    elif hasattr(pred, 'value'):
+                        pred_value = pred.value
+                        pred_confidence = getattr(pred, 'confidence', None)
+                    else:
+                        pred_value = str(pred)
+                        pred_confidence = None
+                    meta_annotations.append({
+                        'task': meta_ann_task,
+                        'value': pred_value,
+                        'confidence': pred_confidence
+                    })
             anno_tkns.extend([tkn for tkn in ent])
             entity = Entity.objects.get(label=ent.cui)
             ents.append({
@@ -624,7 +797,8 @@ def annotate_text(request):
                 'value': ent.base.text,
                 'start_ind': ent.base.start_char_index,
                 'end_ind': ent.base.end_char_index,
-                'acc': ent.context_similarity
+                'acc': ent.context_similarity,
+                'meta_annotations': meta_annotations
             })
 
     ents.sort(key=lambda e: e['start_ind'])
@@ -671,7 +845,7 @@ def concept_search_index_available(request):
     except Exception as e:
         logger.error("Failed to search for concept_search_index. Solr Search Service not available", exc_info=e)
         return HttpResponseServerError("Solr Search Service not available check the service is up, running "
-                                       "and configured correctly", e)
+                                       "and configured correctly.")
 
 
 @api_view(http_method_names=['GET'])
@@ -699,14 +873,14 @@ def upload_deployment(request):
 
     try:
         upload_projects_export(deployment_upload,
-                                cdb_id,
-                                vocab_id,
-                                modelpack_id,
-                                project_name_suffix,
-                                cdb_search_filter_id,
-                                members,
-                                import_project_name_suffix,
-                                set_validated_docs)
+                               cdb_id,
+                               vocab_id,
+                               modelpack_id,
+                               project_name_suffix,
+                               cdb_search_filter_id,
+                               members,
+                               import_project_name_suffix,
+                               set_validated_docs)
         return Response("successfully uploaded", 200)
     except Exception as e:
         logger.error(f"Failed to upload projects export: {e}", exc_info=e)
@@ -714,9 +888,14 @@ def upload_deployment(request):
 
 
 @api_view(http_method_names=['GET', 'DELETE'])
-def cache_model(request, project_id):
+def cache_project_model(request, project_id):
     try:
         project = ProjectAnnotateEntities.objects.get(id=project_id)
+        # For projects using a remote MedCAT service, there is no local model
+        # cache to warm or clear; treat cache operations as no-ops.
+        if project.use_model_service:
+            return Response('success', 200)
+
         is_loaded = is_model_loaded(project)
         if request.method == 'GET':
             if not is_loaded:
@@ -731,8 +910,27 @@ def cache_model(request, project_id):
     except ProjectAnnotateEntities.DoesNotExist:
         return Response(f'Project with id:{project_id} does not exist', 404)
     except Exception as e:
+        logger.error('cache_project_model failed for project_id=%s: %s', project_id, e, exc_info=e)
         return Response({'message': f'{str(e)}'}, 500)
 
+
+@api_view(http_method_names=['GET', 'DELETE'])
+def cache_modelpack(request, modelpack_id: int):
+    try:
+        if request.method == 'GET':
+            if not is_model_pack_loaded(modelpack_id):
+                get_medcat_from_model_pack_id(modelpack_id)
+            return Response('success', 200)
+        elif request.method == 'DELETE':
+            clear_cached_medcat_by_model_pack_id(modelpack_id)
+            return Response('success', 200)
+        else:
+            return Response(f'Invalid method', 404)
+    except ModelPack.DoesNotExist:
+        return Response(f'ModelPack with id:{modelpack_id} does not exist', 404)
+    except Exception as e:
+        logger.error('cache_modelpack failed for modelpack_id=%s: %s', modelpack_id, e, exc_info=e)
+        return Response({'message': f'{str(e)}'}, 500)
 
 
 @api_view(http_method_names=['GET'])
@@ -758,7 +956,8 @@ def metrics_jobs(request):
                 'projects': task.verbose_name.split('-')[1].split('_'),
                 'created_user': task.creator.username,
                 'create_time': task.run_at.strftime(dt_fmt),
-                'status': state
+                'error_msg': '\n'.join(task.last_error.split('\n')[-2:]),
+                'status': state,
             }
         running_reports = [serialize_task(t, 'running') for t in running_metrics_tasks_qs]
         for r, t in zip(running_reports, running_metrics_tasks_qs):
@@ -767,6 +966,8 @@ def metrics_jobs(request):
 
         comp_reports = [serialize_task(t, 'complete') for t in completed_metrics_tasks]
         for comp_task, comp_rep in zip(completed_metrics_tasks, comp_reports):
+            if comp_task.has_error():
+                comp_rep['status'] = 'Failed'
             pm_obj = ProjectMetrics.objects.filter(report_name_generated=comp_task.verbose_name).first()
             if pm_obj is not None and pm_obj.report_name is not None:
                 comp_rep['report_name'] = pm_obj.report_name
@@ -826,7 +1027,8 @@ def view_metrics(request, report_id):
         running_pending_report = Task.objects.filter(id=report_id, queue='metrics').first()
         completed_report = CompletedTask.objects.filter(id=report_id, queue='metrics').first()
         if running_pending_report is None and completed_report is None:
-            HttpResponseBadRequest(f'Cannot find report_id:{report_id} in either pending, running or complete report lists. ')
+            HttpResponseBadRequest(
+                f'Cannot find report_id:{report_id} in either pending, running or complete report lists. ')
         elif running_pending_report is not None:
             HttpResponseBadRequest(f'Cannot view a running or pending metrics report with id:{report_id}')
         pm_obj = ProjectMetrics.objects.filter(report_name_generated=completed_report.verbose_name).first()
@@ -896,8 +1098,8 @@ def generate_concept_filter_flat_json(request):
         for cui in cuis:
             ch_nodes = get_all_ch(cui, cdb)
             final_filter += [n for n in ch_nodes if n not in excluded_nodes]
-        final_filter = {cui:1 for cui in final_filter}.keys()
-        filter_json = json.dumps(final_filter)
+        final_filter = {cui: 1 for cui in final_filter}.keys()
+        filter_json = json.dumps(list(final_filter))
         response = HttpResponse(filter_json, content_type='application/json')
         response['Content-Disposition'] = 'attachment; filename=filter.json'
         return response
@@ -962,3 +1164,230 @@ def project_progress(request):
         out[p] = {'validated_count': val_docs, 'dataset_count': ds_doc_count}
 
     return Response(out)
+
+
+@api_view(http_method_names=['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def project_admin_projects(request):
+    """
+    Get all projects where the user is a project admin.
+    """
+    user = request.user
+    projects = ProjectAnnotateEntities.objects.filter(members=user.id)
+
+    # Also include projects where user is admin of the project's group
+    group_admin_projects = ProjectAnnotateEntities.objects.filter(
+        group__administrators=user.id
+    )
+    projects = (projects | group_admin_projects).distinct()
+
+    serializer = ProjectAnnotateEntitiesSerializer(projects, many=True)
+    return Response(serializer.data)
+
+
+@api_view(http_method_names=['GET', 'PUT', 'DELETE'])
+@permission_classes([permissions.IsAuthenticated])
+def project_admin_detail(request, project_id):
+    """
+    Get, update, or delete a project (only if user is project admin).
+    """
+    try:
+        project = ProjectAnnotateEntities.objects.get(id=project_id)
+    except ProjectAnnotateEntities.DoesNotExist:
+        return Response({'error': 'Project not found'}, status=404)
+
+    # Check if user is project admin
+    from .permissions import is_project_admin
+    if not is_project_admin(request.user, project):
+        return Response({'error': 'You do not have permission to access this project'}, status=403)
+
+    if request.method == 'GET':
+        serializer = ProjectAnnotateEntitiesSerializer(project)
+        return Response(serializer.data)
+
+    elif request.method == 'PUT':
+        # Handle both JSON and FormData
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+
+        # Extract many-to-many fields - handle both JSON (list) and FormData (getlist)
+        cdb_search_filter_ids = []
+        try:
+            cdb_search_filter_ids = [int(x) for x in request.data['cdb_search_filter'] if x]
+        except (ValueError, TypeError) as e:
+            logger.warning(f"Error parsing cdb_search_filter: {e}")
+            cdb_search_filter_ids = []
+
+        members_ids = []
+        try:
+            members_ids = [int(x) for x in request.data['members'] if x]
+        except (ValueError, TypeError) as e:
+            logger.warning(f"Error parsing members: {e}")
+            members_ids = []
+
+        # Set many-to-many fields to the extracted IDs (or empty list)
+        # This satisfies serializer validation, then we'll set them properly after save
+        data['members'] = members_ids if members_ids else []
+        data['cdb_search_filter'] = cdb_search_filter_ids if cdb_search_filter_ids else []
+
+        # Convert string booleans to actual booleans
+        boolean_fields = ['project_locked', 'annotation_classification', 'require_entity_validation',
+                          'train_model_on_submit', 'add_new_entities', 'restrict_concept_lookup',
+                          'terminate_available', 'irrelevant_available', 'enable_entity_annotation_comments',
+                          'use_model_service']
+        for field in boolean_fields:
+            if field in data:
+                if isinstance(data[field], str):
+                    data[field] = data[field].lower() in ('true', '1', 'yes', 'on')
+
+        serializer = ProjectAnnotateEntitiesSerializer(project, data=data, partial=True)
+        if serializer.is_valid():
+            try:
+                project = serializer.save()
+                # Handle many-to-many fields manually after saving
+                project.cdb_search_filter.set(cdb_search_filter_ids)
+                project.members.set(members_ids)
+                return Response(ProjectAnnotateEntitiesSerializer(project).data)
+            except Exception as e:
+                logger.error(f"Error saving project {project_id}: {e}", exc_info=e)
+                return Response({'error': f'Failed to save project'}, status=400)
+        else:
+            logger.warning(f"Validation errors for project {project_id}: {serializer.errors}")
+            return Response(serializer.errors, status=400)
+
+    elif request.method == 'DELETE':
+        project.delete()
+        return Response({'message': 'Project deleted successfully'}, status=200)
+
+
+@api_view(http_method_names=['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def project_admin_create(request):
+    """
+    Create a new project (user must be authenticated).
+    """
+    # Handle both JSON and FormData
+    # Extract many-to-many fields - handle both JSON (list) and FormData (getlist)
+    cdb_search_filter_ids = []
+    try:
+        if isinstance(request.data.get('cdb_search_filter'), list):
+            # JSON request - already a list
+            cdb_search_filter_ids = [int(x) for x in request.data['cdb_search_filter'] if x]
+        elif hasattr(request.data, 'getlist'):
+            # FormData request - use getlist()
+            cdb_filter_list = request.data.getlist('cdb_search_filter')
+            if cdb_filter_list:
+                cdb_search_filter_ids = [int(x) for x in cdb_filter_list if x and str(x).strip()]
+    except (ValueError, TypeError) as e:
+        logger.warning(f"Error parsing cdb_search_filter: {e}")
+        cdb_search_filter_ids = []
+
+    members_ids = []
+    try:
+        if isinstance(request.data.get('members'), list):
+            # JSON request - already a list
+            members_ids = [int(x) for x in request.data['members'] if x]
+        elif hasattr(request.data, 'getlist'):
+            # FormData request - use getlist()
+            members_list = request.data.getlist('members')
+            if members_list:
+                members_ids = [int(x) for x in members_list if x and str(x).strip()]
+    except (ValueError, TypeError) as e:
+        logger.warning(f"Error parsing members: {e}")
+        members_ids = []
+
+    # Build data dict - use the actual member IDs we extracted, or empty list if none
+    # The serializer will validate with these, then we'll set them properly after save
+    if hasattr(request.data, 'copy'):
+        data = request.data.copy()
+    else:
+        data = dict(request.data)
+
+    # Set many-to-many fields to the extracted IDs (or empty list)
+    # This satisfies serializer validation, then we'll set them properly after save
+    data['members'] = members_ids if members_ids else []
+    data['cdb_search_filter'] = cdb_search_filter_ids if cdb_search_filter_ids else []
+
+    serializer = ProjectAnnotateEntitiesSerializer(data=data)
+    if serializer.is_valid():
+        project = serializer.save()
+        # Handle many-to-many fields manually after saving
+        project.cdb_search_filter.set(cdb_search_filter_ids)
+        project.members.set(members_ids)
+        # Add the creator as a member if not already included
+        if request.user not in project.members.all():
+            project.members.add(request.user)
+        return Response(ProjectAnnotateEntitiesSerializer(project).data, status=201)
+    return Response(serializer.errors, status=400)
+
+
+@api_view(http_method_names=['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def project_admin_clone(request, project_id):
+    """
+    Clone a project (user must be authenticated and have permission).
+    """
+    import copy
+    try:
+        project = ProjectAnnotateEntities.objects.get(id=project_id)
+    except ProjectAnnotateEntities.DoesNotExist:
+        return Response({'error': 'Project not found'}, status=404)
+
+    # Check if user is project admin
+    from .permissions import is_project_admin
+    if not is_project_admin(request.user, project):
+        return Response({'error': 'You do not have permission to clone this project'}, status=403)
+
+    try:
+        # Get custom name from request, or use default
+        custom_name = request.data.get('name', None) if hasattr(request.data, 'get') else None
+        if not custom_name:
+            custom_name = f'{project.name} (Clone)'
+
+        # Create a copy of the project
+        project_copy = copy.copy(project)
+        project_copy.id = None
+        project_copy.pk = None
+        project_copy.name = custom_name
+        project_copy.save()
+
+        # Copy many-to-many fields
+        for m in project.members.all():
+            project_copy.members.add(m)
+        for c in project.cdb_search_filter.all():
+            project_copy.cdb_search_filter.add(c)
+        for t in project.tasks.all():
+            project_copy.tasks.add(t)
+
+        project_copy.save()
+        serializer = ProjectAnnotateEntitiesSerializer(project_copy)
+        return Response(serializer.data, status=201)
+    except Exception as e:
+        logger.error(f"Failed to clone project: {e}", exc_info=e)
+        return Response({'error': f'Failed to clone project:'}, status=500)
+
+
+@api_view(http_method_names=['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def project_admin_reset(request, project_id):
+    """
+    Reset a project (clear all annotations) - only if user is project admin.
+    This is equivalent to the reset_project admin action.
+    """
+    try:
+        project = ProjectAnnotateEntities.objects.get(id=project_id)
+    except ProjectAnnotateEntities.DoesNotExist:
+        return Response({'error': 'Project not found'}, status=404)
+
+    # Check if user is project admin
+    from .permissions import is_project_admin
+    if not is_project_admin(request.user, project):
+        return Response({'error': 'You do not have permission to reset this project'}, status=403)
+
+    # Remove all annotations and cascade to meta anns
+    AnnotatedEntity.objects.filter(project=project).delete()
+
+    # Clear validated_documents and prepared_documents
+    project.validated_documents.clear()
+    project.prepared_documents.clear()
+
+    return Response({'message': 'Project reset successfully'}, status=200)

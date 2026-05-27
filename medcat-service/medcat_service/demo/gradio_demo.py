@@ -1,151 +1,190 @@
-from typing import Dict, List
-
 import gradio as gr
-from pydantic import BaseModel
+import pandas as pd
+from fastapi import FastAPI
 
-from medcat_service.dependencies import get_medcat_processor, get_settings
-from medcat_service.types import ProcessAPIInputContent
-from medcat_service.types_entities import Entity
-
-
-class EntityAnnotation(BaseModel):
-    """
-    Expected data format for NER in gradio
-    """
-
-    entity: str
-    score: float
-    index: int
-    word: str
-    start: int
-    end: int
-
+import medcat_service.demo.demo_content as demo_content
+from medcat_service.demo.demo_logic import (
+    anoncat_demo_perform_deidentification,
+    medcat_demo_perform_named_entity_resolution,
+)
+from medcat_service.dependencies import get_settings
 
 headers = ["Pretty Name", "Identifier", "Confidence Score", "Start Index", "End Index", "ID"]
 
+# CSS to set max height with scrollbar for HighlightedText output
+# Target the component container and its content
+highlighted_text_css = """
+#highlighted-text-output {
+    max-height: 460px;
+    overflow-y: auto;
+}
+"""
+settings = get_settings()
 
-class EntityAnnotationDisplay(BaseModel):
+annotation_details_placeholder_text = "Click on a highlighted entity to view its details"
+
+
+def format_annotation_details(row: pd.Series | None, selected_text: str) -> str:
+    """Format a pandas Series row as markdown for display."""
+    if row is None:
+        return "**No annotation selected**\n\nClick on a highlighted entity to view its details."
+
+    pretty_name = row.get("Pretty Name", "N/A")
+    identifier = row.get("Identifier", "N/A")
+    confidence = row.get("Confidence Score", 0.0)
+    start_idx = row.get("Start Index", -1)
+    end_idx = row.get("End Index", -1)
+    entity_id = row.get("ID", -1)
+
+    confidence_pct = float(confidence) * 100
+
+    details = f"""### Annotation Details
+**Input Text:**         {selected_text}
+
+**Entity Name:**        {pretty_name}
+
+**Identifier (CUI):**   `{identifier}`
+
+**Confidence Score:**   {confidence_pct:.2f}%
+
+**Text Position:**      Start: `{start_idx}` → End: `{end_idx}`
+
+**Entity ID:**          `{entity_id}`
+"""
+    return details
+
+
+def on_select_annotation(value, annotation_details: str, dataframe: pd.DataFrame, evt: gr.SelectData) -> str:
     """
-    DIsplay data format for use in a datatable
+    On select of annotations in the highlighted text component.
+
+    Important things to know: Adding the type gr.SelectData actually changes the data passed
+
+    Then the index appears hacky. The highlighted text selected item has indices, but they are not the indices
+    in the datatable. It looks like index 0 is always '', then it always inserts the text between annotations
+    as another index. So we need to divide by 2 to get the correct index.
     """
+    datatable_index = (evt.index - 1) // 2
+    selected_text = evt.value[0]
+    if dataframe is not None and datatable_index < len(dataframe):
+        row = dataframe.iloc[datatable_index]
+        return format_annotation_details(row, selected_text)
+    else:
+        return annotation_details_placeholder_text
 
-    pretty_name: str
-    identifier: str
-    score: float
-    start: int
-    end: int
-    id: int
-    # Misisng Meta Anns
 
-
-class EntityResponse(BaseModel):
+def output_details_interface() -> tuple[gr.HighlightedText, gr.Markdown, gr.Dataframe]:
     """
-    Expected data format of gradio highlightedtext component
+    Output details interface for the demo.
+    Based on gradio Namd-Entity Recognition Demo
+    https://www.gradio.app/guides/named-entity-recognition
     """
+    highlighted = gr.HighlightedText(label="Processed Text", elem_id="highlighted-text-output", interactive=False)
+    annotation_details = gr.Markdown(label="Annotation Details", value=annotation_details_placeholder_text)
+    with gr.Accordion(label="All Annotations", open=False):
+        dataframe = gr.Dataframe(label="All Annotations", headers=headers, interactive=False, max_chars=50)
 
-    entities: List[EntityAnnotation]
-    text: str
-
-
-def convert_annotation_to_ner_model(entity: Entity, index: int) -> EntityAnnotation:
-    return EntityAnnotation(
-        entity=entity.get("cui", "UNKNOWN"),
-        score=entity.get("acc", 0.0),
-        index=index,
-        word=entity.get("detected_name", ""),
-        start=entity.get("start", -1),
-        end=entity.get("end", -1),
-    )
+    highlighted.select(on_select_annotation, [highlighted, annotation_details, dataframe], outputs=annotation_details)
+    return highlighted, annotation_details, dataframe
 
 
-def convert_annotation_to_display_model(entity: Entity) -> EntityAnnotationDisplay:
-    return EntityAnnotationDisplay(
-        pretty_name=entity.get("pretty_name", ""),
-        identifier=entity.get("cui", "UNKNOWN"),
-        score=entity.get("acc", 0.0),
-        start=entity.get("start", -1),
-        end=entity.get("end", -1),
-        id=entity.get("id", -1),
-        # medcat-demo-app/webapp/demo/views.py
-        # if key == 'meta_anns':
-        # meta_anns=ent.get("meta_anns", {})
-        # if meta_anns:
-        # for meta_ann in meta_anns.keys():
-        # new_ent[meta_ann]=meta_anns[meta_ann]['value']
-    )
+def anoncat_demo_interface() -> gr.Blocks:
+    def input_column():
+        with gr.Tab("Input"):
+            with gr.Group():
+                # Using a tab here just to make the input text box align with the output that is also tabbed
+                input_text = gr.Textbox(
+                    label="Input Text", lines=3, placeholder="Enter some text and click Deidentify..."
+                )
+                redact = gr.Checkbox(label="Redact", info="Replace sensitive information with ****")
+            examples = gr.Examples(  # noqa
+                examples=[demo_content.short_example, demo_content.anoncat_example],
+                inputs=input_text,
+                example_labels=["Short Example", "Note with personally identifiable information"],
+            )
+            with gr.Row():
+                clear_btn = gr.Button("Clear", variant="secondary")
+                annotate_btn = gr.Button("Deidentify", variant="primary")
+        return input_text, redact, clear_btn, annotate_btn
+
+    def output_column():
+        with gr.Tab("Deidentification"):
+            deidentified_text = gr.Textbox(label="Deidentified Text", value="", lines=3, interactive=False)
+        with gr.Tab("Details"):
+            highlighted, annotation_details, dataframe = output_details_interface()
+        return highlighted, dataframe, deidentified_text, annotation_details
+
+    with gr.Blocks(title="AnonCAT", fill_width=True) as io:
+        gr.Markdown("# AnonCAT")
+        with gr.Row():
+            with gr.Column():  # noqa
+                input_text, redact, clear_btn, annotate_btn = input_column()
+            with gr.Column():
+                highlighted, dataframe, deidentified_text, annotation_details = output_column()
+        annotate_btn.click(
+            anoncat_demo_perform_deidentification,
+            inputs=[input_text, redact],
+            outputs=[highlighted, dataframe, deidentified_text],
+        )
+        annotate_btn.click(lambda: (annotation_details_placeholder_text), outputs=[annotation_details])
+
+        clear_btn.click(
+            lambda: ("", None, None, annotation_details_placeholder_text),
+            outputs=[input_text, highlighted, dataframe, annotation_details],
+        )
+        gr.Markdown(demo_content.anoncat_help_content)
+    return io
 
 
-def convert_entity_dict_to_annotations(entity_dict_list: List[Dict[str, Entity]]) -> list[EntityAnnotation]:
-    annotations: list[EntityAnnotation] = []
-    for entity_dict in entity_dict_list:
-        for key, entity in entity_dict.items():
-            annotations.append(convert_annotation_to_ner_model(entity, index=int(key)))
-    return annotations
+def medcat_demo_interface() -> gr.Blocks:
+    def input_column():
+        input_text = gr.Textbox(label="Input Text", lines=6, placeholder="Enter some text and click Annotate...")
+        with gr.Row():
+            examples = gr.Examples(  # noqa
+                examples=[demo_content.short_example, demo_content.long_example, demo_content.anoncat_example],
+                inputs=input_text,
+                example_labels=[
+                    "Short Example",
+                    "Patient Discharge Summary in Neurology",
+                    "Note with personally identifiable information",
+                ],
+            )
+        with gr.Row():
+            clear_btn = gr.Button("Clear", variant="secondary")
+            annotate_btn = gr.Button("Annotate", variant="primary")
+        return input_text, clear_btn, annotate_btn
+
+    with gr.Blocks(title="MedCAT", fill_width=True) as io:
+        gr.Markdown("# MedCAT")
+        with gr.Row():
+            with gr.Column():
+                input_text, clear_btn, annotate_btn = input_column()
+            with gr.Column():
+                highlighted, annotation_details, dataframe = output_details_interface()
+
+        annotate_btn.click(lambda: (annotation_details_placeholder_text), outputs=[annotation_details])
+        annotate_btn.click(
+            medcat_demo_perform_named_entity_resolution, inputs=input_text, outputs=[highlighted, dataframe]
+        )
+
+        clear_btn.click(
+            lambda: ("", None, None, annotation_details_placeholder_text),
+            outputs=[input_text, highlighted, dataframe, annotation_details],
+        )
+        gr.Markdown(demo_content.article_footer)
+    return io
 
 
-def convert_entity_dict_to_display_model(entity_dict_list: List[Dict[str, Entity]]) -> list[EntityAnnotationDisplay]:
-    annotations: list[EntityAnnotationDisplay] = []
-    for entity_dict in entity_dict_list:
-        for key, entity in entity_dict.items():
-            annotations.append(convert_annotation_to_display_model(entity))
-    return annotations
+def mount_gradio_app(app: FastAPI, path: str) -> None:
+    """
+    Mount the Gradio interface to the FastAPI app with a custom theme.
 
+    Args:
+        app: The FastAPI application instance
+        path: The path at which to mount the Gradio app (default: "/demo")
+    """
+    theme = gr.themes.Default(primary_hue="blue", secondary_hue="teal")
 
-def convert_display_model_to_list_of_lists(entity_display_model: list[EntityAnnotationDisplay]) -> list[list[str]]:
-    return [[str(getattr(entity, field)) for field in entity.model_fields] for entity in entity_display_model]
+    io = anoncat_demo_interface() if settings.deid_mode else medcat_demo_interface()
 
-
-def process_input(input_text: str):
-    processor = get_medcat_processor(get_settings())
-    input = ProcessAPIInputContent(text=input_text)
-
-    result = processor.process_content(input.model_dump())
-
-    entity_ner_format: list[EntityAnnotation] = convert_entity_dict_to_annotations(result.annotations)
-
-    annotations_as_display_format = convert_entity_dict_to_display_model(result.annotations)
-    response_datatable_format = convert_display_model_to_list_of_lists(annotations_as_display_format)
-
-    response: EntityResponse = EntityResponse(entities=entity_ner_format, text=input_text)
-    return response.model_dump(), response_datatable_format
-
-
-short_example = "John had been diagnosed with acute Kidney Failure the week before"
-
-
-long_example = """
-Description: Intracerebral hemorrhage (very acute clinical changes occurred immediately).
-CC: Left hand numbness on presentation; then developed lethargy later that day.
-
-HX: On the day of presentation, this 72 y/o RHM suddenly developed generalized weakness and lightheadedness, and could not rise from a chair. Four hours later he experienced sudden left hand numbness lasting two hours. There were no other associated symptoms except for the generalized weakness and lightheadedness. He denied vertigo.
-
-He had been experiencing falling spells without associated LOC up to several times a month for the past year.
-
-MEDS: procardia SR, Lasix, Ecotrin, KCL, Digoxin, Colace, Coumadin.
-
-PMH: 1)8/92 evaluation for presyncope (Echocardiogram showed: AV fibrosis/calcification, AV stenosis/insufficiency, MV stenosis with annular calcification and regurgitation, moderate TR, Decreased LV systolic function, severe LAE. MRI brain: focal areas of increased T2 signal in the left cerebellum and in the brainstem probably representing microvascular ischemic disease. IVG (MUGA scan)revealed: global hypokinesis of the LV and biventricular dysfunction, RV ejection Fx 45% and LV ejection Fx 39%. He was subsequently placed on coumadin severe valvular heart disease), 2)HTN, 3)Rheumatic fever and heart disease, 4)COPD, 5)ETOH abuse, 6)colonic polyps, 7)CAD, 8)CHF, 9)Appendectomy, 10)Junctional tachycardia.
-"""  # noqa: E501
-
-article_footer = """
-## Disclaimer
-This software is intended solely for the testing purposes and non-commercial use. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED.
-
-contact@cogstack.com for more information.
-
-Please note this is a limited version of MedCAT and it is not trained or validated by clinicans.
-"""  # noqa: E501
-
-io = gr.Interface(
-    fn=process_input,
-    inputs="text",
-    outputs=[
-        gr.HighlightedText(label="Processed Text"),
-        gr.Dataframe(label="Annotations", headers=headers, interactive=False),
-    ],
-    examples=[short_example, long_example],
-    preload_example=0,
-    title="MedCAT Demo",
-    description="Enter some text and click Annotate.",
-    flagging_mode="never",
-    article=article_footer,
-)
+    gr.mount_gradio_app(app, io, path=path, theme=theme, css=highlighted_text_css)

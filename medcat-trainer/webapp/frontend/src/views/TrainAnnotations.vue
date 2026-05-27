@@ -466,11 +466,9 @@ export default {
     },
     fetchCDBSearchIndex() {
       if (this.project.cdb_search_filter.length > 0) {
-        this.$http.get(`/api/concept-dbs/${this.project.cdb_search_filter[0]}/`).then(resp => {
-          if (resp.data) {
-            this.searchFilterDBIndex = `${resp.data.name}_id_${this.project.cdb_search_filter}`
-          }
-        })
+        this.searchFilterDBIndex = this.project.cdb_search_filter.join(',')
+      } else {
+        this.searchFilterDBIndex = null
       }
     },
     loadDoc(doc) {
@@ -492,7 +490,7 @@ export default {
         this.fetchEntities()
       } else {
         this.loadingMsg = "Loading MedCAT model..."
-        this.$http.get(`/api/cache-model/${this.project.id}/`).then(_ => {
+        this.$http.get(`/api/cache-project-model/${this.project.id}/`).then(_ => {
           this.loadingMsg = "Preparing Document..."
           let payload = {
             project_id: this.project.id,

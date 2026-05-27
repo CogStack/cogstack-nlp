@@ -41,8 +41,16 @@
       </tbody>
     </table>
     <div class="footer action-buttons">
-      <button class="btn btn-primary" :disabled="!addConceptEnabled()"
-              @click="addConcept">Add Concept</button>
+      <button class="btn btn-primary" :disabled="!addConceptEnabled() || loading"
+              @click="addConcept">
+        <font-awesome-icon v-if="!loading" icon="plus"></font-awesome-icon>
+        <font-awesome-icon v-if="loading" icon="spinner" spin size="xs" />
+        Add Concept
+      </button>
+    </div>
+    <div class="alert alert-info" role="alert" v-if="loading">
+      <font-awesome-icon icon="spinner" spin size="xs" />
+      Caching model, please wait...
     </div>
     <div class="alert alert-danger" role="alert" v-if="addConceptErr">
       {{addConceptErr}}
@@ -73,7 +81,8 @@ export default {
         cui: '',
         synonyms: ''
       },
-      addConceptErr: false
+      addConceptErr: false,
+      loading: false
     }
   },
   methods: {
@@ -96,23 +105,35 @@ export default {
       let nextCtx = this.selection.nextText.slice(0, 30).split(' ').slice(0, -1)
       payload['context'] = `${this.selection.prevText}${this.selection.selStr}${nextCtx}`
 
-      this.$http.post(`/api/add-concept/`, payload).then(resp => {
-        this.$emit('request:addConceptComplete', resp.data.id)
+      this.loading = true
+      this.$http.get(`/api/cache-model/${this.project.id}/`).then(_ => {
+        this.$http.post(`/api/add-concept/`, payload).then(resp => {
+          this.loading = false
+          this.$emit('request:addConceptComplete', resp.data.id)
+        }).catch(err => {
+          this.loading = false
+          if (err.code === 400) {
+            this.addConceptErr = 'Invalid CUI value. CUI already exists in MedCAT.'
+            let that = this
+            setTimeout(function () {
+              that.addConceptErr = false
+            }, 5000)
+          } else {
+            this.addConceptErr = `Error adding concept:${(err.response.data || {}).err || 'Unknown error: more info in the console'}`
+            console.error(err)
+            let that = this
+            setTimeout(function () {
+              that.addConceptErr = false
+            }, 5000)
+          }
+        })
       }).catch(err => {
-        if (err.code === 400) {
-          this.addConceptErr = 'Invalid CUI value. CUI already exists in MedCAT.'
-          let that = this
-          setTimeout(function () {
-            that.addConceptErr = false
-          }, 5000)
-        } else {
-          this.addConceptErr = `Error adding concept:${(err.response.data || {}).err || 'Unknown error: more info in the console'}`
-          console.error(err)
-          let that = this
-          setTimeout(function () {
-            that.addConceptErr = false
-          }, 5000)
-        }
+        this.loading = false
+        this.addConceptErr = err.response?.data?.message || 'Error loading model.'
+        let that = this
+        setTimeout(function () {
+          that.addConceptErr = false
+        }, 5000)
       })
     }
   }

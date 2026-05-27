@@ -1,25 +1,48 @@
 # Administrator Setup
 
-1\.  The container runs a vanilla [django](https://www.djangoproject.com/) app, that upon initially loaded
-will create a defaulted administrator user with details:
+This page covers first-login admin hardening and user setup.
 
-<pre>
-    username: admin
-    password: admin
-</pre>
+## 1) Configure bootstrap admin credentials
 
-2\. We strongly recommend creating a new admin user before using the trainer in 'production' and storing sensitive
-clinical documents on the trainer. To add a new user navigate to select `http://localhost:8001/admin/` and select 'Users'.
+Before first startup in production-like environments, set:
 
-![](_static/img/users-select.png)
+- `MCTRAINER_BOOTSTRAP_ADMIN_USERNAME`
+- `MCTRAINER_BOOTSTRAP_ADMIN_EMAIL`
+- `MCTRAINER_BOOTSTRAP_ADMIN_PASSWORD`
 
-3\. Select 'Add User' and complete the form with a new username / password.
+If not set, MedCATtrainer defaults to `admin` / `admin`, which is not suitable
+for production.
 
-![](_static/img/add-new-users.png)
+## 2) Sign in and create operational admin users
 
-4\. Once created, select the new user, and tick the 'Staff Status' or 'Superuser Status' to allow the user to
-access the admin app.
+You can manage users from:
 
-5\. Remove the default admin user by navigating to step 2, select the user and the action
+- **Project Admin UI** (`/project-admin`) for day-to-day project operations
+- **Django Admin** (`/admin`) for full platform administration
 
-![](_static/img/remove-default-user.png)
+In Django admin (`/admin`), create at least one dedicated administrator account
+and grant:
+
+- `Staff status` for admin access
+- `Superuser status` for full unrestricted access
+
+## 3) Create annotator users
+
+Create users for annotators and add them to project membership lists.
+Annotators do not need staff/superuser flags.
+
+## 4) Remove or rotate bootstrap credentials
+
+After creating named administrator accounts:
+
+- remove the default bootstrap account if it is no longer needed, or
+- rotate its password and store credentials securely.
+
+## 5) If using OIDC
+
+When `USE_OIDC=1`, user permissions are mapped from IdP roles:
+
+- `medcattrainer_superuser` -> Django superuser + staff
+- `medcattrainer_staff` -> Django staff
+
+Ensure role assignment is correct in Keycloak before onboarding users.

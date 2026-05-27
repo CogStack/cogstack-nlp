@@ -1,0 +1,64 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel",  "setuptools_scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "medcat_gliner"
+dynamic = ["version"]
+description = ""
+readme = "README.md"
+license = { text = "Apache-2.0" }
+authors = [
+    { name="Mart Ratas", email="mart.ratas@kcl.ac.uk" }
+]
+requires-python = ">=3.10"
+
+keywords = ["NLP", "NER", "medical", "MedCAT", "gliner"]
+
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "License :: OSI Approved :: Apache Software License"
+]
+
+dependencies = [
+    "medcat>=2.5",
+    "gliner",
+    # transitive dependency of gliner that `uv` pins to and
+    # doesn't work in python 3.10
+    "onnxruntime<1.24; python_version < '3.11'",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff",
+    "mypy",
+]
+
+# entry-points to add onto medcat
+[project.entry-points."medcat.plugins"]
+ner_gliner = "medcat_gliner"
+
+[project.urls]
+Homepage = "https://github.com/CogStack/medcat-ops/tree/main/medcat-gliner"
+Repository = "https://github.com/CogStack/medcat-ops/tree/main/medcat-gliner"
+Issues = "https://github.com/CogStack/medcat-ops/issues"
+
+[tool.setuptools_scm]
+root = "../.."
+tag_regex = "^medcat-gliner/v(?P<version>\\d+(?:\\.\\d+)*)(?:[ab]\\d+|rc\\d+)?$"
+version_scheme = "post-release"
+local_scheme = "no-local-version"
+git_describe_command = "git describe --dirty --tags --long --match 'medcat-gliner/v*'"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"medcat_gliner" = ["py.typed"]

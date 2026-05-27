@@ -46,7 +46,7 @@ from medcat.components.types import CoreComponentType
 from medcat.components.ner.trf.model import NerModel
 from medcat.components.ner.trf.helpers import replace_entities_in_text
 from medcat.components.ner.trf.transformers_ner import TransformersNER
-from medcat.data.entities import Entity
+from medcat.data.entities import Entity, Entities
 
 
 logger = logging.getLogger(__name__)
@@ -89,9 +89,36 @@ class DeIdModel(NerModel):
         Returns:
             str: The deidentified text.
         """
-        entities = self.cat.get_entities(text)['entities']
-        return replace_entities_in_text(text, entities, self.cat.cdb.get_name,
-                                        redact=redact)
+        new_text, _entities = self.deid_text_with_entities(text, redact=redact)
+        return new_text
+
+    def deid_text_with_entities(self, text: str, redact: bool = False
+                                    ) -> tuple[str, Entities]:
+        """Deidentify text and potentially redact information.
+
+        De-identified text.
+        If redaction is enabled, identifiable entities will be
+        replaced with starts (e.g `*****`).
+        Otherwise, the replacement will be the CUI or in other words,
+        the type of information that was hidden (e.g [PATIENT]).
+
+        Args:
+            text (str): The text to deidentify.
+            redact (bool): Whether to redact the information.
+
+        Returns:
+            Tuple[str, Entities]: A tuple containing:
+                - The deidentified text as a string.
+                - The entities found and linked within the text.
+        """
+        entities = self.cat.get_entities(text)
+        new_text = replace_entities_in_text(
+            text,
+            entities['entities'],
+            self.cat.cdb.get_name,
+            redact=redact,
+        )
+        return new_text, entities
 
     def deid_multi_text(self, texts: Iterable[str], redact: bool = False,
                         n_process: Optional[int] = None) -> list[str]:

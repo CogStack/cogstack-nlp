@@ -1,50 +1,61 @@
+# Annotation Project Groups
 
-# Annotation Project Group Creation
-Annotation projects often involve more than one annotator.
+Project Groups help coordinate multi-annotator projects at scale.
 
-Project Group instances allow the creation and management of a group of annotation projects from one screen.
+They allow admins to define shared configuration once and apply it across a set
+of associated annotation projects.
 
-## Annotation Project Group Creation
+## When to use Project Groups
 
-Creating a Project Group is similar to regular [Annotation Project Creation](project_admin.md), but differs in a few 
-key ways. 
+Use a group when you need:
 
-They can be used to group existing projects together, or to create a set of Annotation Projects.
+- one project per annotator over the same dataset/configuration,
+- centralized settings management for those projects, or
+- grouped visibility in the home screen.
 
-## Key Differences from Regular Project Creation
+## Creating a Project Group
 
-When completing a Project Group form, **Create Associated Projects** is a key parameter:
+Create groups from Django admin (`/admin` -> **Project groups**).
 
-### Create Associated Projects: True
-If checked will create an Annotation Project for each Annotator selected in the list. All selected Admins will be included as 'annotators' on each Project created. This saves 
-the current steps of creating a 'template' projec then cloning, renaming and re-permissioning each project which happens with
-regular project creation for multiple annotators. Each Project will be called **<Project Group Name> - <Annotator Name>**.
+The key option is **Create Associated Projects**.
 
+### `create_associated_projects = true`
 
-### Create Associated Projects: False
-If False the only important parameters will be ProjectGroup Name and description. All other parameters will be ignored. The expectation here is 
-that the projects that are to be grouped already exist, and each Project will be added to the new Project Group manually.
+On initial save, MedCATtrainer automatically creates one
+`ProjectAnnotateEntities` per selected annotator.
 
-## Best Practise
-Project Groups provide a convenience method for the creating managing grorups of Annotation Projects. Changes such as CUI filters, and projec settings changed once
-in the group will flow down into the associated Annotation Projects.
+Naming pattern:
 
+- `<Project Group Name> - <Annotator Username>`
 
+Administrators are added to each generated project, plus the corresponding
+annotator.
 
-## Using Annotation Project Groups
-Regular, non-admin Users of MedCATTrainer, i.e. regular annotators, will not see the option to view Project Groups. 
+### `create_associated_projects = false`
 
-Admin users will see an action bar as shown:
-![Project Groups Available](_static/img/project-groups-view-available.png)
+No child projects are created automatically. Use this if you already have
+projects and want to group them manually.
 
-Selecting this view will show all available Project Groups to the logged in user.
-![Project Groups view](_static/img/project-groups-view.png)
+## Updating a group
 
-Selecting a group now opens a lightbox with the list of projects in this group:
-![Project Group Contents](_static/img/projects-in-group.png)
+When associated projects exist and remain aligned, group-level edits propagate
+to child project settings (for example CUI filters, model settings, tasks).
 
+If child projects were manually added/removed outside the expected structure,
+automatic propagation may fail and projects should then be edited individually.
 
-## Other Benefits of Project Groups
+## Using groups in the UI
 
-Further enhancements will allow metric further comparisson between projects in a group, gamification, standard annotation metric reporting (e.g. IIA / Cohen's Kappa statistics etc.)
+Admins can switch between **Single Projects** and **Project Groups** from the
+home page and inspect projects within each group.
+
+Regular annotators typically work with individual projects and may not need the
+group view.
+
+## Best practices
+
+- For inter-annotator agreement studies, disable `train_model_on_submit` in
+  all group projects.
+- Keep naming conventions consistent for easy report comparison.
+- Prefer one shared configuration template per annotation campaign.
 

@@ -7,13 +7,16 @@ from pydantic import ValidationError
 
 from medcat_service.dependencies import MedCatProcessorDep
 from medcat_service.types import BulkProcessAPIInput, BulkProcessAPIResponse, ProcessAPIInput, ProcessAPIResponse
-
+from opentelemetry import trace
 log = logging.getLogger("API")
 
 router = APIRouter(tags=["Process"])
 
+tracer = trace.get_tracer("medcat_service")
+
 
 @router.post("/api/process")
+@tracer.start_as_current_span("/api/process")
 async def process(
     payload: Annotated[
         Union[ProcessAPIInput, dict],

@@ -1,0 +1,121 @@
+name: MedCAT-Gliner-CI (test / publish)
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'medcat-plugins/medcat-gliner/**'
+      - '.github/workflows/medcat-gliner**'
+    tags:
+      - 'medcat-gliner/v*.*.*'  
+  pull_request:
+    paths:
+      - 'medcat-plugins/medcat-gliner/**'
+      - '.github/workflows/medcat-gliner**'
+
+permissions:
+  id-token: write
+
+defaults:
+  run:
+    working-directory: ./medcat-plugins/medcat-gliner
+
+jobs:
+  tests:
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      matrix:
+        python-version: [ '3.10', '3.11', '3.12', '3.13' ]
+      max-parallel: 4
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install uv for Python ${{ matrix.python-version }}
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+          enable-cache: true
+
+      - name: Install dependencies
+        run: |
+          df -h # check spaces before
+          uv run python -m ensurepip
+          uv pip install -e ".[dev]" --extra-index-url https://download.pytorch.org/whl/cpu/
+          df -h # check spaces after
+
+      - name: Check types
+        run: |
+          uv run mypy --follow-imports=normal src/medcat_gliner --follow-untyped-imports
+
+      - name: Lint
+        run: |
+          uv run ruff check src/medcat_gliner --preview
+
+      - name: Test
+        run: |
+          uv run python -m unittest discover
+
+  publish-to-test-PyPI:
+    runs-on: ubuntu-latest
+    needs: tests
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0        # fetch all history
+          fetch-tags: true      # fetch tags explicitly
+
+      - name: Install uv for Python 3.10
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: '3.10'
+          enable-cache: true
+
+      - name: Set timestamp-based dev version
+        run: |
+          TS=$(date -u +"%Y%m%d%H%M%S")
+          echo "SETUPTOOLS_SCM_PRETEND_VERSION_FOR_MEDCAT_GLINER=0.2.2.dev${TS}" >> $GITHUB_ENV
+
+      - name: Install dependencies
+        run: |
+          uv run python -m ensurepip
+
+      - name: Build package
+        run: |
+          uv build
+
+      - name: Publish distribution to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository_url: https://test.pypi.org/legacy/
+          packages_dir: medcat-plugins/medcat-gliner/dist
+
+  test-and-publish-to-PyPI:
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: tests
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v6
+
+      - name: Install uv for Python 3.10
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: '3.10'
+          enable-cache: true
+
+      - name: Install dependencies
+        run: |
+          uv run python -m ensurepip
+
+      - name: Build client package
+        run: |
+          uv build
+
+      - name: Publish production distribution to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages_dir: medcat-plugins/medcat-gliner/dist

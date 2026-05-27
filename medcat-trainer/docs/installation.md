@@ -1,114 +1,195 @@
 # Installation
-MedCATtrainer is a docker-compose packaged Django application.
 
-## Download from Dockerhub
-Clone the repo, run the default docker-compose file and default env var:
-```shell
-$ git clone https://github.com/CogStack/cogstack-nlp
-$ cd cogstack-nlp/medcat-trainer
-$ docker-compose up
-```
+The steps to setup Medcat trainer are as follows:
 
-This will use the pre-built docker images available on DockerHub. If your internal firewall does on permit access to DockerHub, you can build directly from source.
+1. Run MedCAT Trainer with Docker or Helm
+2. Setup the Administrator user with [Administrator Setup](admin_setup.md) 
+3. Configure annotations Projects
 
-To check logs of the MedCATtrainer running containers
+This page details the initial running of the application with Docker
+
+MedCATtrainer is packaged as a Docker Compose deployment with three core
+services:
+
+- `medcattrainer` (Django API + background workers)
+- `nginx` (serves UI and proxies API)
+- `solr` (concept search index for concept lookup)
+
+## Prerequisites
+
+- Docker Engine
+- Docker Compose v2 (`docker compose` command)
+- `uv` (only needed for the local Django debug script)
+
+## Quick start (prebuilt images)
+
 ```bash
-$  docker logs <containerid> | grep "\[medcattrainer\]"
-$  docker logs <containerid> | grep "\[bg-process\]"
-$  docker logs <containerid> | grep "\[db-backup\]"
+git clone https://github.com/CogStack/cogstack-nlp
+cd cogstack-nlp/medcat-trainer
+docker compose up -d
 ```
 
-## MedCAT v0.x models
-If you have MedCAT v0.x models, and want to use the trainer please use the following docker-compose file:
-This refences the latest built image for the trainer that is still compatible with [MedCAT v0.x.](https://pypi.org/project/medcat/0.4.0.6/) and under.
-```shell
-$ docker-compose -f docker-compose-mc0x.yml up
+Open the app at `http://localhost:8001` (unless you changed `MCTRAINER_PORT`).
+
+Useful logs:
+
+```bash
+docker compose logs -f medcattrainer
+docker compose logs -f nginx
+docker compose logs -f solr
 ```
 
-## Build images from source
-The above commands runs the latest release of MedCATtrainer, if you'd prefer to build the Docker images from source, use
-```shell
-$ docker-compose -f docker-compose-dev.yml up
+## Build from source (development)
+
+```bash
+docker compose -f docker-compose-dev.yml up --build
 ```
 
-To change environment variables, such as the exposed host ports and language of spaCy model, use:
-```shell
-$ cp .env-example .env
-# Set local configuration in .env
+This uses the local `webapp/` source tree and is the recommended setup for
+development work.
+
+### Local Django debug script
+
+For backend development where you want to run Django directly on your host
+machine, use the local debug helper:
+
+```bash
+./webapp/scripts/run_local_debug.sh
 ```
+
+The script sources `envs/env`, syncs Python dependencies with `uv` when needed,
+runs migrations, creates a local admin user, ensures the default user group
+exists, and starts Django at `http://127.0.0.1:8001/`.
+
+By default it also starts only the `solr` service with Docker Compose:
+
+```bash
+docker compose -f docker-compose-dev.yml up -d solr
+```
+
+Before starting Solr, the script ensures the Compose gateway network exists. It
+uses `gateway-auth_gateway-net` by default, creating it if it is missing. If you
+are running MedCATtrainer alongside a different gateway stack, set the network
+name explicitly:
+
+```bash
+MCT_GATEWAY_NETWORK_NAME=my-gateway-net ./webapp/scripts/run_local_debug.sh
+```
+
+Available modes:
+
+```bash
+./webapp/scripts/run_local_debug.sh server
+./webapp/scripts/run_local_debug.sh worker
+./webapp/scripts/run_local_debug.sh shell
+./webapp/scripts/run_local_debug.sh bootstrap
+```
+
+Common overrides:
+
+| Variable | Description |
+|---|---|
+| `MCT_DEBUG_HOST` | Django bind host (default `0.0.0.0`). |
+| `MCT_DEBUG_PORT` | Django port (default `8001`). |
+| `MCT_ENV_FILE` | Env file to source instead of `envs/env`. |
+| `MCT_ADMIN_USERNAME` | Local admin username (default `admin`). |
+| `MCT_ADMIN_PASSWORD` | Local admin password (default `admin`). |
+| `MCT_START_SOLR` | Start Solr through Docker Compose (`1`/`0`, default `1`). |
+| `MCT_GATEWAY_NETWORK_NAME` | External Compose network to use/create for Solr. |
+| `MCT_SYNC_DEPS` | Run `uv sync --frozen` (`1`/`0`/`auto`, default `auto`). |
+
+## Legacy MedCAT v0.x support
+
+If you still need the legacy MedCAT v0.x-compatible stack:
+
+```bash
+docker compose -f docker-compose-mc0x.yml up -d
+```
+
+## Environment configuration
+
+Runtime settings are mainly defined in:
+
+- `envs/env` (non-prod defaults)
+- `envs/env-prod` (production-oriented defaults)
+
+Host-level Compose variables (for example port overrides) can be set by copying
+`.env-example` to `.env` and editing values.
+
+### Common environment variables
+
+| Variable | Description |
+|---|---|
+| `CSRF_TRUSTED_ORIGINS` | Allowed origins to access the admin panel. Mandatory to set if you expose the app over a different URL or port (default `'http://127.0.0.1:8001', 'http://localhost:8001'`). |
+| `MCTRAINER_PORT` | Host port for the web UI/API (default `8001`). |
+| `SOLR_PORT` | Host port for Solr admin (default `8983`). |
+| `MEDCAT_CONFIG_FILE` | MedCAT config file path inside the container. |
+| `LOAD_EXAMPLES` | Load example model pack + dataset + project on startup (`1`/`0`). |
+| `PROVISIONING_CONFIG_PATH` | File path of a yaml defining projects to create on startup |
+| `REMOTE_MODEL_SERVICE_TIMEOUT` | Timeout (seconds) for remote model-service calls. |
+| `MCTRAINER_BOOTSTRAP_ADMIN_USERNAME` | Bootstrap admin username (default `admin`). |
+| `MCTRAINER_BOOTSTRAP_ADMIN_EMAIL` | Bootstrap admin email. |
+| `MCTRAINER_BOOTSTRAP_ADMIN_PASSWORD` | Bootstrap admin password (change in real deployments). |
+
+### SMTP (optional, for password reset emails)
+
+Set:
+
+- `EMAIL_USER`
+- `EMAIL_PASS`
+- `EMAIL_HOST`
+- `EMAIL_PORT`
+
+If SMTP is not configured, password reset workflows will fail.
+
+## OIDC (Keycloak) authentication (optional)
+
+Set `USE_OIDC=1` and provide:
+
+| Variable | Description |
+|---|---|
+| `KEYCLOAK_URL` | Public Keycloak URL (frontend redirect/login). |
+| `KEYCLOAK_REALM` | Keycloak realm name. |
+| `KEYCLOAK_LOGOUT_REDIRECT_URI` | URL to redirect users to on logout. |
+| `KEYCLOAK_INTERNAL_SERVICE_URL` | Backend-reachable Keycloak URL. |
+| `KEYCLOAK_FRONTEND_CLIENT_ID` | Public frontend client ID. |
+| `KEYCLOAK_BACKEND_CLIENT_ID` | Confidential backend client ID. |
+| `KEYCLOAK_BACKEND_CLIENT_SECRET` | Backend client secret. |
+
+Optional token refresh tuning:
+
+- `KEYCLOAK_TOKEN_MIN_VALIDITY` (default `30`)
+- `KEYCLOAK_TOKEN_REFRESH_INTERVAL` (default `20`)
+
+Role mapping:
+
+- `medcattrainer_superuser` -> Django superuser/staff
+- `medcattrainer_staff` -> Django staff
+
+## PostgreSQL support (optional)
+
+SQLite is default. For larger deployments, set:
+
+| Variable | Description |
+|---|---|
+| `DB_ENGINE` | `sqlite3` or `postgresql` |
+| `DB_NAME` | Database name |
+| `DB_USER` | Database user |
+| `DB_PASSWORD` | Database password |
+| `DB_HOST` | Database host/service |
+| `DB_PORT` | Database port (default `5432`) |
+
+An example compose file is available at
+`docker-compose-example-postgres.yml`.
 
 ## Troubleshooting
-If the build fails with an error code 137, the virtual machine running the docker
-daemon does not have enough memory. Increase the allocated memory to containers in the docker daemon
-settings CLI or associated docker GUI.
 
-On MAC: https://docs.docker.com/docker-for-mac/#memory
+- **Exit code 137 during build/start**: container memory is too low.
+  Increase Docker memory allocation.
+- **Cannot log in with default admin**: verify bootstrap admin env vars and
+  startup logs.
+- **Concept picker empty**: confirm Solr is running and concepts were imported
+  for the selected CDB.
 
-On Windows: https://docs.docker.com/docker-for-windows/#resources
-
-### (Optional) SMTP Setup
-
-For password resets and other emailing services email environment variables are required to be set up.
-
-Personal email accounts can be set up by users to do this, or you can contact someone in CogStack for a cogstack no email credentials.
-
-The environment variables required are listed in [Environment Variables.](#optional-environment-variables)
-
-Environment Variables are located in envs/env or envs/env-prod, when those are set webapp/frontend/.env must change "VITE_APP_EMAIL" to 1.
-
-### (Optional) Environment Variables
-Environment variables are used to configure the app:
-
-|Parameter|Description|
-|---------|-----------|
-|MEDCAT_CONFIG_FILE|MedCAT config file as described [here](https://github.com/CogStack/cogstack-nlp/blob/main/medcat-v2/medcat/config/config.py)|
-|BEHIND_RP| If you're running MedCATtrainer, use 1, otherwise this defaults to 0 i.e. False|
-|MCTRAINER_PORT|The port to run the trainer app on|
-|EMAIL_USER|Email address which will be used to send users emails regarding password resets|
-|EMAIL_PASS|The password or authentication key which will be used with the email address|
-|EMAIL_HOST|The hostname of the SMTP server which will be used to send email (default: mail.cogstack.org)|
-|EMAIL_PORT|The port that the SMTP server is listening to, common numbers are 25, 465, 587 (default: 465)|
-
-Set these and re-run the docker-compose file.
-
-You'll need to `docker stop` the running containers if you have already run the install.
-
-## OIDC Authentication
-
-You can enable OIDC (OpenID Connect) authentication for the MedCAT Trainer. To do so, you must configure the following environment variables:
-
-| Variable                                | 	Used by	            | Description                                                    |
-|-----------------------------------------|-------------------------|----------------------------------------------------------------|
-| USE_OIDC                                | 	Backend	            | Enable OIDC login flow (1 (true) / 0 (false)).                 |
-| VITE_USE_OIDC                           | 	Frontend            | 	Exposed version of USE_OIDC for Vue.                          |
-| VITE_API_URL                            | 	Frontend            | 	Base API URL for frontend calls.                              |
-| VITE_KEYCLOAK_URL                       | 	Frontend            | 	Keycloak base URL (e.g. http://keycloak.cogstack.localhost/). |
-| VITE_KEYCLOAK_REALM                     | 	Frontend            | 	Keycloak realm name.                                          |
-| VITE_KEYCLOAK_CLIENT_ID                 | 	Frontend            | 	Keycloak client ID for this app.                              |
-| VITE_KEYCLOAK_TOKEN_REFRESH_INTERVAL_MS | 	Frontend            | 	Token refresh frequency in ms.                                |
-| VITE_KEYCLOAK_TOKEN_MIN_VALIDITY_SECS   | 	Frontend            | 	Minimum token validity before refresh.                        |
-| VITE_LOGOUT_REDIRECT_URI                | 	Frontend            | 	Where to send user after logout.                              |
-| NGINX_HOST                              | Backend              | Host alias used by reverse proxy (Traefik )                    |
-
-You can either use the Gateway Auth stack available in cogstack-ops or deploy your own Keycloak instance.
-If you deploy your own Keycloak instance, make sure to configure the network accordingly.
-
-Currently, there are two roles that can be assigned to users:
-- medcattrainer_superuser: grants superuser privileges in the application.
-- medcattrainer_staff: grants staff-level privileges without full superuser access.
-
-### (Optional) Postgres Database Support
-MedCAT trainer defaults to a local SQLite database, which is suitable for single-user or small-scale setups.  
-
-For larger deployments, or to support multiple replicas of the app for example in Kubernetes, you may want to run a postgresql database.
-
-You can optionally use a postgresql database instead by setting the following env variables. 
-
-|Parameter|Description|
-|---------|-----------|
-|DB_ENGINE|Database engine to use. Either `sqlite3` or `postgresql`. Defaults to `sqlite3` if not set.|
-|DB_NAME|Name of the database to connect to.|
-|DB_USER|Username to authenticate with the database.|
-|DB_PASSWORD|Password to authenticate with the database.|
-|DB_HOST|Hostname of the database server (for Postgres, typically the service name in Docker/Kubernetes).|
-|DB_PORT|Port the database server is listening on. Defaults to `5432` for Postgres.|
+## Next Steps
+Now that medcat trainer is installed and running, proceed to [Administrator Setup](admin_setup.md) to create the Admin user.

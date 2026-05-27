@@ -84,7 +84,7 @@ class RelExtrBertModel(RelExtrBaseModel):
             logger.info("Loaded model from pretrained: %s",
                         pretrained_model_name_or_path)
         else:
-            pretrained_model = cls.pretrained_model_name_or_path
+            pretrained_model = model.pretrained_model_name_or_path
             model.hf_model = BertModel.from_pretrained(
                 pretrained_model_name_or_path=pretrained_model,
                 config=model_config.hf_model_config,

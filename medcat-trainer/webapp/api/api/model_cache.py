@@ -3,6 +3,7 @@ import os
 from typing import Dict, Optional, Any
 
 from pydantic import ValidationError
+from opentelemetry import trace
 
 from medcat import __version__ as mct_version
 from medcat.cat import CAT
@@ -11,7 +12,7 @@ from medcat.cdb import CDB
 from medcat.vocab import Vocab
 from medcat.utils.legacy.convert_cdb import get_cdb_from_old
 
-from api.models import ConceptDB
+from api.models import ConceptDB, ModelPack
 
 """
 Module level caches for CDBs, Vocabs and CAT instances.
@@ -22,6 +23,7 @@ VOCAB_MAP = {}
 CAT_MAP = {}
 
 logger = logging.getLogger(__name__)
+tracer = trace.get_tracer("medcat-trainer")
 
 try:
     _MAX_MODELS_LOADED = int(os.getenv("MAX_MEDCAT_MODELS", 1))
@@ -40,11 +42,12 @@ def _clear_models(cdb_map: Dict[str, CDB]=CDB_MAP,
     if len(vocab_map) > _MAX_MODELS_LOADED:
         (k := next(iter(vocab_map)), vocab_map.pop(k))
 
-
+@tracer.start_as_current_span("get_medcat_from_cdb_vocab")
 def get_medcat_from_cdb_vocab(project,
                               cdb_map: Dict[str, CDB]=CDB_MAP,
                               vocab_map: Dict[str, Vocab]=VOCAB_MAP,
                               cat_map: Dict[str, CAT]=CAT_MAP) -> CAT:
+    trace.get_current_span().set_attributes({"project_id": project.id, "cdb_id": project.concept_db.id, "vocab_id": project.vocab.id})
     cdb_id = project.concept_db.id
     vocab_id = project.vocab.id
     cat_id = str(cdb_id) + "-" + str(vocab_id)
@@ -152,8 +155,9 @@ def _set_value_or_alt(conf: SerialisableBaseModel, key: str, value: Any,
         else:
             raise ve
 
-
+@tracer.start_as_current_span("get_medcat_from_model_pack")
 def get_medcat_from_model_pack(project, cat_map: Dict[str, CAT]=CAT_MAP) -> CAT:
+    trace.get_current_span().set_attributes({"project_id": project.id, "modelpack_id": project.model_pack.id})
     model_pack_obj = project.model_pack
     cat_id = 'mp' + str(model_pack_obj.id)
     logger.info('Loading model pack from:%s', model_pack_obj.model_pack.path)
@@ -163,10 +167,32 @@ def get_medcat_from_model_pack(project, cat_map: Dict[str, CAT]=CAT_MAP) -> CAT:
     return cat
 
 
+@tracer.start_as_current_span("get_medcat_from_model_pack_id")
+def get_medcat_from_model_pack_id(modelpack_id: int, cat_map: Dict[str, CAT]=CAT_MAP) -> CAT:
+    """
+    Load (and cache) a MedCAT model pack directly from a ModelPack id.
+    """
+    trace.get_current_span().set_attributes({"modelpack_id": modelpack_id})
+    cat_id = f'mp{modelpack_id}'
+    if cat_id in cat_map:
+        return cat_map[cat_id]
+
+    model_pack_obj = ModelPack.objects.get(id=modelpack_id)
+    logger.info('Loading model pack from:%s', model_pack_obj.model_pack.path)
+    cat = CAT.load_model_pack(model_pack_obj.model_pack.path)
+    cat_map[cat_id] = cat
+    _clear_models(cat_map=cat_map)
+    return cat
+
+@tracer.start_as_current_span("get_medcat")
 def get_medcat(project,
                cdb_map: Dict[str, CDB]=CDB_MAP,
                vocab_map: Dict[str, Vocab]=VOCAB_MAP,
                cat_map: Dict[str, CAT]=CAT_MAP):
+    cat = get_cached_medcat(project, cat_map)
+    if cat is not None:
+        trace.get_current_span().add_event("Loaded medcat from cache")
+        return cat
     try:
         if project.model_pack is None:
             cat = get_medcat_from_cdb_vocab(project, cdb_map, vocab_map, cat_map)
@@ -181,6 +207,15 @@ def get_cached_medcat(project, cat_map: Dict[str, CAT]=CAT_MAP):
     if project.model_pack is not None:
         cat_id = 'mp' + str(project.model_pack.id)
     else:
+        # Guard against misconfigured projects that don't have a CDB/Vocab set
+        if project.use_model_service:
+            raise ValueError(
+                "get_cached_medcat should not be called for projects where use_model_service=True"
+            )
+        if project.concept_db is None or project.vocab is None:
+            raise Exception(
+                f"Project is misconfigured: concept_db is {project.concept_db} and vocab is {project.vocab}"
+            )
         cdb_id = project.concept_db.id
         vocab_id = project.vocab.id
         cat_id = str(cdb_id) + "-" + str(vocab_id)
@@ -197,6 +232,16 @@ def clear_cached_medcat(project, cat_map: Dict[str, CAT]=CAT_MAP):
         clear_cached_cdb(cdb_id)
         clear_cached_vocab(vocab_id)
         cat_id = str(cdb_id) + "-" + str(vocab_id)
+    if cat_id in cat_map:
+        del cat_map[cat_id]
+
+
+def is_model_pack_loaded(modelpack_id: int, cat_map: Dict[str, CAT]=CAT_MAP) -> bool:
+    return f'mp{modelpack_id}' in cat_map
+
+
+def clear_cached_medcat_by_model_pack_id(modelpack_id: int, cat_map: Dict[str, CAT]=CAT_MAP) -> None:
+    cat_id = f'mp{modelpack_id}'
     if cat_id in cat_map:
         del cat_map[cat_id]
 

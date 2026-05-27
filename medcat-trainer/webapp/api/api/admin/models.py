@@ -9,7 +9,7 @@ from ..models import *
 
 _PROJECT_ANNO_ENTS_SETTINGS_FIELD_ORDER = (
     'concept_db', 'vocab', 'model_pack', 'cdb_search_filter', 'deid_model_annotation', 'require_entity_validation', 'train_model_on_submit',
-    'add_new_entities', 'restrict_concept_lookup', 'terminate_available', 'irrelevant_available',
+    'use_model_service', 'model_service_url', 'add_new_entities', 'restrict_concept_lookup', 'terminate_available', 'irrelevant_available',
     'enable_entity_annotation_comments', 'tasks', 'relations'
 )
 
@@ -177,7 +177,7 @@ class ModelPackAdmin(admin.ModelAdmin):
 
     def metacats(self, obj):
         return ", ".join(str(m_c) for m_c in obj.meta_cats.all())
-    
+
     def save_model(self, request, obj, form, change):
         obj.last_modified_by = request.user
         super().save_model(request, obj, form, change)

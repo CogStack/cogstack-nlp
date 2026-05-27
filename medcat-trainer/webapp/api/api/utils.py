@@ -3,6 +3,7 @@ import logging
 import os
 from typing import List
 
+import requests
 from background_task import background
 from django.contrib.auth.models import User
 from django.db import transaction
@@ -12,12 +13,161 @@ from medcat.cat import CAT
 from medcat.cdb import CDB
 from medcat.components.ner.trf.deid import DeIdModel
 from medcat.tokenizing.tokens import UnregisteredDataPathException
+from opentelemetry import trace
 
 from .model_cache import get_medcat
 from .models import Entity, AnnotatedEntity, ProjectAnnotateEntities, \
     MetaAnnotation, MetaTask, Document
 
 logger = logging.getLogger('trainer')
+tracer = trace.get_tracer("medcat-trainer")
+
+
+class RemoteEntity:
+    """A simple class to mimic spaCy entity structure for remote API responses."""
+
+    def __init__(self, entity_data, text):
+        self.cui = entity_data.get('cui', '')
+        self.start_char_index = entity_data.get('start', 0)
+        self.end_char_index = entity_data.get('end', 0)
+        self.text = entity_data.get('detected_name') or entity_data.get('source_value', '')
+        self.context_similarity = entity_data.get('context_similarity', entity_data.get('acc', 0.0))
+        self._meta_anns = entity_data.get('meta_anns', {})
+        self._text = text
+
+    def get_addon_data(self, key):
+        """Mimic get_addon_data for meta_cat_meta_anns."""
+        if key == 'meta_cat_meta_anns':
+            return self._meta_anns
+        return {}
+
+
+class RemoteSpacyDoc:
+    """A simple class to mimic spaCy document structure for remote API responses."""
+
+    def __init__(self, linked_ents):
+        self.linked_ents = linked_ents
+
+
+@tracer.start_as_current_span("call_remote_model_service")
+def call_remote_model_service(service_url, text):
+    """
+    Call the remote MedCAT service API to process text.
+
+    There are two service types, with different input and output formats.
+
+    This should be temporary until we determine which one is meant to be used. 
+    """
+    trace.get_current_span().set_attributes({"server.address": service_url, "text_length": len(text)})
+    service_type = os.getenv('REMOTE_MODEL_SERVICE_TYPE', 'spacy')
+    if service_type == 'spacy':
+        return call_remote_model_service_spacy(service_url, text)
+    elif service_type == 'medcat':
+        return call_remote_model_service_medcat(service_url, text)
+    else:
+        raise ValueError(f"Invalid service type: {service_type}")
+
+
+def call_remote_model_service_spacy(service_url, text):
+    """
+    Call the remote MedCAT service API to process text.
+
+    Args:
+        service_url: Base URL of the remote service (e.g., http://medcat-service:8000)
+        text: Text to process
+
+    Returns:
+        RemoteSpacyDoc object with linked_ents
+    """
+    # Ensure service_url doesn't end with /
+    service_url = service_url.rstrip('/')
+    api_url = f"{service_url}/api/process"
+
+    payload = {
+        "text": text
+    }
+
+    # Get timeout from environment variable, default to 60 seconds
+    timeout = int(os.getenv('REMOTE_MODEL_SERVICE_TIMEOUT', '60'))
+
+    try:
+        logger.info(
+            f"Calling remote model service at {api_url} (text length: {len(payload['text'])} chars)"
+        )
+        response = requests.post(api_url, json=payload, timeout=timeout)
+        response.raise_for_status()
+        result = response.json()
+
+        # Extract entities from the response
+        entities_data = result.get('entities', {})
+        linked_ents = []
+
+        for _, entity_data in entities_data.items():
+            linked_ents.append(RemoteEntity(entity_data, text))
+
+        return RemoteSpacyDoc(linked_ents)
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error calling remote model service at {api_url}: {e}")
+        raise Exception(f"Failed to call remote model service: {str(e)}") from e
+    except Exception as e:
+        logger.error(f"Error processing remote model service response: {e}")
+        raise Exception(f"Failed to process remote model service response: {str(e)}") from e
+
+
+def call_remote_model_service_medcat(service_url, text):
+    """
+    Call the remote MedCAT service API to process text.
+    Uses the medcat-service response shape: { "medcat_info", "result": { "text", "annotations", ... } }.
+
+    Args:
+        service_url: Base URL of the remote service (e.g., http://medcat-service:8000)
+        text: Text to process
+
+    Returns:
+        RemoteSpacyDoc object with linked_ents
+    """
+    service_url = service_url.rstrip('/')
+    api_url = f"{service_url}/api/process"
+
+    payload = {
+        "content": {
+            "text": text
+        },
+    }
+
+    timeout = int(os.getenv('REMOTE_MODEL_SERVICE_TIMEOUT', '60'))
+
+    try:
+        logger.info(
+            f"Calling remote model service for medcat at {api_url} (text length: {len(payload['content']['text'])} chars)"
+        )
+        response = requests.post(api_url, json=payload, timeout=timeout)
+        response.raise_for_status()
+        body = response.json()
+
+        # API returns { "medcat_info": {...}, "result": { "text", "annotations", ... } }
+        data = body.get('result')
+        if data is None:
+            raise Exception("Remote model service response missing 'result'")
+        if 'errors' in data:
+            raise Exception(f"Remote model service returned errors: {data['errors']}")
+
+        result_text = data.get('text', text)
+        annotations = data.get('annotations', [])
+        linked_ents = []
+        for ann_item in annotations:
+            if not isinstance(ann_item, dict):
+                continue
+            for entity_data in ann_item.values():
+                linked_ents.append(RemoteEntity(entity_data, result_text))
+
+        return RemoteSpacyDoc(linked_ents)
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error calling remote model service at {api_url}: {e}")
+        raise Exception(f"Failed to call remote model service: {str(e)}") from e
+    except Exception as e:
+        logger.error(f"Error processing remote model service response: {e}")
+        raise Exception(f"Failed to process remote model service response: {str(e)}") from e
 
 
 def remove_annotations(document, project, partial=False):
@@ -36,30 +186,60 @@ def remove_annotations(document, project, partial=False):
         logger.debug(f"Something went wrong: {e}")
 
 
-def add_annotations(spacy_doc, user, project, document, existing_annotations, cat):
+class SimpleFilters:
+    """Simple filter object for remote service when cat is not available."""
+
+    def __init__(self, cuis=None, cuis_exclude=None):
+        self.cuis = cuis or set()
+        self.cuis_exclude = cuis_exclude or set()
+
+
+@tracer.start_as_current_span("add_annotations")
+def add_annotations(spacy_doc, user, project, document, existing_annotations, cat=None, filters=None, similarity_threshold=0.3):
+    """
+    Add annotations from spacy_doc to the database.
+
+    Args:
+        spacy_doc: spaCy document with linked_ents or RemoteSpacyDoc
+        user: User object
+        project: ProjectAnnotateEntities object
+        document: Document object
+        existing_annotations: List of existing AnnotatedEntity objects
+        cat: CAT object (optional, required if filters not provided)
+        filters: SimpleFilters object (optional, used when cat is None)
+        similarity_threshold: float (optional, default 0.3, used when cat is None)
+    """
     spacy_doc.linked_ents.sort(key=lambda x: len(x.text), reverse=True)
 
-    tkns_in = []
     ents = []
-    existing_annos_intervals = [(ann.start_ind, ann.end_ind) for ann in existing_annotations]
+
+    # NOTE: The code to create metatask2obj and metataskvals2obj is currently unused.
+    # Note if this is uncommented, this will error out with remote model services.
+    # Choosing to keep this commented out for now until the usage of it is required.
+    # tkns_in = []
+    # existing_annos_intervals = [(ann.start_ind, ann.end_ind) for ann in existing_annotations]
     # all MetaTasks and associated values
     # that can be produced are expected to have available models
-    try:
-        metatask2obj = {task_name: MetaTask.objects.get(name=task_name)
-                        for task_name in spacy_doc.linked_ents[0].get_addon_data('meta_cat_meta_anns').keys()}
-        metataskvals2obj = {task_name: {v.name: v for v in MetaTask.objects.get(name=task_name).values.all()}
-                            for task_name in spacy_doc.linked_ents[0].get_addon_data('meta_cat_meta_anns').keys()}
-    except (AttributeError, IndexError, UnregisteredDataPathException):
-        # IndexError: ignore if there are no annotations in this doc
-        # AttributeError: ignore meta_anns that are not present - i.e. non model pack preds
-        # or model pack preds with no meta_anns
-        metatask2obj = {}
-        metataskvals2obj = {}
-        pass
+    # try:
+    #     metatask2obj = {task_name: MetaTask.objects.get(name=task_name)
+    #                     for task_name in spacy_doc.linked_ents[0].get_addon_data('meta_cat_meta_anns').keys()}
+    #     metataskvals2obj = {task_name: {v.name: v for v in MetaTask.objects.get(name=task_name).values.all()}
+    #                         for task_name in spacy_doc.linked_ents[0].get_addon_data('meta_cat_meta_anns').keys()}
+    # except (AttributeError, IndexError, UnregisteredDataPathException):
+    #     # IndexError: ignore if there are no annotations in this doc
+    #     # AttributeError: ignore meta_anns that are not present - i.e. non model pack preds
+    #     # or model pack preds with no meta_anns
+    #     metatask2obj = {}
+    #     metataskvals2obj = {}
+    #     pass
 
-    def check_ents(ent):
-        return any((ea[0] < ent.start_char_index < ea[1]) or
-                   (ea[0] < ent.end_char_index < ea[1]) for ea in existing_annos_intervals)
+    # Get filters and similarity threshold
+    if cat is not None:
+        filters_obj = cat.config.components.linking.filters
+        MIN_ACC = cat.config.components.linking.similarity_threshold
+    else:
+        filters_obj = filters or SimpleFilters()
+        MIN_ACC = similarity_threshold
 
     def check_filters(cui, filters):
         if cui in filters.cuis or not filters.cuis:
@@ -68,15 +248,8 @@ def add_annotations(spacy_doc, user, project, document, existing_annotations, ca
             return False
 
     for ent in spacy_doc.linked_ents:
-        if not check_ents(ent) and check_filters(ent.cui, cat.config.components.linking.filters):
-            to_add = True
-            for tkn in ent:
-                if tkn in tkns_in:
-                    to_add = False
-            if to_add:
-                for tkn in ent:
-                    tkns_in.append(tkn)
-                ents.append(ent)
+        if check_filters(ent.cui, filters_obj):
+            ents.append(ent)
 
     logger.debug('Found %s annotations to store', len(ents))
     for ent in ents:
@@ -92,9 +265,10 @@ def add_annotations(spacy_doc, user, project, document, existing_annotations, ca
             entity = Entity.objects.get(label=label)
 
         ann_ent = AnnotatedEntity.objects.filter(project=project,
-                                                  document=document,
-                                                  start_ind=ent.start_char_index,
-                                                  end_ind=ent.end_char_index).first()
+                                                 document=document,
+                                                 entity=entity,
+                                                 start_ind=ent.start_char_index,
+                                                 end_ind=ent.end_char_index).first()
         if ann_ent is None:
             # If this entity doesn't exist already
             ann_ent = AnnotatedEntity()
@@ -107,7 +281,6 @@ def add_annotations(spacy_doc, user, project, document, existing_annotations, ca
             ann_ent.end_ind = ent.end_char_index
             ann_ent.acc = ent.context_similarity
 
-            MIN_ACC = cat.config.components.linking.similarity_threshold
             if ent.context_similarity < MIN_ACC:
                 ann_ent.deleted = True
                 ann_ent.validated = True
@@ -155,17 +328,8 @@ def get_create_cdb_infos(cdb, concept, cui, cui_info_prop, code_prop, desc_prop,
     return model_clazz.objects.filter(code__in=codes)
 
 
-def _remove_overlap(project, document, start, end):
-    anns = AnnotatedEntity.objects.filter(project=project, document=document)
-
-    for ann in anns:
-        if (start <= ann.start_ind <= end) or (start <= ann.end_ind <= end):
-            logger.debug("Removed %s ", str(ann))
-            ann.delete()
-
-
 def create_annotation(source_val: str, selection_occurrence_index: int, cui: str, user: User,
-                      project: ProjectAnnotateEntities, document, cat: CAT):
+                      project: ProjectAnnotateEntities, document: Document):
     text = document.text
     id = None
 
@@ -180,9 +344,8 @@ def create_annotation(source_val: str, selection_occurrence_index: int, cui: str
     start = all_occurrences_start_idxs[selection_occurrence_index]
 
     if start is not None and len(source_val) > 0 and len(cui) > 0:
-        # Remove overlaps
+        # Allow overlapping annotations - removed overlap constraint
         end = start + len(source_val)
-        _remove_overlap(project, document, start, end)
 
         cnt = Entity.objects.filter(label=cui).count()
         if cnt == 0:
@@ -249,10 +412,9 @@ def train_medcat(cat, project, document):
     irrelevant_anns = AnnotatedEntity.objects.filter(project=project, document=document, irrelevant=True)
     for ann in irrelevant_anns:
         cui = ann.entity.label
-        if 'cuis_exclude' not in cat.config.components.linking.filters:
-            cat.config.components.linking.filters['cuis_exclude'] = set()
-        cat.config.components.linking.filters.get('cuis_exclude').update([cui])
-
+        if cat.config.components.linking.filters.cuis_exclude is None:
+            cat.config.components.linking.filters.cuis_exclude = set()
+        cat.config.components.linking.filters.cuis_exclude.add(cui)
 
 @background(schedule=1, queue='doc_prep')
 def prep_docs(project_id: List[int], doc_ids: List[int], user_id: int):
@@ -260,29 +422,59 @@ def prep_docs(project_id: List[int], doc_ids: List[int], user_id: int):
     project = ProjectAnnotateEntities.objects.get(id=project_id)
     docs = Document.objects.filter(id__in=doc_ids)
 
-    logger.info('Loading CAT object in bg process for project: %s', project.id)
-    cat = get_medcat(project=project)
+    # Get CUI filters
+    cuis = set()
+    if project.cuis is not None and project.cuis:
+        cuis = set([str(cui).strip() for cui in project.cuis.split(",")])
+    if project.cuis_file is not None and project.cuis_file:
+        try:
+            cuis.update(json.load(open(project.cuis_file.path)))
+        except FileNotFoundError:
+            logger.warning('Missing CUI filter file for project %s', project.id)
 
-    # Set CAT filters
-    cat.config.components.linking.filters.cuis = project.cuis
+    if project.use_model_service:
+        # Use remote model service
+        logger.info('Using remote model service in bg process for project: %s', project.id)
+        filters = SimpleFilters(cuis=cuis)
+        for doc in docs:
+            logger.info('Running remote MedCAT service for project %s:%s over doc: %s',
+                        project.id, project.name, doc.id)
+            spacy_doc = call_remote_model_service(project.model_service_url, doc.text)
+            anns = AnnotatedEntity.objects.filter(document=doc).filter(project=project)
+            with transaction.atomic():
+                add_annotations(spacy_doc=spacy_doc,
+                                user=user,
+                                project=project,
+                                document=doc,
+                                cat=None,
+                                filters=filters,
+                                similarity_threshold=0.3,
+                                existing_annotations=anns)
+            project.prepared_documents.add(doc)
+    else:
+        # Use local medcat model
+        logger.info('Loading CAT object in bg process for project: %s', project.id)
+        cat = get_medcat(project=project)
 
-    for doc in docs:
-        logger.info(f'Running MedCAT model for project {project.id}:{project.name} over doc: {doc.id}')
-        if not project.deid_model_annotation:
-            spacy_doc = cat(doc.text)
-        else:
-            deid = DeIdModel(cat)
-            spacy_doc = deid(doc.text)
-        anns = AnnotatedEntity.objects.filter(document=doc).filter(project=project)
-        with transaction.atomic():
-            add_annotations(spacy_doc=spacy_doc,
-                            user=user,
-                            project=project,
-                            document=doc,
-                            cat=cat,
-                            existing_annotations=anns)
-            # add doc to prepared_documents
-        project.prepared_documents.add(doc)
+        # Set CAT filters
+        cat.config.components.linking.filters.cuis = cuis
+
+        for doc in docs:
+            logger.info('Running MedCAT model for project %s:%s over doc: %s', project.id, project.name, doc.id)
+            if not project.deid_model_annotation:
+                spacy_doc = cat(doc.text)
+            else:
+                deid = DeIdModel(cat)
+                spacy_doc = deid(doc.text)
+            anns = AnnotatedEntity.objects.filter(document=doc).filter(project=project)
+            with transaction.atomic():
+                add_annotations(spacy_doc=spacy_doc,
+                                user=user,
+                                project=project,
+                                document=doc,
+                                cat=cat,
+                                existing_annotations=anns)
+            project.prepared_documents.add(doc)
     project.save()
     logger.info('Prepared all docs for project: %s, docs processed: %s',
                 project.id, project.prepared_documents)
@@ -297,7 +489,6 @@ def save_project_anno(sender, instance, **kwargs):
         instance.cuis = ','.join(set(cui_list) - set(cuis_from_file))
         instance.save()
         post_save.connect(save_project_anno, sender=ProjectAnnotateEntities)
-
 
 
 def env_str_to_bool(var: str, default: bool):

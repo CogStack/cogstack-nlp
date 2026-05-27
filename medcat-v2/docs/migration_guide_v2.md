@@ -12,30 +12,31 @@ Though APIs for training (both supervised and unsupervised) have been **refactor
 ## Why v2?
 
 MedCAT v2 is a refactor designed to:
+
 - Increase modularity
-  - The core library is a lot more light weight and only includes essential components
-  - Additional features (many of which were always provided in v1) that need to explicitly be specified upon install
-    - `spacy` for tokenizing
-    - `deid` for transformers based NER / deidentification
-    - `meta-cat` for meta annotations (both LSTM and BERT)
-    - `rel-cat` for relation extraction
-  - The above means that `pip install medcat>=2.0` will **not** include everything that came with v1
-    - And **models built / saved in v1 will not be able to loaded** in this install
-    - There will be more details on installs in the next section(s)
-  - This comes with a number of clear advantages
-    - Smaller installs
-      - You don't need to install components you're not going to use
-    - Better separation / grouping of dependencies
-      - Each separate feature defines their own dependencies
+    - The core library is a lot more light weight and only includes essential components
+    - Additional features (many of which were always provided in v1) that need to explicitly be specified upon install
+        - `spacy` for tokenizing
+        - `deid` for transformers based NER / deidentification
+        - `meta-cat` for meta annotations (both LSTM and BERT)
+        - `rel-cat` for relation extraction
+    - The above means that `pip install medcat>=2.0` will **not** include everything that came with v1
+        - And **models built / saved in v1 will not be able to loaded** in this install
+        - There will be more details on installs in the next section(s)
+    - This comes with a number of clear advantages
+        - Smaller installs
+            - You don't need to install components you're not going to use
+        - Better separation / grouping of dependencies
+            - Each separate feature defines their own dependencies
 - Lower internal coupling with `spacy`
-  - This allows us to use other tokenizers, at least for the built in NER and Linker
-  - There's now registration available for other tokenizers
-  - There's even an example of a regular expression based tokenizer built into the library
-    - This serves more as a sample rather than an actual alternative
+    - This allows us to use other tokenizers, at least for the built in NER and Linker
+    - There's now registration available for other tokenizers
+    - There's even an example of a regular expression based tokenizer built into the library
+        - This serves more as a sample rather than an actual alternative
 - Increase extensibility and flexibility
-  - It's now a lot easier to create new components
-    - Core components (NER, Linker)
-    - Addons (MetaCAT, RelCAT)
+    - It's now a lot easier to create new components
+        - Core components (NER, Linker)
+        - Addons (MetaCAT, RelCAT)
 - Improve maintainability of code and models
 - Prepare for future use cases and integrations
 
@@ -44,6 +45,7 @@ MedCAT v2 is a refactor designed to:
 ## Who should read this?
 
 If you're:
+
 - Using MedCAT v1 (almost everything prior to **August 2025**)
 - Loading or training models saved before that date
 - Calling internal APIs (beyond basic `cat.get_entities`)
@@ -81,32 +83,33 @@ This is just a small summary
 - Core single threaded inference APIs (`cat.get_entities`, `cat.__call__`)
 - Model loading: `CAT.load_model_pack` still works very similarly
 - Your existing v1 models are still usable
-  - They will be converted on the fly when loaded
+    - They will be converted on the fly when loaded
 
 ### What _has_ changed
 - Training goes through a new class-based API
-  - Instead of `cat.train` you can use `cat.trainer.train_unsupervised`
-  - Instead of `cat.train_supervised_raw` you can use `cat.trainer.train_supervised_raw`
+    - Instead of `cat.train` you can use `cat.trainer.train_unsupervised`
+    - Instead of `cat.train_supervised_raw` you can use `cat.trainer.train_supervised_raw`
 - Save method renamed somewhat to be
-  - Renamed from `cat.create_model_pack` to `cat.save_model_pack`
+    - Renamed from `cat.create_model_pack` to `cat.save_model_pack`
 - Internal structure of concepts / names is more structured
-  - There's the `cdb.cui2info` and `cdb.name2info` maps
-  - More details in the breaking changes overview
+    - There's the `cdb.cui2info` and `cdb.name2info` maps
+    - More details in the breaking changes overview
 - Models are saved in a new format
-  - The idea was to simplify the (potential) addition of other serialisation options
-  - Most of the model handling is still the same
-    - There's a `.zip` to move around if/when needed
-    - The model pack unpacks into its components
+    - The idea was to simplify the (potential) addition of other serialisation options
+    - Most of the model handling is still the same
+        - There's a `.zip` to move around if/when needed
+        - The model pack unpacks into its components
 - Model components are saved differently
-  - This mostly affects MetaCAT and RelCAT models
-  - Components are saved in the `saved_components` folder within the model folder
-  - E.g `saved_components/addon_meta_cat.Presence` for MetaCAT and `addon_rel_cat.rel_cat` for RelCAT
+    - This mostly affects MetaCAT and RelCAT models
+    - Components are saved in the `saved_components` folder within the model folder
+    - E.g `saved_components/addon_meta_cat.Presence` for MetaCAT and `addon_rel_cat.rel_cat` for RelCAT
 
 ## ⚠️ Loading v1 models
 
 MedCAT v2 supports loading v1 models.
 There is no need to retrain them.
 However, loading will:
+
 - be significantly slower due to on-the-fly conversion
 - show a warning message about this slowdown
 
@@ -135,6 +138,7 @@ The v2-supporting releases are those from **v3** on the trainer side.
 We’d love your input / feedback!
 Please report any issues or feature requests you encounter.
 That includes (but is not limited to)
+
 - Inability to use / run / load old models
 - Missing or unclear documentation
 - Unexpected errors or regressions

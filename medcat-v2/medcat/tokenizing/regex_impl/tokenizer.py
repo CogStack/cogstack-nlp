@@ -1,6 +1,7 @@
 import re
 from typing import cast, Optional, Iterator, overload, Union, Any, Type
 from collections import defaultdict
+from bisect import bisect_left, bisect_right
 
 from medcat.tokenizing.tokens import (
     BaseToken, BaseEntity, BaseDocument,
@@ -223,6 +224,7 @@ class Document:
                  ) -> None:
         self.text = text
         self._tokens = tokens or []
+        self._char_indices: list[int] = []
         self.ner_ents: list[MutableEntity] = []
         self.linked_ents: list[MutableEntity] = []
 
@@ -255,12 +257,12 @@ class Document:
 
     def get_tokens(self, start_index: int, end_index: int
                    ) -> list[MutableToken]:
-        tkns = []
-        for tkn in self:
-            if (tkn.base.char_index >= start_index and
-                    tkn.base.char_index <= end_index):
-                tkns.append(tkn)
-        return tkns
+        if self._char_indices:
+            lo = bisect_left(self._char_indices, start_index)
+            hi = bisect_right(self._char_indices, end_index)
+            return self._tokens[lo:hi]
+        return [tkn for tkn in self
+                if start_index <= tkn.base.char_index <= end_index]
 
     def __iter__(self) -> Iterator[MutableToken]:
         yield from self._tokens
@@ -347,6 +349,23 @@ class RegexTokenizer(BaseTokenizer):
         end_index = doc._tokens.index(tokens[-1])
         return _entity_from_tokens(doc, tokens, start_index, end_index)
 
+    def _get_existing_entity(self, tokens: list[MutableToken],
+                             doc: MutableDocument) -> Optional[MutableEntity]:
+        if not tokens:
+            return None
+        for ent in doc.ner_ents + doc.linked_ents:
+            if (ent.base.start_index == tokens[0].base.index and
+                    ent.base.end_index == tokens[-1].base.index):
+                return ent
+        return None
+
+    def entity_from_tokens_in_doc(self, tokens: list[MutableToken],
+                                  doc: MutableDocument) -> MutableEntity:
+        existing_ent = self._get_existing_entity(tokens, doc)
+        if existing_ent:
+            return existing_ent
+        return self.entity_from_tokens(tokens)
+
     def _get_tokens_matches(self, text: str) -> list[re.Match[str]]:
         tokens = self.REGEX.finditer(text)
         return list(tokens)
@@ -361,6 +380,7 @@ class RegexTokenizer(BaseTokenizer):
             doc._tokens.append(Token(doc, token, token_w_ws,
                                      start_index, tkn_index,
                                      False, False))
+            doc._char_indices.append(start_index)
         return doc
 
     @classmethod

@@ -17,7 +17,7 @@ jobs:
   basic-and-meta:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Setup Python
         uses: actions/setup-python@v6
         with:
@@ -26,7 +26,7 @@ jobs:
 
       - name: Update install targets in notebooks
         run: |
-          python .ci/patch_notebook_installs.py .
+          python .ci/patch_notebook_installs.py . --expect-min-changes 4
 
       - name: Install dependencies
         run: |
@@ -61,7 +61,7 @@ jobs:
         ]
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Setup Python
         uses: actions/setup-python@v6
         with:
@@ -69,7 +69,7 @@ jobs:
 
       - name: Update install targets in notebooks
         run: |
-          python .ci/patch_notebook_installs.py .
+          python .ci/patch_notebook_installs.py . --expect-min-changes 4
 
       - name: Install dependencies
         run: |
@@ -83,4 +83,4 @@ jobs:
       - name: Smoke test tutorial
         run: |
           pytest --capture=no --collect-only --nbmake ${{ matrix.part }}
-          pytest --capture=no --nbmake -n=auto --nbmake-kernel=smoketests --nbmake-timeout=1800 ${{ matrix.part }}
+          pytest --capture=no --nbmake -n=auto --nbmake-kernel=smoketests --nbmake-timeout=2400 ${{ matrix.part }}

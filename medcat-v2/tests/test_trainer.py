@@ -1,12 +1,15 @@
 import os
 import json
+from typing import Callable
 
+from medcat.tokenizing.tokens import MutableDocument
 from medcat.trainer import Trainer
 from medcat.config import Config
 from medcat.vocab import Vocab
 from medcat.data.mctexport import MedCATTrainerExport
 
 import unittest
+import unittest.mock
 
 import random
 import pandas as pd
@@ -23,6 +26,22 @@ class FakeCDB(BFakeCDB):
 
     def _add_concept(self, *args, **kwargs) -> None:
         pass
+
+
+class FakeMutToken:
+
+    def __init__(self, doc: 'FakeMutDoc',
+                 index: int, start_char_index: int,
+                 end_char_index: int) -> None:
+        self.index = index
+        self.char_index = start_char_index
+        self.text = doc.text[start_char_index: end_char_index]
+        self.to_skip = False
+        self.base = self
+
+    @property
+    def lower(self):
+        return self.text.lower()
 
 
 class FakeMutEnt:
@@ -46,22 +65,47 @@ class FakeMutDoc:
     def __init__(self, text: str):
         self.text = text
         self.base = self
+        self.ner_ents = []
+        self.linked_ents = []
 
     def isupper(self) -> bool:
         return self.text.isupper()
 
-    def get_tokens(self, start_index: int, end_index: int):
-        return FakeMutEnt(self, start_index, end_index)
+    def get_tokens(self, start_index: int, end_index: int, chars_per_tkns: int = 5):
+        return [
+            FakeMutToken(self, (cstart // chars_per_tkns), cstart, cstart + chars_per_tkns)
+            for cstart in range(start_index, end_index, chars_per_tkns)
+        ]
 
     def __iter__(self):
-        yield self.get_tokens(0, 1)
+        yield from self.get_tokens(0, len(self.text))
 
 
 class FakeComponent:
     pass
 
 
+class FakeTrainableNERComponent:
+
+    full_name = "ner:fake"
+
+    def __init__(self):
+        self.docs_trained_on = []
+
+    def train_unsupervised(self, doc: MutableDocument) -> None:
+        self.docs_trained_on.append(doc)
+
+    def train(self, *args, **kwargs) -> None:
+        return
+
+
 class FakePipeline:
+
+    def __init__(self, caller: Callable[[str], MutableDocument] = None) -> None:
+        self._caller = caller or FakeMutDoc
+
+    def get_doc(self, text: str) -> FakeMutDoc:
+        return self._caller(text)
 
     def tokenizer(self, text: str) -> FakeMutDoc:
         return FakeMutDoc(text)
@@ -69,8 +113,24 @@ class FakePipeline:
     def tokenizer_with_tag(self, text: str) -> FakeMutDoc:
         return FakeMutDoc(text)
 
+    def iter_all_components(self):
+        return []
+
     def get_component(self, comp_type):
         return FakeComponent
+
+    def entity_from_tokens_in_doc(self, tkns: list, doc: MutableDocument) -> FakeMutEnt:
+        return FakeMutEnt(doc, tkns[0].index, tkns[-1].index)
+
+
+class FakePipelineWithComponents(FakePipeline):
+
+    def __init__(self, components: list, caller: Callable[[str], MutableDocument] = None):
+        super().__init__(caller)
+        self._components = components
+
+    def iter_all_components(self):
+        return self._components
 
 
 class TrainerTestsBase(unittest.TestCase):
@@ -85,8 +145,7 @@ class TrainerTestsBase(unittest.TestCase):
         cls.cnf = Config()
         cls.cdb = FakeCDB(cls.cnf)
         cls.vocab = Vocab()
-        cls.trainer = Trainer(cls.cdb,
-                              cls.caller, FakePipeline())
+        cls.trainer = Trainer(cls.cdb, FakePipeline(cls.caller))
 
     def setUp(self):
         self.cnf = Config()
@@ -147,6 +206,33 @@ class TrainerUnsupervisedTests(TrainerTestsBase):
                                             exp_total=repeats,
                                             unsup=self.UNSUP)
 
+    def test_unsup_training_trains_non_linking_component(self):
+        ner_component = FakeTrainableNERComponent()
+        trainer = Trainer(
+            self.cdb,
+            FakePipelineWithComponents([ner_component], self.caller),
+        )
+        trainer.config = self.cnf
+
+        trainer.train_unsupervised(self.TRAIN_DATA, nepochs=1)
+
+        self.assertEqual(len(ner_component.docs_trained_on), self.DATA_CNT)
+        self.assertTrue(
+            all(isinstance(doc, FakeMutDoc) for doc in ner_component.docs_trained_on)
+        )
+
+    def test_unsup_training_skips_non_trainable_components(self):
+        ner_component = FakeTrainableNERComponent()
+        trainer = Trainer(
+            self.cdb,
+            FakePipelineWithComponents([FakeComponent(), ner_component, object()], self.caller),
+        )
+        trainer.config = self.cnf
+
+        trainer.train_unsupervised(self.TRAIN_DATA, nepochs=1)
+
+        self.assertEqual(len(ner_component.docs_trained_on), self.DATA_CNT)
+
 
 class TrainerSupervisedTests(TrainerUnsupervisedTests):
     DATA_CNT = 1
@@ -177,6 +263,33 @@ class TrainerSupervisedTests(TrainerUnsupervisedTests):
             }
         ]
     }
+    TRAIN_DATA_MULTI: MedCATTrainerExport = {
+        "projects": [
+            *TRAIN_DATA['projects'],
+            {
+                'cuis': '',
+                'tuis': '',
+                'documents': [
+                    {
+                        'id': "P2D1",
+                        'name': "Project#2Doc#1",
+                        'last_modified': 'N/A',
+                        'text': 'Some long text',
+                        'annotations': [
+                            {
+                                'cui': "C1",
+                                'start': 0,
+                                'end': 4,
+                                'value': 'SOME',
+                            }
+                        ]
+                    }
+                ],
+                'id': "PID#2",
+                'name': "PROJECT#2",
+            }
+        ]
+    }
 
     @classmethod
     def setUpClass(cls):
@@ -184,6 +297,44 @@ class TrainerSupervisedTests(TrainerUnsupervisedTests):
 
     def test_training_gets_remembered_gen(self):
         pass  # NOTE: no generation for supervised training
+
+    def test_trains_all_projects(self):
+        with unittest.mock.patch.object(self.trainer, "_train_supervised_for_project") as mock_train_project:
+            self.train(self.TRAIN_DATA_MULTI)
+        self.assertTrue(mock_train_project.call_count, 2)
+
+    def test_training_happens_on_linked_ents_on_doc(self):
+        with unittest.mock.patch.object(self.trainer, "add_and_train_concept") as mock_add_and_train_concept:
+            self.train(self.TRAIN_DATA)
+        for num, args in enumerate(mock_add_and_train_concept.call_args_list):
+            with self.subTest(str(num)):
+                mock_add_and_train_concept.assert_called()
+                doc, ent = args.kwargs['mut_doc'], args.kwargs['mut_entity']
+                self.assertIn(ent, doc.linked_ents)
+
+    def test_empty_token_annotation_is_skipped_when_not_strict(self):
+        self.trainer.strict_train = False
+        with unittest.mock.patch.object(
+                self.trainer._pipeline, "entity_from_tokens_in_doc",
+                side_effect=ValueError("No tokens found in span")), \
+                unittest.mock.patch.object(
+                FakeMutDoc, "get_tokens", return_value=[]), \
+                unittest.mock.patch.object(self.trainer, "add_and_train_concept"):
+            try:
+                self.train(self.TRAIN_DATA)
+            except ValueError as err:
+                self.fail(f"Unexpected ValueError for empty-token annotation: {err}")
+
+    def test_empty_token_annotation_raises_when_strict(self):
+        self.trainer.strict_train = True
+        with unittest.mock.patch.object(
+                self.trainer._pipeline, "entity_from_tokens_in_doc",
+                side_effect=ValueError("No tokens found in span")), \
+                unittest.mock.patch.object(
+                FakeMutDoc, "get_tokens", return_value=[]), \
+                unittest.mock.patch.object(self.trainer, "add_and_train_concept"):
+            with self.assertRaises(ValueError):
+                self.train(self.TRAIN_DATA)
 
 
 class FromSratchBase(TrainedModelTests):
@@ -246,3 +397,4 @@ class TrainFromScratchSupervisedTests(TrainFromScratchTests):
             with self.subTest(cui):
                 info = self.model.cdb.cui2info[cui]
                 self.assertGreater(info['count_train'], prev_count)
+

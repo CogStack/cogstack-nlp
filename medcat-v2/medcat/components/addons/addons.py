@@ -106,3 +106,7 @@ def create_addon(
     """
     return get_addon_creator(addon_name)(
         cnf, tokenizer, cdb, vocab, model_load_path)
+
+
+def get_registered_addons() -> list[tuple[str, str]]:
+    return _ADDON_REGISTRY.list_components()

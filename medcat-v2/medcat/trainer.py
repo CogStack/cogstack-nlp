@@ -1,5 +1,6 @@
-from typing import Iterable, Callable, Optional, Union, cast
+from typing import Iterable, Optional, Union, cast
 import logging
+import tempfile
 from itertools import chain, repeat, islice
 from tqdm import trange
 
@@ -11,10 +12,10 @@ from medcat.utils.config_utils import temp_changed_config
 from medcat.utils.data_utils import make_mc_train_test, get_false_positives
 from medcat.utils.filters import project_filters
 from medcat.data.mctexport import (
-    MedCATTrainerExport, MedCATTrainerExportProject,
+    MedCATTrainerExport, MedCATTrainerExportAnnotation, MedCATTrainerExportProject,
     MedCATTrainerExportDocument, count_all_annotations, iter_anns)
 from medcat.preprocessors.cleaners import prepare_name, NameDescriptor
-from medcat.components.types import CoreComponentType, TrainableComponent
+from medcat.components.types import TrainableComponent
 from medcat.components.addons.addons import AddonComponent
 from medcat.pipeline import Pipeline
 
@@ -27,11 +28,10 @@ logger = logging.getLogger(__name__)
 class Trainer:
     strict_train: bool = False
 
-    def __init__(self, cdb: CDB, caller: Callable[[str], MutableDocument],
+    def __init__(self, cdb: CDB,
                  pipeline: Pipeline):
         self.cdb = cdb
         self.config = cdb.config
-        self.caller = caller
         self._pipeline = pipeline
 
     def train_unsupervised(self,
@@ -63,10 +63,8 @@ class Trainer:
         with self.config.meta.prepare_and_report_training(
             data_iterator, nepochs, False
         ) as wrapped_iter:
-            with temp_changed_config(self.config.components.linking,
-                                     'train', True):
-                self._train_unsupervised(wrapped_iter, nepochs, fine_tune,
-                                         progress_print)
+            self._train_unsupervised(wrapped_iter, nepochs, fine_tune,
+                                     progress_print)
 
     def _train_unsupervised(self,
                             data_iterator: Iterable,
@@ -90,11 +88,18 @@ class Trainer:
                 # Convert to string
                 line = str(line).strip()
 
+
+                # inference run for the document
                 try:
-                    _ = self.caller(line)
+                    doc = self._pipeline.get_doc(line)
                 except Exception as e:
                     logger.warning("LINE: '%s...' \t WAS SKIPPED", line[0:100])
                     logger.warning("BECAUSE OF:", exc_info=e)
+                    continue
+                for comp in self._pipeline.iter_all_components():
+                    if isinstance(comp, TrainableComponent):
+                        logger.debug("Training on component %s", comp.full_name)
+                        comp.train_unsupervised(doc)
             else:
                 logger.warning("EMPTY LINE WAS DETECTED AND SKIPPED")
 
@@ -336,8 +341,14 @@ class Trainer:
         cat_name = cnf.general.get_applicable_category_name(ann_names)
         if cat_name in ann_names:
             logger.debug("Training MetaCAT %s", cnf.general.category_name)
-            # NOTE: this is a mypy quirk - the types are compatible
-            addon.mc.train_raw(cast(dict, data))
+            # Use a temporary directory for auto_save_model support —
+            # train_raw requires save_dir_path when auto_save_model is True.
+            # The best weights are loaded into memory before train_raw returns,
+            # so the directory can be cleaned up immediately after.
+            with tempfile.TemporaryDirectory(
+                    prefix=f"metacat_{cnf.general.category_name}_") as save_dir:
+                # NOTE: this is a mypy quirk - the types are compatible
+                addon.mc.train_raw(cast(dict, data), save_dir_path=save_dir)
 
     def _train_addons(self, data: MedCATTrainerExport):
         logger.info("Training addons within train_supervised_raw")
@@ -397,6 +408,66 @@ class Trainer:
                     docs, current_document, train_from_false_positives,
                     devalue_others)
 
+    def _prepare_doc_with_anns(
+            self, doc: MutableDocument, ann_doc: MedCATTrainerExportDocument,
+            anns: list[MedCATTrainerExportAnnotation]) -> None:
+        ents = []
+        for ann in anns:
+            tkns = doc.get_tokens(ann['start'], ann['end'])
+            try:
+                ent = self._pipeline.entity_from_tokens_in_doc(tkns, doc)
+                pn_dict = prepare_name(ann['value'], self._pipeline.tokenizer, {},
+                                 self._pn_configs)
+                processed_names = list(pn_dict.keys())
+                if len(processed_names) > 1:
+                    logger.info("Got multiple processed names for %s: %s",
+                                ann['value'], processed_names)
+                elif not processed_names:
+                    # NOTE: shouldn't really happen
+                    raise ValueError(f"Could not process {ann['value']} into names")
+                ent.detected_name = processed_names[0]
+                ent.cui = ann['cui']
+                ents.append(ent)
+            except ValueError as err:
+                self._warn_on_error(
+                    err, doc.base.text,
+                    (ann['cui'], ann['value'], ann['start'], ann['end']),
+                    (None, ann_doc['id'], ann_doc['name']))
+        # set NER ents
+        doc.ner_ents.clear()
+        doc.ner_ents.extend(ents)
+        # duplicate for linked as well, but in a a separate list
+        doc.linked_ents.clear()
+        doc.linked_ents.extend(ents)
+
+    def _warn_on_error(self, ve: BaseException, cur_text: str,
+                       mut_context_start: tuple[str, str, int, int],
+                       mut_context_end: tuple[MutableEntity | None, str, str]):
+        start, end = mut_context_start[2:]
+        context_window = 20  # characters
+        splitter_left, splitter_right = "<", ">"
+        context_start = max(start - context_window, 0)
+        context_end = min(end + context_window, len(cur_text) - 1)
+        context = (cur_text[context_start: start] +
+                    splitter_left +
+                    cur_text[start: end] +
+                    splitter_right +
+                    cur_text[end: context_end])
+        if context_start > 0:
+            context = "[...]" + context
+        if context_end < len(cur_text) - 1:
+            context += "[...]"
+        msg_template = (
+            "Failed to identify '%s' (%s) ([%d:%d]) "
+            "in '%s' %s within document %s | %s, "
+            "skipping training for this example")
+        msg_context = (
+            *mut_context_start, context, *mut_context_end)
+        if self.strict_train:
+            raise ValueError(msg_template % msg_context) from ve
+        else:
+            logger.warning(msg_template, *msg_context, exc_info=ve)
+# 480+ project
     def _train_supervised_for_project2(self,
                                        docs: list[MedCATTrainerExportDocument],
                                        current_document: int,
@@ -411,10 +482,12 @@ class Trainer:
             doc = docs[idx_doc]
             with temp_changed_config(self.config.components.linking,
                                      'train', False):
-                mut_doc = self.caller(doc['text'])
+                # NOTE: only need tokenization here
+                mut_doc = self._pipeline.tokenizer_with_tag(doc['text'])
+            self._prepare_doc_with_anns(mut_doc, doc, doc['annotations'])
 
             # Compatibility with old output where annotations are a list
-            for ann in doc['annotations']:
+            for ann, mut_entity in zip(doc['annotations'], mut_doc.linked_ents):
                 if ann.get('killed', False):
                     continue
                 logger.info("    Annotation %s (%s) [%d:%d]",
@@ -422,7 +495,6 @@ class Trainer:
                 cui = ann['cui']
                 start = ann['start']
                 end = ann['end']
-                mut_entity = mut_doc.get_tokens(start, end)
                 if not mut_entity:
                     logger.warning(
                         "When looking for CUI '%s' (value '%s') [%d...%d] "
@@ -440,31 +512,10 @@ class Trainer:
                         mut_entity=mut_entity, negative=deleted,
                         devalue_others=devalue_others)
                 except (ValueError, KeyError) as ve:
-                    context_window = 20  # characters
-                    splitter_left, splitter_right = "<", ">"
-                    cur_text = doc['text']
-                    context_start = max(start - context_window, 0)
-                    context_end = min(end + context_window, len(cur_text) - 1)
-                    context = (cur_text[context_start: start] +
-                               splitter_left +
-                               cur_text[start: end] +
-                               splitter_right +
-                               cur_text[end: context_end])
-                    if context_start > 0:
-                        context = "[...]" + context
-                    if context_end < len(cur_text) - 1:
-                        context += "[...]"
-                    msg_template = (
-                        "Failed to identify '%s' (%s) ([%d:%d]) "
-                        "in '%s' %s within document %s | %s, "
-                        "skipping training for this example")
-                    msg_context = (
-                        cui, ann['value'], ann['start'], ann['end'],
-                        context, mut_entity, doc['id'], doc['name'])
-                    if self.strict_train:
-                        raise ValueError(msg_template % msg_context) from ve
-                    else:
-                        logger.warning(msg_template, *msg_context, exc_info=ve)
+                    self._warn_on_error(
+                        ve, doc['text'],
+                        (cui, ann['value'], ann['start'], ann['end']),
+                        (mut_entity, doc['id'], doc['name']))
             if train_from_false_positives:
                 fps: list[MutableEntity] = get_false_positives(doc, mut_doc)
 
@@ -598,18 +649,16 @@ class Trainer:
 
         if mut_entity is None or mut_doc is None:
             return
-        linker = self._pipeline.get_component(
-            CoreComponentType.linking)
-        if not isinstance(linker, TrainableComponent):
-            logger.warning(
-                "Linker cannot be trained during add_and_train_concept"
-                "because it has no train method: %s", linker)
-        else:
+        trained_comps = 0
+        for component in self._pipeline.iter_all_components():
+            if not isinstance(component, TrainableComponent):
+                continue
             # Train Linking
             if isinstance(mut_entity, list):
                 mut_entity = self._pipeline.entity_from_tokens(mut_entity)
-            linker.train(cui=cui, entity=mut_entity, doc=mut_doc,
-                         negative=negative, names=names)
+            component.train(cui=cui, entity=mut_entity, doc=mut_doc,
+                            negative=negative, names=names)
+            trained_comps += 1
 
             if not negative and devalue_others:
                 # Find all cuis
@@ -624,8 +673,12 @@ class Trainer:
                 # Add negative training for all other CUIs that link to
                 # these names
                 for _cui in cuis:
-                    linker.train(cui=_cui, entity=mut_entity, doc=mut_doc,
-                                 negative=True)
+                    component.train(cui=_cui, entity=mut_entity, doc=mut_doc,
+                                    negative=True)
+        if trained_comps == 0:
+            logger.warning(
+                "Nothing was trained during add_and_train_concept because "
+                "no components followed the TrainableComponent protocol")
 
     @property
     def _pn_configs(self) -> tuple[General, Preprocessing, CDBMaker]:

@@ -45,3 +45,6 @@ EMAIL_USER=example@cogstack.org
 EMAIL_PASS="to be changed"
 EMAIL_HOST=mail.cogstack.org
 EMAIL_PORT=465
+
+# Remote model service timeout in seconds
+REMOTE_MODEL_SERVICE_TIMEOUT=60

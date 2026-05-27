@@ -2,11 +2,15 @@
   <div class="full-height">
     <login v-if="!loginSuccessful" @login:success="loggedIn()"></login>
     <transition name="alert"><div class="alert alert-danger" v-if="routeAlert" role="alert">{{routeAlert}}</div></transition>
-    <div class="view-bar" v-if="isAdmin">
-      <button class="btn btn-outline-primary" @click="projectGroupView = !projectGroupView">
-        <span v-if="projectGroupView">Single Projects</span>
-        <span v-if="!projectGroupView">Project Groups</span>
-      </button>
+    <div class="view-bar" v-if="isAdmin || loginSuccessful">
+      <div class="view-bar-left">
+        <button v-if="isAdmin" class="btn btn-outline-primary" @click="projectGroupView = !projectGroupView">
+          <span v-if="projectGroupView">Single Projects</span>
+          <span v-if="!projectGroupView">Project Groups</span>
+        </button>
+      </div>
+      <div class="view-bar-right">
+      </div>
     </div>
     <div v-if="projectGroupView" class="full-height project-group-table">
       <v-data-table id="projectGroupTable" :items="projectGroups.items"
@@ -45,6 +49,7 @@ import Modal from '@/components/common/Modal.vue'
 import Login from '@/components/common/Login.vue'
 import EventBus from '@/event-bus'
 import ProjectList from "@/components/common/ProjectList.vue"
+import { isOidcEnabled } from '../runtimeConfig';
 
 export default {
   name: 'Home',
@@ -73,7 +78,7 @@ export default {
       isAdmin: false,
       selectedProjectGroup: null,
       cdbSearchIndexStatus: {},
-      useOidc: import.meta.env.VITE_USE_OIDC === '1'
+      useOidc: isOidcEnabled()
     }
   },
   created () {
@@ -107,7 +112,7 @@ export default {
           this.fetchProjects()
       } else if (this.useOidc && this.$keycloak && this.$keycloak.authenticated) {
           this.loginSuccessful = true
-          this.isAdmin = this.$keycloak.tokenParsed?.realm_access?.roles.includes('admin') ?? false;
+          this.isAdmin = this.$keycloak.tokenParsed?.groups.includes('/medcattrainer-admins') ?? false;
           this.fetchProjects()
         }
     },
@@ -194,6 +199,14 @@ h3 {
   padding: 5px 0;
   width: 95%;
   margin: auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  .view-bar-left, .view-bar-right {
+    display: flex;
+    gap: 10px;
+  }
 }
 
 .project-group-table {

@@ -36,6 +36,10 @@ class BaseTokenizer(Protocol):
     def entity_from_tokens(self, tokens: list[MutableToken]) -> MutableEntity:
         """Get an entity from the list of tokens.
 
+        This will create a new instance instead of looking for existing entity.
+        This method should be used only if/when there was no existing entity
+        within the specified document for the given span of tokens.
+
         Args:
             tokens (list[MutableToken]): List of tokens.
 
@@ -43,6 +47,20 @@ class BaseTokenizer(Protocol):
             MutableEntity: The resulting entity.
         """
         pass
+
+    def entity_from_tokens_in_doc(self, tokens: list[MutableToken],
+                                  doc: MutableDocument) -> MutableEntity:
+        """Get an entity from the list of tokens in the specified document.
+
+        This method is designed to reuse entities where possible.
+
+        Args:
+            tokens (list[MutableToken]): List of tokens.
+            doc (MutableDocument): The document for these tokens.
+
+        Returns:
+            MutableEntity: The resulting entity.
+        """
 
     def __call__(self, text: str) -> MutableDocument:
         pass

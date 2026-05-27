@@ -2,7 +2,10 @@
 OPENBLAS_NUM_THREADS=1
 
 ### MedCAT cfg ###
+
+# when in debug mode please use ../../configs/base.txt
 MEDCAT_CONFIG_FILE=/home/configs/base.txt
+
 # number of MedCAT models that can be cached, run in bg processes at any one time
 MAX_MEDCAT_MODELS=2
 
@@ -12,18 +15,23 @@ ENV=non-prod
 # Complete once this is deployed
 CSRF_TRUSTED_ORIGINS=
 
+USE_OIDC=0
+
 ### Django debug setting - to live-reload etc. ###
 DEBUG=1
 
+
 ### Load example CDB, Vocab ###
 LOAD_EXAMPLES=1
+# URL that examples will be sent to
+API_URL=http://localhost:8000/api/
 
 ### Dataset conf ###
 UNIQUE_DOC_NAMES_IN_DATASETS=True
 MAX_DATASET_SIZE=10000
 
 ### Solr Concept Search Conf ###
-CONCEPT_SEARCH_SERVICE_HOST=solr
+CONCEPT_SEARCH_SERVICE_HOST=localhost
 CONCEPT_SEARCH_SERVICE_PORT=8983
 
 ### DB backup dir ###
@@ -45,13 +53,17 @@ EMAIL_PASS="to be changed"
 EMAIL_HOST=mail.cogstack.org
 EMAIL_PORT=465
 
-# Backend auth
-USE_OIDC=
+# Remote model service timeout in seconds
+REMOTE_MODEL_SERVICE_TIMEOUT=60
 
-# Traefik
-NGINX_HOST=medcattrainer.cogstack.localhost
-
-# OIDC settings
-OIDC_HOST=http://keycloak:8080
-OIDC_REALM=cogstack-realm
-OIDC_FRONTEND_CLIENT_ID=cogstack-medcattrainer-frontend
+# OpenTelemetry settings
+MCT_ENABLE_TRACING=false
+OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
+OTEL_TRACES_EXPORTER=otlp
+OTEL_SERVICE_NAME=medcat-trainer
+OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+OTEL_METRICS_EXPORTER=none
+OTEL_LOGS_EXPORTER=none
+OTEL_PYTHON_DJANGO_EXCLUDED_URLS=/api/health/*,/metrics
+OTEL_EXPERIMENTAL_RESOURCE_DETECTORS=containerid,os
+OTEL_PYTHON_DISABLED_INSTRUMENTATIONS=sqlite3,psycopg

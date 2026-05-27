@@ -11,14 +11,39 @@ defaults:
   run:
     working-directory: ./medcat-v2
 jobs:
-  build:
+  test-resource-utils:
+   runs-on: ubuntu-latest
+   steps:
+      - uses: actions/checkout@v6
+      - name: Check test utils are in sync
+        run: diff tests/resource_fetch.py ../medcat-den/tests/resource_fetch.py
+
+  base-install-imports:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      # NOTE: using oldest supported python version
+      - name: Install uv for Python 3.10
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.10"
+          enable-cache: true
+          cache-dependency-glob: "medcat-v2/uv.lock"
+      - name: Install the project
+        run: |
+          uv sync # NO extras
+      - name: Check that all packages / modules can be imported with default / no-extras install
+        run: |
+          uv run python tests/other/check_base_install_can_import_all.py medcat
+
+  types-lints-tests-regression:
     runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: [ '3.10', '3.11', '3.12', '3.13' ]
       max-parallel: 5
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Install uv for Python ${{ matrix.python-version }}
         uses: astral-sh/setup-uv@v7
         with:

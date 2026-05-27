@@ -7,9 +7,11 @@ from medcat.cat import CAT
 from medcat.components.types import CoreComponentType
 from medcat.storage.serialisers import AvailableSerialisers
 from medcat.components.linking.no_action_linker import NoActionLinker
+from medcat.utils.config_utils import temp_changed_config
 
 from medcat.utils.legacy.convert_cdb import get_cdb_from_old
 from medcat.utils.legacy.convert_config import get_config_from_old
+from medcat.utils.legacy.convert_config import fix_spacy_model_name
 from medcat.utils.legacy.convert_vocab import get_vocab_from_old
 from medcat.utils.legacy.helpers import fix_subnames
 
@@ -67,7 +69,8 @@ class Converter:
             CAT: The model pack.
         """
         cdb = get_cdb_from_old(
-            os.path.join(self.old_model_folder, self.cdb_name))
+            os.path.join(self.old_model_folder, self.cdb_name),
+            fix_spacy_model_name=False)
         vocab_path = os.path.join(self.old_model_folder, self.vocab_name)
         if os.path.exists(vocab_path):
             vocab = get_vocab_from_old(vocab_path)
@@ -79,7 +82,14 @@ class Converter:
             config = get_config_from_old(cnf_path)
         else:
             config = cdb.config
-        cat = CAT(cdb, vocab, config)
+        with temp_changed_config(
+            config.general.nlp, "modelname",
+            os.path.join(self.old_model_folder,
+                         config.general.nlp.modelname)):
+            cat = CAT(cdb, vocab, config)
+        # NOTE: its probably easier if we change the spacy model name
+        #       afterwards
+        fix_spacy_model_name(config, cat.pipe.tokenizer)
         fix_subnames(cat)
         # MetaCATs
         meta_cat_folders = [

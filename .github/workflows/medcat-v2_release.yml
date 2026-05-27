@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - "medcat/v2*"
+      - "MedCAT/v2*"
 
 permissions:
   contents: write
@@ -23,7 +24,7 @@ jobs:
       version_only: ${{ steps.extract.outputs.version_only }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -35,14 +36,18 @@ jobs:
 
           # Get the tag without the 'v' and strip the patch version
           VERSION_TAG="${GITHUB_REF#refs/tags/}"
+
+          # Convert to lowercase first, then strip
+          VERSION_TAG_LOWER="${VERSION_TAG,,}"
+
           # NOTE: branch name is in line with version tag, except for the patch version
-          BRANCH_NAME="${VERSION_TAG%.*}"  # This removes the patch version (everything after the second dot)
+          BRANCH_NAME="${VERSION_TAG_LOWER%.*}"  # This removes the patch version (everything after the second dot)
 
           # set version tag as output for later use
-          echo "version_tag=$VERSION_TAG" >> $GITHUB_OUTPUT
+          echo "version_tag=$VERSION_TAG_LOWER" >> $GITHUB_OUTPUT
 
           # only the version (no medcat/v prefix)
-          VERSION_ONLY="${VERSION_TAG#medcat/v}"
+          VERSION_ONLY="${VERSION_TAG_LOWER#medcat/v}"
           echo "version_only=$VERSION_ONLY" >> $GITHUB_OUTPUT
 
           # Check out the corresponding release branch (e.g., medcat/v0.1)
@@ -64,7 +69,7 @@ jobs:
         run: python -m build
 
       - name: Upload wheel artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: medcat-v2-wheel
           path: |
@@ -80,7 +85,7 @@ jobs:
         python-version: ["3.10", "3.11", "3.12"]
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v6
@@ -124,7 +129,7 @@ jobs:
 #          cp req-gpu.txt bundle-gpu/requirements.txt
 
       - name: Download built medcat wheel for inclusion in bundles
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
         with:
           name: medcat-v2-wheel
           path: medcat-v2/built-wheel
@@ -143,7 +148,7 @@ jobs:
 #          tar -czf medcat-v${{ needs.build.outputs.version_only }}-${{ matrix.python-version }}-gpu.tar.gz -C bundle-gpu .
 
       - name: Upload bundles as artifacts
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: bundles-${{ matrix.python-version }}
           path: |
@@ -156,7 +161,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
         with:
           path: medcat-v2/artifacts
 
@@ -168,7 +173,7 @@ jobs:
           ls -l dist/
 
       - name: Download built wheel
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
         with:
           name: medcat-v2-wheel
           path: medcat-v2/dist-wheel
@@ -183,7 +188,7 @@ jobs:
 
       - name: Create GitHub Release
         id: create_release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.build.outputs.version_tag }}
           draft: true
@@ -200,3 +205,13 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: medcat-v2/dist
+
+  # test-time models for download
+  upload-test-models:
+    runs-on: ubuntu-latest
+    needs: release
+    steps:
+      - name: Upload test models to release
+        uses: ./.github/workflows/upload-test-models.yml
+        with:
+          tag: ${{ github.ref_name }}

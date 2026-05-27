@@ -1,9 +1,11 @@
 import sys
 from medcat.utils.download_scripts import main as __download_scripts
+from medcat.plugins.cli import install_plugins_command as __install_plugins
 
 
 _COMMANDS = {
-    "download-scripts": __download_scripts
+    "download-scripts": __download_scripts,
+    "install-plugins": __install_plugins,
 }
 
 
