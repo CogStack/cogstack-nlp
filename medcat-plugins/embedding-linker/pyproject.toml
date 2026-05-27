@@ -59,6 +59,9 @@ dependencies = [
   "transformers>=4.41.0,<5.0", # avoid major bump
   "torch>=2.4.0,<3.0",
   "tqdm",
+  # NOTE: transitive dependency that breaks other deps
+  #       e.g `spacy`'s dependency `click` isn't installed
+  "typer!=0.26.0,!=0.26.1,!=0.26.2",
 ]
 
 # List additional groups of dependencies here (e.g. development
