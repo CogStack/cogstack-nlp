@@ -1,0 +1,130 @@
+import json
+from pathlib import Path
+from unittest.mock import MagicMock
+
+from django.contrib.auth.models import User
+from django.test import TestCase
+from rest_framework.authtoken.models import Token
+from rest_framework.test import APIClient
+
+from api.extensions import (
+    clear_permission_hooks,
+    clear_registries,
+    get_features,
+    get_menu_extensions,
+    get_permission_hooks,
+    get_routes,
+    register_feature,
+    register_menu_extension,
+    register_permission_hook,
+    register_route,
+)
+from api.permissions import is_project_admin
+
+
+SCHEMA_PATH = Path(__file__).resolve().parent / 'fixtures' / 'bootstrap_schema.json'
+
+
+class ExtensionsRegistryTests(TestCase):
+    def tearDown(self):
+        clear_registries()
+        clear_permission_hooks()
+
+    def test_menu_extension_requires_id_and_label(self):
+        with self.assertRaises(ValueError):
+            register_menu_extension({'id': 'x'})
+        register_menu_extension({'id': 'nav', 'label': 'Enterprise'})
+        items = get_menu_extensions()
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]['id'], 'nav')
+
+    def test_route_requires_path_and_component(self):
+        with self.assertRaises(ValueError):
+            register_route({'path': '/ee'})
+        register_route({'path': '/ee/adj', 'component': 'Adjudication'})
+        routes = get_routes()
+        self.assertEqual(routes[0]['path'], '/ee/adj')
+
+    def test_features_are_sorted(self):
+        register_feature('workflow')
+        register_feature('adjudication')
+        self.assertEqual(get_features(), ['adjudication', 'workflow'])
+
+
+class PermissionHookTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='annotator', password='pass')
+        self.other = User.objects.create_user(username='other', password='pass')
+        self.project = MagicMock()
+        self.project.members.filter.return_value.exists.return_value = False
+        self.project.group = None
+
+    def tearDown(self):
+        clear_permission_hooks()
+
+    def test_hook_can_grant_project_admin(self):
+        def grant_other(user, project):
+            if user.id == self.other.id:
+                return True
+            return None
+
+        self.assertFalse(is_project_admin(self.other, self.project))
+        register_permission_hook('is_project_admin', grant_other)
+        self.assertTrue(is_project_admin(self.other, self.project))
+
+    def test_hook_cannot_deny_member(self):
+        self.project.members.filter.return_value.exists.return_value = True
+
+        def deny_all(user, project):
+            return False
+
+        register_permission_hook('is_project_admin', deny_all)
+        self.assertTrue(is_project_admin(self.user, self.project))
+
+    def test_abstaining_hook(self):
+        register_permission_hook('is_project_admin', lambda u, p: None)
+        self.assertEqual(len(list(get_permission_hooks('is_project_admin'))), 1)
+        self.assertFalse(is_project_admin(self.user, self.project))
+
+
+class BootstrapEndpointTests(TestCase):
+    def setUp(self):
+        clear_registries()
+        self.user = User.objects.create_user(username='bootstrap', password='pass')
+        self.token = Token.objects.create(user=self.user)
+        self.client = APIClient()
+
+    def tearDown(self):
+        clear_registries()
+
+    def test_bootstrap_requires_auth(self):
+        response = self.client.get('/api/bootstrap/')
+        self.assertEqual(response.status_code, 401)
+
+    def test_bootstrap_payload_shape(self):
+        register_feature('adjudication')
+        register_menu_extension({'id': 'adj', 'label': 'Adjudication', 'route': '/ee/adj'})
+        register_route({'path': '/ee/adj', 'component': 'Adjudication'})
+
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {self.token.key}')
+        response = self.client.get('/api/bootstrap/')
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(set(data.keys()), {'features', 'menu_extensions', 'routes'})
+        self.assertIsInstance(data['features'], list)
+        self.assertIsInstance(data['menu_extensions'], list)
+        self.assertIsInstance(data['routes'], list)
+        self.assertIn('adjudication', data['features'])
+        self.assertEqual(data['menu_extensions'][0]['id'], 'adj')
+        self.assertEqual(data['routes'][0]['path'], '/ee/adj')
+
+    def test_bootstrap_matches_json_schema(self):
+        try:
+            import jsonschema
+        except ImportError:
+            self.skipTest('jsonschema not installed')
+
+        schema = json.loads(SCHEMA_PATH.read_text())
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {self.token.key}')
+        response = self.client.get('/api/bootstrap/')
+        jsonschema.validate(instance=response.json(), schema=schema)

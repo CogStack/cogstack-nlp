@@ -39,6 +39,7 @@
     </div>
     <project-list v-if="!projectGroupView" :project-items="projects.items" :is-admin="isAdmin"
                   :cdb-search-index-status="cdbSearchIndexStatus"></project-list>
+    <plugin-slot name="home:after-projects" />
   </div>
 
 </template>

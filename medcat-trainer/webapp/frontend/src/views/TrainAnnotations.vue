@@ -53,6 +53,7 @@
         </pane>
         <pane size="15" min-size="10">
           <div class="sidebar-container">
+            <plugin-slot name="train-annotations:sidebar" :project="project" />
             <transition name="slide-left">
               <div>
                 <concept-summary v-if="!conceptSynonymSelection && !hasRelations" :selectedEnt="currentEnt"

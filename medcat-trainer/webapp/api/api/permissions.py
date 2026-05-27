@@ -18,19 +18,27 @@ def is_project_admin(user, project):
     """
     Check if a user is an admin of a project.
     A user is a project admin if:
-    1. They are a member of the project, OR
-    2. They are an administrator of the project's group (if the project has a group)
-    3. They are a superuser/staff
+    1. They are a superuser/staff, OR
+    2. They are a member of the project, OR
+    3. They are an administrator of the project's group (if the project has a group), OR
+    4. A registered ``is_project_admin`` permission hook grants access.
+
+    Hooks are grant-only (see :mod:`api.extensions`): they may extend the set
+    of users considered admins (e.g. via OIDC group claims in an enterprise
+    plugin) but never narrow it.
     """
     if user.is_superuser or user.is_staff:
         return True
 
-    # Check if user is a member of the project
     if project.members.filter(id=user.id).exists():
         return True
 
-    # Check if user is an administrator of the project's group
     if project.group and project.group.administrators.filter(id=user.id).exists():
         return True
+
+    from .extensions import get_permission_hooks
+    for hook in get_permission_hooks('is_project_admin'):
+        if hook(user, project) is True:
+            return True
 
     return False

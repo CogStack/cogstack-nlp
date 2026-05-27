@@ -4,6 +4,7 @@ from django.urls import path, include, re_path
 from rest_framework.authtoken import views as auth_views
 from rest_framework import routers
 import api.views
+from core.plugin_discovery import build_mct_plugin_urlpatterns
 
 router = routers.DefaultRouter()
 router.register(r'users', api.views.UserViewSet)
@@ -25,6 +26,7 @@ router.register(r'datasets', api.views.DatasetViewSet)
 
 urlpatterns = [
     path('api/', include(router.urls)),
+    path('api/bootstrap/', api.views.bootstrap),
     path('api/health/', include('health_check.urls')),
     path('api/anno-conf/', api.views.get_anno_tool_conf),
     path('api/search-concepts/', api.views.search_solr),
@@ -70,5 +72,6 @@ urlpatterns = [
     path('reset_password_sent/', pw_views.PasswordResetDoneView.as_view(), name='password_reset_done'),
     path('reset/<uidb64>/<token>', pw_views.PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
     path('reset_password_complete/', pw_views.PasswordResetCompleteView.as_view(), name='password_reset_complete'),
+    *build_mct_plugin_urlpatterns(),
     re_path('^.*$', api.views.index, name='index'),  # Match everything else to home
 ]

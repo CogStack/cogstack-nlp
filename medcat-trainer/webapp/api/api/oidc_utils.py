@@ -1,6 +1,9 @@
 from django.contrib.auth import get_user_model
 import secrets
 
+from .extensions import user_oidc_resolved
+
+
 def get_user_by_email(request, id_token):
     """
     Resolve or create a Django user from OIDC claims.
@@ -41,4 +44,11 @@ def get_user_by_email(request, id_token):
     user.is_staff = is_staff
 
     user.save()
+
+    user_oidc_resolved.send(
+        sender=User,
+        user=user,
+        id_token=id_token,
+        created=created,
+    )
     return user
