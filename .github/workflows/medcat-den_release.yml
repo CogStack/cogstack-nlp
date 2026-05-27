@@ -49,3 +49,13 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages_dir: medcat-den/dist
+
+  # test-time models for download
+  upload-test-models:
+    runs-on: ubuntu-latest
+    needs: test-and-publish-to-PyPI
+    steps:
+      - name: Upload test models to release
+        uses: ./.github/workflows/upload-test-models.yml
+        with:
+          tag: ${{ github.ref_name }}

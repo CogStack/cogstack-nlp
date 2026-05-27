@@ -41,6 +41,7 @@ dev = [
     "ruff",
     "mypy",
     "diskcache-stubs",
+    "pooch",
 ]
 
 [project.urls]
