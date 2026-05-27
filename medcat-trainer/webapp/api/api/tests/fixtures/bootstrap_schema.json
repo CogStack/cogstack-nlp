@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cogstack.org/medcat-trainer/bootstrap.json",
+  "title": "MedCAT Trainer bootstrap payload",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["features", "menu_extensions", "routes"],
+  "properties": {
+    "features": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "menu_extensions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "label"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "label": { "type": "string", "minLength": 1 },
+          "route": { "type": "string" },
+          "href": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "routes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "component"],
+        "properties": {
+          "path": { "type": "string", "minLength": 1 },
+          "component": { "type": "string", "minLength": 1 },
+          "name": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    }
+  }
+}

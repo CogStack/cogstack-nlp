@@ -20,6 +20,10 @@
               <router-link class="nav-link" to="/metrics-reports">Metrics</router-link>
               <router-link class="nav-link" to="/model-explore">Concepts</router-link>
               <router-link class="nav-link" to="/demo">Try Model</router-link>
+              <template v-for="item in pluginMenuItems" :key="item.id">
+                <router-link v-if="item.route" class="nav-link" :to="item.route">{{ item.label }}</router-link>
+                <a v-else-if="item.href" class="nav-link" :href="item.href">{{ item.label }}</a>
+              </template>
             </div>
           </div>
 
@@ -55,6 +59,7 @@
 import Login from '@/components/common/Login.vue'
 import EventBus from '@/event-bus'
 import { isOidcEnabled, getRuntimeConfig } from './runtimeConfig';
+import { getMenuItems } from './plugins/registry'
 
 export default {
   name: 'App',
@@ -73,6 +78,9 @@ export default {
       const v = this.version || ''
       if (v.length <= 11) return v
       return `${v.slice(0, 7)}…${v.slice(-6)}`
+    },
+    pluginMenuItems () {
+      return getMenuItems()
     }
   },
   methods: {

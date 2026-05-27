@@ -542,7 +542,16 @@ def import_cdb_concepts(request):
     return Response({'message': 'submitted cdb import job.'})
 
 
-def _submit_document(project: ProjectAnnotateEntities, document: Document):
+def _submit_document(project: ProjectAnnotateEntities, document: Document, user=None):
+    from .extensions import pre_document_submit, post_document_submit
+
+    pre_document_submit.send(
+        sender=ProjectAnnotateEntities,
+        project=project,
+        document=document,
+        user=user,
+    )
+
     if project.train_model_on_submit:
         if project.use_model_service:
             # TODO: Implement this, already available in CMS / gateway instances.
@@ -569,6 +578,13 @@ def _submit_document(project: ProjectAnnotateEntities, document: Document):
             project.cuis += ',' + ','.join(extra_doc_cuis)
             project.save()
 
+    post_document_submit.send(
+        sender=ProjectAnnotateEntities,
+        project=project,
+        document=document,
+        user=user,
+    )
+
 
 @api_view(http_method_names=['POST'])
 def submit_document(request):
@@ -581,7 +597,7 @@ def submit_document(request):
     document = Document.objects.get(id=d_id)
 
     try:
-        _submit_document(project, document)
+        _submit_document(project, document, user=request.user)
     except Exception:
         logger.exception("Error while submitting document")
         return HttpResponseServerError("An internal error occurred while submitting the document.")
@@ -1391,3 +1407,25 @@ def project_admin_reset(request, project_id):
     project.prepared_documents.clear()
 
     return Response({'message': 'Project reset successfully'}, status=200)
+
+
+@api_view(http_method_names=['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def bootstrap(request):
+    """
+    Return the frontend bootstrap payload exposed by ``api/extensions.py``.
+
+    Stable shape (contract-tested):
+
+    ``{
+        "features": [str, ...],
+        "menu_extensions": [{"id": str, "label": str, ...}, ...],
+        "routes": [{"path": str, "component": str, ...}, ...]
+    }``
+    """
+    from .extensions import get_features, get_menu_extensions, get_routes
+    return Response({
+        'features': get_features(),
+        'menu_extensions': get_menu_extensions(),
+        'routes': get_routes(),
+    })

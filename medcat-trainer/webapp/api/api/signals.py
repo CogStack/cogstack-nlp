@@ -9,8 +9,24 @@ from django.db.models.signals import post_save, post_delete, pre_save, m2m_chang
 from django.dispatch import receiver
 
 from api.data_utils import dataset_from_file, delete_orphan_docs, upload_projects_export
-from api.models import Dataset, ExportedProject, ModelPack, ProjectFields, ProjectAnnotateEntitiesFields, MetaTask, \
-    ProjectAnnotateEntities
+from api.extensions import (
+    annotation_created,
+    annotation_deleted,
+    annotation_updated,
+    project_group_created,
+    project_group_updated,
+)
+from api.models import (
+    AnnotatedEntity,
+    Dataset,
+    ExportedProject,
+    MetaTask,
+    ModelPack,
+    ProjectAnnotateEntities,
+    ProjectAnnotateEntitiesFields,
+    ProjectFields,
+    ProjectGroup,
+)
 from core.settings import MEDIA_ROOT
 
 
@@ -95,3 +111,37 @@ def project_tasks_changed(sender, instance, action, **kwargs):
 
 
 m2m_changed.connect(project_tasks_changed, sender=ProjectAnnotateEntitiesFields.tasks.through)
+
+
+# ---------------------------------------------------------------------------
+# Bridges from Django ORM signals to api.extensions semantic signals.
+# These are part of the stable plugin contract (api/extensions.py).
+# Keep these handlers cheap and side-effect-free.
+# ---------------------------------------------------------------------------
+
+@receiver(post_save, sender=AnnotatedEntity)
+def _emit_annotation_saved(sender, instance, created, **kwargs):
+    sig = annotation_created if created else annotation_updated
+    sig.send(
+        sender=AnnotatedEntity,
+        annotation=instance,
+        project=getattr(instance, 'project', None),
+        document=getattr(instance, 'document', None),
+        user=getattr(instance, 'user', None),
+    )
+
+
+@receiver(post_delete, sender=AnnotatedEntity)
+def _emit_annotation_deleted(sender, instance, **kwargs):
+    annotation_deleted.send(
+        sender=AnnotatedEntity,
+        annotation=instance,
+        project=getattr(instance, 'project', None),
+        document=getattr(instance, 'document', None),
+    )
+
+
+@receiver(post_save, sender=ProjectGroup)
+def _emit_project_group_saved(sender, instance, created, **kwargs):
+    sig = project_group_created if created else project_group_updated
+    sig.send(sender=ProjectGroup, project_group=instance)

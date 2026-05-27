@@ -7,12 +7,11 @@ import MetricsHome from '../views/MetricsHome.vue'
 import ConceptDatabase from '../views/ConceptDatabase.vue'
 import ProjectAdmin from '../views/ProjectAdmin.vue'
 import { isOidcEnabled } from '../runtimeConfig'
+import { getPluginVueRoutes } from '../plugins/registry'
 
 
 const initialiseRouter = () => {
-  return createRouter({
-    history: createWebHistory(import.meta.env.BASE_URL),
-    routes: [
+  const coreRoutes = [
       {
           path: '/train-annotations/:projectId/:docId?',
           name: 'train-annotations',
@@ -74,6 +73,13 @@ const initialiseRouter = () => {
             }
           }
       },
+  ]
+
+  return createRouter({
+    history: createWebHistory(import.meta.env.BASE_URL),
+    routes: [
+      ...coreRoutes,
+      ...getPluginVueRoutes(),
       {
           path: '/:pathMatch(.*)',
           name: 'home',
