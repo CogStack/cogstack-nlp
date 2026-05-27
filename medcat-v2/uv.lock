@@ -1,6 +1,6 @@
 version = 1
 revision = 3
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 resolution-markers = [
     "python_full_version >= '3.13'",
     "python_full_version == '3.12.*'",
@@ -873,6 +873,7 @@ deid = [
 ]
 dev = [
     { name = "mypy" },
+    { name = "pooch" },
     { name = "ruff" },
     { name = "types-pyyaml" },
     { name = "types-setuptools" },
@@ -898,6 +899,11 @@ spacy = [
     { name = "spacy" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "pooch" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "datasets", marker = "extra == 'deid'", specifier = ">=2.2.2,<3.0.0" },
@@ -908,6 +914,7 @@ requires-dist = [
     { name = "packaging" },
     { name = "pandas", specifier = ">=2.2,<3.0" },
     { name = "peft", marker = "extra == 'meta-cat'", specifier = ">0.8.2,<1.0" },
+    { name = "pooch", marker = "extra == 'dev'" },
     { name = "pyahocorasick", marker = "extra == 'dict-ner'", specifier = ">=2.1.0,<3.0" },
     { name = "pydantic", specifier = ">2.0" },
     { name = "pyyaml" },
@@ -935,6 +942,9 @@ requires-dist = [
     { name = "xxhash", specifier = ">=3.5.0,<4.0" },
 ]
 provides-extras = ["dev", "spacy", "meta-cat", "dict-ner", "deid", "rel-cat", "test"]
+
+[package.metadata.requires-dev]
+dev = [{ name = "pooch", specifier = ">=1.9.0" }]
 
 [[package]]
 name = "mpmath"
@@ -1551,6 +1561,29 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/70/b8/2e79377efaa1e5f0d70a497db7914ffd355846e760ffa2f7883ab0f600fb/peft-0.17.1.tar.gz", hash = "sha256:e6002b42517976c290b3b8bbb9829a33dd5d470676b2dec7cb4df8501b77eb9f", size = 568192, upload-time = "2025-08-21T09:25:22.703Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/49/fe/a2da1627aa9cb6310b6034598363bd26ac301c4a99d21f415b1b2855891e/peft-0.17.1-py3-none-any.whl", hash = "sha256:3d129d64def3d74779c32a080d2567e5f7b674e77d546e3585138216d903f99e", size = 504896, upload-time = "2025-08-21T09:25:18.974Z" },
+]
+
+[[package]]
+name = "platformdirs"
+version = "4.9.6"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/9f/4a/0883b8e3802965322523f0b200ecf33d31f10991d0401162f4b23c698b42/platformdirs-4.9.6.tar.gz", hash = "sha256:3bfa75b0ad0db84096ae777218481852c0ebc6c727b3168c1b9e0118e458cf0a", size = 29400, upload-time = "2026-04-09T00:04:10.812Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/75/a6/a0a304dc33b49145b21f4808d763822111e67d1c3a32b524a1baf947b6e1/platformdirs-4.9.6-py3-none-any.whl", hash = "sha256:e61adb1d5e5cb3441b4b7710bea7e4c12250ca49439228cc1021c00dcfac0917", size = 21348, upload-time = "2026-04-09T00:04:09.463Z" },
+]
+
+[[package]]
+name = "pooch"
+version = "1.9.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "packaging" },
+    { name = "platformdirs" },
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/83/43/85ef45e8b36c6a48546af7b266592dc32d7f67837a6514d111bced6d7d75/pooch-1.9.0.tar.gz", hash = "sha256:de46729579b9857ffd3e741987a2f6d5e0e03219892c167c6578c0091fb511ed", size = 61788, upload-time = "2026-01-30T19:15:09.649Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2a/2d/d4bf65e47cea8ff2c794a600c4fd1273a7902f268757c531e0ee9f18aa58/pooch-1.9.0-py3-none-any.whl", hash = "sha256:f265597baa9f760d25ceb29d0beb8186c243d6607b0f60b83ecf14078dbc703b", size = 67175, upload-time = "2026-01-30T19:15:08.36Z" },
 ]
 
 [[package]]
