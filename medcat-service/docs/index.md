@@ -6,7 +6,7 @@ Feel free to ask questions on the github issue tracker or on our [discourse webs
 
 ## Demo
 <video loop muted playsinline controls style="max-width: 100%; height: auto;">
-  <source src="/docs/assets/demo-api.webm" type="video/webm">
+  <source src="assets/demo-api.webm" type="video/webm">
 </video>
 
 ## Features
