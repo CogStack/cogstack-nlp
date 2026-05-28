@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
+import type { App } from 'vue'
 
-vi.mock('lodash', async (importOriginal) => {
-  const mod = await importOriginal<typeof import('lodash')>()
+vi.mock('lodash', () => {
   const immediateDebounce = <T extends (...args: never[]) => unknown>(fn: T) => {
     const debounced = function (this: unknown, ...args: Parameters<T>) {
       return fn.apply(this, args)
@@ -12,8 +12,7 @@ vi.mock('lodash', async (importOriginal) => {
     return debounced
   }
   return {
-    ...mod,
-    default: { ...mod.default, debounce: immediateDebounce },
+    default: { debounce: immediateDebounce },
     debounce: immediateDebounce
   }
 })
@@ -25,18 +24,24 @@ describe('ConceptPicker.vue', () => {
   const originalSetTimeout = window.setTimeout.bind(window)
 
   const httpPlugin = {
-    install(app: { config: { globalProperties: { $http?: { get: typeof mockGet } } } }) {
+    install(app: App) {
       app.config.globalProperties.$http = { get: mockGet }
     }
   }
 
   beforeEach(() => {
-    vi.spyOn(window, 'setTimeout').mockImplementation((handler, timeout, ...args) => {
+    vi.spyOn(window, 'setTimeout').mockImplementation(((
+      handler: TimerHandler,
+      timeout?: number,
+      ...args: unknown[]
+    ) => {
       if (timeout === 150) {
-        return 0 as unknown as ReturnType<typeof setTimeout>
+        return 0 as unknown as ReturnType<typeof window.setTimeout>
       }
-      return originalSetTimeout(handler, timeout, ...args)
-    })
+      return originalSetTimeout(handler, timeout, ...args) as unknown as ReturnType<
+        typeof window.setTimeout
+      >
+    }) as unknown as typeof window.setTimeout)
     mockGet.mockResolvedValue({
       data: {
         results: [

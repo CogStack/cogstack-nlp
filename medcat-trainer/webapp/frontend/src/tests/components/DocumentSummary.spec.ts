@@ -15,12 +15,18 @@ describe('DocumentSummary.vue', () => {
     vi.spyOn(window, 'addEventListener')
     vi.spyOn(window, 'removeEventListener')
     Element.prototype.scrollIntoView = vi.fn()
-    vi.spyOn(window, 'setTimeout').mockImplementation((handler, timeout, ...args) => {
+    vi.spyOn(window, 'setTimeout').mockImplementation(((
+      handler: TimerHandler,
+      timeout?: number,
+      ...args: unknown[]
+    ) => {
       if (timeout === 50) {
-        return 0 as unknown as ReturnType<typeof setTimeout>
+        return 0 as unknown as ReturnType<typeof window.setTimeout>
       }
-      return originalSetTimeout(handler, timeout, ...args)
-    })
+      return originalSetTimeout(handler, timeout, ...args) as unknown as ReturnType<
+        typeof window.setTimeout
+      >
+    }) as unknown as typeof window.setTimeout)
   })
 
   afterEach(() => {
