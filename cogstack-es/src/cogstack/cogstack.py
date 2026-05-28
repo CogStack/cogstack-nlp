@@ -151,6 +151,7 @@ class CogStack:
         hosts: list[str],
         username: Optional[str] = None,
         password: Optional[str] = None,
+        ssl_enabled: Optional[bool] = False,
     ) -> "CogStack":
         """
         Create an instance of CogStack using basic authentication.
@@ -169,12 +170,14 @@ class CogStack:
         -------
             CogStack: An instance of the CogStack class.
         """
-        elastic = CogStack.get_es_with_basic_auth(hosts, username, password)
+        elastic = CogStack.get_es_with_basic_auth(
+            hosts, username, password, ssl_enabled)
         return cls(elastic)
 
     @classmethod
     def with_api_key_auth(
-        cls, hosts: list[str], api_key: Optional[dict] = None
+        cls, hosts: list[str], api_key: Optional[dict] = None,
+        ssl_enabled: Optional[bool] = False,
     ) -> "CogStack":
         """
         Create an instance of CogStack using API key authentication.
@@ -205,13 +208,14 @@ class CogStack:
         -------
             CogStack: An instance of the CogStack class.
         """
-        provider = CogStack.get_es_with_api_key(hosts, api_key)
+        provider = CogStack.get_es_with_api_key(
+            hosts, api_key, ssl_enabled)
         return cls(provider)
 
     @staticmethod
     def get_es_with_basic_auth(
         hosts: list[str], username: Optional[str] = None,
-        password: Optional[str] = None
+        password: Optional[str] = None, ssl_enabled: Optional[bool] = False,
     ) -> ClientProvider:
         """
         Create an instance of CogStack using basic authentication.
@@ -240,12 +244,14 @@ class CogStack:
 
         return CogStack.__connect(
             hosts,
-            basic_auth=(username, password) if username and password else None
+            basic_auth=(username, password) if username and password else None,
+            ssl_enabled=ssl_enabled,
         )
 
     @staticmethod
     def get_es_with_api_key(hosts: list[str],
-                            api_key: Optional[dict] = None
+                            api_key: Optional[dict] = None,
+                            ssl_enabled: Optional[bool] = False,
                             ) -> ClientProvider:
         """
         Create an instance of CogStack using API key authentication.
@@ -327,7 +333,8 @@ class CogStack:
         return CogStack.__connect(
             hosts,
             api_key=encoded if has_encoded_value else
-            (api_id_value, api_key_value)
+            (api_id_value, api_key_value),
+            ssl_enabled=ssl_enabled,
         )
 
     @staticmethod
@@ -335,6 +342,7 @@ class CogStack:
         hosts: list[str],
         basic_auth: Optional[tuple[str, str]] = None,
         api_key: Optional[Union[str, tuple[str, str]]] = None,
+        ssl_enabled: Optional[bool] = False,
     ) -> ClientProvider:
         """Connect to Elasticsearch or OpenSearch using the credentials.
         Parameters
@@ -367,6 +375,7 @@ class CogStack:
             api_key=api_key,
             basic_auth=basic_auth,
             verify_certs=False,
+            use_ssl=ssl_enabled,
             request_timeout=CogStack.ES_TIMEOUT,
         )
         if not provider.ping():
