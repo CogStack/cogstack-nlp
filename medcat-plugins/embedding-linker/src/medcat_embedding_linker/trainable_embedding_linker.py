@@ -387,6 +387,17 @@ class Linker(StaticEmbeddingLinker, AbstractManualSerialisable):
             self._cui_context_matrix = None
             self.number_of_batches = 0
 
+    def train_unsupervised(self, doc: MutableDocument) -> None:
+        """Train unsupervised based on the given document.
+
+        If this component doesn't support unsupervised training,
+        this method can be a no-op.
+
+        Args:
+            doc (MutableDocument): The document to train on.
+        """
+        pass
+
     @classmethod
     def create_new_component(
         cls,
