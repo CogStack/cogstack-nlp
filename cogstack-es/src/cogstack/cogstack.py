@@ -140,7 +140,7 @@ class CogStack:
             The ElasticSearch or OpenSearch instance.
     """
 
-    ES_TIMEOUT = 30000
+    ES_TIMEOUT = 300
 
     def __init__(self, provider: ClientProvider) -> None:
         self.provider = provider
