@@ -62,7 +62,7 @@ dependencies = [
   # NOTE: transitive dependency that breaks other deps
   #       e.g `spacy`'s dependency `click` isn't installed
   "typer!=0.26.*",
-  # transitive dependency that spacy needs but doesn't delcare...
+  # transitive dependency that spacy needs but doesn't declare...
   "click",
 ]
 
