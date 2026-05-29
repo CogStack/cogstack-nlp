@@ -35,7 +35,9 @@ dependencies = [
     "diskcache>=5.6.3,<6.0",
     # NOTE: transitive dependency that breaks other deps
     #       e.g `spacy`'s dependency `click` isn't installed
-    "typer!=0.26.0,!=0.26.1,!=0.26.2",
+    "typer!=0.26.*",
+    # transitive dependency that spacy needs but doesn't declare...
+    "click",
 ]
 
 [project.optional-dependencies]
