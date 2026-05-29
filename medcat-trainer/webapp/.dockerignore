@@ -9,4 +9,15 @@ __pycache__/
 *.md
 .pytest_cache
 .mypy_cache
-node_modules/
+
+# Frontend — rebuilt in the frontend-builder stage
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+
+# Backend tests — not needed in the production image
+api/**/tests/
+
+# User-uploaded models and datasets — mounted at /home/api/media in compose
+api/media/*
+!api/media/.keep
