@@ -210,8 +210,6 @@ jobs:
   upload-test-models:
     runs-on: ubuntu-latest
     needs: release
-    steps:
-      - name: Upload test models to release
-        uses: ./.github/workflows/upload-test-models.yml
-        with:
-          tag: ${{ github.ref_name }}
+    uses: ./.github/workflows/upload-test-models.yml
+    with:
+      tag: ${{ github.ref_name }}
