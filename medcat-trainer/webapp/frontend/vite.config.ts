@@ -45,6 +45,14 @@ export default defineConfig({
   css: {
     preprocessorOptions: {
       scss: {
+        // Bootstrap 5.x still uses deprecated Sass color/import builtins; harmless until v6.
+        // https://getbootstrap.com/docs/5.3/customize/sass/#sass-deprecation-warnings
+        silenceDeprecations: [
+          'color-functions',
+          'global-builtin',
+          'import',
+          'if-function'
+        ],
         additionalData: `
           @import "@/styles/_variables.scss";
           @import "@/styles/_common.scss";

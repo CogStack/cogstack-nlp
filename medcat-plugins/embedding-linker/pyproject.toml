@@ -61,7 +61,9 @@ dependencies = [
   "tqdm",
   # NOTE: transitive dependency that breaks other deps
   #       e.g `spacy`'s dependency `click` isn't installed
-  "typer!=0.26.0,!=0.26.1,!=0.26.2",
+  "typer!=0.26.*",
+  # transitive dependency that spacy needs but doesn't declare...
+  "click",
 ]
 
 # List additional groups of dependencies here (e.g. development
