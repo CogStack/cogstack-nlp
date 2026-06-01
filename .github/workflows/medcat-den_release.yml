@@ -52,7 +52,6 @@ jobs:
 
   # test-time models for download
   upload-test-models:
-    runs-on: ubuntu-latest
     needs: test-and-publish-to-PyPI
     uses: ./.github/workflows/upload-test-models.yml
     with:
