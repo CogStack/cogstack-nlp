@@ -227,7 +227,7 @@ class MedcatTrainer_export(object):
                            df['last_modified'].dt.day.rename('day'),
                            df['user']]).agg({'count'})  # type: ignore
         data = pd.DataFrame(data)
-        data.columns = data.columns.droplevel()
+        data.columns = cast(pd.MultiIndex, data.columns).droplevel()
         data = data.reset_index(drop=False)
         data['date'] = pd.to_datetime(data[['year', 'month', 'day']])
         if by_user:
