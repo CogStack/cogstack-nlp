@@ -74,7 +74,7 @@ class EmbeddingLinking(Linking):
     use_ner_link_candidates: bool = True
     """Link candidates are provided by some NER steps. This will flag if 
     you want to trust them or not."""
-    do_pre_inference: bool = True
+    use_pre_inference: bool = True
     """Whether to use the pre-inference step to filter candidates before
     calculating similarities. This can speed up inference by only calculating
     similarities for candidates that are likely to be correct based direct on word 
@@ -85,3 +85,13 @@ class EmbeddingLinking(Linking):
     weight_decay: float = 0.01
     """Weight decay for training the embedding linker. Only used if
     the embedding linker is trainable."""
+    multiple_predictions_per_detected_entity: bool = False
+    """Whether to allow multiple predictions per detected entity. If False, only 
+    the highest scoring candidate will be returned for each entity. If True, all 
+    candidates that exceed the similarity thresholds will be returned. This can be 
+    useful if you want to return multiple CUIs for an entity, but can also lead to 
+    more false positives."""
+    pre_inference_top_k_sampling: int = 128
+    """When using pre-inference to filter candidates, how many candidates to keep
+    for each entity. Higher numbers will increase recall but also increase inference
+    time, and reduce precision."""

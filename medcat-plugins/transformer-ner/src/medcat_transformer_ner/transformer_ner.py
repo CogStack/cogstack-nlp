@@ -10,14 +10,11 @@ from medcat.cdb import CDB
 from medcat.config.config import ComponentConfig
 from medcat.storage.serialisables import AbstractManualSerialisable
 from transformers import AutoTokenizer, AutoModelForTokenClassification, get_constant_schedule_with_warmup
+from medcat_transformer_ner.transformer_ner_model import ModelForBinaryNER
 from medcat_transformer_ner.config import TransformerNER
 import logging
 import os
 import torch
-
-
-import numpy as np
-from collections import Counter
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +37,9 @@ class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSe
         self.label2id = {
             "O": 0,
             "B-ENT": 1,
-            "I-ENT": 2
+            "I-ENT": 2,
+            "E-ENT": 3,
+            "S-ENT": 4
         }
         self.id2label = {v: k for k, v in self.label2id.items()}
         self._model_init_kwargs = dict()
@@ -77,12 +76,12 @@ class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSe
                 model_source,
                 clean_up_tokenization_spaces=False
             )
-            self.model = AutoModelForTokenClassification.from_pretrained(
-                model_source,
-                num_labels=3,
+            self.model = ModelForBinaryNER(
+                embedding_model_name=model_source,
                 id2label=self.id2label,
-                label2id=self.label2id,
+                **model_init_kwargs
             )
+            
             self.model.eval()
             self.device = torch.device(
                 self.cnf_ner.gpu_device
@@ -175,14 +174,24 @@ class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSe
 
 
                 for ent in chunk_entities:
-                    started = False
+                    ent_token_indices = []
                     for i, (token_start, token_end) in enumerate(offsets_chunk):
+                        if token_start == token_end:
+                            continue
                         if token_start < ent["end"] and token_end > ent["start"]:
-                            if not started:
-                                labels[i] = self.label2id["B-ENT"]
-                                started = True
-                            else:
-                                labels[i] = self.label2id["I-ENT"]
+                            ent_token_indices.append(i)
+
+                    if not ent_token_indices:
+                        continue
+
+                    if len(ent_token_indices) == 1:
+                        labels[ent_token_indices[0]] = self.label2id["S-ENT"]
+                        continue
+
+                    labels[ent_token_indices[0]] = self.label2id["B-ENT"]
+                    labels[ent_token_indices[-1]] = self.label2id["E-ENT"]
+                    for i in ent_token_indices[1:-1]:
+                        labels[i] = self.label2id["I-ENT"]
 
                 all_labels.append(labels)
 
@@ -200,27 +209,6 @@ class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSe
         if labels_enabled:
             all_labels = torch.tensor(all_labels, dtype=torch.long).to(self.device)
         return input_ids, attention_masks, offset_mappings, chunk_char_starts, all_labels
-
-    def _focal_loss(self, logits, labels, gamma=2.0, ignore_index=-100):
-        # flatten
-        logits = logits.view(-1, logits.size(-1))
-        labels = labels.view(-1)
-
-        # mask ignored
-        valid_mask = labels != ignore_index
-        logits = logits[valid_mask]
-        labels = labels[valid_mask]
-
-        # standard CE
-        ce_loss = torch.nn.functional.cross_entropy(logits, labels, reduction='none')
-
-        # pt = probability of correct class
-        pt = torch.exp(-ce_loss)
-
-        # focal scaling
-        loss = ((1 - pt) ** gamma) * ce_loss
-
-        return loss.mean()
     
     def train(self, cui: str,
             entity: MutableEntity,
@@ -245,14 +233,31 @@ class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSe
                 labels=labels
             )
             
-            # outputs.logits  # for debugging
+            # debugging
+            # start_logits = outputs.start_logits
+            # end_logits = outputs.end_logits
             # predictions = outputs.logits.argmax(dim=-1).cpu().tolist()
-            # for inputs, predictions, labels in zip(input_ids.cpu().tolist(), predictions, labels.cpu().tolist()):
-            #     for input_id, pred_id, label_id in zip(inputs, predictions, labels):
+            # for chunk_input_ids, chunk_pred_ids, chunk_label_ids, chunk_start_logits, chunk_end_logits in (
+            #     zip(
+            #         input_ids.cpu().tolist(),
+            #         predictions,
+            #         labels.cpu().tolist(),
+            #         start_logits.detach().cpu(),
+            #         end_logits.detach().cpu(),
+            #     )
+            # ):
+            #     for input_id, label_id, pred_id, start_logit, end_logit in (
+            #         zip(chunk_input_ids, chunk_label_ids, chunk_pred_ids, chunk_start_logits, chunk_end_logits)
+            #         ):
             #         token = self.transformer_tokenizer.convert_ids_to_tokens(input_id)
             #         pred_label = self.id2label[pred_id] if pred_id in self.id2label else "N/A"
             #         true_label = self.id2label[label_id] if label_id in self.id2label else "N/A"
-            #         print(f"[{token}, {pred_label}, {true_label}]")
+            #         start_prob = torch.sigmoid(start_logit).item()
+            #         end_prob = torch.sigmoid(end_logit).item()
+            #         print(f"[{token}, {true_label}, {pred_label}, start_logit={start_prob:.4f}, end_logit={end_prob:.4f}]")
+            print(f"CRF Loss: {outputs.crf_loss.item()}")
+            print(f"Start Loss: {outputs.start_loss.item()}")
+            print(f"End Loss: {outputs.end_loss.item()}")
             # import sys
             # sys.exit(0)
             loss = outputs.loss
@@ -282,7 +287,7 @@ class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSe
 
             label = self.id2label[pred_id]
 
-            # if label is "O", we close any open entity span and move on
+            # If label is "O", close any open entity span and move on.
             if label == "O":
                 if current is not None:
                     spans.append(current)
@@ -296,23 +301,8 @@ class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSe
             abs_start = chunk_char_start + tok_start
             abs_end = chunk_char_start + tok_end
 
-            # If prefix is "B" and a span is already open, extend it instead of
-            # starting a new one. If no span is open, start a new one.
-            # If prefix is "I", we continue the current span if it's the same
-            # entity type, otherwise we treat it as a new "B" span.
+            # B starts a new span
             if prefix == "B":
-                # Treat consecutive B/I predictions as a single span.
-                # this needs to be in most likely - but the model isn't
-                # very discerning at the moment. so make a model that isn't all
-                # B at the start of entities and see if this logic is sound.
-                # if current is not None:
-                #     current["end"] = abs_end
-                # else:
-                #     current = {
-                #         "start": abs_start,
-                #         "end": abs_end,
-                #         "label": ent_type
-                #     }
                 if current is not None:
                     spans.append(current)
                 current = {
@@ -321,20 +311,42 @@ class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSe
                     "label": ent_type
                 }
 
-            # if prefix is "I", we continue the current span if it's
-            # the same entity type, otherwise we treat it as a new "B"
-            # span (this handles broken BIO sequences).
-            # TODO: other methods of handling broken BIO?
+            # I continues
             elif prefix == "I":
                 if current is not None and current["label"] == ent_type:
                     current["end"] = abs_end
                 else:
-                    # broken BIO -> treat as B
+                    # Broken sequence -> treat as a new span.
                     current = {
                         "start": abs_start,
                         "end": abs_end,
                         "label": ent_type
                     }
+
+            # E closes
+            elif prefix == "E":
+                if current is not None and current["label"] == ent_type:
+                    current["end"] = abs_end
+                    spans.append(current)
+                    current = None
+                else:
+                    # Broken sequence -> treat standalone E as a single-token span.
+                    spans.append({
+                        "start": abs_start,
+                        "end": abs_end,
+                        "label": ent_type
+                    })
+
+            # S is a single token span
+            elif prefix == "S":
+                if current is not None:
+                    spans.append(current)
+                    current = None
+                spans.append({
+                    "start": abs_start,
+                    "end": abs_end,
+                    "label": ent_type
+                })
 
         if current is not None:
             spans.append(current)
@@ -436,6 +448,8 @@ class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSe
                 continue
 
             token_start, token_end = token_span
+            if self.cnf_ner.use_prefix_token:
+                token_start = token_start - 1 if token_start > 0 else token_start
             # Loop through all contiguous token subspans [i:j]
             for i in range(token_start, token_end):
                 for j in range(i + 1, token_end + 1):
@@ -515,8 +529,7 @@ class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSe
                 input_ids=input_ids,
                 attention_mask=attention_masks
             )
-            predictions = outputs.logits.argmax(dim=-1).cpu().tolist()
-            
+            predictions = outputs.predictions.cpu().tolist()
         # debugging
         # for inputs, preds in zip(input_ids.cpu().tolist(), predictions):
         #     for input_id, pred_id in zip(inputs, preds):
@@ -563,10 +576,20 @@ class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSe
             folder_path, cls._MODEL_FOLDER_NAME
         )
         config_path = os.path.join(model_folder, "config.json")
-        if os.path.exists(config_path):
-            ner.model = AutoModelForTokenClassification.from_pretrained(model_folder)
-            ner.optimizer = torch.optim.AdamW(ner.model.parameters(), lr=1e-5, weight_decay=0.001)
-            ner.scheduler = get_constant_schedule_with_warmup(ner.optimizer, num_warmup_steps=20)
+        weights_path = os.path.join(model_folder, "pytorch_model.bin")
+        if not os.path.exists(config_path) or not os.path.exists(weights_path):
+            raise FileNotFoundError(
+                "Could not find transformer-ner checkpoint files in "
+                f"{model_folder}. Expected both config.json and pytorch_model.bin."
+            )
+
+        # ner.model = AutoModelForTokenClassification.from_pretrained(model_folder)
+        ner.model = ModelForBinaryNER.from_pretrained(
+            model_folder,
+            device=ner.device,
+        )
+        ner.optimizer = torch.optim.AdamW(ner.model.parameters(), lr=1e-5, weight_decay=0.001)
+        ner.scheduler = get_constant_schedule_with_warmup(ner.optimizer, num_warmup_steps=20)
         ner.model.to(ner.device)
         ner.model.eval()
 
