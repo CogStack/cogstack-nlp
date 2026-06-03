@@ -636,6 +636,14 @@ class CATSupTrainingTests(CATUnsupTrainingTests):
                 self.assertEqual(ann['start'], ent.base.start_char_index)
                 self.assertEqual(ann['end'], ent.base.end_char_index)
 
+    def test_training_has_name_counts(self):
+        self.assertTrue(self.cat.cdb.get_cui2count_train())
+
+    def test_training_has_same_cui_and_name_counts(self):
+        cc = sum(self.cat.cdb.get_cui2count_train().values())
+        cn = sum(self.cat.cdb.get_name2count_train().values())
+        self.assertEqual(cc, cn)
+
 
 class CATWithDictNERSupTrainingTests(CATSupTrainingTests):
     from medcat.components.types import CoreComponentType

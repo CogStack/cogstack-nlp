@@ -2,7 +2,10 @@
 OPENBLAS_NUM_THREADS=1
 
 ### MedCAT cfg ###
+
+# when in debug mode please use ../../configs/base.txt
 MEDCAT_CONFIG_FILE=/home/configs/base.txt
+
 # number of MedCAT models that can be cached, run in bg processes at any one time
 MAX_MEDCAT_MODELS=2
 
@@ -12,8 +15,11 @@ ENV=non-prod
 # Complete once this is deployed
 CSRF_TRUSTED_ORIGINS=
 
+USE_OIDC=0
+
 ### Django debug setting - to live-reload etc. ###
 DEBUG=1
+
 
 ### Load example CDB, Vocab ###
 LOAD_EXAMPLES=1
@@ -25,7 +31,7 @@ UNIQUE_DOC_NAMES_IN_DATASETS=True
 MAX_DATASET_SIZE=10000
 
 ### Solr Concept Search Conf ###
-CONCEPT_SEARCH_SERVICE_HOST=solr
+CONCEPT_SEARCH_SERVICE_HOST=localhost
 CONCEPT_SEARCH_SERVICE_PORT=8983
 
 ### DB backup dir ###

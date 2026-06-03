@@ -34,9 +34,11 @@ docs_dir: docs
 nav:
   - Home: index.md
   - Architecture: architecture.md
-  - Migration guide (v2): migration_guide_v2.md
-  - Breaking changes: breaking_changes.md
-
+  - Tutorials: '!include ../medcat-v2-tutorials/mkdocs.yml'
+  - Upgrading:
+    - Migration guide (v2): migration_guide_v2.md
+    - Breaking changes: breaking_changes.md
+  
 plugins:
   - search
   - termynal
@@ -64,7 +66,9 @@ plugins:
   - autorefs  # Resolves cross-refs from mkdocstrings so type links work across pages
   - api-autonav:
       modules: ['medcat']
-
+  - monorepo
+  - mkdocs-jupyter:
+      ignore_h1_titles: True
 
 markdown_extensions:
   - admonition

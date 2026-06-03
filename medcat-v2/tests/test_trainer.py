@@ -1,5 +1,6 @@
 import os
 import json
+from typing import Callable
 
 from medcat.tokenizing.tokens import MutableDocument
 from medcat.trainer import Trainer
@@ -84,7 +85,27 @@ class FakeComponent:
     pass
 
 
+class FakeTrainableNERComponent:
+
+    full_name = "ner:fake"
+
+    def __init__(self):
+        self.docs_trained_on = []
+
+    def train_unsupervised(self, doc: MutableDocument) -> None:
+        self.docs_trained_on.append(doc)
+
+    def train(self, *args, **kwargs) -> None:
+        return
+
+
 class FakePipeline:
+
+    def __init__(self, caller: Callable[[str], MutableDocument] = None) -> None:
+        self._caller = caller or FakeMutDoc
+
+    def get_doc(self, text: str) -> FakeMutDoc:
+        return self._caller(text)
 
     def tokenizer(self, text: str) -> FakeMutDoc:
         return FakeMutDoc(text)
@@ -92,11 +113,24 @@ class FakePipeline:
     def tokenizer_with_tag(self, text: str) -> FakeMutDoc:
         return FakeMutDoc(text)
 
+    def iter_all_components(self):
+        return []
+
     def get_component(self, comp_type):
         return FakeComponent
 
     def entity_from_tokens_in_doc(self, tkns: list, doc: MutableDocument) -> FakeMutEnt:
         return FakeMutEnt(doc, tkns[0].index, tkns[-1].index)
+
+
+class FakePipelineWithComponents(FakePipeline):
+
+    def __init__(self, components: list, caller: Callable[[str], MutableDocument] = None):
+        super().__init__(caller)
+        self._components = components
+
+    def iter_all_components(self):
+        return self._components
 
 
 class TrainerTestsBase(unittest.TestCase):
@@ -111,8 +145,7 @@ class TrainerTestsBase(unittest.TestCase):
         cls.cnf = Config()
         cls.cdb = FakeCDB(cls.cnf)
         cls.vocab = Vocab()
-        cls.trainer = Trainer(cls.cdb,
-                              cls.caller, FakePipeline())
+        cls.trainer = Trainer(cls.cdb, FakePipeline(cls.caller))
 
     def setUp(self):
         self.cnf = Config()
@@ -172,6 +205,33 @@ class TrainerUnsupervisedTests(TrainerTestsBase):
         self.assert_remembers_training_data(self.DATA_CNT, self.NEPOCHS,
                                             exp_total=repeats,
                                             unsup=self.UNSUP)
+
+    def test_unsup_training_trains_non_linking_component(self):
+        ner_component = FakeTrainableNERComponent()
+        trainer = Trainer(
+            self.cdb,
+            FakePipelineWithComponents([ner_component], self.caller),
+        )
+        trainer.config = self.cnf
+
+        trainer.train_unsupervised(self.TRAIN_DATA, nepochs=1)
+
+        self.assertEqual(len(ner_component.docs_trained_on), self.DATA_CNT)
+        self.assertTrue(
+            all(isinstance(doc, FakeMutDoc) for doc in ner_component.docs_trained_on)
+        )
+
+    def test_unsup_training_skips_non_trainable_components(self):
+        ner_component = FakeTrainableNERComponent()
+        trainer = Trainer(
+            self.cdb,
+            FakePipelineWithComponents([FakeComponent(), ner_component, object()], self.caller),
+        )
+        trainer.config = self.cnf
+
+        trainer.train_unsupervised(self.TRAIN_DATA, nepochs=1)
+
+        self.assertEqual(len(ner_component.docs_trained_on), self.DATA_CNT)
 
 
 class TrainerSupervisedTests(TrainerUnsupervisedTests):
@@ -337,3 +397,4 @@ class TrainFromScratchSupervisedTests(TrainFromScratchTests):
             with self.subTest(cui):
                 info = self.model.cdb.cui2info[cui]
                 self.assertGreater(info['count_train'], prev_count)
+

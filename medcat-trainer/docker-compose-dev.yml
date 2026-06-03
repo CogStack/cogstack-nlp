@@ -84,5 +84,5 @@ volumes:
 
 networks:
   gateway-auth_gateway-net:
+    name: ${MCT_GATEWAY_NETWORK_NAME:-gateway-auth_gateway-net}
     external: true
-

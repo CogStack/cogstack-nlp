@@ -4,20 +4,15 @@ from medcat.components.types import CoreComponentType
 from medcat.components.types import AbstractEntityProvidingComponent
 from medcat.tokenizing.tokens import MutableEntity, MutableDocument
 from medcat.tokenizing.tokenizers import BaseTokenizer
-from typing import Optional, Iterator, Set
+from medcat_embedding_linker.transformer_context_model import ContextModel
+from typing import Optional, Iterator, Set, Any
 from medcat.vocab import Vocab
 from medcat.utils.postprocessing import filter_linked_annotations
-from tqdm import tqdm
-from collections import defaultdict
-import logging
-import math
-import numpy as np
-
 from medcat_embedding_linker.config import EmbeddingLinking
-
+from collections import defaultdict
 from torch import Tensor
-from transformers import AutoTokenizer, AutoModel
-import torch.nn.functional as F
+import logging
+import numpy as np
 import torch
 
 logger = logging.getLogger(__name__)
@@ -25,12 +20,27 @@ logger = logging.getLogger(__name__)
 
 class Linker(AbstractEntityProvidingComponent):
     name = "embedding_linker"
+    _MODEL_FOLDER_NAME = "embedding_model"
+    _STATE_FILE_NAME = "state.json"
 
-    def __init__(self, cdb: CDB, config: Config) -> None:
+    # default model kwargs for embedding linkers that do not require training
+    DEFAULT_MODEL_INIT_KWARGS = {
+        "use_projection_layer": False,
+        "top_n_layers_to_unfreeze": 0,
+    }
+
+    def __init__(
+        self,
+        cdb: CDB,
+        config: Config,
+        model_init_kwargs: Optional[dict[str, Any]] = None,
+    ) -> None:
         """Initializes the embedding linker with a CDB and configuration.
         Args:
             cdb (CDB): The concept database to use.
             config (Config): The base config.
+            model_init_kwargs (Optional[dict[str, Any]]): Explicit kwargs that
+                override linker defaults.
         """
         super().__init__()
         self.cdb = cdb
@@ -38,23 +48,20 @@ class Linker(AbstractEntityProvidingComponent):
         if not isinstance(config.components.linking, EmbeddingLinking):
             raise TypeError("Linking config must be an EmbeddingLinking instance")
         self.cnf_l: EmbeddingLinking = config.components.linking
-        self.max_length = self.cnf_l.max_token_length
+        self.max_length: Optional[int] = self.cnf_l.max_token_length
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        self._name_keys = list(self.cdb.name2info)
-        self._cui_keys = list(self.cdb.cui2info)
+        resolved_model_init_kwargs: dict[str, Any] = dict(
+            self.DEFAULT_MODEL_INIT_KWARGS
+        )
+        resolved_model_init_kwargs.update(model_init_kwargs or {})
 
-        # these only need to be populated when called for embedding or inference
-        self._names_context_matrix = None
-        self._cui_context_matrix = None
-
-        # used for filters and name embedding, and if the name contains a valid cui 
-        # see: _set_filters
-        self._last_include_set: Optional[Set[str]] = None
-        self._last_exclude_set: Optional[Set[str]] = None
-        self._allowed_mask = None
-        self._name_has_allowed_cui = None
-
+        self.context_model = ContextModel(
+            cdb=self.cdb,
+            linking_config=self.cnf_l,
+            separator=self.config.general.separator,
+            model_init_kwargs=resolved_model_init_kwargs,
+        )
         # checking for config settings that aren't used in this linker
         if self.cnf_l.prefer_frequent_concepts:
             logger.warning(
@@ -69,6 +76,26 @@ class Linker(AbstractEntityProvidingComponent):
                 "in the embedding linker. It is currently set to "
                 f"{self.cnf_l.prefer_primary_name}."
             )
+        self.refresh_structure()
+
+    def refresh_structure(self) -> None:
+        """Call this method after making changes to the CDB to update internal 
+        structures. Called upon initialization, and can be called manually after 
+        CDB modifications. This is usually required when training on data that 
+        might have new cuis or names."""
+        self._name_keys = list(self.cdb.name2info)
+        self._cui_keys = list(self.cdb.cui2info)
+
+        # Clear context matrices to force re-embedding with new CDB structure
+        self._names_context_matrix = None
+        self._cui_context_matrix = None
+
+        # used for filters and name embedding, and if the name contains a valid cui
+        # see: _set_filters
+        self._last_include_set: Optional[Set[str]] = None
+        self._last_exclude_set: Optional[Set[str]] = None
+        self._allowed_mask = None
+        self._name_has_allowed_cui = None
 
         self._cui_to_idx = {cui: idx for idx, cui in enumerate(self._cui_keys)}
         self._name_to_idx = {name: idx for idx, name in enumerate(self._name_keys)}
@@ -82,107 +109,35 @@ class Linker(AbstractEntityProvidingComponent):
         ]
         self._initialize_filter_structures()
 
-    def create_embeddings(self,
-                          embedding_model_name: Optional[str] = None,
-                          max_length: Optional[int] = None,
-                          ):
-        """Create embeddings for all names and cuis longest names in the CDB 
-        using the chosen embedding model."""
+    def create_embeddings(
+        self,
+        embedding_model_name: Optional[str] = None,
+        max_length: Optional[int] = None,
+    ) -> None:
+        """Create both CUI and name embeddings in CDB."""
         if embedding_model_name is None:
-            embedding_model_name = self.cnf_l.embedding_model_name  # fallback
+            embedding_model_name = self.cnf_l.embedding_model_name
 
         if max_length is not None and max_length != self.max_length:
             logger.info(
-            "Updating max_length from %s to %s", self.max_length, max_length
+                "Updating max_length from %s to %s", self.max_length, max_length
             )
             self.max_length = max_length
             self.cnf_l.max_token_length = max_length
-        if (
-            embedding_model_name == self.cnf_l.embedding_model_name
-            and "cui_embeddings" in self.cdb.addl_info
-        ):
-            logger.warning("Using the same model for embedding names.")
-        else:
-            self.cnf_l.embedding_model_name = embedding_model_name
-        self._load_transformers(embedding_model_name)
-        self._embed_cui_names(embedding_model_name)
-        self._embed_names(embedding_model_name)
+            self.context_model.max_length = max_length
 
-    def _embed_cui_names(
-        self,
-        embedding_model_name: str,
-    ) -> None:
-        """Obtain embeddings for all cuis longest names in the CDB using the specified
-        embedding model and store them in the name2info.context_vectors
-        Args:
-            embedding_model_name (str): The name of the embedding model to use.
-            batch_size (int): The size of the batches to use when embedding names. 
-            Default 4096
-        """
-        if (
-            embedding_model_name == self.cnf_l.embedding_model_name
-            and "cui_embeddings" in self.cdb.addl_info
-            and "name_embeddings" in self.cdb.addl_info
-        ):
-            logger.warning("Using the same model for embedding.")
-        else:
-            self.cnf_l.embedding_model_name = embedding_model_name
+        # Route model swaps through linker-level hook so trainable variants can
+        # refresh optimizer/scaler when underlying params change.
+        self.load_transformers(embedding_model_name)
+        self.context_model.embed_cuis()
+        self.context_model.embed_names()
 
-        # Use the longest name
-        cui_names = [
-            max(self.cdb.cui2info[cui]["names"], key=len) for cui in self._cui_keys
-        ]
-        # embed each name in batches. Because there can be 3+ million names
-        total_batches = math.ceil(len(cui_names) / self.cnf_l.embedding_batch_size)
-        all_embeddings = []
-        for names in tqdm(
-            self._batch_data(cui_names, self.cnf_l.embedding_batch_size),
-            total=total_batches,
-            desc="Embedding cuis' preferred names",
-        ):
-            with torch.no_grad():
-                # removing ~ from names, as it is used to indicate a space in the CDB
-                names_to_embed = [
-                    name.replace(self.config.general.separator, " ") for name in names
-                ]
-                embeddings = self._embed(names_to_embed, self.device)
-                all_embeddings.append(embeddings.cpu())
-        # cat all batches into one tensor
-        all_embeddings_matrix = torch.cat(all_embeddings, dim=0)
-        self.cdb.addl_info["cui_embeddings"] = all_embeddings_matrix
-        logger.debug("Embedding cui names done, total: %d", len(names))
+        self._names_context_matrix = None
+        self._cui_context_matrix = None
 
-    def _embed_names(self, embedding_model_name: str) -> None:
-        """Obtain embeddings for all names in the CDB using the specified
-        embedding model and store them in the name2info.context_vectors
-        Args:
-            embedding_model_name (str): The name of the embedding model to use.
-            batch_size (int): The size of the batches to use when embedding names
-            Default 4096
-        """
-        if embedding_model_name == self.cnf_l.embedding_model_name:
-            logger.debug("Using the same model for embedding names.")
-        else:
-            self.cnf_l.embedding_model_name = embedding_model_name
-        names = self._name_keys
-        # embed each name in batches. Because there can be 3+ million names
-        total_batches = math.ceil(len(names) / self.cnf_l.embedding_batch_size)
-        all_embeddings = []
-        for names in tqdm(
-            self._batch_data(names, self.cnf_l.embedding_batch_size),
-            total=total_batches,
-            desc="Embedding names",
-        ):
-            with torch.no_grad():
-                # removing ~ from names, as it is used to indicate a space in the CDB
-                names_to_embed = [
-                    name.replace(self.config.general.separator, " ") for name in names
-                ]
-                embeddings = self._embed(names_to_embed, self.device)
-                all_embeddings.append(embeddings.cpu())
-        all_embeddings_matrix = torch.cat(all_embeddings, dim=0)
-        self.cdb.addl_info["name_embeddings"] = all_embeddings_matrix
-        logger.debug("Embedding names done, total: %d", len(names))
+    def load_transformers(self, embedding_model_name: str) -> None:
+        """Pass through to the underlying transformer model for context embedding."""
+        self.context_model.load_transformers(embedding_model_name)
 
     def get_type(self) -> CoreComponentType:
         return CoreComponentType.linking
@@ -191,51 +146,9 @@ class Linker(AbstractEntityProvidingComponent):
         for i in range(0, len(data), batch_size):
             yield data[i : i + batch_size]
 
-    def _load_transformers(self, embedding_model_name: str) -> None:
-        """Load the transformers model and tokenizer.
-        No need to load a transformer model until it's required.
-        Args:
-            embedding_model_name (str): The name of the embedding model to load. 
-            Default is "sentence-transformers/all-MiniLM-L6-v2"
-        """
-        if (
-            not hasattr(self, "model")
-            or not hasattr(self, "tokenizer")
-            or embedding_model_name != self.cnf_l.embedding_model_name
-        ):
-            self.cnf_l.embedding_model_name = embedding_model_name
-            self.tokenizer = AutoTokenizer.from_pretrained(embedding_model_name)
-            self.model = AutoModel.from_pretrained(embedding_model_name)
-            self.model.eval()
-            gpu_device = self.cnf_l.gpu_device
-            self.device = torch.device(
-                gpu_device or ("cuda" if torch.cuda.is_available() else "cpu")
-            )
-            self.model.to(self.device)
-            logger.debug(
-                f"""Loaded embedding model: {embedding_model_name} 
-                on device: {self.device}"""
-            )
-
-    def _embed(self, to_embed: list[str], device) -> Tensor:
-        """Embeds a list of strings"""
-        batch_dict = self.tokenizer(
-            to_embed,
-            max_length=self.max_length,
-            padding=True,
-            truncation=True,
-            return_tensors="pt",
-        ).to(device)
-        outputs = self.model(**batch_dict)
-        outputs = self._last_token_pool(
-            outputs.last_hidden_state, batch_dict["attention_mask"]
-        )
-        outputs = F.normalize(outputs, p=2, dim=1)
-        return outputs.half()
-
     def _get_context(
         self, entity: MutableEntity, doc: MutableDocument, size: int
-    ) -> str:
+    ) -> tuple[str, tuple[int, int]]:
         """Get context tokens for an entity
 
         Args:
@@ -244,25 +157,40 @@ class Linker(AbstractEntityProvidingComponent):
             size (int): The size of the entity.
 
         Returns:
-            tuple[list[BaseToken], list[BaseToken], list[BaseToken]]:
-                The tokens on the left, centre, and right.
+            tuple[str, tuple[int, int]]:
+                The context text and the span of the entity within that text.
         """
-        start_ind = entity.base.start_index
-        end_ind = entity.base.end_index
+        # Token indices of the entity
+        start_token_idx = entity.base.start_index
+        end_token_idx = entity.base.end_index
 
-        left_most_token = doc[max(0, start_ind - size)]
-        left_index = left_most_token.base.char_index
+        # Define token window
+        left_token_idx = max(0, start_token_idx - size)
+        right_token_idx = min(len(doc) - 1, end_token_idx + size)
 
-        right_most_token = doc[min(len(doc) - 1, end_ind + size)]
-        right_index = right_most_token.base.char_index + len(right_most_token.base.text)
+        # Convert tokens → character offsets
+        left_most_token = doc[left_token_idx]
+        right_most_token = doc[right_token_idx]
 
-        snippet = doc.base.text[left_index:right_index]
-        return snippet
+        # For mention masking
+        snippet_start_char = left_most_token.base.char_index
+        snippet_end_char = right_most_token.base.char_index + len(
+            right_most_token.base.text
+        )
+
+        # Slice raw document text
+        snippet = doc.base.text[snippet_start_char:snippet_end_char]
+
+        # Compute entity span relative to snippet
+        mention_start = entity.base.start_char_index - snippet_start_char
+        mention_end = entity.base.end_char_index - snippet_start_char
+
+        return snippet, (mention_start, mention_end)
 
     def _get_context_vectors(
         self, doc: MutableDocument, entities: list[MutableEntity], size: int
     ) -> Tensor:
-        """Get context vectors for all detected concepts based on their 
+        """Get context vectors for all detected concepts based on their
         surrounding text.
 
         Args:
@@ -272,40 +200,41 @@ class Linker(AbstractEntityProvidingComponent):
             tuple[list[BaseToken], list[BaseToken], list[BaseToken]]:
                 The tokens on the left, centre, and right."""
         texts = []
+        mention_spans = []
         for entity in entities:
-            text = self._get_context(entity, doc, size)
+            text, span = self._get_context(entity, doc, size)
             texts.append(text)
-        return self._embed(texts, self.device)
+            mention_spans.append(span)
+        return self.context_model.embed(texts, mention_spans, self.device)
 
     def _initialize_filter_structures(self) -> None:
         """Call once during initialization to create efficient lookup structures."""
         # Build an inverted index: cui_idx -> list of name indices that contain it
         # This is the KEY optimization - we flip the lookup direction
-        if not hasattr(self, '_cui_idx_to_name_idxs'):
-            cui2name_indices: defaultdict[
-                int, list[int]] = defaultdict(list)
+        cui2name_indices: defaultdict[int, list[int]] = defaultdict(list)
 
-            for name_idx, cui_idxs in enumerate(self._name_to_cui_idxs):
-                for cui_idx in cui_idxs:
-                    cui2name_indices[cui_idx].append(name_idx)
+        for name_idx, cui_idxs in enumerate(self._name_to_cui_idxs):
+            for cui_idx in cui_idxs:
+                cui2name_indices[cui_idx].append(name_idx)
 
-            # Convert lists to numpy arrays for faster indexing
-            self._cui_idx_to_name_idxs = {
-                cui_idx: np.array(name_idxs, dtype=np.int32)
-                for cui_idx, name_idxs in cui2name_indices.items()
-            }
+        # Convert lists to numpy arrays for faster indexing
+        self._cui_idx_to_name_idxs = {
+            cui_idx: np.array(name_idxs, dtype=np.int32)
+            for cui_idx, name_idxs in cui2name_indices.items()
+        }
 
-        # Cache _has_cuis_all
-        if not hasattr(self, '_has_cuis_all_cached'):
-            self._has_cuis_all_cached = torch.tensor(
-                [bool(self.cdb.name2info[name]["per_cui_status"])
-                 for name in self._name_keys],
-                device=self.device,
-                dtype=torch.bool,
-            )
+        # This used to be checked to be cached.
+        # But whenever it is called it is needed.
+        self._has_cuis_all_cached = torch.tensor(
+            [
+                bool(self.cdb.name2info[name]["per_cui_status"])
+                for name in self._name_keys
+            ],
+            device=self.device,
+            dtype=torch.bool,
+        )
 
-    def _get_include_filters_1cui(
-            self, cui: str, n: int) -> torch.Tensor:
+    def _get_include_filters_1cui(self, cui: str, n: int) -> torch.Tensor:
         """Optimized single CUI include filter using inverted index."""
         if cui not in self._cui_to_idx:
             return torch.zeros(n, dtype=torch.bool, device=self.device)
@@ -324,11 +253,11 @@ class Linker(AbstractEntityProvidingComponent):
             return torch.zeros(n, dtype=torch.bool, device=self.device)
 
     def _get_include_filters_multi_cui(
-            self, include_set: Set[str], n: int) -> torch.Tensor:
+        self, include_set: Set[str], n: int
+    ) -> torch.Tensor:
         """Optimized multi-CUI include filter using inverted index."""
         include_cui_idxs = [
-            self._cui_to_idx[cui] for cui in include_set
-            if cui in self._cui_to_idx
+            self._cui_to_idx[cui] for cui in include_set if cui in self._cui_to_idx
         ]
 
         if not include_cui_idxs:
@@ -338,33 +267,30 @@ class Linker(AbstractEntityProvidingComponent):
         all_name_indices_list: list[np.ndarray] = []
         for cui_idx in include_cui_idxs:
             if cui_idx in self._cui_idx_to_name_idxs:
-                all_name_indices_list.append(
-                    self._cui_idx_to_name_idxs[cui_idx])
+                all_name_indices_list.append(self._cui_idx_to_name_idxs[cui_idx])
 
         if not all_name_indices_list:
             return torch.zeros(n, dtype=torch.bool, device=self.device)
 
         # Concatenate and get unique indices
-        all_name_indices = np.unique(
-            np.concatenate(all_name_indices_list))
+        all_name_indices = np.unique(np.concatenate(all_name_indices_list))
 
         # Create mask
         allowed_mask = torch.zeros(n, dtype=torch.bool, device=self.device)
         allowed_mask[torch.from_numpy(all_name_indices).to(self.device)] = True
         return allowed_mask
 
-    def _get_include_filters(
-            self, include_set: Set[str], n: int) -> torch.Tensor:
+    def _get_include_filters(self, include_set: Set[str], n: int) -> torch.Tensor:
         """Route to appropriate include filter method."""
         if len(include_set) == 1:
             cui = next(iter(include_set))
             return self._get_include_filters_1cui(cui, n)
         else:
-            return self._get_include_filters_multi_cui(
-                include_set, n)
+            return self._get_include_filters_multi_cui(include_set, n)
 
     def _get_exclude_filters_1cui(
-            self, allowed_mask: torch.Tensor, cui: str) -> torch.Tensor:
+        self, allowed_mask: torch.Tensor, cui: str
+    ) -> torch.Tensor:
         """Optimized single CUI exclude filter using inverted index."""
         if cui not in self._cui_to_idx:
             return allowed_mask
@@ -374,18 +300,18 @@ class Linker(AbstractEntityProvidingComponent):
         if cui_idx in self._cui_idx_to_name_idxs:
             name_indices = self._cui_idx_to_name_idxs[cui_idx]
             # Set specific indices to False
-            allowed_mask[
-                torch.from_numpy(name_indices).to(self.device)] = False
+            allowed_mask[torch.from_numpy(name_indices).to(self.device)] = False
 
         return allowed_mask
 
     def _get_exclude_filters_multi_cui(
-            self, allowed_mask: torch.Tensor, exclude_set: Set[str],
-            ) -> torch.Tensor:
+        self,
+        allowed_mask: torch.Tensor,
+        exclude_set: Set[str],
+    ) -> torch.Tensor:
         """Optimized multi-CUI exclude filter using inverted index."""
         exclude_cui_idxs = [
-            self._cui_to_idx[cui] for cui in exclude_set
-            if cui in self._cui_to_idx
+            self._cui_to_idx[cui] for cui in exclude_set if cui in self._cui_to_idx
         ]
 
         if not exclude_cui_idxs:
@@ -403,8 +329,7 @@ class Linker(AbstractEntityProvidingComponent):
 
         return allowed_mask
 
-    def _get_exclude_filters(
-            self, exclude_set: Set[str], n: int) -> torch.Tensor:
+    def _get_exclude_filters(self, exclude_set: Set[str], n: int) -> torch.Tensor:
         """Route to appropriate exclude filter method."""
         # Start with all allowed
         allowed_mask = torch.ones(n, dtype=torch.bool, device=self.device)
@@ -414,11 +339,9 @@ class Linker(AbstractEntityProvidingComponent):
 
         if len(exclude_set) == 1:
             cui = next(iter(exclude_set))
-            return self._get_exclude_filters_1cui(
-                allowed_mask, cui)
+            return self._get_exclude_filters_1cui(allowed_mask, cui)
         else:
-            return self._get_exclude_filters_multi_cui(
-                allowed_mask, exclude_set)
+            return self._get_exclude_filters_multi_cui(allowed_mask, exclude_set)
 
     def _set_filters(self) -> None:
         include_set = self.cnf_l.filters.cuis
@@ -436,11 +359,9 @@ class Linker(AbstractEntityProvidingComponent):
         n = len(self._name_keys)
 
         if include_set:
-            allowed_mask = self._get_include_filters(
-                include_set, n)
+            allowed_mask = self._get_include_filters(include_set, n)
         else:
-            allowed_mask = self._get_exclude_filters(
-                exclude_set, n)
+            allowed_mask = self._get_exclude_filters(exclude_set, n)
 
         self._valid_names = self._has_cuis_all_cached & allowed_mask
         self._last_include_set = set(include_set) if include_set is not None else None
@@ -459,7 +380,9 @@ class Linker(AbstractEntityProvidingComponent):
             tuple[str, float]:
                 The CUI and its similarity
         """
-        cui_idxs = [self._cui_to_idx[cui] for cui in cui_candidates]
+        cui_idxs = [
+            self._cui_to_idx[cui] for cui in cui_candidates if cui in self._cui_to_idx
+        ]
         candidate_scores = scores[cui_idxs]
         candidate_idx = int(torch.argmax(candidate_scores).item())
         best_idx = cui_idxs[candidate_idx]
@@ -499,16 +422,36 @@ class Linker(AbstractEntityProvidingComponent):
             if len(link_candidates) == 1:
                 best_idx = self._cui_to_idx[link_candidates[0]]
                 predicted_cui = link_candidates[0]
-                similarity = names_scores[i, best_idx].item()
+                if best_idx < 0 or best_idx >= cui_scores.shape[1]:
+                    logger.warning(
+                        "Skipping entity '%s': single-candidate index %s is out of "
+                        "bounds for cui_scores width %s.",
+                        entity.detected_name,
+                        best_idx,
+                        cui_scores.shape[1],
+                    )
+                    continue
+                similarity = cui_scores[i, best_idx].item()
             elif len(link_candidates) > 1:
                 name_to_cuis = defaultdict(list)
                 for cui in link_candidates:
                     for name in self.cdb.cui2info[cui]["names"]:
                         name_to_cuis[name].append(cui)
 
-                name_idxs = [self._name_to_idx[name] for name in name_to_cuis]
+                name_idxs = [
+                    self._name_to_idx[name]
+                    for name in name_to_cuis
+                    if name in self._name_to_idx
+                ]
+                if name_idxs == []:
+                    logger.warning(
+                        "No valid name indices for entity '%s' link candidates. "
+                        "Likely stale linker structure after CDB mutation; call "
+                        "refresh_structure() and recreate embeddings.",
+                        entity.detected_name,
+                    )
+                    continue
                 indexed_scores = names_scores[i, name_idxs]
-
                 best_local_pos = int(torch.argmax(indexed_scores).item())
                 best_global_idx = name_idxs[best_local_pos]
                 similarity = names_scores[i, best_global_idx].item()
@@ -537,9 +480,7 @@ class Linker(AbstractEntityProvidingComponent):
                 predicted_cui, _ = self._disambiguate_by_cui(cuis, cui_scores[i, :])
             if not self.cnf_l.filters.check_filters(predicted_cui):
                 continue
-            if self._check_similarity(
-                similarity
-            ):
+            if self._check_similarity(similarity):
                 entity.cui = predicted_cui
                 entity.context_similarity = similarity
                 yield entity
@@ -550,20 +491,6 @@ class Linker(AbstractEntityProvidingComponent):
             return context_similarity >= threshold
         else:
             return True
-
-    def _last_token_pool(
-        self, last_hidden_states: Tensor, attention_mask: Tensor
-    ) -> Tensor:
-        left_padding = attention_mask[:, -1].sum() == attention_mask.shape[0]
-        if left_padding:
-            return last_hidden_states[:, -1]
-        else:
-            sequence_lengths = attention_mask.sum(dim=1) - 1
-            batch_size = last_hidden_states.shape[0]
-            return last_hidden_states[
-                torch.arange(batch_size, device=last_hidden_states.device),
-                sequence_lengths,
-            ]
 
     def _build_context_matrices(self) -> None:
         if "name_embeddings" in self.cdb.addl_info:
@@ -613,7 +540,8 @@ class Linker(AbstractEntityProvidingComponent):
 
             entity.link_candidates = list(cuis)
 
-    def _pre_inference(self, doc: MutableDocument
+    def _pre_inference(
+        self, doc: MutableDocument
     ) -> tuple[list[MutableEntity], list[MutableEntity]]:
         """Checking all entities for entites with only a single link candidate and to
         avoid full inference step. If we want to calculate similarities, or not use
@@ -654,23 +582,14 @@ class Linker(AbstractEntityProvidingComponent):
             to_infer.append(entity)
         return le, to_infer
 
-    def predict_entities(self, doc: MutableDocument,
-                         ents: list[MutableEntity] | None = None
-                         ) -> list[MutableEntity]:
-        if self.cdb.is_dirty:
-            logging.warning(
-                "CDB has been modified since last save/load. "
-                "This might significantly affect linking performance."
-            )
-            logging.warning(
-                "If you have added new concepts or changes, "
-                "please re-embed the CDB names and cuis before linking."
-            )
-
-        self._load_transformers(self.cnf_l.embedding_model_name)
-        if self.cnf_l.train:
+    def predict_entities(
+        self, doc: MutableDocument, ents: list[MutableEntity] | None = None
+    ) -> list[MutableEntity]:
+        if self.cnf_l.train and self.name == "embedding_linker":
             logger.warning(
-                "Attemping to train an embedding linker. This is not required."
+                "Attemping to train a static embedding linker. "
+                "This is not possible / required."
+                "Use the `trainable_embedding_linker` instead."
             )
         if self.cnf_l.filters.cuis and self.cnf_l.filters.cuis_exclude:
             logger.warning(

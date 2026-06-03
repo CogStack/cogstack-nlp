@@ -1,14 +1,20 @@
 <template>
-  <div class="form-section">
+  <div class="form-section admin-form-panel">
     <div class="form-header">
       <button class="btn btn-back" @click="$emit('close')">
         <font-awesome-icon icon="arrow-left"></font-awesome-icon>
         <span>Back</span>
       </button>
       <h3>{{ editing ? 'Edit Dataset' : 'Add Dataset' }}</h3>
+      <div class="form-header-actions">
+        <button type="submit" form="dataset-form" class="btn btn-primary" :disabled="saving">
+          <font-awesome-icon v-if="saving" icon="spinner" spin></font-awesome-icon>
+          <span>{{ saving ? 'Saving...' : 'Save Dataset' }}</span>
+        </button>
+      </div>
     </div>
     <div class="form-content">
-      <form @submit.prevent="handleSubmit" class="admin-form">
+      <form id="dataset-form" @submit.prevent="handleSubmit" class="admin-form">
         <div class="form-sections-wrapper">
           <div class="form-section form-section-horizontal">
             <div class="form-group">
@@ -69,13 +75,6 @@
               </div>
             </div>
           </div>
-        </div>
-        <div class="form-actions">
-          <button type="button" class="btn btn-secondary" @click="$emit('close')">Cancel</button>
-          <button type="submit" class="btn btn-primary" :disabled="saving">
-            <font-awesome-icon v-if="saving" icon="spinner" spin></font-awesome-icon>
-            <span>{{ saving ? 'Saving...' : 'Save' }}</span>
-          </button>
         </div>
       </form>
     </div>
@@ -215,10 +214,20 @@ export default {
 @import '@/styles/admin.scss';
 
 // Component-specific styles
-.form-section {
-  max-height: calc(100vh - 270px);
-}
+.admin-form-panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  max-height: none;
 
+  > .form-content {
+    padding: 0;
+    flex: 1;
+    min-height: 0;
+  }
+}
 
 .form-group {
   textarea.form-control {

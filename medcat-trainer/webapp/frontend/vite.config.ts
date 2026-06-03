@@ -2,13 +2,11 @@ import { fileURLToPath, URL } from 'node:url'
 
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import vueDevTools from 'vite-plugin-vue-devtools'
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
     vue(),
-    vueDevTools(),
   ],
   resolve: {
     alias: {
@@ -37,7 +35,7 @@ export default defineConfig({
         target: 'http://127.0.0.1:8983/solr',
         changeOrigin: true,
         secure: false,
-        rewrite: (path) => path.replace(/\/api\/concepts/, '/')
+        rewrite: (path: string) => path.replace(/\/api\/concepts/, '/')
       },
       '^/api/*': {
         target: 'http://127.0.0.1:8001'
@@ -47,6 +45,14 @@ export default defineConfig({
   css: {
     preprocessorOptions: {
       scss: {
+        // Bootstrap 5.x still uses deprecated Sass color/import builtins; harmless until v6.
+        // https://getbootstrap.com/docs/5.3/customize/sass/#sass-deprecation-warnings
+        silenceDeprecations: [
+          'color-functions',
+          'global-builtin',
+          'import',
+          'if-function'
+        ],
         additionalData: `
           @import "@/styles/_variables.scss";
           @import "@/styles/_common.scss";

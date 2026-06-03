@@ -12,14 +12,129 @@
       </v-overlay>
       <v-data-table id="projectTable"
                     :key="tableKey"
-                    :headers="isAdmin ? projects.headers : projects.headers.filter(f => projects.adminOnlyFields.indexOf(f.value) === -1)"
-                    :items="projectItems"
+                    :headers="visibleHeaders"
+                    :items="filteredProjectItems"
                     :hover="true"
+                    :mobile="false"
                     :items-per-page="-1"
+                    hide-default-footer
                     :row-props="availableProjectForMetrics"
                     v-if="!loadingProjects"
-                    @click:row="select"
-                    hide-default-footer>
+                    @click:row="select">
+        <template #header.name>
+          <div class="column-header">
+            <button
+              type="button"
+              class="column-header-sort"
+              :class="{ active: sortBy === 'name' }"
+              title="Sort by title"
+              @click="toggleSort('name')">
+              Title
+              <font-awesome-icon
+                class="sort-icon"
+                :icon="sortBy === 'name' ? (sortOrder === 'asc' ? 'sort-up' : 'sort-down') : 'sort'"
+              />
+            </button>
+            <input
+              v-model="searchQuery"
+              type="search"
+              class="form-control form-control-sm header-filter-input"
+              placeholder="Filter…"
+              aria-label="Filter by title"
+              @click.stop
+            />
+          </div>
+        </template>
+
+        <template #header.require_entity_validation>
+          <div class="column-header">
+            <span class="column-header-label">Mode</span>
+            <select
+              v-model="modeFilter"
+              class="form-control form-control-sm header-filter-input"
+              aria-label="Filter by annotate or validate"
+              @click.stop>
+              <option
+                v-for="opt in modeFilterOptions"
+                :key="opt.value"
+                :value="opt.value">
+                {{ opt.label }}
+              </option>
+            </select>
+          </div>
+        </template>
+
+        <template #header.status>
+          <div class="column-header">
+            <span class="column-header-label">
+              Status
+              <v-tooltip activator="parent">
+                <div>
+                  <font-awesome-icon class="status-cell" icon="pen"></font-awesome-icon> - project is actively annotating
+                </div>
+                <div>
+                  <font-awesome-icon class="status-cell danger" icon="times"></font-awesome-icon> - project marked as discontinued (failed)
+                </div>
+                <div>
+                  <font-awesome-icon class="status-cell complete-project success" icon="check"></font-awesome-icon> - project is complete
+                </div>
+              </v-tooltip>
+            </span>
+            <select
+              v-model="statusFilter"
+              class="form-control form-control-sm header-filter-input"
+              aria-label="Filter by project status"
+              @click.stop>
+              <option
+                v-for="opt in statusFilterOptions"
+                :key="opt.value"
+                :value="opt.value">
+                {{ opt.label }}
+              </option>
+            </select>
+          </div>
+        </template>
+
+        <template #header.create_time>
+          <button
+            type="button"
+            class="column-header-sort"
+            :class="{ active: sortBy === 'create_time' }"
+            title="Sort by create date"
+            @click="toggleSort('create_time')">
+            Created
+            <font-awesome-icon
+              class="sort-icon"
+              :icon="sortBy === 'create_time' ? (sortOrder === 'asc' ? 'sort-up' : 'sort-down') : 'sort'"
+            />
+          </button>
+        </template>
+
+        <template #header.last_modified>
+          <button
+            type="button"
+            class="column-header-sort"
+            :class="{ active: sortBy === 'last_modified' }"
+            title="Sort by last modified"
+            @click="toggleSort('last_modified')">
+            Modified
+            <font-awesome-icon
+              class="sort-icon"
+              :icon="sortBy === 'last_modified' ? (sortOrder === 'asc' ? 'sort-up' : 'sort-down') : 'sort'"
+            />
+          </button>
+        </template>
+
+        <template #header.locked>
+          <span class="header-label-wrap">
+            <span>Project</span>
+            <span>Locked</span>
+          </span>
+          <v-tooltip activator="parent">
+            Whether the project is locked from further annotation
+          </v-tooltip>
+        </template>
+
         <template #header.metrics>
           Metrics
           <v-tooltip activator="parent">
@@ -33,22 +148,11 @@
             <div>'All' indicates there is no filter</div>
           </v-tooltip>
         </template>
-        <template #header.status>
-          Project Status
-          <v-tooltip activator="parent">
-            <div>
-              <font-awesome-icon class="status-cell" icon="pen"></font-awesome-icon> - project is actively annotating
-            </div>
-            <div>
-              <font-awesome-icon class="status-cell danger" icon="times"></font-awesome-icon> - project marked as discontinued (failed)
-            </div>
-            <div>
-              <font-awesome-icon class="status-cell complete-project success" icon="check"></font-awesome-icon> - project is complete
-            </div>
-          </v-tooltip>
-        </template>
         <template #header.anno_class>
-          Annotation Dataset
+          <span class="header-label-wrap">
+            <span>Annotation</span>
+            <span>Classification</span>
+          </span>
           <v-tooltip activator="parent">
             Annotation set classification.
             <div>
@@ -74,7 +178,7 @@
           {{new Date(item.create_time).toLocaleDateString()}}
         </template>
         <template #item.last_modified="{ item }">
-          {{new Date(item.last_modified).toLocaleString()}}
+          <span class="date-cell">{{ formatShortDate(item.last_modified) }}</span>
         </template>
         <template #item.cuis="{ item }">
           <div class="term-list">{{item.cuis.slice(0, 40) || 'All'}}</div>
@@ -154,10 +258,19 @@
           <v-progress-linear
             v-model="item.progress"
             color="#32ab60"
-            height="30px"
+            height="22px"
             :max="item.progress_max">
              <span>{{item.progress}}</span> / <span>{{item.progress_max}}</span>
           </v-progress-linear>
+        </template>
+
+        <template #no-data>
+          <div class="project-list-no-data">
+            <p>No projects match the current filters.</p>
+            <button type="button" class="btn btn-outline-primary btn-sm" @click="clearFilters">
+              Clear filters
+            </button>
+          </div>
         </template>
       </v-data-table>
     </div>
@@ -233,6 +346,12 @@
 
 <script>
 import Modal from "@/components/common/Modal.vue"
+import {
+  ALL_FILTER,
+  STATUS_FILTER_OPTIONS,
+  MODE_FILTER_OPTIONS,
+  filterAndSortProjects
+} from '@/utils/projectListFilters'
 
 export default {
   name: "ProjectList",
@@ -244,26 +363,99 @@ export default {
   },
   data () {
     return {
+      searchQuery: '',
+      debouncedSearchQuery: '',
+      searchDebounceTimer: null,
+      statusFilter: ALL_FILTER,
+      modeFilter: ALL_FILTER,
+      sortBy: 'last_modified',
+      sortOrder: 'desc',
+      statusFilterOptions: STATUS_FILTER_OPTIONS,
+      modeFilterOptions: MODE_FILTER_OPTIONS,
       tableKey: 0,
       modelLoaded: {},
       projects: {
         headers: [
-          { value: 'locked', title: ''},
-          { value: 'id', title: 'ID' },
-          { value: 'name', title: 'Title' },
-          { value: 'description', title: 'Description' },
-          { value: 'create_time', title: 'Create Time',},
-          { value: 'last_modified', title: 'Last Modified' },
-          { value: 'cuis', title: 'Concepts' },
-          { value: 'require_entity_validation', title: 'Annotate / Validate' },
-          { value: 'status', title: 'Status' },
-          { value: 'progress', title: 'Progress' },
-          { value: 'anno_class', title: 'Annotation Classification' },
-          { value: 'cdb_search_filter', title: 'Concepts Imported' },
-          { value: 'run_model', title: 'Run Model' },
-          { value: 'model_loaded', title: 'Model Loaded' },
-          { value: 'metrics', title: 'Metrics' },
-          { value: 'save_model', title: 'Save Model' }
+          {
+            value: 'locked',
+            title: 'Project Locked',
+            width: '4rem',
+            headerProps: { class: 'icon-cell header-wrap-cell' },
+            cellProps: { class: 'icon-cell' }
+          },
+          { value: 'id', title: 'ID', width: '3.25rem' },
+          { value: 'name', title: 'Title', width: '14%' },
+          {
+            value: 'description',
+            title: 'Description',
+            headerProps: { class: 'col-hide-narrow' },
+            cellProps: { class: 'col-hide-narrow' }
+          },
+          {
+            value: 'create_time',
+            title: 'Created',
+            width: '5.5rem',
+            headerProps: { class: 'col-hide-medium' },
+            cellProps: { class: 'col-hide-medium' }
+          },
+          { value: 'last_modified', title: 'Modified', width: '6.5rem' },
+          {
+            value: 'cuis',
+            title: 'CUIs',
+            headerProps: { class: 'col-hide-narrow' },
+            cellProps: { class: 'col-hide-narrow' }
+          },
+          { value: 'require_entity_validation', title: 'Mode', width: '6rem' },
+          {
+            value: 'status',
+            title: 'Status',
+            width: '3.25rem',
+            headerProps: { class: 'icon-cell' },
+            cellProps: { class: 'icon-cell' }
+          },
+          { value: 'progress', title: 'Progress', width: '7.5rem', cellProps: { class: 'progress-cell' } },
+          {
+            value: 'anno_class',
+            title: 'Annotation Classification',
+            width: '5rem',
+            headerProps: { class: 'icon-cell header-wrap-cell' },
+            cellProps: { class: 'icon-cell' }
+          },
+          {
+            value: 'cdb_search_filter',
+            title: 'CDB Import',
+            width: '3.5rem',
+            headerProps: { class: 'icon-cell header-wrap-cell' },
+            cellProps: { class: 'icon-cell' }
+          },
+          {
+            value: 'run_model',
+            title: 'Run',
+            width: '4rem',
+            headerProps: { class: 'icon-cell' },
+            cellProps: { class: 'icon-cell' }
+          },
+          {
+            value: 'model_loaded',
+            title: 'Model',
+            width: '4rem',
+            headerProps: { class: 'icon-cell' },
+            cellProps: { class: 'icon-cell' }
+          },
+          {
+            value: 'metrics',
+            title: 'Metrics',
+            width: '4rem',
+            headerProps: { class: 'icon-cell' },
+            cellProps: { class: 'icon-cell' }
+          },
+          {
+            value: 'save_model',
+            title: 'Save',
+            width: '3.75rem',
+            headerProps: { class: 'icon-cell' },
+            cellProps: { class: 'icon-cell' }
+          }
         ],
         adminOnlyFields: [
           'anno_class',
@@ -289,11 +481,57 @@ export default {
       cancelRunningBgTaskModal: null
     }
   },
+  computed: {
+    visibleHeaders() {
+      const headers = this.isAdmin
+        ? this.projects.headers
+        : this.projects.headers.filter(f => this.projects.adminOnlyFields.indexOf(f.value) === -1)
+      return headers.map(h => ({ align: 'start', ...h }))
+    },
+    filteredProjectItems() {
+      return filterAndSortProjects(this.projectItems, {
+        searchQuery: this.debouncedSearchQuery,
+        statusFilter: this.statusFilter,
+        modeFilter: this.modeFilter,
+        sortBy: this.sortBy,
+        sortOrder: this.sortOrder
+      })
+    },
+  },
+  watch: {
+    searchQuery(val) {
+      clearTimeout(this.searchDebounceTimer)
+      this.searchDebounceTimer = setTimeout(() => {
+        this.debouncedSearchQuery = val
+      }, 200)
+    }
+  },
+  beforeUnmount() {
+    clearTimeout(this.searchDebounceTimer)
+  },
   created () {
     this.pollDocPrepStatus()
     this.fetchModelsLoaded()
   },
   methods: {
+    toggleSort(key) {
+      if (this.sortBy === key) {
+        this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc'
+      } else {
+        this.sortBy = key
+        this.sortOrder = key === 'name' ? 'asc' : 'desc'
+      }
+    },
+    clearFilters() {
+      this.searchQuery = ''
+      this.debouncedSearchQuery = ''
+      this.statusFilter = ALL_FILTER
+      this.modeFilter = ALL_FILTER
+    },
+    formatShortDate(value) {
+      if (!value) return '—'
+      return new Date(value).toLocaleDateString()
+    },
     clearLoadedModel (projectId) {
       this.clearModelModal = projectId
     },
@@ -452,15 +690,98 @@ export default {
 </script>
 
 <style scoped lang="scss">
+@import '@/styles/project-list-filters';
+
+.project-list-no-data {
+  padding: 24px;
+  text-align: center;
+
+  p {
+    margin-bottom: 12px;
+  }
+}
+
+#projectTable {
+  :deep(.v-table__wrapper) {
+    overflow-x: hidden;
+  }
+
+  :deep(table) {
+    table-layout: fixed;
+    width: 100%;
+  }
+
+  :deep(thead th),
+  :deep(tbody td) {
+    text-align: left !important;
+  }
+
+  :deep(thead th) {
+    vertical-align: bottom;
+    padding: 4px 6px;
+    font-size: 0.8rem;
+    overflow: hidden;
+  }
+
+  :deep(tbody td) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.85rem;
+    padding: 4px 6px !important;
+    vertical-align: middle;
+  }
+
+  :deep(td.progress-cell) {
+    white-space: normal;
+    overflow: visible;
+  }
+
+  :deep(th.icon-cell),
+  :deep(td.icon-cell) {
+    overflow: visible;
+    text-overflow: clip;
+    text-align: left !important;
+    vertical-align: middle;
+    white-space: nowrap;
+  }
+
+  :deep(th.header-wrap-cell) {
+    overflow: visible;
+    white-space: normal;
+    vertical-align: bottom;
+  }
+
+  :deep(td.icon-cell .btn) {
+    padding: 2px 8px;
+    line-height: 1.2;
+  }
+
+  :deep(.col-hide-narrow) {
+    @media (max-width: 1400px) {
+      display: none !important;
+    }
+  }
+
+  :deep(.col-hide-medium) {
+    @media (max-width: 1100px) {
+      display: none !important;
+    }
+  }
+}
+
+.date-cell {
+  font-size: 0.8rem;
+}
 
 .status-cell {
-  text-align: center;
+  text-align: left;
 }
 
 .status-unlocked {
-  text-align: center;
+  text-align: left;
   color: $color-1;
-  padding: 0 5px;
+  padding: 0;
   opacity: .5;
 }
 
@@ -473,23 +794,32 @@ export default {
 .project-table {
   height: calc(100% - 30px);
   padding: 10px 0;
-  width: 95%;
-  margin: auto;
+  width: 96%;
+  max-width: 96%;
+  margin: 0 auto;
 }
 
 .table-container {
   height: calc(100% - 125px);
   overflow-y: auto;
+  overflow-x: hidden;
+  max-width: 100%;
+  margin: 0 auto;
 }
 
 .complete-project, .success {
   color: $success;
-  font-size: 20px;
+  font-size: 1.1rem;
 }
 
 .danger {
   color: $danger;
-  font-size: 20px;
+  font-size: 1.1rem;
+}
+
+#projectTable :deep(td.icon-cell .status-cell) {
+  font-size: 1.1rem;
+  display: inline-block;
 }
 
 .model-up {
@@ -528,7 +858,7 @@ export default {
 
 .term-list {
   display: block;
-  max-width: 20vw;
+  max-width: 100%;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

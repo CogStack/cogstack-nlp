@@ -1,13 +1,15 @@
 import logging
 import os
 from smtplib import SMTPException
-from tempfile import NamedTemporaryFile
+from tempfile import NamedTemporaryFile, TemporaryDirectory
 from typing import Any
+import shutil
 
 from background_task.models import Task, CompletedTask
 from django.contrib.auth.views import PasswordResetView
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
+from django.db.models import Q
 from django.http import HttpResponseBadRequest, HttpResponseServerError, HttpResponse
 from django.shortcuts import render
 from django.utils import timezone
@@ -514,13 +516,28 @@ def add_concept(request):
 
 
 @api_view(http_method_names=['POST'])
+@permission_classes([permissions.IsAuthenticated])
 def import_cdb_concepts(request):
     user = request.user
-    if not user.is_superuser:
-        return HttpResponseBadRequest('User is not super user, and not allowed to download project outputs')
     cdb_id = request.data.get('cdb_id')
-    if cdb_id is None or len(ConceptDB.objects.filter(id=cdb_id)) == 0:
-        return HttpResponseBadRequest(f'No CDB found for cdb_id{cdb_id}')
+    if cdb_id is None or not ConceptDB.objects.filter(id=cdb_id).exists():
+        return HttpResponseBadRequest('No CDB found for the provided cdb_id')
+
+    # Staff/superusers may import for any CDB. Other authenticated users must be a
+    # project admin (member or group administrator) of at least one project that
+    # already references this CDB via cdb_search_filter, so project setup doesn't
+    # require elevation.
+    if not (user.is_superuser or user.is_staff):
+        authorised = ProjectAnnotateEntities.objects.filter(
+            Q(cdb_search_filter__id=cdb_id),
+            Q(members=user) | Q(group__administrators=user),
+        ).exists()
+        if not authorised:
+            return Response(
+                {'error': 'You do not have permission to import concepts for this CDB'},
+                status=403,
+            )
+
     import_concepts_from_cdb(cdb_id)
     return Response({'message': 'submitted cdb import job.'})
 
@@ -579,9 +596,40 @@ def save_models(request):
     project = ProjectAnnotateEntities.objects.get(id=p_id)
     cat = get_medcat(project=project)
 
-    cat.cdb.save(project.concept_db.cdb_file.path)
+    if project.concept_db is not None:
+        # CDB / vocab based
+        cat.cdb.save(project.concept_db.cdb_file.path, overwrite=True)
+    else:
+        # ModelPack based project
+        _overwrite_model_pack(cat, project.model_pack.path)
 
     return Response({'message': 'Models saved'})
+
+
+def _overwrite_model_pack(cat, model_path: str):
+    # NOTE: cannot overwrite, so working around
+    #       currently CAT.save_model_pack does not provide a method to
+    #       allow overwriting an existing model pack
+    with TemporaryDirectory() as tmp_dir:
+        # making new folder name so that it's copied
+        # to the specific path rather than into the folder
+        temp_folder = os.path.join(tmp_dir, "model_copy")
+        shutil.move(model_path, temp_folder)
+        try:
+            cat.save_model_pack(
+                os.path.dirname(model_path),
+                pack_name=os.path.basename(model_path),
+                add_hash_to_pack_name=False)
+        except Exception as e:
+            logger.warning("Unable to save model pack. Restoring previous state. Issue while saving model:", exc_info=e)
+            if os.path.exists(model_path):
+                shutil.rmtree(model_path)  # remove partial/corrupt output
+            # restore original
+            try:
+                shutil.move(temp_folder, model_path)
+            except Exception as restore_err:
+                logger.error("Failed to restore model pack:", exc_info=restore_err)
+            raise
 
 
 @api_view(http_method_names=['POST'])
@@ -1051,7 +1099,7 @@ def generate_concept_filter_flat_json(request):
             ch_nodes = get_all_ch(cui, cdb)
             final_filter += [n for n in ch_nodes if n not in excluded_nodes]
         final_filter = {cui: 1 for cui in final_filter}.keys()
-        filter_json = json.dumps(final_filter)
+        filter_json = json.dumps(list(final_filter))
         response = HttpResponse(filter_json, content_type='application/json')
         response['Content-Disposition'] = 'attachment; filename=filter.json'
         return response

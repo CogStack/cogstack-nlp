@@ -9,7 +9,7 @@ updates:
  - package-ecosystem: "devcontainers"
    directory: "/"
    commit-message:
-     prefix: "chore: "
+     prefix: "build: "
    schedule:
      interval: weekly
  - package-ecosystem: "github-actions"
@@ -22,3 +22,4 @@ updates:
      actions-deps:
        patterns:
         - "*"
+ 

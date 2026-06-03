@@ -660,7 +660,7 @@ class CAT(AbstractSerialisable):
     def trainer(self):
         """The trainer object."""
         if not self._trainer:
-            self._trainer = Trainer(self.cdb, self.__call__, self._pipeline)
+            self._trainer = Trainer(self.cdb, self._pipeline)
         return self._trainer
 
     def save_model_card(self, model_card_path: str) -> None:

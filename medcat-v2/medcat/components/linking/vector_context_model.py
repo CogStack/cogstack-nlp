@@ -58,6 +58,7 @@ class ContextModel(AbstractSerialisable):
     def get_context_tokens(self, entity: MutableEntity, doc: MutableDocument,
                            size: int,
                            per_doc_valid_token_cache: 'PerDocumentTokenCache',
+                           fill_centre_tokens: bool = True,
                            ) -> tuple[list[MutableToken],
                                       list[MutableToken],
                                       list[MutableToken]]:
@@ -83,8 +84,11 @@ class ContextModel(AbstractSerialisable):
                        per_doc_valid_token_cache[tkn]]
         # Reverse because the first token should be the one closest to center
         tokens_left.reverse()
-        tokens_center: list[MutableToken] = list(
-            cast(Iterable[MutableToken], entity))
+        if fill_centre_tokens:
+            tokens_center: list[MutableToken] = list(
+                cast(Iterable[MutableToken], entity))
+        else:
+            tokens_center = []
         _right_tokens = doc[end_ind + 1:end_ind + 1 + size]
         tokens_right = [tkn for tkn in _right_tokens if
                         per_doc_valid_token_cache[tkn]]
@@ -148,14 +152,25 @@ class ContextModel(AbstractSerialisable):
         # excluding center (center is the same for all window sizes)
         prev_left_vecs: list[np.ndarray] = []
         prev_right_vecs: list[np.ndarray] = []
-        center_vecs: Optional[list[np.ndarray]] = None  # same for all windows
+
+        # Center is identical for all window sizes, only compute once
+        if not self.config.context_ignore_center_tokens:
+            tokens_center = list(
+                cast(Iterable[MutableToken], entity))
+            center_vecs = list(
+                self._preprocess_center_tokens(cui, tokens_center))
+        else:
+            center_vecs = []
 
         for context_type, window_size in sorted_contexts:
-            tokens_left, tokens_center, tokens_right = self.get_context_tokens(
-                entity, doc, window_size, per_doc_valid_token_cache)
+            tokens_left, _, tokens_right = self.get_context_tokens(
+                entity, doc, window_size, per_doc_valid_token_cache,
+                fill_centre_tokens=False)
 
             # New outer tokens only — the inner ones were already processed
-            new_left = tokens_left[:len(tokens_left) - len(prev_left)]
+            # NOTE: left hand tokens are in order of closest first, which is why
+            #       we're slicing from the start of the list
+            new_left = tokens_left[len(prev_left):]
             new_right = tokens_right[len(prev_right):]
 
             # step_start for new left tokens: they are further from centre
@@ -171,14 +186,6 @@ class ContextModel(AbstractSerialisable):
             prev_right_vecs = prev_right_vecs + new_right_vecs
             prev_left = tokens_left
             prev_right = tokens_right
-
-            # Center is identical for all window sizes, only compute once
-            if center_vecs is None:
-                if not self.config.context_ignore_center_tokens:
-                    center_vecs = list(
-                        self._preprocess_center_tokens(cui, tokens_center))
-                else:
-                    center_vecs = []
 
             values = prev_left_vecs + center_vecs + prev_right_vecs
             if values:

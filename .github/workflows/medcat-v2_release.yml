@@ -188,7 +188,7 @@ jobs:
 
       - name: Create GitHub Release
         id: create_release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.build.outputs.version_tag }}
           draft: true
@@ -205,3 +205,10 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: medcat-v2/dist
+
+  # test-time models for download
+  upload-test-models:
+    needs: release
+    uses: ./.github/workflows/upload-test-models.yml
+    with:
+      tag: ${{ github.ref_name }}

@@ -28,7 +28,7 @@ We have 2 public v2 models available:
 
 There are also a number of MedCAT v1 models available that can automatically be converted if required.
 
-To download any of these models, please [follow this link](https://uts.nlm.nih.gov/uts/login?service=https://medcat.sites.er.kcl.ac.uk/auth-callback) (or [this link for API key based download](https://medcat.sites.er.kcl.ac.uk/auth-callback-api)) and sign into your NIH profile / UMLS license. You will then be redirected to the MedCAT model download form. Please complete this form and you will be provided a download link.
+To download any of these models, please [follow this link](https://medcat.sites.er.kcl.ac.uk/auth-callback-api) and sign in using your NIH / UMLS API key. You will then be redirected to the MedCAT model download form. Please complete this form and you will be provided a download link.
 
 While we encourage you use MedCAT v2 and the models in that native format, if you download an older version MedCAT v2 will be able to load it and covnert it to the format it knows. However, the loading process will be considerably longerin those cases.
 
@@ -149,9 +149,7 @@ The MedCAT v2 demo web app is available [here](https://medcat.sites.er.kcl.ac.uk
 See [Architecture Documentation](docs/architecture.md) for detailed information.
 
 ## Tutorials
-A guide on how to use MedCAT v2 is available at [MedCATv2 Tutorials](../medcat-v2-tutorials).
-However, the tutorials are a bit of a work in progress at this point in time.
-
+A guide on how to use MedCAT v2 is available at on the medcat documentation page on [docs.cogstack.org](https://docs.cogstack.org)
 
 ## Acknowledgements
 Entity extraction was trained on [MedMentions](https://github.com/chanzuckerberg/MedMentions) In total it has ~ 35K entites from UMLS

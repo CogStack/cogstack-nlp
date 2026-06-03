@@ -2,14 +2,14 @@ import atexit
 import os
 import shutil
 
+from .resource_fetch import get_resource
+
 
 RESOURCES_PATH = os.path.join(os.path.dirname(__file__), "resources")
-EXAMPLE_MODEL_PACK_ZIP = os.path.join(RESOURCES_PATH, "mct2_model_pack.zip")
-UNPACKED_EXAMPLE_MODEL_PACK_PATH = os.path.join(
-    RESOURCES_PATH, "mct2_model_pack")
-V1_MODEL_PACK_PATH = os.path.join(RESOURCES_PATH, "mct_v1_model_pack.zip")
-UNPACKED_V1_MODEL_PACK_PATH = os.path.join(
-    RESOURCES_PATH, "mct_v1_model_pack")
+EXAMPLE_MODEL_PACK_ZIP = get_resource("mct2_model_pack.zip")
+UNPACKED_EXAMPLE_MODEL_PACK_PATH = EXAMPLE_MODEL_PACK_ZIP.removesuffix(".zip")
+V1_MODEL_PACK_PATH = get_resource("mct_v1_model_pack.zip")
+UNPACKED_V1_MODEL_PACK_PATH = V1_MODEL_PACK_PATH.removesuffix(".zip")
 
 
 # unpack model pack at start so we can access stuff like Vocab
