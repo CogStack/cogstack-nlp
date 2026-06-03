@@ -1,4 +1,4 @@
-from django.contrib.auth.forms import User
+from django.contrib.auth.models import User
 from rest_framework import permissions
 from .models import ProjectAnnotateEntities
 
