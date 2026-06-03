@@ -16,10 +16,7 @@ logger = logging.getLogger(__name__)
 def discover_mct_plugin_app_configs() -> list[str]:
     """Return dotted paths of :class:`~django.apps.AppConfig` classes to append to INSTALLED_APPS."""
     try:
-        try:
-            eps = entry_points(group='mct.plugins')
-        except TypeError:
-            eps = entry_points().get('mct.plugins', [])  # type: ignore[union-attr]
+        eps = entry_points(group='mct.plugins')
     except Exception as exc:
         logger.warning('Failed to enumerate mct.plugins entry points: %s', exc)
         return []

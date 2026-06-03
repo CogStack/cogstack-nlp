@@ -16,6 +16,7 @@ breaking changes.
 """
 from __future__ import annotations
 
+import copy
 from collections.abc import Callable, Iterable
 from typing import Any, Optional
 
@@ -34,32 +35,35 @@ from django.dispatch import Signal
 pre_document_submit = Signal()
 
 #: Sent immediately after a document is submitted to training.
-#: kwargs: ``project``, ``document``, ``user``.
+#: kwargs: ``project`` (ProjectAnnotateEntities), ``document`` (Document),
+#:         ``user`` (User or None).
 post_document_submit = Signal()
 
 #: Sent after an :class:`AnnotatedEntity` row is created.
-#: kwargs: ``annotation`` (AnnotatedEntity), ``project``, ``document``,
-#:         ``user`` (or None).
+#: kwargs: ``annotation`` (AnnotatedEntity), ``project`` (ProjectAnnotateEntities),
+#:         ``document`` (Document), ``user`` (User or None).
 annotation_created = Signal()
 
 #: Sent after an :class:`AnnotatedEntity` row is updated.
-#: kwargs: ``annotation``, ``project``, ``document``, ``user``.
+#: kwargs: ``annotation`` (AnnotatedEntity), ``project`` (ProjectAnnotateEntities),
+#:         ``document`` (Document), ``user`` (User or None).
 annotation_updated = Signal()
 
 #: Sent after an :class:`AnnotatedEntity` row is deleted.
-#: kwargs: ``annotation`` (instance prior to delete), ``project``, ``document``.
+#: kwargs: ``annotation`` (AnnotatedEntity, instance prior to delete),
+#:         ``project`` (ProjectAnnotateEntities), ``document`` (Document).
 annotation_deleted = Signal()
 
 #: Sent after a :class:`ProjectGroup` row is created.
-#: kwargs: ``project_group``.
+#: kwargs: ``project_group`` (ProjectGroup).
 project_group_created = Signal()
 
 #: Sent after a :class:`ProjectGroup` row is updated.
-#: kwargs: ``project_group``.
+#: kwargs: ``project_group`` (ProjectGroup).
 project_group_updated = Signal()
 
 #: Sent after the OIDC user resolver returns a Django user.
-#: kwargs: ``user``, ``id_token`` (dict), ``created`` (bool).
+#: kwargs: ``user`` (User), ``id_token`` (dict), ``created`` (bool).
 user_oidc_resolved = Signal()
 
 
@@ -71,8 +75,13 @@ user_oidc_resolved = Signal()
 # permission; ``None`` or ``False`` abstains and the OSS default decision is
 # used. Hooks MUST NOT be used to deny access that the OSS code would
 # otherwise grant.
+#
+# Hooks are called with two positional arguments. For the ``is_project_admin``
+# hook these are the ``User`` and ``ProjectAnnotateEntities`` instances; the
+# arguments are typed as ``Any`` so the registry stays generic across hook
+# names without coupling to specific model classes.
 
-PermissionHook = Callable[..., Optional[bool]]
+PermissionHook = Callable[[Any, Any], Optional[bool]]
 _permission_hooks: dict[str, list[PermissionHook]] = {}
 
 
@@ -119,11 +128,11 @@ def register_menu_extension(item: dict[str, Any]) -> None:
         raise TypeError("menu extension item must be a dict")
     if "id" not in item or "label" not in item:
         raise ValueError("menu extension item requires 'id' and 'label'")
-    _menu_extensions.append(dict(item))
+    _menu_extensions.append(copy.deepcopy(item))
 
 
 def get_menu_extensions() -> list[dict[str, Any]]:
-    return [dict(it) for it in _menu_extensions]
+    return [copy.deepcopy(it) for it in _menu_extensions]
 
 
 def register_route(route: dict[str, Any]) -> None:
@@ -136,7 +145,7 @@ def register_route(route: dict[str, Any]) -> None:
         raise TypeError("route must be a dict")
     if "path" not in route or "component" not in route:
         raise ValueError("route requires 'path' and 'component'")
-    _plugin_routes.append(dict(route))
+    _plugin_routes.append(copy.deepcopy(route))
 
 
 def get_routes() -> list[dict[str, Any]]:

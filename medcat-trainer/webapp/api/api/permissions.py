@@ -1,6 +1,6 @@
+from django.contrib.auth.forms import User
 from rest_framework import permissions
-from rest_framework.exceptions import PermissionDenied
-from .models import ProjectAnnotateEntities, ProjectGroup
+from .models import ProjectAnnotateEntities
 
 
 class IsReadOnly(permissions.BasePermission):
@@ -14,7 +14,7 @@ class IsReadOnly(permissions.BasePermission):
         return request.method in permissions.SAFE_METHODS
 
 
-def is_project_admin(user, project):
+def is_project_admin(user: [User], project: [ProjectAnnotateEntities]):
     """
     Check if a user is an admin of a project.
     A user is a project admin if:
