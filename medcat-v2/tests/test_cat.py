@@ -626,11 +626,19 @@ class CATSupTrainingTests(CATUnsupTrainingTests):
              self.cat.config.cdb_maker))
         self.assertEqual(len(names), 1)
         name = list(names)[0]
+        self._assert_name_processed_correctly(text, name)
+
+    def _assert_name_processed_correctly(self, text: str, name: str):
         self.assertNotIn("\n", name)
         self.assertEqual(
             name.count(self.cat.config.general.separator),
             text.count("\n"),
             "All new lines should convert to single separators")
+
+    def test_trainer_name_processor_removes_new_lines(self):
+        text = "something\nwas\ndone"
+        name = self.cat.trainer._get_processed_name(text)
+        self._assert_name_processed_correctly(text, name)
 
     def test_lists_sup_train_in_config(self):
         self.assertTrue(self.cat.config.meta.sup_trained)
