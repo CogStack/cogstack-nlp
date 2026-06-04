@@ -416,8 +416,9 @@ class Trainer:
             tkns = doc.get_tokens(ann['start'], ann['end'])
             try:
                 ent = self._pipeline.entity_from_tokens_in_doc(tkns, doc)
-                pn_dict = prepare_name(ann['value'], self._pipeline.tokenizer, {},
-                                 self._pn_configs)
+                pn_dict = prepare_name(
+                    ann['value'], self._pipeline.tokenizer_with_tag, {},
+                    self._pn_configs)
                 processed_names = list(pn_dict.keys())
                 if len(processed_names) > 1:
                     logger.info("Got multiple processed names for %s: %s",
