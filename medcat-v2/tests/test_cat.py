@@ -9,6 +9,7 @@ from contextlib import contextmanager
 from medcat import cat
 from medcat.data.mctexport import count_all_annotations, iter_anns
 from medcat.data.model_card import ModelCard
+from medcat.preprocessors.cleaners import prepare_name
 from medcat.vocab import Vocab
 from medcat.config import Config
 from medcat.config.config_meta_cat import ConfigMetaCAT
@@ -609,6 +610,35 @@ class CATSupTrainingTests(CATUnsupTrainingTests):
     def _perform_training(cls):
         data = cls._get_data()
         cls.cat.trainer.train_supervised_raw(data)
+
+    def test_prepare_name_removes_new_lines(self):
+        # NOTE: This is easiest to test if I have the model pack
+        #       available (to run tokenizer and tagger).
+        #       The reason we need to check this is because in supervised
+        #       training the detected name is set as per the prepare_name
+        #       output and if you run that without the tagger it will
+        #       keep stuff like new liens
+        text = "something\nwas\ndone"
+        names = prepare_name(
+            text, self.cat.pipe.tokenizer_with_tag, {},
+            (self.cat.config.general,
+             self.cat.config.preprocessing,
+             self.cat.config.cdb_maker))
+        self.assertEqual(len(names), 1)
+        name = list(names)[0]
+        self._assert_name_processed_correctly(text, name)
+
+    def _assert_name_processed_correctly(self, text: str, name: str):
+        self.assertNotIn("\n", name)
+        self.assertEqual(
+            name.count(self.cat.config.general.separator),
+            text.count("\n"),
+            "All new lines should convert to single separators")
+
+    def test_trainer_name_processor_removes_new_lines(self):
+        text = "something\nwas\ndone"
+        name = self.cat.trainer._get_processed_name(text)
+        self._assert_name_processed_correctly(text, name)
 
     def test_lists_sup_train_in_config(self):
         self.assertTrue(self.cat.config.meta.sup_trained)

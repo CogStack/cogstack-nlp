@@ -14,12 +14,16 @@ class ClientWrapper:
                  basic_auth: tuple[str, str] | None,
                  api_key: Union[str, tuple[str, str]] | None,
                  verify_certs: bool,
+                 use_ssl: bool,
                  request_timeout: int):
         self.client = OpenSearch(
             hosts=hosts,
-            basic_auth=basic_auth,
+            http_auth=basic_auth,
             api_key=api_key,
             verify_certs=verify_certs,
+            use_ssl=use_ssl,
+            ssl_assert_hostname=False,
+            ssl_show_warn=False,
             request_timeout=request_timeout,
         )
 

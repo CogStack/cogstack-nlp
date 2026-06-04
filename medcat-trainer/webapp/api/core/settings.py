@@ -72,6 +72,14 @@ INSTALLED_APPS = [
     'health_check.contrib.migrations',
 ]
 
+from core.plugin_discovery import discover_mct_plugin_app_configs  # noqa: E402
+from api import extensions as _mct_extensions  # noqa: E402
+
+for _mct_app in discover_mct_plugin_app_configs():
+    if _mct_app not in INSTALLED_APPS:
+        INSTALLED_APPS.append(_mct_app)
+        _mct_extensions.discovered_plugin_apps.append(_mct_app)
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',

@@ -135,7 +135,7 @@ class CATWrapper(CAT):
 class WrappedTrainer(Trainer):
 
     def __init__(self, den_cnf: DenConfig, delegate: Trainer):
-        super().__init__(delegate.cdb, delegate.caller, delegate._pipeline)
+        super().__init__(delegate.cdb, delegate._pipeline)
         self._den_cnf = den_cnf
 
     def train_supervised_raw(

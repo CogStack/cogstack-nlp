@@ -24,6 +24,8 @@ import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import {authPlugin} from "./auth";
 import { loadRuntimeConfig, isOidcEnabled } from './runtimeConfig';
+import { initPluginBootstrap } from './plugins/bootstrap'
+import PluginSlot from '@/components/plugins/PluginSlot.vue'
 
 const theme ={
   dark: false,
@@ -55,6 +57,7 @@ async function bootstrap() {
   app.component("v-select", vSelect)
   app.component('vue-simple-context-menu', VueSimpleContextMenu)
   app.component('font-awesome-icon', FontAwesomeIcon)
+  app.component('PluginSlot', PluginSlot)
   app.use(VueCookies, { expires: '7d'})
   app.use(vuetify);
 
@@ -78,6 +81,8 @@ async function bootstrap() {
 
     app.config.globalProperties.$http = axios
   }
+
+  await initPluginBootstrap(axios)
 
   app.config.compilerOptions.whitespace = 'preserve'
 

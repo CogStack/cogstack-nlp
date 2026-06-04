@@ -392,6 +392,28 @@ class Linker(StaticEmbeddingLinker, AbstractManualSerialisable, TrainableCompone
             self._cui_context_matrix = None
             self.number_of_batches = 0
 
+    def train_unsupervised(self, doc: MutableDocument) -> None:
+        """Train unsupervised based on the given document.
+
+        If this component doesn't support unsupervised training,
+        this method can be a no-op.
+
+        Args:
+            doc (MutableDocument): The document to train on.
+        """
+        pass
+
+    @classmethod
+    def create_new_component(
+        cls,
+        cnf: ComponentConfig,
+        tokenizer: BaseTokenizer,
+        cdb: CDB,
+        vocab: Vocab,
+        model_load_path: Optional[str],
+    ) -> "Linker":
+        return cls(cdb, cdb.config)
+
     def serialise_to(self, folder_path: str) -> None:
         os.makedirs(folder_path, exist_ok=True)
         model_folder = os.path.join(folder_path, self._MODEL_FOLDER_NAME)

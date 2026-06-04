@@ -7,11 +7,11 @@ import unittest
 import unittest.mock
 
 from .test_convert_vocab import TESTS_PATH
+from ... import V1_MODEL_PACK_PATH
 
 
 class ConversionFromZIPTests(unittest.TestCase):
-    MODEL_FOLDER = os.path.join(TESTS_PATH, "resources",
-                                "mct_v1_model_pack.zip")
+    MODEL_FOLDER = V1_MODEL_PACK_PATH
 
     @classmethod
     def setUpClass(cls):

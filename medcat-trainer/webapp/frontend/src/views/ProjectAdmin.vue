@@ -58,6 +58,7 @@
         Users
       </button>
     </div>
+    <plugin-slot name="project-admin:tabs" />
 
     <div v-if="loading" class="loading-container">
       <v-progress-circular indeterminate color="primary" size="48"></v-progress-circular>
