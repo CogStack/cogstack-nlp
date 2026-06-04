@@ -408,6 +408,19 @@ class Trainer:
                     docs, current_document, train_from_false_positives,
                     devalue_others)
 
+    def _get_processed_name(self, raw_name: str) -> str:
+        pn_dict = prepare_name(
+            raw_name, self._pipeline.tokenizer_with_tag, {},
+            self._pn_configs)
+        processed_names = list(pn_dict.keys())
+        if len(processed_names) > 1:
+            logger.info("Got multiple processed names for %s: %s",
+                        raw_name, processed_names)
+        elif not processed_names:
+            # NOTE: shouldn't really happen
+            raise ValueError(f"Could not process {raw_name} into names")
+        return processed_names[0]
+
     def _prepare_doc_with_anns(
             self, doc: MutableDocument, ann_doc: MedCATTrainerExportDocument,
             anns: list[MedCATTrainerExportAnnotation]) -> None:
@@ -416,16 +429,7 @@ class Trainer:
             tkns = doc.get_tokens(ann['start'], ann['end'])
             try:
                 ent = self._pipeline.entity_from_tokens_in_doc(tkns, doc)
-                pn_dict = prepare_name(ann['value'], self._pipeline.tokenizer, {},
-                                 self._pn_configs)
-                processed_names = list(pn_dict.keys())
-                if len(processed_names) > 1:
-                    logger.info("Got multiple processed names for %s: %s",
-                                ann['value'], processed_names)
-                elif not processed_names:
-                    # NOTE: shouldn't really happen
-                    raise ValueError(f"Could not process {ann['value']} into names")
-                ent.detected_name = processed_names[0]
+                ent.detected_name = self._get_processed_name(ann['value'])
                 ent.cui = ann['cui']
                 ents.append(ent)
             except ValueError as err:
