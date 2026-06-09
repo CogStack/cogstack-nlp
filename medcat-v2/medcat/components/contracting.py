@@ -123,7 +123,7 @@ def verify_part(
         total = len(feedback)
         if accessed != total:
             violations.append(
-                f"Component {component.full_name} does not {access_type.name}"
+                f"Component {component.full_name} does not {access_type.name} "
                 f"{path} ({accessed} / {total} accessed)")
             logger.debug(
                 "Found a virolation in component '%s' for %s at '%s': "
