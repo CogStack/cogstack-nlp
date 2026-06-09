@@ -3,6 +3,8 @@
 This folder involves scripts and workflows used to create the data for MedCAT v2 paper.
 This will be presented within the BioNLP Workshop at ACL 2026.
 
+The process was last run with MedCAT v2.7.0.
+
 ### Layout and usage
 
 #### Folder structure
