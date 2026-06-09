@@ -1,12 +1,13 @@
 from typing import Protocol, runtime_checkable, Optional
 from typing_extensions import Self
-from enum import Enum, auto
+from enum import Enum
 
 from medcat.tokenizing.tokens import MutableDocument
 from medcat.tokenizing.tokenizers import BaseTokenizer
 from medcat.cdb import CDB
 from medcat.vocab import Vocab
 from medcat.config.config import ComponentConfig
+from medcat.components.contracting import ComponentContract, CollectionContract
 
 
 @runtime_checkable
@@ -55,7 +56,40 @@ class BaseComponent(Protocol):
 
 
 class CoreComponentType(Enum):
-    tagging = auto()
-    token_normalizing = auto()
-    ner = auto()
-    linking = auto()
+    tagging = ComponentContract(
+        needs=frozenset(),
+        must_provide=frozenset(),
+        # doesn't write for every token
+        may_provide=frozenset({'token.is_punctuation', 'token.to_skip'}),
+        collection_contracts=frozenset(),
+    )
+    token_normalizing = ComponentContract(
+        needs=frozenset(),
+        # should write for every token
+        must_provide=frozenset({'token.norm'}),
+        may_provide=frozenset(),
+        collection_contracts=frozenset(),
+    )
+    ner = ComponentContract(
+        needs=frozenset({'token.to_skip'}),
+        must_provide=frozenset({'doc.ner_ents'}),   # the list must exist
+        may_provide=frozenset(),
+        collection_contracts=frozenset({
+            CollectionContract(
+                field='doc.ner_ents',
+                must_provide=frozenset({'detected_name'}),
+            )
+        }),
+    )
+    linking = ComponentContract(
+        needs=frozenset({'doc.ner_ents'}),
+        # must write, but may be empty list
+        must_provide=frozenset({'doc.linked_ents'}),
+        may_provide=frozenset({}),
+        collection_contracts=frozenset({
+            CollectionContract(
+                field='doc.linked_ents',
+                must_provide=frozenset({'cui', 'context_similarity'}),
+            ),
+        }),
+    )
