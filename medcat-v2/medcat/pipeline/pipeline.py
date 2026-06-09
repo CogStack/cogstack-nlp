@@ -324,14 +324,40 @@ class Pipeline:
         Returns:
             MutableDocument: The resulting document.
         """
+        return self.pipe_until(text, None)
+
+    def pipe_until(
+        self,
+        text: str,
+        comp_type: Optional[CoreComponentType]
+    ) -> MutableDocument:
+        """Run the pipe until the specific component (excluded).
+
+        If `comp_type == None` then the entire pipe is run.
+        Otherwise the pipe is stopped before the specificied component is run.
+
+        Args:
+            text (str): The text to run over.
+            comp_type (Optional[CoreComponentType]): The last component to run or None.
+
+        Returns:
+            MutableDocument: The processed document.
+        """
         doc = self._tokenizer(text)
         for comp in self._components:
+            if comp_type and comp.get_type() == comp_type:
+                logger.info(
+                    "Finishing pipe before %s (%s) as requested",
+                    comp.get_type().name, comp.full_name
+                )
+                return doc
             logger.info("Running component %s for %d of text (%s)",
                         comp.full_name, len(text), id(text))
             doc = comp(doc)
         for addon in self._addons:
             doc = addon(doc)
         return doc
+
 
     def entity_from_tokens(self, tokens: list[MutableToken]) -> MutableEntity:
         """Get the entity from the list of tokens.
