@@ -2,12 +2,13 @@ from typing import Protocol, runtime_checkable, Optional
 from typing_extensions import Self
 from enum import Enum
 
+from pydantic import BaseModel
+
 from medcat.tokenizing.tokens import MutableDocument
 from medcat.tokenizing.tokenizers import BaseTokenizer
 from medcat.cdb import CDB
 from medcat.vocab import Vocab
 from medcat.config.config import ComponentConfig
-from medcat.components.contracting import ComponentContract, CollectionContract
 
 
 @runtime_checkable
@@ -53,6 +54,19 @@ class BaseComponent(Protocol):
             Self: The new components.
         """
         pass
+
+class CollectionContract(BaseModel, frozen=True):
+    """Contract for a collection field — what each item in the collection provides."""
+    field: str                        # e.g. 'ner_ents'
+    must_provide: frozenset[str]      # fields every item must have
+    may_provide: frozenset[str] = frozenset()
+
+
+class ComponentContract(BaseModel, frozen=True):
+    needs: frozenset[str]
+    must_provide: frozenset[str]
+    may_provide: frozenset[str] = frozenset()
+    collection_contracts: frozenset[CollectionContract] = frozenset()
 
 
 class CoreComponentType(Enum):

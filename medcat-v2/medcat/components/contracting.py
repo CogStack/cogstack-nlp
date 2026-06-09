@@ -1,28 +1,14 @@
 from enum import Enum, auto
 from typing import Any, Iterator, Callable
-from pydantic import BaseModel
 from contextlib import contextmanager, ExitStack
 from copy import deepcopy
 from logging import Logger
 
 from medcat.tokenizing.tokens import MutableDocument
-from medcat.components.base import BaseComponent
+from medcat.components.base import BaseComponent, ComponentContract
 
 
 logger = Logger(__name__)
-
-class CollectionContract(BaseModel, frozen=True):
-    """Contract for a collection field — what each item in the collection provides."""
-    field: str                        # e.g. 'ner_ents'
-    must_provide: frozenset[str]      # fields every item must have
-    may_provide: frozenset[str] = frozenset()
-
-
-class ComponentContract(BaseModel, frozen=True):
-    needs: frozenset[str]
-    must_provide: frozenset[str]
-    may_provide: frozenset[str] = frozenset()
-    collection_contracts: frozenset[CollectionContract] = frozenset()
 
 
 class ContractViolation(Exception):
