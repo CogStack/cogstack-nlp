@@ -1,6 +1,5 @@
 from typing import Optional, Protocol, Callable, runtime_checkable, Union
 from typing import Literal
-from enum import Enum
 from abc import ABC, abstractmethod
 
 from medcat.utils.registry import Registry, MedCATRegistryException
