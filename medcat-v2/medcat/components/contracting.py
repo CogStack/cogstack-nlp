@@ -119,7 +119,7 @@ def verify_part(
         with wrap_relevant_parts(doc, path) as feedback:
             doc = component(doc)
         # verify each one accessed
-        accessed = sum(fb for fb in feedback)
+        accessed = sum(bool(fb) for fb in feedback)
         total = len(feedback)
         if accessed != total:
             violations.append(
