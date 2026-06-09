@@ -1,7 +1,6 @@
 from enum import Enum, auto
 from typing import Any, Iterator, Callable
 from contextlib import contextmanager, ExitStack
-from copy import deepcopy
 from logging import Logger
 
 from medcat.tokenizing.tokens import MutableDocument
@@ -56,8 +55,8 @@ class WrappedMember:
                 def __getattribute__(self, name):
                     val = super().__getattribute__(name)
                     if name == spy.member_name:
-                        # save copy
-                        spy.feedback.append(deepcopy(val))
+                        # saving str copy of value
+                        spy.feedback.append(str(val))
                     return val
 
         elif self.access_type == AccessType.WRITE:
@@ -69,8 +68,8 @@ class WrappedMember:
                             old = super().__getattribute__(name)
                         except AttributeError:
                             old = AttributeError  # sentinel: didn't exist yet
-                        # saving copies of state
-                        spy.feedback.append((deepcopy(old), deepcopy(value)))
+                        # saving str copies of state
+                        spy.feedback.append((str(old), str(value)))
                     super().__setattr__(name, value)
 
 
