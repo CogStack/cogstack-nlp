@@ -3,10 +3,13 @@ from typing import Any, Iterator, Callable
 from pydantic import BaseModel
 from contextlib import contextmanager, ExitStack
 from copy import deepcopy
+from logging import Logger
 
 from medcat.tokenizing.tokens import MutableDocument
 from medcat.components.base import BaseComponent
 
+
+logger = Logger(__name__)
 
 class CollectionContract(BaseModel, frozen=True):
     """Contract for a collection field — what each item in the collection provides."""
@@ -136,6 +139,12 @@ def verify_part(
             violations.append(
                 f"Component {component.full_name} does not {access_type.name}"
                 f"{path} ({accessed} / {total} accessed)")
+            logger.debug(
+                "Found a virolation in component '%s' for %s at '%s': "
+                "(%d / %d) accessed with feedback %s",
+                component.full_name, access_type.name,
+                path, accessed, total, feedback,
+            )
     if raise_on_violation:
         raise ContractViolation("\n".join(violations))
     return violations
