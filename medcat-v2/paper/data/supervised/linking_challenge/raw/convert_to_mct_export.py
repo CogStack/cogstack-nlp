@@ -1,0 +1,1 @@
+/Users/martratas/Documents/CogStack/.MedCAT.nosync/MedCATv2_new/.temp/validation_datasets/linking_challenge_2023/convert_to_mct_export.py
