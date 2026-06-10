@@ -226,6 +226,7 @@ def register_menu_extension(item: dict[str, Any]) -> None:
         _validate_safe_url(item["route"], field="menu extension 'route'")
     if "href" in item:
         _validate_safe_url(item["href"], field="menu extension 'href'")
+    _menu_extensions.append(copy.deepcopy(item))
 
 
 def get_menu_extensions() -> list[dict[str, Any]]:
@@ -245,8 +246,8 @@ def register_route(route: dict[str, Any]) -> None:
         raise TypeError("route must be a dict")
     if "path" not in route or "component" not in route:
         raise ValueError("route requires 'path' and 'component'")
-    _plugin_routes.append(copy.deepcopy(route))
     _validate_safe_url(route["path"], field="route 'path'")
+    _plugin_routes.append(copy.deepcopy(route))
 
 
 def get_routes() -> list[dict[str, Any]]:
