@@ -8,8 +8,10 @@ from rest_framework.authtoken.models import Token
 from rest_framework.test import APIClient
 
 from api.extensions import (
+    annotation_created,
     clear_permission_hooks,
     clear_registries,
+    dispatch,
     get_features,
     get_menu_extensions,
     get_permission_hooks,
@@ -49,6 +51,66 @@ class ExtensionsRegistryTests(TestCase):
         register_feature('workflow')
         register_feature('adjudication')
         self.assertEqual(get_features(), ['adjudication', 'workflow'])
+
+
+class UrlValidationTests(TestCase):
+    def tearDown(self):
+        clear_registries()
+
+    def test_menu_extension_allows_relative_and_http_urls(self):
+        register_menu_extension({'id': 'a', 'label': 'A', 'route': '/ee/adj'})
+        register_menu_extension({'id': 'b', 'label': 'B', 'href': 'https://example.org'})
+        register_menu_extension({'id': 'c', 'label': 'C', 'href': '#frag'})
+        self.assertEqual(len(get_menu_extensions()), 3)
+
+    def test_menu_extension_rejects_javascript_href(self):
+        with self.assertRaises(ValueError):
+            register_menu_extension({'id': 'x', 'label': 'X', 'href': 'javascript:alert(1)'})
+
+    def test_menu_extension_rejects_obfuscated_scheme(self):
+        # Browsers ignore embedded control chars/whitespace inside a scheme.
+        with self.assertRaises(ValueError):
+            register_menu_extension({'id': 'x', 'label': 'X', 'href': 'java\tscript:alert(1)'})
+
+    def test_menu_extension_rejects_data_and_protocol_relative(self):
+        with self.assertRaises(ValueError):
+            register_menu_extension({'id': 'd', 'label': 'D', 'href': 'data:text/html,<script>1</script>'})
+        with self.assertRaises(ValueError):
+            register_menu_extension({'id': 'p', 'label': 'P', 'href': '//evil.example'})
+
+    def test_route_rejects_disallowed_scheme(self):
+        with self.assertRaises(ValueError):
+            register_route({'path': 'javascript:alert(1)', 'component': 'X'})
+
+    def test_no_invalid_entry_is_stored(self):
+        try:
+            register_menu_extension({'id': 'x', 'label': 'X', 'href': 'javascript:alert(1)'})
+        except ValueError:
+            pass
+        self.assertEqual(get_menu_extensions(), [])
+
+
+class DispatchIsolationTests(TestCase):
+    def test_dispatch_isolates_receiver_exceptions(self):
+        calls = []
+
+        def bad_receiver(sender, **kwargs):
+            raise RuntimeError('boom')
+
+        def good_receiver(sender, **kwargs):
+            calls.append(kwargs.get('annotation'))
+
+        annotation_created.connect(bad_receiver, weak=False)
+        annotation_created.connect(good_receiver, weak=False)
+        try:
+            # Must not raise even though one receiver blows up.
+            dispatch(annotation_created, sender=object, annotation='ann')
+        finally:
+            annotation_created.disconnect(bad_receiver)
+            annotation_created.disconnect(good_receiver)
+
+        # The healthy receiver still ran.
+        self.assertEqual(calls, ['ann'])
 
 
 class PermissionHookTests(TestCase):

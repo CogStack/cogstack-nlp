@@ -543,9 +543,10 @@ def import_cdb_concepts(request):
 
 
 def _submit_document(project: ProjectAnnotateEntities, document: Document, user=None):
-    from .extensions import pre_document_submit, post_document_submit
+    from .extensions import pre_document_submit, post_document_submit, dispatch
 
-    pre_document_submit.send(
+    dispatch(
+        pre_document_submit,
         sender=ProjectAnnotateEntities,
         project=project,
         document=document,
@@ -578,7 +579,8 @@ def _submit_document(project: ProjectAnnotateEntities, document: Document, user=
             project.cuis += ',' + ','.join(extra_doc_cuis)
             project.save()
 
-    post_document_submit.send(
+    dispatch(
+        post_document_submit,
         sender=ProjectAnnotateEntities,
         project=project,
         document=document,

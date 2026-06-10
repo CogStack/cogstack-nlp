@@ -47,6 +47,7 @@ nav:
     - Advanced usage: advanced_usage.md
     - Maintenance: maintenance.md
     - Provisioning: provisioning.md
+    - Plugins & extensions: plugins.md
   - Client API: client.md
 
 plugins:
