@@ -1158,8 +1158,8 @@ def generate_concept_filter(request):
         # get all children from 'parent' concepts above.
         final_filter = {}
         for cui in cuis:
-            final_filter[cui] = [{'cui': c, 'pretty_name': cdb.cui2info[cui]['preferred_name']} for c in get_all_ch(cui, cdb)
-                                 if c in cdb.cui2info[cui]['preferred_name'] and c != cui]
+            final_filter[cui] = [{'cui': c, 'pretty_name': cdb.get_name(c)} for c in get_all_ch(cui, cdb)
+                                 if c in cdb.cui2info and c != cui]
         resp = {'filter_len': sum(len(f) for f in final_filter.values()) + len(final_filter.keys())}
         if resp['filter_len'] < 10000:
             # only send across concept filters that are small enough to render
