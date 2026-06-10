@@ -1064,19 +1064,28 @@ def view_metrics(request, report_id):
         return Response(200)
 
 
+FLAT_CDB_ROOT_CUI = 'Root'
+FLAT_CDB_CHILDREN_LIMIT = 500
+
+
 @api_view(http_method_names=['GET'])
 def cdb_cui_children(request, cdb_id):
     parent_cui = request.GET.get('parent_cui')
     cdb = get_cached_cdb(cdb_id, CDB_MAP)
 
-    # root SNOMED CT code: 138875005
-    # root UMLS code: CUI:
-
-    if cdb.addl_info.get('pt2ch') is None:
-        return HttpResponseBadRequest('Requested MedCAT CDB model does not include parent2child metadata to'
-                                      ' explore a concept hierarchy')
+    if not cdb.addl_info.get('pt2ch'):
+        if parent_cui is None:
+            return Response({'results': [
+                {'cui': FLAT_CDB_ROOT_CUI, 'pretty_name': 'All concepts'},
+            ]})
+        cuis = sorted(cdb.cui2info)[:FLAT_CDB_CHILDREN_LIMIT]
+        return Response({'results': [
+            {'cui': cui, 'pretty_name': cdb.get_name(cui)}
+            for cui in cuis
+        ]})
 
     # currently assumes this is using the SNOMED CT terminology
+    # root SNOMED CT code: 138875005
     try:
         root_term = {'cui': '138875005', 'pretty_name': cdb.cui2info['138875005']['preferred_name']}
         if parent_cui is None:
@@ -1091,13 +1100,31 @@ def cdb_cui_children(request, cdb_id):
 
 @api_view(http_method_names=['GET'])
 def cdb_concept_path(request):
+    """
+    Get the concept path for a given CUI to a parent node.
+
+    If the CDB does not have a concept hierarchy, return a flat list of all concepts under a fake root.
+
+    Else, return the actual tree structure, but we only support SNOMED CT at the moment.
+    """
     cdb_id = int(request.GET.get('cdb_id'))
     cdb = get_cached_cdb(cdb_id, CDB_MAP)
+    cui = request.GET.get('cui')
+    if not cdb.addl_info.get('pt2ch'):
+        return Response({'results': {
+            'node_path': {
+                'cui': FLAT_CDB_ROOT_CUI,
+                'pretty_name': 'All concepts',
+                'children': [{
+                    'cui': cui,
+                    'pretty_name': cdb.get_name(cui),
+                }],
+            },
+            'links': [{'parent': FLAT_CDB_ROOT_CUI, 'child': cui}],
+        }})
     if not cdb.addl_info.get('ch2pt'):
         cdb.addl_info['ch2pt'] = ch2pt_from_pt2ch(cdb)
-    cui = request.GET.get('cui')
     # Again only SNOMED CT is supported
-    # 'cui': '138875005',
     result = snomed_ct_concept_path(cui, cdb)
     return Response({'results': result})
 
