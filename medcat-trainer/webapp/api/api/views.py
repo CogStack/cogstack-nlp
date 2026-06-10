@@ -786,7 +786,6 @@ def annotate_text(request):
         inc_ent = all(tkn not in anno_tkns for tkn in ent)
         if not inc_ent:
             continue
-        entity, _ = Entity.objects.get_or_create(label=ent.cui)
         meta_annotations = []
         if 'meta_cat_meta_anns' in ent.get_available_addon_paths():
             meta_anns = ent.get_addon_data('meta_cat_meta_anns')
@@ -808,8 +807,10 @@ def annotate_text(request):
                     'confidence': pred_confidence
                 })
         anno_tkns.extend([tkn for tkn in ent])
+        entity = Entity.objects.filter(label=ent.cui).first()
         ents.append({
-            'entity': entity.id,
+            'entity': entity.id if entity is not None else -1,
+            'cui': ent.cui,
             'value': ent.base.text,
             'start_ind': ent.base.start_char_index,
             'end_ind': ent.base.end_char_index,

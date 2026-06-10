@@ -5,6 +5,10 @@ export default {
   methods: {
     fetchDetail (selectedEnt, cdbSearchIndex, callback) {
       if (selectedEnt && Object.keys(selectedEnt).length) {
+        if (selectedEnt.cui) {
+          this.fetchConcept(selectedEnt, cdbSearchIndex, callback)
+          return
+        }
         const queryEntId = selectedEnt.id
         this.$http.get(`/api/entities/${selectedEnt.entity}/`).then(resp => {
           if (selectedEnt && queryEntId === selectedEnt.id) {
