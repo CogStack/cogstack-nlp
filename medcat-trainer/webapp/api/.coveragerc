@@ -1,0 +1,12 @@
+[run]
+source = api,core
+branch = True
+omit =
+    */migrations/*
+    */tests/*
+    */__pycache__/*
+    manage.py
+
+[report]
+show_missing = True
+skip_covered = False

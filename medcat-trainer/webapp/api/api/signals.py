@@ -104,7 +104,7 @@ def remove_model_pack_assets(sender, instance, **kwargs):
 
 def project_tasks_changed(sender, instance, action, **kwargs):
     # post_remove or post_add actions, overwrite to model_pack supplied MetaCAT tasks.
-    if (action.startswith('post') and type(instance) is ProjectAnnotateEntitiesFields and
+    if (action.startswith('post') and isinstance(instance, ProjectAnnotateEntitiesFields) and
             instance.model_pack is not None):
         instance.tasks.set([MetaTask.objects.filter(prediction_model_id=meta_cat.id).first() for meta_cat in
                             instance.model_pack.meta_cats.all()])

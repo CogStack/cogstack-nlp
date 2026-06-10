@@ -35,17 +35,43 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install requests pytest build
+          pip install requests pytest pytest-cov build
 
       - name: Install client package in development mode
         run: |
           cd client
           pip install -e .
 
-      - name: Run client tests
+      - name: Run client tests with coverage
         run: |
           cd client
-          python -m pytest tests/ -v
+          python -m pytest tests/ -v \
+            --cov=mctclient \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage.xml \
+            --cov-report=html:htmlcov
+
+      - name: Client coverage summary
+        if: always()
+        run: |
+          cd client
+          {
+            echo "## Client test coverage"
+            echo ""
+            echo '```'
+            python -m coverage report || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload client coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: client-coverage
+          path: |
+            medcat-trainer/client/coverage.xml
+            medcat-trainer/client/htmlcov
+          if-no-files-found: ignore
 
       - name: Build client package
         run: |
@@ -87,10 +113,32 @@ jobs:
           cd webapp/frontend
           npm ci
 
-      - name: Run frontend tests
+      - name: Run frontend tests with coverage
         run: |
           cd webapp/frontend
-          npm run test:unit
+          npm run coverage
+
+      - name: Frontend coverage summary
+        if: always()
+        run: |
+          cd webapp/frontend
+          {
+            echo "## Frontend test coverage"
+            echo ""
+            if [ -f coverage/coverage-summary.json ]; then
+              node -e "const t=require('./coverage/coverage-summary.json').total; const r=k=>\`\${t[k].pct}% (\${t[k].covered}/\${t[k].total})\`; console.log('| Metric | Coverage |'); console.log('| --- | --- |'); console.log(\`| Statements | \${r('statements')} |\`); console.log(\`| Branches | \${r('branches')} |\`); console.log(\`| Functions | \${r('functions')} |\`); console.log(\`| Lines | \${r('lines')} |\`);"
+            else
+              echo "_No coverage summary generated._"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload frontend coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: medcat-trainer/webapp/frontend/coverage
+          if-no-files-found: ignore
 
   test-backend:
     runs-on: ubuntu-latest
@@ -133,14 +181,38 @@ jobs:
           cd webapp
           uv run python -m spacy download en_core_web_md
 
-      - name: Run Django tests
+      - name: Run Django tests with coverage
         env:
           DB_ENGINE: sqlite3
           SECRET_KEY: test-secret-key
           DEBUG: 1
         run: |
           cd webapp/api
-          uv run python manage.py test
+          uv run --with "coverage[toml]" coverage run manage.py test
+          uv run --with "coverage[toml]" coverage xml -o coverage.xml
+          uv run --with "coverage[toml]" coverage html -d htmlcov
+
+      - name: Backend coverage summary
+        if: always()
+        run: |
+          cd webapp/api
+          {
+            echo "## Backend test coverage"
+            echo ""
+            echo '```'
+            uv run --with "coverage[toml]" coverage report
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload backend coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: |
+            medcat-trainer/webapp/api/coverage.xml
+            medcat-trainer/webapp/api/htmlcov
+          if-no-files-found: ignore
 
   # Build and test webapp container
   build-and-push:
