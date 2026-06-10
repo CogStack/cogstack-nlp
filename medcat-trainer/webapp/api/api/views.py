@@ -777,45 +777,45 @@ def annotate_text(request):
                 logger.warning(f'Failed to get children for CUI {parent_cui}: {e}')
         cuis_set = expanded_cuis
 
-    with temp_changed_config(cat.config.components.linking, 'filters', cuis_set):
+    with temp_changed_config(cat.config.components.linking.filters, 'cuis', cuis_set):
         spacy_doc = cat(message)
 
     ents = []
     anno_tkns = []
     for ent in spacy_doc.linked_ents:
-        cnt = Entity.objects.filter(label=ent.cui).count()
         inc_ent = all(tkn not in anno_tkns for tkn in ent)
-        if inc_ent and cnt != 0:
-            meta_annotations = []
-            if 'meta_cat_meta_anns' in ent.get_available_addon_paths():
-                meta_anns = ent.get_addon_data('meta_cat_meta_anns')
-                for meta_ann_task, pred in meta_anns.items():
-                    # Extract value and confidence from pred
-                    # pred can be a dict, object, or string
-                    if isinstance(pred, dict):
-                        pred_value = pred.get('value', str(pred))
-                        pred_confidence = pred.get('confidence', None)
-                    elif hasattr(pred, 'value'):
-                        pred_value = pred.value
-                        pred_confidence = getattr(pred, 'confidence', None)
-                    else:
-                        pred_value = str(pred)
-                        pred_confidence = None
-                    meta_annotations.append({
-                        'task': meta_ann_task,
-                        'value': pred_value,
-                        'confidence': pred_confidence
-                    })
-            anno_tkns.extend([tkn for tkn in ent])
-            entity = Entity.objects.get(label=ent.cui)
-            ents.append({
-                'entity': entity.id,
-                'value': ent.base.text,
-                'start_ind': ent.base.start_char_index,
-                'end_ind': ent.base.end_char_index,
-                'acc': ent.context_similarity,
-                'meta_annotations': meta_annotations
-            })
+        if not inc_ent:
+            continue
+        entity, _ = Entity.objects.get_or_create(label=ent.cui)
+        meta_annotations = []
+        if 'meta_cat_meta_anns' in ent.get_available_addon_paths():
+            meta_anns = ent.get_addon_data('meta_cat_meta_anns')
+            for meta_ann_task, pred in meta_anns.items():
+                # Extract value and confidence from pred
+                # pred can be a dict, object, or string
+                if isinstance(pred, dict):
+                    pred_value = pred.get('value', str(pred))
+                    pred_confidence = pred.get('confidence', None)
+                elif hasattr(pred, 'value'):
+                    pred_value = pred.value
+                    pred_confidence = getattr(pred, 'confidence', None)
+                else:
+                    pred_value = str(pred)
+                    pred_confidence = None
+                meta_annotations.append({
+                    'task': meta_ann_task,
+                    'value': pred_value,
+                    'confidence': pred_confidence
+                })
+        anno_tkns.extend([tkn for tkn in ent])
+        ents.append({
+            'entity': entity.id,
+            'value': ent.base.text,
+            'start_ind': ent.base.start_char_index,
+            'end_ind': ent.base.end_char_index,
+            'acc': ent.context_similarity,
+            'meta_annotations': meta_annotations
+        })
 
     ents.sort(key=lambda e: e['start_ind'])
     out = {'message': message, 'entities': ents}
