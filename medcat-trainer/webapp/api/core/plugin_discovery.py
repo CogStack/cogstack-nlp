@@ -1,5 +1,18 @@
 """
 Discover and mount MedCAT Trainer plugins (``mct.plugins`` entry-point group).
+
+Security note
+-------------
+Discovery imports and installs any package that advertises an ``mct.plugins``
+entry point pointing at an ``AppConfig`` with ``is_mct_plugin = True``. The
+``is_mct_plugin`` flag is an *opt-in marker*, not an authorisation check — a
+discovered plugin runs as trusted in-process Django code. Only install plugins
+from sources you trust; see ``docs/plugins.md`` for the trust model.
+
+Mounted plugin URLs (``/api/ee/<app_label>/``) are served on the same origin as
+the core app; plugins are responsible for enforcing authentication and
+authorisation on their own views (see ``docs/plugins.md`` for the required
+pattern).
 """
 from __future__ import annotations
 

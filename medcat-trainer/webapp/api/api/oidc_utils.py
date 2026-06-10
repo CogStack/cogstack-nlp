@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 import secrets
 
-from .extensions import user_oidc_resolved
+from .extensions import dispatch, user_oidc_resolved
 
 
 def get_user_by_email(request, id_token):
@@ -45,7 +45,8 @@ def get_user_by_email(request, id_token):
 
     user.save()
 
-    user_oidc_resolved.send(
+    dispatch(
+        user_oidc_resolved,
         sender=User,
         user=user,
         id_token=id_token,

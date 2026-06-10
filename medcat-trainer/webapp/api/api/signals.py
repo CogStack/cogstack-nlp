@@ -13,6 +13,7 @@ from api.extensions import (
     annotation_created,
     annotation_deleted,
     annotation_updated,
+    dispatch,
     project_group_created,
     project_group_updated,
 )
@@ -122,7 +123,8 @@ m2m_changed.connect(project_tasks_changed, sender=ProjectAnnotateEntitiesFields.
 @receiver(post_save, sender=AnnotatedEntity)
 def _emit_annotation_saved(sender, instance, created, **kwargs):
     sig = annotation_created if created else annotation_updated
-    sig.send(
+    dispatch(
+        sig,
         sender=AnnotatedEntity,
         annotation=instance,
         project=getattr(instance, 'project', None),
@@ -133,7 +135,8 @@ def _emit_annotation_saved(sender, instance, created, **kwargs):
 
 @receiver(post_delete, sender=AnnotatedEntity)
 def _emit_annotation_deleted(sender, instance, **kwargs):
-    annotation_deleted.send(
+    dispatch(
+        annotation_deleted,
         sender=AnnotatedEntity,
         annotation=instance,
         project=getattr(instance, 'project', None),
@@ -144,4 +147,4 @@ def _emit_annotation_deleted(sender, instance, **kwargs):
 @receiver(post_save, sender=ProjectGroup)
 def _emit_project_group_saved(sender, instance, created, **kwargs):
     sig = project_group_created if created else project_group_updated
-    sig.send(sender=ProjectGroup, project_group=instance)
+    dispatch(sig, sender=ProjectGroup, project_group=instance)
