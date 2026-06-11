@@ -34,10 +34,7 @@ def solr_collection_name(cdb_model: ConceptDB) -> str:
     "collection names must consist entirely of periods, underscores,
     hyphens, and alphanumerics as well not start with a hyphen"
     """
-    safe_name = re.sub(r'[^a-zA-Z0-9._-]', '_', cdb_model.name)
-    safe_name = safe_name.lstrip('-')
-    if not safe_name:
-        safe_name = 'cdb'
+    safe_name = re.sub(r'[^a-zA-Z0-9._-]', '_', cdb_model.name).lstrip('-')
     return f'{safe_name}_id_{cdb_model.id}'
 
 
