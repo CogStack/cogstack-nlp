@@ -125,6 +125,25 @@ class SearchCollectionTests(TestCase):
 
 
 @override_settings(MEDIA_ROOT='/tmp/mct-tests-solr')
+class SolrCollectionNameTests(TestCase):
+    def test_replaces_spaces_and_other_invalid_characters(self):
+        cdb = ConceptDB(name='test pack with space_CDB', cdb_file='space_cdb.dat')
+        cdb.save(skip_load=True)
+        self.assertEqual(
+            solr_utils.solr_collection_name(cdb),
+            f'test_pack_with_space_CDB_id_{cdb.id}',
+        )
+
+    def test_strips_leading_hyphens(self):
+        cdb = ConceptDB(name='-leading-hyphen', cdb_file='hyphen_cdb.dat')
+        cdb.save(skip_load=True)
+        self.assertEqual(
+            solr_utils.solr_collection_name(cdb),
+            f'leading-hyphen_id_{cdb.id}',
+        )
+
+
+@override_settings(MEDIA_ROOT='/tmp/mct-tests-solr')
 class HelperFunctionTests(TestCase):
     def test_process_result_response_deduplicates_by_cui(self):
         resp = {
