@@ -11,9 +11,8 @@ from django.http import HttpResponse
 from rest_framework.exceptions import PermissionDenied
 
 from api.models import AnnotatedEntity, MetaAnnotation, EntityRelation, Document, ConceptDB
-from api.solr_utils import drop_collection, import_all_concepts
+from api.solr_utils import drop_collection, import_all_concepts, solr_collection_name
 from api.utils import clear_cdb_cnf_addons
-from api.solr_utils import solr_collection_name
 
 from medcat.cdb import CDB
 
