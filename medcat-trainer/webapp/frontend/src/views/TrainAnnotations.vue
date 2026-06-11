@@ -568,6 +568,18 @@ export default {
             }
           }
         }
+      }).catch(err => {
+        // Without this, a failed annotated-entities request was swallowed, leaving the
+        // document stuck on a loading state with no feedback - i.e. the document never loads.
+        this.nextEntSetUrl = null
+        this.loadingMsg = null
+        this.errors.modal = true
+        this.errors.message = 'Failed to load document annotations. Please try again by refreshing the page.'
+        if (err.response) {
+          this.errors.message = err.response.data?.message || this.errors.message
+          this.errors.description = err.response.data?.description || ''
+          this.errors.stacktrace = err.response.data?.stacktrace
+        }
       })
     },
     selectEntityFromSummary(entIdx) {
