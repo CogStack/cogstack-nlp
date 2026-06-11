@@ -53,6 +53,56 @@ class CollectionsAvailableTests(TestCase):
         response = solr_utils.collections_available(['1'])
         self.assertEqual(response.status_code, 500)
 
+    @patch('api.solr_utils.requests.get')
+    def test_ignores_non_medcat_collections_without_cui_field(self, mock_get):
+        # Bitnami Solr helm chart bootstraps a default "my-collection" with no cui field.
+        def side_effect(url, *args, **kwargs):
+            if 'admin/collections' in url:
+                return MagicMock(status_code=200, text=json.dumps({
+                    'collections': ['my-collection', 'my_id_1'],
+                }))
+            if 'my-collection' in url:
+                return MagicMock(text=json.dumps({
+                    'schema': {'fields': [{'name': 'id', 'type': 'string'}]},
+                }))
+            return MagicMock(text=json.dumps({
+                'schema': {'fields': [{'name': 'cui', 'type': 'string'}]},
+            }))
+
+        mock_get.side_effect = side_effect
+
+        response = solr_utils.collections_available(['1'])
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data['results']['1'])
+        self.assertNotIn('my-collection', solr_utils.SOLR_INDEX_SCHEMA)
+        self.assertEqual(solr_utils.SOLR_INDEX_SCHEMA['my_id_1'], {'cui': 'string'})
+
+
+@override_settings(MEDIA_ROOT='/tmp/mct-tests-solr')
+class CacheSolrCollectionSchemaTypesTests(TestCase):
+    def setUp(self):
+        solr_utils.SOLR_INDEX_SCHEMA.clear()
+
+    @patch('api.solr_utils.requests.get')
+    def test_skips_cache_when_cui_field_missing(self, mock_get):
+        mock_get.return_value = MagicMock(text=json.dumps({
+            'schema': {'fields': [{'name': 'id', 'type': 'string'}]},
+        }))
+
+        solr_utils._cache_solr_collection_schema_types('my-collection')
+
+        self.assertNotIn('my-collection', solr_utils.SOLR_INDEX_SCHEMA)
+
+    @patch('api.solr_utils.requests.get')
+    def test_caches_cui_type_when_field_present(self, mock_get):
+        mock_get.return_value = MagicMock(text=json.dumps({
+            'schema': {'fields': [{'name': 'cui', 'type': 'plongs'}]},
+        }))
+
+        solr_utils._cache_solr_collection_schema_types('my_id_1')
+
+        self.assertEqual(solr_utils.SOLR_INDEX_SCHEMA['my_id_1'], {'cui': 'plongs'})
+
 
 @override_settings(MEDIA_ROOT='/tmp/mct-tests-solr')
 class SearchCollectionTests(TestCase):

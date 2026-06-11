@@ -44,7 +44,16 @@ def _cache_solr_collection_schema_types(collection):
     logger.info(f'Retrieving solr schema: {url}')
     try:
         resp = json.loads(requests.get(url).text)
-        cui_type = [n for n in resp['schema']['fields'] if n['name'] == 'cui'][0]['type']
+        cui_type = next(
+            (f['type'] for f in resp['schema']['fields'] if f['name'] == 'cui'),
+            None,
+        )
+        if cui_type is None:
+            logger.debug(
+                'Skipping schema cache for collection %s: no cui field (not a MedCAT Trainer index)',
+                collection,
+            )
+            return
         # just store cui type for the time being
         SOLR_INDEX_SCHEMA[collection] = {'cui': cui_type}
     except ConnectionError as e:
