@@ -31,6 +31,9 @@ class FakeCDB:
             self.addl_info['ch2pt'] = ch2pt
         self.cui2info = cui2info or {}
 
+    def get_name(self, cui):
+        return self.cui2info.get(cui, {}).get('preferred_name', cui)
+
 
 @override_settings(MEDIA_ROOT='/tmp/mct-tests-concepts')
 class CdbCuiChildrenTests(TestCase):
@@ -38,11 +41,27 @@ class CdbCuiChildrenTests(TestCase):
         self.user = create_user(username='cui-children')
         self.client = _auth_client(self.user)
 
-    def test_returns_400_when_cdb_has_no_pt2ch(self):
+    def test_returns_flat_root_when_cdb_has_no_pt2ch(self):
         cdb = FakeCDB()
         with patch('api.views.get_cached_cdb', return_value=cdb):
             resp = self.client.get('/api/model-concept-children/1/')
-        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()['results'], [
+            {'cui': 'Root', 'pretty_name': 'All concepts'},
+        ])
+
+    def test_returns_flat_cdb_concepts_when_cdb_has_no_pt2ch(self):
+        cdb = FakeCDB(cui2info={
+            'C2': {'preferred_name': 'Concept Two'},
+            'C1': {'preferred_name': 'Concept One'},
+        })
+        with patch('api.views.get_cached_cdb', return_value=cdb):
+            resp = self.client.get('/api/model-concept-children/1/?parent_cui=Root')
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()['results'], [
+            {'cui': 'C1', 'pretty_name': 'Concept One'},
+            {'cui': 'C2', 'pretty_name': 'Concept Two'},
+        ])
 
     def test_returns_root_term_when_no_parent_cui(self):
         cdb = FakeCDB(
@@ -107,6 +126,20 @@ class CdbConceptPathTests(TestCase):
             resp = self.client.get('/api/concept-path/?cdb_id=1&cui=child')
         self.assertEqual(resp.status_code, 200)
         mock_ch2pt.assert_not_called()
+
+    def test_returns_flat_path_when_cdb_has_no_pt2ch(self):
+        cdb = FakeCDB(cui2info={'C1': {'preferred_name': 'Concept One'}})
+        with patch('api.views.get_cached_cdb', return_value=cdb):
+            resp = self.client.get('/api/concept-path/?cdb_id=1&cui=C1')
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()['results'], {
+            'node_path': {
+                'cui': 'Root',
+                'pretty_name': 'All concepts',
+                'children': [{'cui': 'C1', 'pretty_name': 'Concept One'}],
+            },
+            'links': [{'parent': 'Root', 'child': 'C1'}],
+        })
 
 
 @override_settings(MEDIA_ROOT='/tmp/mct-tests-concepts')
