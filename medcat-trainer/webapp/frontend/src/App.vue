@@ -45,6 +45,11 @@
         </div>
       </div>
     </header>
+    <transition name="alert">
+      <div v-if="sessionExpired" class="alert alert-warning session-expired-alert" role="alert">
+        Your session has expired. Please log in again.
+      </div>
+    </transition>
     <main class="main-content">
       <router-view/>
     </main>
@@ -60,6 +65,7 @@ import Login from '@/components/common/Login.vue'
 import EventBus from '@/event-bus'
 import { isOidcEnabled, getRuntimeConfig } from './runtimeConfig';
 import { getMenuItems } from './plugins/registry'
+import { UNAUTHORIZED_EVENT, resetUnauthorizedGuard } from './httpAuth'
 
 export default {
   name: 'App',
@@ -71,6 +77,7 @@ export default {
       isAdmin: false,
       version: '',
       useOidc: isOidcEnabled(),
+      sessionExpired: false,
     }
   },
   computed: {
@@ -99,6 +106,8 @@ export default {
       }
     },
     loginSuccessful () {
+      this.sessionExpired = false
+      resetUnauthorizedGuard()
       if (!this.useOidc) {
         this.loginModal = false
         this.uname = this.$cookies.get('username')
@@ -109,6 +118,14 @@ export default {
       if (this.$route.name !== 'home') {
         this.$router.push({ name: 'home' })
       }
+    },
+    onUnauthorized () {
+      // A request was rejected with 401: the stored token is no longer valid
+      // (e.g. server-side session/token cleared). Prompt the user to log back in.
+      this.uname = null
+      this.isAdmin = false
+      this.sessionExpired = true
+      this.openLogin()
     },
     updateOidcUser () {
       if (this.$keycloak && this.$keycloak.tokenParsed) {
@@ -139,6 +156,7 @@ export default {
   },
   mounted () {
     EventBus.$on('login:success', this.loginSuccessful)
+    EventBus.$on(UNAUTHORIZED_EVENT, this.onUnauthorized)
 
     if (!this.useOidc) {
       this.uname = this.$cookies.get('username') || null
@@ -154,6 +172,7 @@ export default {
   },
   beforeDestroy () {
     EventBus.$off('login:success', this.loginSuccessful)
+    EventBus.$off(UNAUTHORIZED_EVENT, this.onUnauthorized)
   },
   created () {
     this.$http.get('/api/version/').then(resp => {
@@ -166,6 +185,16 @@ export default {
 <style scoped lang="scss">
 .full-height {
   min-height: 100vh;
+}
+
+.session-expired-alert {
+  position: fixed;
+  top: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 60;
+  margin: 0;
+  text-align: center;
 }
 
 .header-gradient {

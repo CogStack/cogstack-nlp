@@ -40,6 +40,38 @@ const mountView = (getImpl: (url: string) => Promise<unknown>) => {
   return { wrapper, mockGet }
 }
 
+describe('TrainAnnotations.vue fetchData', () => {
+  it('surfaces an error modal when the project request fails', async () => {
+    const { wrapper } = mountView((url) => {
+      if (url.startsWith('/api/project-annotate-entities/')) {
+        return Promise.reject({ response: { status: 500, data: { message: 'Database unavailable' } } })
+      }
+      return new Promise(() => {})
+    })
+
+    wrapper.vm.fetchData()
+    await flushPromises()
+
+    expect(wrapper.vm.errors.modal).toBe(true)
+    expect(wrapper.vm.errors.message).toBe('Database unavailable')
+    expect(wrapper.vm.project).toBeNull()
+  })
+
+  it('does not show the error modal on 401 (handled globally by httpAuth)', async () => {
+    const { wrapper } = mountView((url) => {
+      if (url.startsWith('/api/project-annotate-entities/')) {
+        return Promise.reject({ response: { status: 401, data: { detail: 'Invalid token.' } } })
+      }
+      return new Promise(() => {})
+    })
+
+    wrapper.vm.fetchData()
+    await flushPromises()
+
+    expect(wrapper.vm.errors.modal).toBe(false)
+  })
+})
+
 describe('TrainAnnotations.vue fetchEntities', () => {
   it('surfaces an error and clears the loading state when annotated-entities fails', async () => {
     const { wrapper } = mountView((url) => {
@@ -62,6 +94,50 @@ describe('TrainAnnotations.vue fetchEntities', () => {
     // The document must not be left stuck on a perpetual loading state.
     expect(wrapper.vm.loadingMsg).toBeNull()
     expect(wrapper.vm.nextEntSetUrl).toBeNull()
+  })
+
+  it('pages through document sets to reach a deep-linked doc beyond the first batch', async () => {
+    // 15 single-doc pages: the target (id 12) only appears after the first
+    // LOAD_NUM_DOC_PAGES (10) batch, exercising the recursive page-advance.
+    const TOTAL_PAGES = 15
+    const TARGET_ID = 12
+    const pageUrl = (p: number) => `/api/documents/?dataset=1&page=${p}`
+    const docsResponse = (page: number) => ({
+      data: {
+        results: [{ id: page, name: `doc-${page}`, text: `text ${page}` }],
+        count: TOTAL_PAGES,
+        previous: page === 1 ? null : pageUrl(page - 1),
+        next: page === TOTAL_PAGES ? null : pageUrl(page + 1)
+      }
+    })
+
+    await router.push({ name: 'train-annotations', params: { projectId: 1, docId: TARGET_ID } })
+
+    const { wrapper, mockGet } = mountView((url) => {
+      if (url.startsWith('/api/project-annotate-entities/')) {
+        return Promise.resolve({
+          data: { count: 1, results: [{ ...project, prepared_documents: [TARGET_ID] }] }
+        })
+      }
+      if (url.startsWith('/api/documents/')) {
+        // First call (no nextDocSetUrl) requests page 1; subsequent calls carry ?page=N.
+        const match = url.match(/page=(\d+)/)
+        const page = match ? Number(match[1]) : 1
+        return Promise.resolve(docsResponse(page))
+      }
+      if (url.startsWith('/api/annotated-entities/')) {
+        return Promise.resolve({ data: { results: [], previous: null, next: null } })
+      }
+      return new Promise(() => {})
+    })
+
+    wrapper.vm.fetchData()
+    await flushPromises()
+
+    // The deep-linked document is selected and every page was fetched exactly once.
+    expect(wrapper.vm.currentDoc.id).toBe(TARGET_ID)
+    const docPageCalls = mockGet.mock.calls.filter(c => String(c[0]).startsWith('/api/documents/'))
+    expect(docPageCalls).toHaveLength(TOTAL_PAGES)
   })
 
   it('loads entities and clears the loading state on success', async () => {
