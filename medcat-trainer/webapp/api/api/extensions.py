@@ -23,10 +23,10 @@ sandbox. Treat plugins like kernel modules — only install packages you trust a
 have vetted. See ``docs/plugins.md`` for the full trust model and secure
 plugin-authoring guidance.
 
-The registry helpers below apply light input hardening (URL-scheme validation on
+The registry helpers below apply light input validation (URL-scheme validation on
 menu/route entries) and signal emission is isolated via :func:`dispatch` so that
-a buggy or hostile plugin receiver cannot break core request flows. These are
-defence-in-depth measures, **not** a security boundary against malicious code
+a plugin receiver cannot break core request flows. These are
+validation measures, **not** a security boundary against malicious code
 running in-process.
 """
 from __future__ import annotations
@@ -100,7 +100,7 @@ def dispatch(signal: Signal, **kwargs: Any) -> None:
     are third-party plugin code. We therefore use :meth:`Signal.send_robust`,
     which isolates and returns any exception raised by a receiver instead of
     propagating it into the request path. Receiver failures are logged and then
-    ignored so a buggy or hostile plugin cannot block document submission,
+    ignored so a plugin cannot block document submission,
     annotation persistence, or OIDC login.
     """
     for receiver, response in signal.send_robust(**kwargs):
@@ -115,12 +115,12 @@ def dispatch(signal: Signal, **kwargs: Any) -> None:
 
 
 # ---------------------------------------------------------------------------
-# URL hardening for bootstrap-exposed entries
+# URL validation for bootstrap-exposed entries
 # ---------------------------------------------------------------------------
 #
 # Menu ``href``/``route`` and route ``path`` values are served via
-# ``GET /api/bootstrap/`` and rendered into the authenticated SPA. A hostile or
-# careless plugin must not be able to inject ``javascript:``/``data:`` (etc.)
+# ``GET /api/bootstrap/`` and rendered into the authenticated SPA. A
+# plugin must not be able to inject ``javascript:``/``data:`` (etc.)
 # URLs that would execute in the browser of any logged-in user, nor
 # protocol-relative ("//host") references that navigate off-origin.
 

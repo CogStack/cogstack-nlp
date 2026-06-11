@@ -35,12 +35,12 @@ model** you must understand before installing any plugin.
 
 ### What the scaffold guarantees (and does not)
 
-The core app applies **defence-in-depth**, not a security boundary:
+The core app does not provide a security boundary to plugins, it does provide:
 
 - **Grant-only permission hooks.** A hook returning `True` *grants* a
   permission; `None`/`False` abstains. Hooks **cannot revoke** access the OSS
   code already grants, so a plugin cannot lock legitimate users out.
-- **URL hardening.** `route`/`href`/`path` values registered for the frontend
+- **URL validation.** `route`/`href`/`path` values registered for the frontend
   bootstrap are validated to be relative paths or `http(s)` URLs. Dangerous
   schemes (`javascript:`, `data:`, `vbscript:`, `file:` …) and
   protocol-relative (`//host`) values are rejected, so a plugin cannot inject a
