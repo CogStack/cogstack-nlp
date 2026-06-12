@@ -88,6 +88,13 @@ project_group_updated = Signal()
 #: kwargs: ``user`` (User), ``id_token`` (dict), ``created`` (bool).
 user_oidc_resolved = Signal()
 
+#: Sent after :func:`api.model_import.import_model_pack` successfully registers
+#: a model pack.
+#: kwargs: ``model_pack`` (ModelPack), ``concept_db`` (ConceptDB or None),
+#:         ``user`` (User or None), ``description`` (str or None),
+#:         ``source_uri`` (str or None).
+model_pack_imported = Signal()
+
 
 # ---------------------------------------------------------------------------
 # Signal dispatch (plugin-isolating)
@@ -290,6 +297,7 @@ __all__ = [
     "project_group_created",
     "project_group_updated",
     "user_oidc_resolved",
+    "model_pack_imported",
     "dispatch",
     "register_permission_hook",
     "get_permission_hooks",
