@@ -38,6 +38,7 @@ review-only workflows (collect annotations without changing the model).
 - [Administrator Setup](admin_setup.md)
 - [Annotation Project Creation and Management](project_admin.md)
 - [Project Groups](project_group_admin.md)
+- [Django Admin](django_admin.md)
 - [Annotator Guide](annotator_guide.md)
 - [Meta Annotations](meta_annotations.md)
 - [Demo / Try Model](demo_page.md)

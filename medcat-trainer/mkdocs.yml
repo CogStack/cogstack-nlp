@@ -42,6 +42,7 @@ nav:
         - Administrator setup: admin_setup.md
         - Annotation Project admin: project_admin.md
         - Annotation Project group admin: project_group_admin.md
+        - Django Admin: django_admin.md
       - Meta annotations: meta_annotations.md
   - Reference: 
     - Advanced usage: advanced_usage.md
