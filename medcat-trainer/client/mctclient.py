@@ -321,8 +321,9 @@ class MedCATTrainerSession:
         """Fetch a new OIDC access token and update the Authorization header."""
         token = get_keycloak_access_token(self._keycloak_settings)
         self.headers = {"Authorization": f"Bearer {token}"}
-        # Refresh 60s before the typical 5-minute Keycloak access token lifetime (i.e. 4 minutes from now)
-        self._token_expiry = time.monotonic() + 240
+        # By default, refresh 60s before the typical 5-minute Keycloak access token lifetime (i.e. 4 minutes / 240 seconds from now)
+        interval = int(os.getenv("MCTRAINER_TOKEN_REFRESH_INTERVAL", "240"))
+        self._token_expiry = time.monotonic() + interval
 
     def ensure_token_fresh(self) -> None:
         """Refresh the OIDC token if it is near expiry. No-op for non-OIDC sessions."""
