@@ -42,9 +42,11 @@ def configure_docs(app: FastAPI, settings: Settings) -> None:
             swagger_css_url=f"{root_path}/static/swagger-ui.css",
         )
 
-    @app.get(app.swagger_ui_oauth2_redirect_url, include_in_schema=False)
-    async def swagger_ui_redirect():
-        return get_swagger_ui_oauth2_redirect_html()
+    if app.swagger_ui_oauth2_redirect_url:
+
+        @app.get(app.swagger_ui_oauth2_redirect_url, include_in_schema=False)
+        async def swagger_ui_redirect():
+            return get_swagger_ui_oauth2_redirect_html()
 
     @app.get("/redoc", include_in_schema=False)
     async def redoc_html():
