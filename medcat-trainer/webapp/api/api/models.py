@@ -34,35 +34,6 @@ cdb_name_validator = RegexValidator(r'^[a-zA-Z][a-zA-Z0-9_]*$', 'a-zA-Z for firs
 logger = logging.getLogger(__name__)
 
 
-def _load_meta_cat_addons(model_pack_path: str) -> list[tuple[str, MetaCATAddon]]:
-    """Load MetaCAT addons from a model pack, skipping other addon types.
-
-    RelCAT addons require tokenizer/cdb/cnf init kwargs during deserialisation.
-    They are loaded at inference time via CAT.load_model_pack and do not need
-    trainer-side registration as MetaCATModel rows.
-    """
-    from medcat.storage.serialisers import deserialise
-    from medcat.utils.defaults import COMPONENTS_FOLDER
-
-    components_folder = os.path.join(model_pack_path, COMPONENTS_FOLDER)
-    if not os.path.exists(components_folder):
-        return []
-
-    meta_cat_folder_prefix = MetaCATAddon.get_folder_name_for_addon_and_name(
-        MetaCATAddon.addon_type, '')
-    addons: list[tuple[str, MetaCATAddon]] = []
-    for folder_name in os.listdir(components_folder):
-        if not folder_name.startswith(meta_cat_folder_prefix):
-            continue
-        addon_path = os.path.join(components_folder, folder_name)
-        if not os.path.isdir(addon_path):
-            continue
-        addon = deserialise(addon_path)
-        if isinstance(addon, MetaCATAddon):
-            addons.append((addon.full_name, addon))
-    return addons
-
-
 class ModelPack(models.Model):
     name = models.TextField(help_text='', unique=True)
     model_pack = models.FileField(help_text='Model pack zip')
@@ -145,7 +116,10 @@ class ModelPack(models.Model):
         try:
             metaCATmodels = []
             # should raise an error if there already is a MetaCAT model with this definition
-            meta_cat_addons = _load_meta_cat_addons(unpacked_model_pack_path)
+            addons = CAT.load_addons(unpacked_model_pack_path)
+            meta_cat_addons = [
+                (addon_path, addon) for addon_path, addon in addons
+                if isinstance(addon, MetaCATAddon)]
             for meta_cat_dir, meta_cat_addon in meta_cat_addons:
                 meta_cat = meta_cat_addon.mc
                 mc_model = MetaCATModel()
