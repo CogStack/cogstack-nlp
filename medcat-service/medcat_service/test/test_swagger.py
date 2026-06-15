@@ -20,6 +20,7 @@ class TestSwaggerDocs(unittest.TestCase):
         for mod in list(sys.modules):
             if mod.startswith("medcat_service"):
                 sys.modules.pop(mod)
+        from medcat_service.main import app
 
         return app
 
