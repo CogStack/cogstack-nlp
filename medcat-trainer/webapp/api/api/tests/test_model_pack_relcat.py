@@ -1,78 +1,80 @@
-"""Tests for registering model packs that include RelCAT addons."""
+"""Tests for registering model packs that include RelCAT addons.
+
+The Trainer's responsibility when registering a model pack is to load its
+addons and register only the MetaCAT ones (as ``MetaCATModel`` rows). RelCAT
+addons must be tolerated (loaded by ``CAT.load_addons``) but skipped during
+registration. These tests mock ``CAT.load_addons`` so they exercise that
+filtering logic without downloading or loading real models.
+"""
 
 import os
-import shutil
 import tempfile
-import zipfile
-from urllib.request import urlretrieve
+from unittest.mock import MagicMock, patch
 
 from django.core.files.base import ContentFile
 from django.test import TestCase, override_settings
 
-from medcat.storage.serialisers import MANUAL_SERIALISED_TAG, SER_TYPE_FILE
+from medcat.components.addons.meta_cat.meta_cat import MetaCATAddon
+from medcat.components.addons.relation_extraction.rel_cat import RelCATAddon
 
 from ..models import ModelPack
 
-MODEL_PACK_ZIP_URL = (
-    "https://raw.githubusercontent.com/CogStack/cogstack-nlp/"
-    "051edf6cbd94fa83436fab807aff49d78dd68e59/"
-    "medcat-service/models/examples/example-medcat-v2-model-pack.zip"
-)
-REL_CAT_ADDON_CLS = (
-    "medcat.components.addons.relation_extraction.rel_cat.RelCATAddon"
-)
+
+def _make_meta_cat_addon(category_name="Status", model_name="bert"):
+    addon = MagicMock(spec=MetaCATAddon)
+    meta_cat = MagicMock()
+    meta_cat.config.general.category_name = category_name
+    meta_cat.config.model.model_name = model_name
+    meta_cat.config.general.category_value2id = {"True": 0, "False": 1}
+    addon.mc = meta_cat
+    return addon
 
 
-def _add_rel_cat_addon_stub(model_pack_dir: str, addon_name: str = "rel_cat") -> None:
-    """Add a minimal RelCAT addon folder that triggers manual deserialisation."""
-    components_dir = os.path.join(model_pack_dir, "saved_components")
-    os.makedirs(components_dir, exist_ok=True)
-    addon_dir = os.path.join(components_dir, f"addon_rel_cat.{addon_name}")
-    os.makedirs(addon_dir, exist_ok=True)
-    with open(os.path.join(addon_dir, SER_TYPE_FILE), "w", encoding="utf-8") as f:
-        f.write(MANUAL_SERIALISED_TAG + REL_CAT_ADDON_CLS)
-
-
-def _build_model_pack_zip_with_relcat(cache_dir: str) -> str:
-    zip_path = os.path.join(cache_dir, "cached_model_pack.zip")
-    if not os.path.exists(zip_path):
-        urlretrieve(MODEL_PACK_ZIP_URL, zip_path)
-    unpacked = os.path.join(cache_dir, "model_pack")
-    if os.path.exists(unpacked):
-        shutil.rmtree(unpacked)
-    shutil.unpack_archive(zip_path, unpacked)
-    _add_rel_cat_addon_stub(unpacked)
-    out_zip = os.path.join(cache_dir, "model_pack_with_relcat.zip")
-    if os.path.exists(out_zip):
-        os.remove(out_zip)
-    with zipfile.ZipFile(out_zip, "w", zipfile.ZIP_DEFLATED) as zf:
-        for root, _, files in os.walk(unpacked):
-            for file_name in files:
-                file_path = os.path.join(root, file_name)
-                arcname = os.path.relpath(file_path, unpacked)
-                zf.write(file_path, arcname)
-    return out_zip
+def _make_rel_cat_addon():
+    return MagicMock(spec=RelCATAddon)
 
 
 @override_settings(MEDIA_ROOT=tempfile.mkdtemp())
 class ModelPackRelCATRegistrationTests(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls._cache_dir = tempfile.mkdtemp()
-        cls.model_pack_zip = _build_model_pack_zip_with_relcat(cls._cache_dir)
+    def _prepare_model_pack(self, name="relcat-pack-test"):
+        """Create a ModelPack with a fake unpacked dir (cdb dir + vocab file)."""
+        model_pack = ModelPack(name=name)
+        model_pack.model_pack.save(f"{name}.zip", ContentFile(b"fake"), save=False)
+        unpacked = model_pack.model_pack.path[: -len(".zip")]
+        os.makedirs(os.path.join(unpacked, "cdb"), exist_ok=True)
+        with open(os.path.join(unpacked, "vocab"), "w", encoding="utf-8") as fh:
+            fh.write("")
+        return model_pack, unpacked
 
-    @classmethod
-    def tearDownClass(cls):
-        shutil.rmtree(cls._cache_dir, ignore_errors=True)
-        super().tearDownClass()
+    def test_register_model_pack_with_relcat_addon_skips_relcat(self):
+        model_pack, unpacked = self._prepare_model_pack()
+        comps = os.path.join(unpacked, "saved_components")
 
-    def test_register_model_pack_with_relcat_addon_succeeds(self):
-        with open(self.model_pack_zip, "rb") as fh:
-            pack_bytes = fh.read()
-        model_pack = ModelPack(name="relcat-pack-test")
-        model_pack.model_pack = ContentFile(pack_bytes, name="relcat-pack-test.zip")
-        model_pack.save()
+        addons = [
+            (os.path.join(comps, "addon_meta_cat.Status"), _make_meta_cat_addon()),
+            (os.path.join(comps, "addon_rel_cat.rel_cat"), _make_rel_cat_addon()),
+        ]
+
+        with patch("api.models.CAT.attempt_unpack"), \
+                patch("api.models.CDB.load"), \
+                patch("api.models.Vocab.load"), \
+                patch("api.models.CAT.load_addons", return_value=addons):
+            model_pack.save()
 
         self.assertIsNotNone(model_pack.concept_db)
         self.assertIsNotNone(model_pack.vocab)
+        # RelCAT addon must be filtered out; only the MetaCAT is registered.
+        self.assertEqual(model_pack.meta_cats.count(), 1)
+        self.assertEqual(model_pack.meta_cats.first().name, "Status - bert")
+
+    def test_register_model_pack_without_addons(self):
+        model_pack, unpacked = self._prepare_model_pack(name="no-addon-pack")
+
+        with patch("api.models.CAT.attempt_unpack"), \
+                patch("api.models.CDB.load"), \
+                patch("api.models.Vocab.load"), \
+                patch("api.models.CAT.load_addons", return_value=[]):
+            model_pack.save()
+
+        self.assertIsNotNone(model_pack.concept_db)
+        self.assertEqual(model_pack.meta_cats.count(), 0)
