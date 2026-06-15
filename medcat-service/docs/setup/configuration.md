@@ -27,6 +27,7 @@ The following environment variables are available for tailoring the MedCAT Servi
 - `APP_ENABLE_METRICS` - Enable prometheus metrics collection served on the path /metrics
 - `APP_ENABLE_DEMO_UI` - Enable the demo user interface to try models. (Default: `False`)
 - `APP_DEMO_UI_PATH` - Customise the path of the demo UI. (Default: `/`)
+- `APP_USE_CDN` - Load Swagger UI and ReDoc assets from a CDN. (Default: `True`) Set to `False` to serve docs from bundled static files instead. This allows the docs UI to work for offline browsers.
 
 ### Shared Memory (`DOCKER_SHM_SIZE`)
 

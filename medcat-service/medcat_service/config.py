@@ -57,7 +57,10 @@ class Settings(BaseSettings):
 
     use_cdn_for_docs: bool = Field(
         default=True,
-        description="Load Swagger UI and ReDoc assets from a CDN which is the default in fastapi. Set to false to serve them locally for offline use.",
+        description=(
+            "Use a CDN for Swagger UI and ReDoc (default). "
+            "Set to false to serve docs from bundled static files. This allows the docs UI to work for offline browsers."
+        ),
         alias="APP_USE_CDN",
     )
 
