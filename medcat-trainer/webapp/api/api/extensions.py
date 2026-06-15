@@ -89,10 +89,10 @@ project_group_updated = Signal()
 user_oidc_resolved = Signal()
 
 #: Sent after :func:`api.model_import.import_model_pack` successfully registers
-#: a model pack.
-#: kwargs: ``model_pack`` (ModelPack), ``concept_db`` (ConceptDB or None),
-#:         ``user`` (User or None), ``description`` (str or None),
-#:         ``source_uri`` (str or None).
+#: a model pack. The linked ``concept_db`` and ``vocab`` are available on the
+#: ``model_pack`` itself.
+#: kwargs: ``model_pack`` (ModelPack), ``user`` (User or None),
+#:         ``description`` (str or None), ``source_uri`` (str or None).
 model_pack_imported = Signal()
 
 

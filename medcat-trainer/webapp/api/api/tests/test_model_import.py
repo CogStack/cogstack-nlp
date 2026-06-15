@@ -57,7 +57,6 @@ class ImportModelPackTests(TestCase):
         signal, kwargs = mock_dispatch.call_args.args[0], mock_dispatch.call_args.kwargs
         self.assertIs(signal, model_pack_imported)
         self.assertEqual(kwargs['model_pack'], model_pack)
-        self.assertEqual(kwargs['concept_db'], model_pack.concept_db)
         self.assertEqual(kwargs['user'], self.user)
         self.assertEqual(kwargs['description'], 'Pulled from MedCATtery')
         self.assertEqual(kwargs['source_uri'], 'https://medcattery.example/models/snomed/3')

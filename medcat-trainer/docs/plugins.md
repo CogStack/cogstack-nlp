@@ -109,6 +109,7 @@ Emitted by the core app; plugins connect receivers (in `AppConfig.ready()`):
 | `annotation_created` / `annotation_updated` / `annotation_deleted` | annotation row change | `annotation`, `project`, `document`, (`user`) |
 | `project_group_created` / `project_group_updated` | project group change | `project_group` |
 | `user_oidc_resolved` | after OIDC user resolution | `user`, `id_token`, `created` |
+| `model_pack_imported` | after `import_model_pack()` succeeds | `model_pack`, `user`, `description`, `source_uri` |
 
 Receivers should be cheap and must not assume they can block the core flow —
 exceptions are logged and swallowed.
@@ -139,6 +140,30 @@ register_route({"path": "/ee/adj", "component": "Adjudication"})
 
 `route`/`href`/`path` must be relative paths or `http(s)` URLs; other schemes
 raise `ValueError` at registration time.
+
+### Model import
+
+Plugins that pull model packs from an external registry (e.g. MedCATtery) should
+use the stable helper rather than re-implementing upload/unpack:
+
+```python
+from api.model_import import ImportModelPackError, import_model_pack
+
+try:
+    model_pack = import_model_pack(
+        "/tmp/snomed_v3.zip",
+        name="snomed-v3",
+        user=request.user,
+        description="Imported from MedCATtery",
+        source_uri="https://medcattery.example/models/snomed/3",
+    )
+except ImportModelPackError as exc:
+    ...
+```
+
+`import_model_pack` creates a `ModelPack` (and linked `ConceptDB` / `Vocabulary`
+via the normal `ModelPack.save()` path) and emits `model_pack_imported`.
+Annotation projects reference `model_pack.id`, not the CDB directly.
 
 ## Backend API endpoints — required auth pattern
 
@@ -197,7 +222,8 @@ def adjudication_summary(request, project_id):
   `registerPlugin({ routes: [...] })`) or described via `register_route` for the
   bootstrap payload.
 - **UI slots** let a build-time plugin inject components at named slots, e.g.
-  `home:after-projects`, `project-admin:tabs`, `train-annotations:sidebar`:
+  `home:after-projects`, `project-admin:tabs`, `project-admin:modelpacks`,
+  `train-annotations:sidebar`:
 
     ```ts
     import { registerPlugin } from "@/plugins/registry";

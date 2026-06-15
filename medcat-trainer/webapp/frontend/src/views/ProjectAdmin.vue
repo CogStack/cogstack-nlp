@@ -463,6 +463,7 @@
 
       <!-- Model Packs Tab -->
       <div v-if="activeTab === 'modelpacks'" class="tab-content admin-section">
+        <plugin-slot name="project-admin:modelpacks" />
         <model-packs-list
           v-if="!showModelPackForm && !editingModelPack"
           :model-packs="modelPacks"
