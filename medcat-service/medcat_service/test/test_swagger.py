@@ -15,8 +15,9 @@ CDN_REDOC_JS = "https://cdn.jsdelivr.net/npm/redoc@2/bundles/redoc.standalone.js
 class TestSwaggerDocs(unittest.TestCase):
     def _reload_app(self):
         """
-        Reload the FastAPI app after env changes so settings are re-evaluated.
+        Reload the FastAPI app after env changes
         """
+        # Clear cached imports so settings are re-evaluated
         for mod in list(sys.modules):
             if mod.startswith("medcat_service"):
                 sys.modules.pop(mod)
@@ -29,7 +30,6 @@ class TestSwaggerDocs(unittest.TestCase):
 
     @patch.dict(os.environ, {"APP_USE_CDN": "true"}, clear=False)
     def test_cdn_mode_serves_docs_from_cdn(self):
-        app = self._reload_app()
         client = TestClient(app)
 
         docs = client.get("/docs")
@@ -48,7 +48,6 @@ class TestSwaggerDocs(unittest.TestCase):
 
     @patch.dict(os.environ, {"APP_USE_CDN": "false"}, clear=False)
     def test_self_hosted_mode_serves_docs_from_static(self):
-        app = self._reload_app()
         client = TestClient(app)
 
         docs = client.get("/docs")
@@ -72,7 +71,6 @@ class TestSwaggerDocs(unittest.TestCase):
         clear=False,
     )
     def test_self_hosted_mode_prefixes_urls_with_root_path(self):
-        app = self._reload_app()
         client = TestClient(app)
 
         docs = client.get("/docs")
