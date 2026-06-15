@@ -11,6 +11,7 @@ from medcat_service.demo.gradio_demo import mount_gradio_app
 from medcat_service.dependencies import get_settings
 from medcat_service.log_config import log_config
 from medcat_service.routers import admin, health, process
+from medcat_service.routers.swagger import configure_docs
 from medcat_service.types import HealthCheckFailedException
 
 settings = get_settings()
@@ -30,11 +31,15 @@ app = FastAPI(
         "identifier": "Apache-2.0",
     },
     root_path=settings.app_root_path,
+    docs_url="/docs" if settings.use_cdn_for_docs else None,
+    redoc_url="/redoc" if settings.use_cdn_for_docs else None,
 )
 
 app.include_router(admin.router)
 app.include_router(health.router)
 app.include_router(process.router)
+
+configure_docs(app, settings)
 
 
 def configure_observability(settings: Settings, app: FastAPI):
