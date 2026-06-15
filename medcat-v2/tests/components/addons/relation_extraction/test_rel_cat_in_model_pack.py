@@ -84,3 +84,16 @@ class LoadedRelCATTests(unittest.TestCase):
         cat = CAT.load_model_pack(self.model_pack_path)
         self.assertIsInstance(cat, CAT)
         self.assert_has_rel_cat(cat)
+
+    def test_can_load_rel_cat_via_load_addons(self):
+        addons = CAT.load_addons(self.model_pack_path)
+        self.assertEqual(len(addons), 1)
+        _, addon = addons[0]
+        self.assertIsInstance(addon, rel_cat.RelCATAddon)
+
+    def test_can_load_rel_cat_with_addon_cnf(self):
+        addon = CAT.load_addons(
+            self.model_pack_path,
+            addon_config_dict={"rel_cat.rel_cat": {"general": {"device": "cpu"}}},
+        )[0][1]
+        self.assertEqual(addon.config.general.device, "cpu")

@@ -94,13 +94,27 @@ class RelCATAddon(AddonComponent):
     @classmethod
     def deserialise_from(cls, folder_path: str, **init_kwargs
                          ) -> 'RelCATAddon':
-        # NOTE: model load path sent by kwargs
-        return cls.load_existing(
-            load_path=folder_path,
-            base_tokenizer=init_kwargs['tokenizer'],
-            cnf=init_kwargs['cnf'],
-            cdb=init_kwargs['cdb'],
-        )
+        """Deserialise a RelCAT addon from disk.
+
+        Mirrors `MetaCATAddon.deserialise_from`: when called via the
+        pipeline, `tokenizer`/`cnf` are supplied; when called standalone
+        (e.g. `CAT.load_addons`), they are inferred from disk so that
+        deserialisation works without full pipeline context.
+        """
+        rc = RelCAT.load(folder_path)
+        if 'cnf' in init_kwargs:
+            cnf = init_kwargs['cnf']
+        else:
+            logger.info(
+                "Was not provided a config when loading a rel cat from '%s'. "
+                "Inferring config from the loaded model.", folder_path)
+            cnf = rc.component.relcat_config
+        if 'model_config' in init_kwargs:
+            cnf.merge_config(init_kwargs['model_config'])
+        if 'tokenizer' in init_kwargs:
+            rc.base_tokenizer = init_kwargs['tokenizer']
+            rc._init_data_paths()
+        return cls(cnf, rc)
 
     def get_strategy(self) -> SerialisingStrategy:
         return SerialisingStrategy.MANUAL
