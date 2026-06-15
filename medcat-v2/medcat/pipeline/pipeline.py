@@ -109,7 +109,7 @@ class Pipeline:
             nlp_cnf.modelname = os.path.join(
                 model_load_path, model_basename)
             if orig_modelname != model_basename:
-                logger.warning(
+                logger.debug(
                     "Loading a model with incorrectly saved tokenizer "
                     "internals path. Was saved as '%s' whereas should have "
                     "had just '%s'. This is an automated fix - no further "
