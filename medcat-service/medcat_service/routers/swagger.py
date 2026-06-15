@@ -20,8 +20,8 @@ def configure_docs(app: FastAPI, settings: Settings) -> None:
     This allows the docs page to work offline or in an air-gapped environment.
 
     https://fastapi.tiangolo.com/how-to/custom-docs-ui-assets/#self-hosting-javascript-and-css-for-docs
-    
-    If the flag is true, then it should just have the default FastAPI behaviour. 
+
+    If the flag is true, then it should just have the default FastAPI behaviour.
     """
     if settings.use_cdn_for_docs:
         return

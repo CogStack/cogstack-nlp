@@ -59,7 +59,8 @@ class Settings(BaseSettings):
         default=True,
         description=(
             "Use a CDN for Swagger UI and ReDoc (default). "
-            "Set to false to serve docs from bundled static files. This allows the docs UI to work for offline browsers."
+            "Set to false to serve docs from bundled static files. "
+            "This allows the docs UI to work for offline browsers."
         ),
         alias="APP_USE_CDN",
     )
