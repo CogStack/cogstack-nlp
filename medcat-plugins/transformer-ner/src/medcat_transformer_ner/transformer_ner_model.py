@@ -61,8 +61,10 @@ class ModelForBinaryNER(nn.Module):
             start_flags.append(1.0 if prefix == "B" else 0.0)
             end_flags.append(1.0 if prefix == "E" else 0.0)
             
-        self.register_buffer("label_is_start", torch.tensor(start_flags, dtype=torch.float))
-        self.register_buffer("label_is_end", torch.tensor(end_flags, dtype=torch.float))
+        self.register_buffer("label_is_start", 
+                             torch.tensor(start_flags, dtype=torch.float))
+        self.register_buffer("label_is_end", 
+                             torch.tensor(end_flags, dtype=torch.float))
 
         target_device = self._resolve_device(device)
         self.to(target_device)
@@ -85,7 +87,8 @@ class ModelForBinaryNER(nn.Module):
                                       return_dict=True, 
                                       output_hidden_states=True)
         emissions = outputs.logits
-        hidden_states = outputs.hidden_states[-1]  # the last layer's hidden states for the start/end heads
+        # the last layer's hidden states for the start/end heads
+        hidden_states = outputs.hidden_states[-1]
         
         # Linear classifiers for boundary heads
         start_logits = self.start_head(hidden_states).squeeze(-1)  # [B, T]

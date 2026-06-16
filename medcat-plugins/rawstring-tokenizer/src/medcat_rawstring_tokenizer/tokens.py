@@ -1,5 +1,5 @@
 from typing import Any, Iterator, Optional, Union, cast, overload
-from bisect import bisect_left, bisect_right
+from bisect import bisect_right
 from medcat.tokenizing.tokens import (BaseToken, MutableToken,
                                       BaseEntity, MutableEntity,
                                       BaseDocument,
@@ -14,12 +14,21 @@ _WORD_RE = re.compile(r"[^\W_]+(?:[^\W_]+)*", re.UNICODE)
 # _WORD_RE = re.compile(r"[^\W_]+(?:[-/][^\W_]+)*", re.UNICODE)
 
 
-def _iter_word_spans(text: str, base_char_index: int = 0) -> Iterator[tuple[str, int, int]]:
+def _iter_word_spans(
+    text: str, 
+    base_char_index: int = 0
+    ) -> Iterator[tuple[str, int, int]]:
     for match in _WORD_RE.finditer(text):
-        yield match.group(0), base_char_index + match.start(), base_char_index + match.end()
+        yield (match.group(0), 
+               base_char_index + match.start(), 
+               base_char_index + match.end())
 
 class Token:
-    def __init__(self, text: str, index: int, char_index: int, end_char_index: int) -> None:
+    def __init__(self, 
+                 text: str, 
+                 index: int, 
+                 char_index: int, 
+                 end_char_index: int) -> None:
         # --- BaseToken fields ---
         self._text = text
         self._index = index
@@ -28,7 +37,9 @@ class Token:
         # --- MutableToken fields ---
         self._norm: str = text.lower()
         self._to_skip: bool = False
-        self._is_punctuation: bool = unicodedata.category(text[0]).startswith('P') if text else False
+        self._is_punctuation: bool = (
+            text != "" and unicodedata.category(text[0]).startswith("P")
+        )
 
     # --- BaseToken ---
     @property
@@ -104,15 +115,17 @@ class Entity:
     def label(self) -> str: return self._label
     @property
     def start_index(self) -> int: return self._start_index
+    # This requires -1 for compatibility
     @property
-    def end_index(self) -> int: return self._end_index - 1 # This requires -1 for compatibility
+    def end_index(self) -> int: return self._end_index - 1 
     @property
     def start_char_index(self) -> int: return self._start_char
     @property
     def end_char_index(self) -> int: return self._end_char # exclusive end index
 
     def __iter__(self) -> Iterator[MutableToken]:
-        for i, (text, char_index, end_char_index) in enumerate(_iter_word_spans(self._text, self._start_char)):
+        for i, (text, char_index, end_char_index) in enumerate(
+            _iter_word_spans(self._text, self._start_char)):
             yield Token(text, self._start_index + i, char_index, end_char_index)
 
     def __len__(self) -> int: return max(0, self._end_index - self._start_index)
@@ -151,7 +164,8 @@ class Document:
         self._char_indices: Optional[list[int]] = None
         self._tokens: list[Token] = [
             Token(token_text, token_index, char_index, end_char_index)
-            for token_index, (token_text, char_index, end_char_index) in enumerate(_iter_word_spans(text))
+            for token_index, (token_text, char_index, end_char_index) in 
+            enumerate(_iter_word_spans(text))
         ]
 
     @property
@@ -213,11 +227,15 @@ class Document:
 
         token_char_indices = self._ensure_char_indices()
         lo = max(0, bisect_right(token_char_indices, span_start) - 1)
-        hi = min(len(self._tokens), bisect_right(token_char_indices, span_end_exclusive - 1) + 1)
+        hi = min(
+            len(self._tokens), 
+            bisect_right(token_char_indices, span_end_exclusive - 1) + 1
+        )
 
         return [
             token for token in self._tokens[lo:hi]
-            if token.end_char_index > span_start and token.char_index < span_end_exclusive
+            if token.end_char_index > span_start and 
+            token.char_index < span_end_exclusive
         ]
 
 

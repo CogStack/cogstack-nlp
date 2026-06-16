@@ -1,6 +1,6 @@
 from pathlib import Path
-from typing import Any, List, Optional, Union
-from medcat.tokenizing.tokens import MutableDocument, MutableEntity, MutableToken
+from typing import Any, Optional, Union
+from medcat.tokenizing.tokens import MutableDocument, MutableEntity
 from medcat.components.types import CoreComponentType, TrainableComponent
 from medcat.components.types import AbstractEntityProvidingComponent
 from medcat.components.ner.vocab_based_annotator import annotate_name
@@ -9,7 +9,7 @@ from medcat.vocab import Vocab
 from medcat.cdb import CDB
 from medcat.config.config import ComponentConfig
 from medcat.storage.serialisables import AbstractManualSerialisable
-from transformers import AutoTokenizer, AutoModelForTokenClassification, get_constant_schedule_with_warmup
+from transformers import AutoTokenizer, get_constant_schedule_with_warmup
 from medcat_transformer_ner.transformer_ner_model import ModelForBinaryNER
 from medcat_transformer_ner.config import TransformerNER
 from torch import Tensor
@@ -20,7 +20,9 @@ import torch
 logger = logging.getLogger(__name__)
 
 
-class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSerialisable):
+class NER(AbstractEntityProvidingComponent, 
+          TrainableComponent, 
+          AbstractManualSerialisable):
     name = 'transformer_ner'
 
     comp_name = "transformer_ner"
@@ -91,7 +93,9 @@ class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSe
             self.model.to(self.device)
             self._loaded_model_source: str = model_source
             self._loaded_model_init_kwargs: dict[str, Any] = model_init_kwargs
-            self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=1e-5, weight_decay=0.001)
+            self.optimizer = torch.optim.AdamW(self.model.parameters(), 
+                                               lr=1e-5, 
+                                               weight_decay=0.001)
             self.scheduler = get_constant_schedule_with_warmup(
                 self.optimizer,
                 num_warmup_steps=20,
@@ -111,7 +115,8 @@ class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSe
     def _chunk_and_encode(self, 
                           text: str, 
                           entities: Optional[list[MutableEntity]] = None
-                          ) -> tuple[Tensor, Tensor, list[Any], list[Any], Optional[Tensor]]:
+                          ) -> tuple[Tensor, Tensor, list[Any], list[Any], 
+                                     Optional[Tensor]]:
         labels_enabled = entities is not None
         # First pass: tokenize full text to get offsets for chunking and label alignment
         base_encoding = self.transformer_tokenizer(
@@ -122,7 +127,8 @@ class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSe
 
         offsets = base_encoding["offset_mapping"]
 
-        stride = self.max_token_length - int(self.max_token_length * self.overlap_chunking)
+        stride = (self.max_token_length - 
+                  int(self.max_token_length * self.overlap_chunking))
 
         n_tokens = len(base_encoding["input_ids"])
         start_idx = 0
@@ -196,8 +202,10 @@ class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSe
 
                 all_labels.append(torch.tensor(chunk_labels, dtype=torch.long))
 
-            all_input_ids.append(torch.tensor(encoding["input_ids"], dtype=torch.long))
-            all_attention_masks.append(torch.tensor(encoding["attention_mask"], dtype=torch.long))
+            all_input_ids.append(torch.tensor(encoding["input_ids"], 
+                                              dtype=torch.long))
+            all_attention_masks.append(torch.tensor(encoding["attention_mask"], 
+                                                    dtype=torch.long))
             offset_mappings.append(offsets_chunk)
             chunk_char_starts.append(char_start)
 
@@ -224,7 +232,9 @@ class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSe
         if entity is doc.ner_ents[-1]:
             text = doc.base.text
             entities = doc.ner_ents
-            input_ids, attention_masks, _, _, labels = self._chunk_and_encode(text, entities)
+            input_ids, attention_masks, _, _, labels = (
+                self._chunk_and_encode(text, entities)
+            )
             self.optimizer.zero_grad()
             self.model.train()
             
@@ -233,34 +243,6 @@ class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSe
                 attention_mask=attention_masks,
                 labels=labels
             )
-            
-            # debugging
-            # start_logits = outputs.start_logits
-            # end_logits = outputs.end_logits
-            # predictions = outputs.logits.argmax(dim=-1).cpu().tolist()
-            # for chunk_input_ids, chunk_pred_ids, chunk_label_ids, chunk_start_logits, chunk_end_logits in (
-            #     zip(
-            #         input_ids.cpu().tolist(),
-            #         predictions,
-            #         labels.cpu().tolist(),
-            #         start_logits.detach().cpu(),
-            #         end_logits.detach().cpu(),
-            #     )
-            # ):
-            #     for input_id, label_id, pred_id, start_logit, end_logit in (
-            #         zip(chunk_input_ids, chunk_label_ids, chunk_pred_ids, chunk_start_logits, chunk_end_logits)
-            #         ):
-            #         token = self.transformer_tokenizer.convert_ids_to_tokens(input_id)
-            #         pred_label = self.id2label[pred_id] if pred_id in self.id2label else "N/A"
-            #         true_label = self.id2label[label_id] if label_id in self.id2label else "N/A"
-            #         start_prob = torch.sigmoid(start_logit).item()
-            #         end_prob = torch.sigmoid(end_logit).item()
-            #         print(f"[{token}, {true_label}, {pred_label}, start_logit={start_prob:.4f}, end_logit={end_prob:.4f}]")
-            print(f"CRF Loss: {outputs.crf_loss.item()}")
-            print(f"Start Loss: {outputs.start_loss.item()}")
-            print(f"End Loss: {outputs.end_loss.item()}")
-            # import sys
-            # sys.exit(0)
             loss = outputs.loss
             
             loss.backward()
@@ -270,7 +252,6 @@ class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSe
             )
             self.optimizer.step()
             self.scheduler.step()
-            print(f"NER training step - loss: {loss.item()}")
             logger.debug("NER training step - loss: ", 
                          loss.item())
 
@@ -279,7 +260,6 @@ class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSe
         spans, then merge them across chunks."""
         spans = []
         current = None
-        # print("Predictions: ", preds)
         for pred_id, (tok_start, tok_end) in zip(preds, offsets_chunk):
 
             # skip padding / special tokens
@@ -367,7 +347,9 @@ class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSe
         for span in spans[1:]:
             last = merged[-1]
             gap_text = text[last["end"]:span["start"]]
-            gap_is_soft_separator = not gap_text.strip() or gap_text.strip() in {"/", "-"}
+            gap_is_soft_separator = not (
+                gap_text.strip() or gap_text.strip() in {"/", "-"}
+            )
 
             if span["label"] == last["label"] and (
                 span["start"] <= last["end"] or gap_is_soft_separator
@@ -429,14 +411,12 @@ class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSe
         ner_ents: list[MutableEntity] = []
         seen_token_spans = set()
         logger.debug("Num detected spans: %s", len(spans))
-        # print(f"Num detected spans: {len(spans)}")
         for span in spans:
             detected_start = span["start"]
             detected_end = span["end"]
             detected_string = text[detected_start:detected_end]
             if not detected_string:
                 continue
-            # print(f"Detected span: [{detected_start}, {detected_end}] {repr(detected_string)}")
             logger.debug(
                 "Detected span: [%s, %s] %r",
                 detected_start,
@@ -444,7 +424,9 @@ class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSe
                 detected_string,
             )
 
-            token_span = self._char_span_to_token_span(doc, detected_start, detected_end)
+            token_span = self._char_span_to_token_span(doc, 
+                                                       detected_start, 
+                                                       detected_end)
             if token_span is None:
                 continue
 
@@ -483,9 +465,6 @@ class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSe
                         )
                     
                     if ent:
-                        # print(
-                        #     f"Created entity: raw_text={repr(ent.text)}, detected_name={repr(ent.detected_name)}, tokens=[{i}, {j}]"
-                        # )
                         logger.debug(
                             "Created entity: %r tokens [%s, %s]",
                             ent.text,
@@ -519,7 +498,9 @@ class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSe
         """
         # Keep offset generation in the same coordinate space as spaCy char_span.
         text = doc.text
-        input_ids, attention_masks, offset_mappings, chunk_char_starts, _ = self._chunk_and_encode(text)
+        input_ids, attention_masks, offset_mappings, chunk_char_starts, _ = (
+            self._chunk_and_encode(text)
+        )
 
         self.model.eval()
         with torch.no_grad():
@@ -531,14 +512,6 @@ class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSe
                 attention_mask=attention_masks
             )
             predictions = outputs.predictions.cpu().tolist()
-        # debugging
-        # for inputs, preds in zip(input_ids.cpu().tolist(), predictions):
-        #     for input_id, pred_id in zip(inputs, preds):
-        #         token = self.transformer_tokenizer.convert_ids_to_tokens(input_id)
-        #         pred_label = self.id2label[pred_id] if pred_id in self.id2label else "N/A"
-        #         print(f"[{token}, {pred_label}]")
-        # import sys
-        # sys.exit(0)
             
         all_spans = []
         for preds, offsets_chunk, char_start in zip(
@@ -589,8 +562,11 @@ class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSe
             model_folder,
             device=ner.device,
         )
-        ner.optimizer = torch.optim.AdamW(ner.model.parameters(), lr=1e-5, weight_decay=0.001)
-        ner.scheduler = get_constant_schedule_with_warmup(ner.optimizer, num_warmup_steps=20)
+        ner.optimizer = torch.optim.AdamW(ner.model.parameters(), 
+                                          lr=1e-5, 
+                                          weight_decay=0.001)
+        ner.scheduler = get_constant_schedule_with_warmup(ner.optimizer, 
+                                                          num_warmup_steps=20)
         ner.model.to(ner.device)
         ner.model.eval()
 

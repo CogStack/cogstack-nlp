@@ -1,6 +1,6 @@
 from medcat.tokenizing.tokenizers import MutableDocument, MutableEntity, MutableToken
 from medcat.config.config import Config
-from medcat_rawstring_tokenizer.tokens import Token, Entity, Document
+from medcat_rawstring_tokenizer.tokens import Entity, Document
 from typing import Type
 
 class RawstringTokenizer:
@@ -38,7 +38,12 @@ class RawstringTokenizer:
         # The end index needs to be pushed forward by one
         # i.e. index 9:10 means token 9 is included
         # we address this in the Entity by setting end_index to be end_token.index - 1
-        entity = Entity(text, token_start_index, token_end_index+1, start_char, end_char, label)
+        entity = Entity(text, 
+                        token_start_index, 
+                        token_end_index+1, 
+                        start_char, 
+                        end_char, 
+                        label)
         return entity
 
     def entity_from_tokens(self, tokens: list[MutableToken]) -> MutableEntity:

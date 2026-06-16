@@ -449,7 +449,8 @@ class Linker(AbstractEntityProvidingComponent):
             # We don't get the similarity for the longest cui score
             # Just for speed - this may alter performance if the longest name
             # for the cui doesn't meet it's threshold
-            similarity = max(float(row_scores[name_idx].item()) for name_idx in selected_name_idxs)
+            similarity = max(float(row_scores[name_idx].item()) 
+                             for name_idx in selected_name_idxs)
             return [(cuis[0], similarity)]
         return self._disambiguate_by_cui(cuis, cui_scores_row)
 
@@ -533,7 +534,8 @@ class Linker(AbstractEntityProvidingComponent):
                 selected_name_idxs = [
                     name_idx
                     for name_idx in name_idxs
-                    if float(names_scores[i, name_idx].item()) >= self.cnf_l.long_similarity_threshold
+                    if float(names_scores[i, name_idx].item()) >= 
+                    self.cnf_l.long_similarity_threshold
                 ]
                 # if no names pass the threshold - no cuis will
                 # skip this detected entity
@@ -659,7 +661,8 @@ class Linker(AbstractEntityProvidingComponent):
                     topk_rel = torch.topk(valid_scores, k=k).indices
                     topk_positions = valid_positions[topk_rel]
                     keep_mask = (
-                        row_scores[topk_positions] >= self.cnf_l.short_similarity_threshold
+                        row_scores[topk_positions] >= 
+                        self.cnf_l.short_similarity_threshold
                     )
                     valid_positions = topk_positions[keep_mask]
                 else:

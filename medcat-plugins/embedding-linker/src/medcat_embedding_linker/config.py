@@ -111,5 +111,5 @@ class EmbeddingLinking(Linking):
     """At the inference step, after calculating similarity scores, how many candidates 
     to keep for each entity. Higher numbers will increase recall but also increase 
     inference time, and often reduce precision. This is influenced by 
-    `long_similarity_threshold`, i.e. take the top k samples over the threshold. This will 
-    be ignored if `multiple_predictions_per_detected_entity` is set to False."""
+    `long_similarity_threshold`, i.e. take the top k samples over the threshold. This 
+    will be ignored if `multiple_predictions_per_detected_entity` is set to False."""
