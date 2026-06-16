@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any, List, Optional, Union
 from medcat.tokenizing.tokens import MutableDocument, MutableEntity, MutableToken
 from medcat.components.types import CoreComponentType, TrainableComponent
 from medcat.components.types import AbstractEntityProvidingComponent
@@ -12,6 +12,7 @@ from medcat.storage.serialisables import AbstractManualSerialisable
 from transformers import AutoTokenizer, AutoModelForTokenClassification, get_constant_schedule_with_warmup
 from medcat_transformer_ner.transformer_ner_model import ModelForBinaryNER
 from medcat_transformer_ner.config import TransformerNER
+from torch import Tensor
 import logging
 import os
 import torch
@@ -42,7 +43,7 @@ class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSe
             "S-ENT": 4
         }
         self.id2label = {v: k for k, v in self.label2id.items()}
-        self._model_init_kwargs = dict()
+        self._model_init_kwargs: dict[str, Any] = dict()
         self.load_transformers(self.cnf_ner.language_model_name)
         self.max_token_length = self.cnf_ner.max_token_length
         self.overlap_chunking = self.cnf_ner.overlap_chunking
@@ -88,8 +89,8 @@ class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSe
                 or ("cuda" if torch.cuda.is_available() else "cpu")
             )
             self.model.to(self.device)
-            self._loaded_model_source = model_source
-            self._loaded_model_init_kwargs = model_init_kwargs
+            self._loaded_model_source: str = model_source
+            self._loaded_model_init_kwargs: dict[str, Any] = model_init_kwargs
             self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=1e-5, weight_decay=0.001)
             self.scheduler = get_constant_schedule_with_warmup(
                 self.optimizer,
@@ -110,7 +111,7 @@ class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSe
     def _chunk_and_encode(self, 
                           text: str, 
                           entities: Optional[list[MutableEntity]] = None
-                          ) -> tuple[list, list, list, list, Optional[list]]:
+                          ) -> tuple[Tensor, Tensor, list[Any], list[Any], Optional[Tensor]]:
         labels_enabled = entities is not None
         # First pass: tokenize full text to get offsets for chunking and label alignment
         base_encoding = self.transformer_tokenizer(
@@ -126,9 +127,9 @@ class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSe
         n_tokens = len(base_encoding["input_ids"])
         start_idx = 0
 
-        input_ids = []
-        attention_masks = []
-        all_labels = [] if labels_enabled else None
+        all_input_ids = []
+        all_attention_masks = []
+        all_labels: list[Tensor] = []
         offset_mappings = []
         chunk_char_starts = []
         while start_idx < n_tokens:
@@ -142,7 +143,7 @@ class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSe
 
             # Rebase entities to chunk
             # iff this is a training example
-            if labels_enabled:
+            if entities is not None:
                 chunk_entities = []
                 for ent in entities:
                     ent_start = ent.base.start_char_index
@@ -167,7 +168,7 @@ class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSe
 
             # Label alignment to relevant chunks
             if labels_enabled:
-                labels = [
+                chunk_labels = [
                     -100 if (start == end) else self.label2id["O"]
                     for start, end in offsets_chunk
                 ]
@@ -185,18 +186,18 @@ class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSe
                         continue
 
                     if len(ent_token_indices) == 1:
-                        labels[ent_token_indices[0]] = self.label2id["S-ENT"]
+                        chunk_labels[ent_token_indices[0]] = self.label2id["S-ENT"]
                         continue
 
-                    labels[ent_token_indices[0]] = self.label2id["B-ENT"]
-                    labels[ent_token_indices[-1]] = self.label2id["E-ENT"]
+                    chunk_labels[ent_token_indices[0]] = self.label2id["B-ENT"]
+                    chunk_labels[ent_token_indices[-1]] = self.label2id["E-ENT"]
                     for i in ent_token_indices[1:-1]:
-                        labels[i] = self.label2id["I-ENT"]
+                        chunk_labels[i] = self.label2id["I-ENT"]
 
-                all_labels.append(labels)
+                all_labels.append(torch.tensor(chunk_labels, dtype=torch.long))
 
-            input_ids.append(encoding["input_ids"])
-            attention_masks.append(encoding["attention_mask"])
+            all_input_ids.append(torch.tensor(encoding["input_ids"], dtype=torch.long))
+            all_attention_masks.append(torch.tensor(encoding["attention_mask"], dtype=torch.long))
             offset_mappings.append(offsets_chunk)
             chunk_char_starts.append(char_start)
 
@@ -204,11 +205,11 @@ class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSe
                 break
 
             start_idx += stride
-        input_ids = torch.tensor(input_ids, dtype=torch.long).to(self.device)
-        attention_masks = torch.tensor(attention_masks, dtype=torch.long).to(self.device)
+        input_ids = torch.stack(all_input_ids).to(self.device)
+        attention_masks = torch.stack(all_attention_masks).to(self.device)
         if labels_enabled:
-            all_labels = torch.tensor(all_labels, dtype=torch.long).to(self.device)
-        return input_ids, attention_masks, offset_mappings, chunk_char_starts, all_labels
+            labels = torch.stack(all_labels).to(self.device)
+        return input_ids, attention_masks, offset_mappings, chunk_char_starts, labels
     
     def train(self, cui: str,
             entity: MutableEntity,
@@ -425,7 +426,7 @@ class NER(AbstractEntityProvidingComponent, TrainableComponent, AbstractManualSe
     def _span_inference(self, spans: list[dict], 
                         doc: MutableDocument, 
                         text: str) -> list[MutableEntity]:
-        ner_ents = []
+        ner_ents: list[MutableEntity] = []
         seen_token_spans = set()
         logger.debug("Num detected spans: %s", len(spans))
         # print(f"Num detected spans: {len(spans)}")

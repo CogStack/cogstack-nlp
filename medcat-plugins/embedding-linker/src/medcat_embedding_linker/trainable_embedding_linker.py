@@ -412,7 +412,7 @@ class Linker(StaticEmbeddingLinker, AbstractManualSerialisable, TrainableCompone
         vocab: Vocab,
         model_load_path: Optional[str],
     ) -> "Linker":
-        return cls(cdb, cdb.config)
+        return cls(cdb, cdb.config, tokenizer)
 
     def serialise_to(self, folder_path: str) -> None:
         os.makedirs(folder_path, exist_ok=True)

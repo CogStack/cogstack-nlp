@@ -15,6 +15,9 @@ class ModelForBinaryNER(nn.Module):
 
     The architecture is: transformer backbone -> linear classifier -> CRF.
     """
+    # for mypy checking
+    label_is_start: Tensor
+    label_is_end: Tensor
 
     def __init__(
         self,
@@ -76,7 +79,7 @@ class ModelForBinaryNER(nn.Module):
 
     def forward(self, **inputs) -> Any:
         labels: Optional[Tensor] = inputs.pop("labels", None)
-        attention_mask: Optional[Tensor] = inputs.get("attention_mask")
+        attention_mask: Tensor = inputs["attention_mask"]
 
         outputs = self.language_model(**inputs, 
                                       return_dict=True, 
