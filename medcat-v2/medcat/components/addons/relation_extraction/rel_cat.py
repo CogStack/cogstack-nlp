@@ -33,6 +33,9 @@ from medcat.components.addons.relation_extraction.rel_dataset import RelData
 from medcat.tokenizing.tokenizers import BaseTokenizer, create_tokenizer
 from medcat.tokenizing.tokens import MutableDocument
 from medcat.utils.defaults import COMPONENTS_FOLDER
+from medcat.utils.defaults import (
+    avoid_legacy_conversion, doing_legacy_conversion_message,
+    LegacyConversionDisabledError)
 
 
 logger = logging.getLogger(__name__)
@@ -73,7 +76,7 @@ class RelCATAddon(AddonComponent):
     @classmethod
     def load_existing(cls, cnf: ConfigRelCAT,
                       base_tokenizer: BaseTokenizer,
-                      cdb: CDB,
+                      cdb: Optional[CDB],
                       load_path: str) -> 'RelCATAddon':
         """Factory method to load an existing RelCAT addon from disk."""
         rc = RelCAT.load(load_path)
@@ -100,9 +103,16 @@ class RelCATAddon(AddonComponent):
         logger.warning(
             "A base tokenizer was not provided during the loading of a "
             "RelCAT. The tokenizer is used to register the required data "
-            "paths for RelCAT to function. Using the default of '%s'.",
-            cls.DEFAULT_TOKENIZER,
+            "paths for RelCAT to function. Using the default of '%s'. If "
+            "this it not the tokenizer you will end up using, RelCAT may "
+            "be unable to recover unless a) the paths are registered "
+            "explicitly, or b) there are other RelCATs created with the "
+            "correct tokenizer. Do note that this will also create "
+            "another instance of the tokenizer, though it should be "
+            "garbage collected soon.", cls.DEFAULT_TOKENIZER
         )
+        # NOTE: the use of a (mostly) default config here probably won't
+        #       affect anything since the tokenizer itself won't be used
         gcnf = Config()
         gcnf.general.nlp.provider = 'spacy'
         return create_tokenizer(cls.DEFAULT_TOKENIZER, gcnf)
@@ -113,17 +123,38 @@ class RelCATAddon(AddonComponent):
         """Deserialise a RelCAT addon from disk.
 
         Mirrors `MetaCATAddon.deserialise_from`: when called via the
-        pipeline, `tokenizer`/`cnf`/`cdb` are supplied; when called standalone
+        pipeline, `tokenizer`/`cnf` are supplied; when called standalone
         (e.g. `CAT.load_addons`), they are inferred from disk so that
         deserialisation works without full pipeline context.
         """
+        if "config.json" in os.listdir(folder_path):
+            if not avoid_legacy_conversion():
+                doing_legacy_conversion_message(
+                    logger, cls.__name__, folder_path)
+                from medcat.utils.legacy.convert_rel_cat import (
+                    get_rel_cat_from_old)
+                if 'cdb' in init_kwargs:
+                    cdb = init_kwargs['cdb']
+                else:
+                    cdb_path = os.path.join(folder_path, "cdb.dat")
+                    if os.path.exists(cdb_path):
+                        cdb = cast(CDB, deserialise(cdb_path))
+                    else:
+                        cdb = CDB(config=Config())
+                if 'tokenizer' in init_kwargs:
+                    tokenizer = init_kwargs['tokenizer']
+                else:
+                    tokenizer = cls._create_throwaway_tokenizer()
+                return get_rel_cat_from_old(cdb, folder_path, tokenizer)
+            raise LegacyConversionDisabledError(cls.__name__,)
         if 'cnf' in init_kwargs:
             cnf = init_kwargs['cnf']
         else:
+            config_path = os.path.join(folder_path, "config")
             logger.info(
                 "Was not provided a config when loading a rel cat from '%s'. "
                 "Inferring config from file at '%s'", folder_path,
-                folder_path)
+                config_path)
             cnf = ConfigRelCAT.load(load_path=folder_path)
         if 'model_config' in init_kwargs:
             cnf.merge_config(init_kwargs['model_config'])
@@ -131,19 +162,11 @@ class RelCATAddon(AddonComponent):
             tokenizer = init_kwargs['tokenizer']
         else:
             tokenizer = cls._create_throwaway_tokenizer()
-        if 'cdb' in init_kwargs:
-            cdb = init_kwargs['cdb']
-        else:
-            cdb_path = os.path.join(folder_path, "cdb.dat")
-            if os.path.exists(cdb_path):
-                cdb = cast(CDB, deserialise(cdb_path))
-            else:
-                cdb = CDB(config=Config())
         return cls.load_existing(
             load_path=folder_path,
             cnf=cnf,
             base_tokenizer=tokenizer,
-            cdb=cdb)
+            cdb=None)
 
     def get_strategy(self) -> SerialisingStrategy:
         return SerialisingStrategy.MANUAL
