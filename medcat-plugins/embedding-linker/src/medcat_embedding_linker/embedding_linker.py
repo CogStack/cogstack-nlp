@@ -164,8 +164,8 @@ class Linker(AbstractEntityProvidingComponent):
                 The context text and the span of the entity within that text.
         """
         # Token indices of the entity
-        start_token_idx = entity.start_index
-        end_token_idx = entity.end_index
+        start_token_idx = entity.base.start_index
+        end_token_idx = entity.base.end_index
 
         # Define token window
         left_token_idx = max(0, start_token_idx - size)
@@ -586,8 +586,8 @@ class Linker(AbstractEntityProvidingComponent):
                     # create a barebones entity that has what is requried
                     ent = self.tokenizer.create_entity(
                             doc,
-                            entity.start_index,
-                            entity.end_index,
+                            entity.base.start_index,
+                            entity.base.end_index,
                             entity.detected_name,
                     )
                 else:

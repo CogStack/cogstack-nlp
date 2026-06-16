@@ -215,6 +215,7 @@ class NER(AbstractEntityProvidingComponent,
             start_idx += stride
         input_ids = torch.stack(all_input_ids).to(self.device)
         attention_masks = torch.stack(all_attention_masks).to(self.device)
+        labels = None
         if labels_enabled:
             labels = torch.stack(all_labels).to(self.device)
         return input_ids, attention_masks, offset_mappings, chunk_char_starts, labels
