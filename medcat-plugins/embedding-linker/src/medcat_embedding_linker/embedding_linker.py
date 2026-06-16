@@ -166,8 +166,6 @@ class Linker(AbstractEntityProvidingComponent):
         # Token indices of the entity
         start_token_idx = entity.start_index
         end_token_idx = entity.end_index
-        # print("_____")
-        # print(f"Entity token indices: {start_token_idx} to {end_token_idx}")
 
         # Define token window
         left_token_idx = max(0, start_token_idx - size)
@@ -176,8 +174,6 @@ class Linker(AbstractEntityProvidingComponent):
         # Convert tokens → character offsets
         left_most_token = doc[left_token_idx]
         right_most_token = doc[right_token_idx]
-        # print(f"left_most_token: '{left_most_token.text}'")
-        # print(f"right_most_token: '{right_most_token.text}'")
 
         # For mention masking
         snippet_start_char = left_most_token.base.char_index
@@ -210,10 +206,6 @@ class Linker(AbstractEntityProvidingComponent):
         mention_spans = []
         for entity in entities:
             text, span = self._get_context(entity, doc, size)
-            # print("_____")
-            # print(f"Entity: '{entity.detected_name}'")
-            # print("____")
-            # print(text)
             texts.append(text)
             mention_spans.append(span)
         return self.context_model.embed(texts, mention_spans, self.device)
@@ -598,8 +590,6 @@ class Linker(AbstractEntityProvidingComponent):
                             entity.end_index,
                             entity.detected_name,
                     )
-                    # print(f"Created another entity: {ent.detected_name}")
-                    # print("_____")
                 else:
                     ent = entity
                 ent.cui = predicted_cui
