@@ -164,8 +164,10 @@ class Linker(AbstractEntityProvidingComponent):
                 The context text and the span of the entity within that text.
         """
         # Token indices of the entity
-        start_token_idx = entity.base.start_index
-        end_token_idx = entity.base.end_index
+        start_token_idx = entity.start_index
+        end_token_idx = entity.end_index
+        # print("_____")
+        # print(f"Entity token indices: {start_token_idx} to {end_token_idx}")
 
         # Define token window
         left_token_idx = max(0, start_token_idx - size)
@@ -174,6 +176,8 @@ class Linker(AbstractEntityProvidingComponent):
         # Convert tokens → character offsets
         left_most_token = doc[left_token_idx]
         right_most_token = doc[right_token_idx]
+        # print(f"left_most_token: '{left_most_token.text}'")
+        # print(f"right_most_token: '{right_most_token.text}'")
 
         # For mention masking
         snippet_start_char = left_most_token.base.char_index
@@ -206,6 +210,10 @@ class Linker(AbstractEntityProvidingComponent):
         mention_spans = []
         for entity in entities:
             text, span = self._get_context(entity, doc, size)
+            # print("_____")
+            # print(f"Entity: '{entity.detected_name}'")
+            # print("____")
+            # print(text)
             texts.append(text)
             mention_spans.append(span)
         return self.context_model.embed(texts, mention_spans, self.device)
@@ -556,10 +564,10 @@ class Linker(AbstractEntityProvidingComponent):
                 # if there are too many, take the top k to reduce processing time
                 # this is a trade off between compute time and predictive power
                 # as k increases, processing time increases
-                if len(selected_name_idxs) > self.cnf_l.pre_inference_top_k_sampling:
+                if len(selected_name_idxs) > self.cnf_l.inference_top_k_sampling:
                     selected_scores = row_scores[selected_name_idxs]
                     topk_positions = torch.topk(
-                        selected_scores, k=self.cnf_l.pre_inference_top_k_sampling
+                        selected_scores, k=self.cnf_l.inference_top_k_sampling
                     ).indices.tolist()
                     selected_name_idxs = [
                         selected_name_idxs[pos] for pos in topk_positions
@@ -588,6 +596,8 @@ class Linker(AbstractEntityProvidingComponent):
                             entity.end_index,
                             entity.detected_name,
                     )
+                    # print(f"Created another entity: {ent.detected_name}")
+                    # print("_____")
                 else:
                     ent = entity
                 ent.cui = predicted_cui
@@ -612,7 +622,10 @@ class Linker(AbstractEntityProvidingComponent):
             )
 
     def _generate_link_candidates(
-        self, doc: MutableDocument, entities: list[MutableEntity]
+        self,
+        doc: MutableDocument,
+        entities: list[MutableEntity],
+        append_to_existing: bool = False,
     ) -> None:
         """Generate link candidates for each detected entity based
         on context vectors with size 0. Compare to names to get the most
@@ -632,22 +645,54 @@ class Linker(AbstractEntityProvidingComponent):
             # valid names via filtering and contain at least 1 cui
             valid_mask = self._valid_names[row_sorted]
 
-            if self.cnf_l.short_similarity_threshold > 0:
-                # thresholded selection
+            valid_positions = torch.nonzero(valid_mask, as_tuple=True)[0]
+
+            if (
+                self.cnf_l.short_similarity_threshold > 0 and 
+                self.cnf_l.pre_inference_top_k_sampling > 0
+            ):
+                # Require candidates to satisfy BOTH criteria:
+                # (a) score above threshold and (b) within top-k valid names.
+                valid_scores = row_scores[valid_positions]
+                k = min(self.cnf_l.pre_inference_top_k_sampling, len(valid_positions))
+                if k > 0:
+                    topk_rel = torch.topk(valid_scores, k=k).indices
+                    topk_positions = valid_positions[topk_rel]
+                    keep_mask = (
+                        row_scores[topk_positions] >= self.cnf_l.short_similarity_threshold
+                    )
+                    valid_positions = topk_positions[keep_mask]
+                else:
+                    valid_positions = valid_positions[:0]
+            elif self.cnf_l.short_similarity_threshold > 0:
+                # Threshold-only mode.
                 above_thresh_mask = row_scores >= self.cnf_l.short_similarity_threshold
                 selected_mask = valid_mask & above_thresh_mask
                 valid_positions = torch.nonzero(selected_mask, as_tuple=True)[0]
+            elif self.cnf_l.pre_inference_top_k_sampling > 0:
+                # Top-k-only mode among valid names.
+                valid_scores = row_scores[valid_positions]
+                k = min(self.cnf_l.pre_inference_top_k_sampling, len(valid_positions))
+                if k > 0:
+                    topk_rel = torch.topk(valid_scores, k=k).indices
+                    valid_positions = valid_positions[topk_rel]
+                else:
+                    valid_positions = valid_positions[:0]
             else:
-                # just take the single best valid candidate
-                first_valid = torch.nonzero(valid_mask, as_tuple=True)[0][:1]
-                valid_positions = first_valid
+                # If neither criterion is enabled, keep only the best valid candidate.
+                valid_positions = valid_positions[:1]
 
+            # getting cuis from all valid names that pass the threshold and top-k
             for pos in valid_positions.tolist():
                 top_name_idx = int(row_sorted[pos].item())
                 detected_name = self._name_keys[top_name_idx]
                 cuis.update(self.cdb.name2info[detected_name]["per_cui_status"].keys())
-
-            entity.link_candidates = list(cuis)
+            
+            if append_to_existing:
+                existing = set(entity.link_candidates)
+                entity.link_candidates = list(existing | cuis)
+            else:
+                entity.link_candidates = list(cuis)
 
     def _pre_inference(
         self, doc: MutableDocument
@@ -661,10 +706,16 @@ class Linker(AbstractEntityProvidingComponent):
         if not self.cnf_l.use_pre_inference:
             return [], all_ents
         
-        # if we don't want to use ner link candidates
-        # but we do want to pre-infer then we want to generate link candidates 
-        # here for all entities
+        append_generated_to_ner = (
+            self.cnf_l.use_ner_link_candidates
+            and self.cnf_l.append_to_ner_link_candidates
+        )
+
         if not self.cnf_l.use_ner_link_candidates:
+            # ignoring link candidates generated by NER
+            to_generate_link_candidates = all_ents
+        elif append_generated_to_ner:
+            # Keep NER candidates and append model-generated candidates.
             to_generate_link_candidates = all_ents
         else:
             # here we only generate link candidates if they don't exist
@@ -677,7 +728,11 @@ class Linker(AbstractEntityProvidingComponent):
         for entities in self._batch_data(
             to_generate_link_candidates, self.cnf_l.linking_batch_size
         ):
-            self._generate_link_candidates(doc, entities)
+            self._generate_link_candidates(
+                doc,
+                entities,
+                append_generated_to_ner
+            )
 
         # filter out entities with no link candidates after thresholding
         filtered_ents = [ent for ent in all_ents if ent.link_candidates]
@@ -688,6 +743,9 @@ class Linker(AbstractEntityProvidingComponent):
         le: list[MutableEntity] = []
         to_infer: list[MutableEntity] = []
         for entity in all_ents:
+            # if no candidates just skip it
+            if not entity.link_candidates:
+                continue
             # TODO: Check if this is right now with multiple entites being possible
             if len(entity.link_candidates) == 1:
                 # if the include filter exists and the only cui is in it
@@ -696,8 +754,6 @@ class Linker(AbstractEntityProvidingComponent):
                     entity.context_similarity = 1
                     le.append(entity)
                     continue
-            elif self.cnf_l.use_ner_link_candidates and not entity.link_candidates:
-                continue
             # it has to be inferred due to filters or number of link candidates
             to_infer.append(entity)
         return le, to_infer

@@ -105,7 +105,7 @@ class Entity:
     @property
     def start_index(self) -> int: return self._start_index
     @property
-    def end_index(self) -> int: return self._end_index #ensure this doesn't require -1
+    def end_index(self) -> int: return self._end_index - 1 # This requires -1 for compatibility
     @property
     def start_char_index(self) -> int: return self._start_char
     @property

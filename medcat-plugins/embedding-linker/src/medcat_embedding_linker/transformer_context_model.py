@@ -3,6 +3,7 @@ from typing import Any, Iterator, Optional, Union
 from medcat.storage.serialisables import AbstractSerialisable
 from torch import Tensor, nn
 from transformers import AutoModel, AutoTokenizer
+from medcat_embedding_linker.config import EmbeddingLinking as LinkingConfig
 from tqdm import tqdm
 import json
 import logging
@@ -23,14 +24,16 @@ class ModelForEmbeddingLinking(nn.Module):
     def __init__(
         self,
         embedding_model_name: str,
+        cnf_l: LinkingConfig,
         use_projection_layer: bool = False,
-        top_n_layers_to_unfreeze: int = -1,
+        top_n_layers_to_unfreeze: int = 0,
         device: Optional[Union[str, torch.device]] = None,
     ) -> None:
         super().__init__()
         self.language_model = AutoModel.from_pretrained(embedding_model_name)
         self.base_model_name = self.language_model.name_or_path
 
+        self.cnf_l = cnf_l
         self.use_projection_layer = use_projection_layer
         self.top_n_layers_to_unfreeze = top_n_layers_to_unfreeze
 
@@ -86,6 +89,10 @@ class ModelForEmbeddingLinking(nn.Module):
                 param.requires_grad = True
 
     def unfreeze_top_n_lm_layers(self, n: int) -> None:
+        self.cnf_l.top_n_layers_to_unfreeze = n
+        self.top_n_layers_to_unfreeze = n
+        # Re-apply from a known baseline so repeated calls are deterministic.
+        self._freeze_all_parameters()
         # train all LM layers - each layer requires more data
         if n == -1:
             for param in self.language_model.parameters():
@@ -133,6 +140,7 @@ class ModelForEmbeddingLinking(nn.Module):
     def from_pretrained(
         cls,
         path_or_model_name: Union[str, Path],
+        cnf_l: LinkingConfig,
         device: Optional[Union[str, torch.device]] = None,
         **kwargs,
     ) -> "ModelForEmbeddingLinking":
@@ -147,7 +155,7 @@ class ModelForEmbeddingLinking(nn.Module):
                 config = json.load(f)
 
             config.update(kwargs)
-            model = cls(**config)
+            model = cls(cnf_l=cnf_l, **config)
             state_dict = torch.load(weights_path, map_location="cpu")
             model.load_state_dict(state_dict)
             model.to(target_device)
@@ -156,6 +164,7 @@ class ModelForEmbeddingLinking(nn.Module):
         # Hugging Face model id/path.
         model = cls(
             embedding_model_name=str(path_or_model_name),
+            cnf_l=cnf_l,
             device=target_device,
             **kwargs,
         )
@@ -208,8 +217,19 @@ class ContextModel(AbstractSerialisable):
         return str(path_or_model_name)
 
     def _get_model_init_kwargs(self) -> dict[str, Any]:
-        """Build kwargs passed to ModelForEmbeddingLinking.from_pretrained."""
-        return dict(self._model_init_kwargs)
+        """Build kwargs passed to ModelForEmbeddingLinking.from_pretrained.
+
+        Keep these in sync with runtime linker config so model swaps preserve
+        trainability settings (i.e. top-n LM layers to unfreeze).
+        """
+        kwargs = dict(self._model_init_kwargs)
+        if hasattr(self.cnf_l, "use_projection_layer"):
+            kwargs["use_projection_layer"] = self.cnf_l.use_projection_layer
+        if hasattr(self.cnf_l, "top_n_layers_to_unfreeze"):
+            kwargs["top_n_layers_to_unfreeze"] = (
+                self.cnf_l.top_n_layers_to_unfreeze
+            )
+        return kwargs
 
     def load_transformers(self, embedding_model_name: Union[str, Path]) -> None:
         """Load tokenizer/model from local path or Hugging Face model id."""
@@ -224,7 +244,9 @@ class ContextModel(AbstractSerialisable):
             self.cnf_l.embedding_model_name = str(embedding_model_name)
             self.tokenizer = AutoTokenizer.from_pretrained(model_source)
             self.model = ModelForEmbeddingLinking.from_pretrained(
-                model_source, **model_init_kwargs
+                model_source,
+                cnf_l=self.cnf_l,
+                **model_init_kwargs,
             )
             self.model.eval()
             self.device = torch.device(

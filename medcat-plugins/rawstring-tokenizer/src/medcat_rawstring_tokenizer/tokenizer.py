@@ -8,7 +8,6 @@ class RawstringTokenizer:
     
     def __init__(self, config: Config):
         self.config = config
-        pass
 
     def create_entity(self, doc: MutableDocument,
                       token_start_index: int, token_end_index: int,
@@ -36,7 +35,10 @@ class RawstringTokenizer:
         # maybe + 1
         text = doc.text[start_char:end_char]
         # Create entity with both token and character spans
-        entity = Entity(text, token_start_index, token_end_index, start_char, end_char, label)
+        # The end index needs to be pushed forward by one
+        # i.e. index 9:10 means token 9 is included
+        # we address this in the Entity by setting end_index to be end_token.index - 1
+        entity = Entity(text, token_start_index, token_end_index+1, start_char, end_char, label)
         return entity
 
     def entity_from_tokens(self, tokens: list[MutableToken]) -> MutableEntity:
@@ -56,6 +58,9 @@ class RawstringTokenizer:
             raise ValueError("Need at least one token for an entity")
         text = " ".join(tkn.text for tkn in tokens)
         start_index = tokens[0].index
+        # The end index needs to be pushed forward by one
+        # i.e. index 9:10 means token 9 is included
+        # we address this in the Entity by setting end_index to be end_token.index - 1
         end_index = tokens[-1].index + 1
         start_char = tokens[0].char_index
         end_char = tokens[-1].end_char_index
