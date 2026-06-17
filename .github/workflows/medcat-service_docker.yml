@@ -90,9 +90,6 @@ jobs:
             bash scripts/test_examples.sh "${variant}"
           done
 
-      - name: Report test result
-        run: echo "✅ Integration test PASSED"
-
       - name: Push Docker MedCATservice image
         uses: docker/build-push-action@v7
         with:
