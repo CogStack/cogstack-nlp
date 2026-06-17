@@ -209,6 +209,6 @@ jobs:
   # test-time models for download
   upload-test-models:
     needs: release
-    uses: ./.github/workflows/upload-test-models.yml
+    uses: ./.github/workflows/upload-test-models-to-release.yml
     with:
       tag: ${{ github.ref_name }}
