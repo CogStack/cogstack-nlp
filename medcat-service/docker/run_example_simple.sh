@@ -17,7 +17,7 @@ fi
 # To run in a container run "export LOCALHOST_NAME=host.docker.internal"
 LOCALHOST_NAME=${LOCALHOST_NAME:-localhost}
 
-echo "Running docker-compose"
+echo "Running docker-compose with ${DOCKER_COMPOSE_FILE}"
 docker compose -f ${DOCKER_COMPOSE_FILE} up -d
 
 echo "Running test"
