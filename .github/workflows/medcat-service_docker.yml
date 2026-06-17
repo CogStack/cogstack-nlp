@@ -60,8 +60,7 @@ jobs:
             type=ref,event=branch
             type=ref,event=tag
             type=ref,event=pr
-            # Highest priority so version output is the immutable sha tag (not pr-123 etc.)
-            type=sha,priority=2000
+            type=sha
             # Create version tag based on tag prefix
             type=match,pattern=medcat-service/v(\d+\.\d+\.\d+),group=1
           flavor: latest=false
