@@ -938,12 +938,18 @@ class CAT(AbstractSerialisable):
         if addon_types is not None:
             # filter based on specified addon types
             had_before = len(addon_paths_and_names)
+            expected_folder_names = [
+                addon_type.get_folder_name_for_addon_and_name(
+                    addon_type.addon_type, "")
+                for addon_type in addon_types
+            ]
             addon_paths_and_names = [
                 (addon_path, addon)
                 for addon_path, addon in addon_paths_and_names
-                if any(AddonType.get_folder_name_for_addon_and_name(
-                    AddonType.addon_type, "").startswith(addon_path)
-                    for AddonType in addon_types)
+                if any(
+                    os.path.basename(addon_path).startswith(expected_prefix)
+                    for expected_prefix in expected_folder_names
+                )
             ]
             logger.debug(
                 "Filtered %d addon paths down to %d from based on %s",
