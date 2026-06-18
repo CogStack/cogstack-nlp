@@ -125,9 +125,9 @@ class CAT(AbstractSerialisable):
         """
         # pass
         if self.config.components.linking.train:
-            logger.info("Training was enabled during %s. "
-                        "It was automatically disabled.",
-                        stage)
+            logger.debug("Training was enabled during %s. "
+                         "It was automatically disabled.",
+                         stage)
             self.config.components.linking.train = False
 
     @overload
