@@ -116,7 +116,7 @@ class ModelPack(models.Model):
         try:
             metaCATmodels = []
             # should raise an error if there already is a MetaCAT model with this definition
-            addons = CAT.load_addons(unpacked_model_pack_path)
+            addons = CAT.load_addons(unpacked_model_pack_path, addon_types=[MetaCATAddon,])
             meta_cat_addons = [
                 (addon_path, addon) for addon_path, addon in addons
                 if isinstance(addon, MetaCATAddon)]
