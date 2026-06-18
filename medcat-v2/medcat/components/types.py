@@ -213,9 +213,7 @@ _DEFAULT_NER: dict[str, tuple[str, str]] = {
     "default": ("medcat.components.ner.vocab_based_ner",
                 "NER.create_new_component"),
     "dict": ("medcat.components.ner.dict_based_ner",
-             "NER.create_new_component"),
-    "transformers_ner": ("medcat.components.ner.trf.transformers_ner",
-                         "TransformersNER.create_new_component"),
+             "NER.create_new_component")
 }
 _DEFAULT_LINKING: dict[str, tuple[str, str]] = {
     "default": ("medcat.components.linking.context_based_linker",

@@ -1,7 +1,7 @@
 from medcat.tokenizing.tokenizers import MutableDocument, MutableEntity, MutableToken
 from medcat.config.config import Config
 from medcat_rawstring_tokenizer.tokens import Entity, Document
-from typing import Type
+from typing import Optional, Type
 
 class RawstringTokenizer:
     """The base tokenizer protocol."""
@@ -72,6 +72,17 @@ class RawstringTokenizer:
         # Entity uses [start, end] char semantics, so end must stay exclusive.
         return Entity(text, start_index, end_index, start_char, end_char, text)
         
+        
+    def _get_existing_entity(self, tokens: list[MutableToken],
+                             doc: MutableDocument) -> Optional[MutableEntity]:
+        if not tokens:
+            return None
+        for ent in doc.ner_ents + doc.linked_ents:
+            # The end index is exclusive
+            if (ent.start_index == tokens[0].base.index and
+                    ent.end_index - 1 == tokens[-1].base.index):
+                return ent
+        return None
 
     def entity_from_tokens_in_doc(self, tokens: list[MutableToken],
                                   doc: MutableDocument) -> MutableEntity:
@@ -87,6 +98,10 @@ class RawstringTokenizer:
         Returns:
             MutableEntity: The resulting entity.
         """
+        existing_ent = self._get_existing_entity(tokens, doc)
+        if existing_ent:
+            print("Existing entity found: ", existing_ent)
+            return existing_ent
         return self.entity_from_tokens(tokens)
 
     def __call__(self, text: str) -> MutableDocument:

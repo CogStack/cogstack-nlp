@@ -212,14 +212,6 @@ class Document:
 
     def get_tokens(self, start_index: int, end_index: int
                    ) -> list[MutableToken]:
-        # if not self._tokens:
-        #     return []
-        # token_char_indices = self._ensure_char_indices()
-        # lo = bisect_left(token_char_indices, start_index)
-        # hi = bisect_right(token_char_indices, end_index)
-        # # print("We got here at least: ", [tkn.text for tkn in self._tokens[lo:hi]])
-        # return self._tokens[lo:hi]
-    
         # Keep MedCAT compatibility (inclusive end index), then resolve to
         # full tokens by overlap so partial subword offsets map to words.
         span_start = max(0, start_index)
