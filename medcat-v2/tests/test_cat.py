@@ -120,12 +120,31 @@ class ModelLoadIWithHiddenFilesTests(unittest.TestCase):
 
 class TrainedModelTests(unittest.TestCase):
     TRAINED_MODEL_PATH = EXAMPLE_MODEL_PACK_ZIP
+    CONFIG_DICT = None
 
     @classmethod
     def setUpClass(cls):
-        cls.model = cat.CAT.load_model_pack(cls.TRAINED_MODEL_PATH)
-        if cls.model.config.components.linking.train:
-            cls.model.config.components.linking.train = False
+        cls.model = cat.CAT.load_model_pack(
+            cls.TRAINED_MODEL_PATH, config_dict=cls.CONFIG_DICT)
+
+
+class ModelLoadInitTests(TrainedModelTests):
+    # NOTE: as of writing, the saved model
+    #       has config.components.linking.train = True already
+    #       set but in case we change the model to a new one
+    #       this ensures that the "raw" output is always set to True
+    CONFIG_DICT = {
+        "components": {
+            "linking": {
+                "train": True,
+            }
+        }
+    }
+
+    def test_model_is_not_training(self):
+        self.assertFalse(
+            self.model.config.components.linking.train
+        )
 
 
 class ConfigMergeTests(unittest.TestCase):

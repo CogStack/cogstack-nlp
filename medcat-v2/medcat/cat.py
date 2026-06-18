@@ -116,7 +116,7 @@ class CAT(AbstractSerialisable):
             self.usage_monitor.log_inference(len(text), len(doc.linked_ents))
         return doc
 
-    def _ensure_not_training(self) -> None:
+    def _ensure_not_training(self, stage: str = 'inference') -> None:
         """Method to ensure config is not set to train.
 
         `config.components.linking.train` should only be True while training
@@ -125,8 +125,9 @@ class CAT(AbstractSerialisable):
         """
         # pass
         if self.config.components.linking.train:
-            logger.warning("Training was enabled during inference. "
-                           "It was automatically disabled.")
+            logger.debug("Training was enabled during %s. "
+                         "It was automatically disabled.",
+                         stage)
             self.config.components.linking.train = False
 
     @overload
@@ -882,6 +883,8 @@ class CAT(AbstractSerialisable):
             raise ValueError(f"Unable to load CAT. Got: {cat}")
         # reset mapped ontologies at load time but after CDB load
         cat._set_and_get_mapped_ontologies()
+        # ensure training is disabled
+        cat._ensure_not_training('model load')
         return cat
 
     @classmethod
