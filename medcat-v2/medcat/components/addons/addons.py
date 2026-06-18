@@ -13,11 +13,9 @@ class AddonComponent(BaseComponent, Protocol):
     """Base/abstract addon component class."""
     NAME_PREFIX: str = "addon_"
     NAME_SPLITTER: str = "."
+    # NOTE: need to implement
+    addon_type: str
     config: ComponentConfig
-
-    @property
-    def addon_type(self) -> str:
-        pass
 
     def is_core(self) -> bool:
         return False
