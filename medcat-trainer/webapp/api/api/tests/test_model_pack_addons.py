@@ -71,7 +71,7 @@ class ModelPackAddonRegistrationTests(TestCase):
         addons = [(meta_cat_path, _make_meta_cat_addon())]
 
         with self._register_model_pack(model_pack, addons) as load_addons:
-            load_addons.assert_called_once_with(unpacked, addon_types=[MetaCATAddon])
+            load_addons.assert_called_once_with(unpacked)
 
         self.assertIsNotNone(model_pack.concept_db)
         self.assertIsNotNone(model_pack.vocab)
@@ -87,7 +87,7 @@ class ModelPackAddonRegistrationTests(TestCase):
         addons = [(rel_cat_path, _make_rel_cat_addon())]
 
         with self._register_model_pack(model_pack, addons) as load_addons:
-            load_addons.assert_called_once_with(unpacked, addon_types=[MetaCATAddon])
+            load_addons.assert_called_once_with(unpacked)
 
         self.assertIsNotNone(model_pack.concept_db)
         self.assertIsNotNone(model_pack.vocab)
@@ -123,7 +123,7 @@ class ModelPackAddonRegistrationTests(TestCase):
         ]
 
         with self._register_model_pack(model_pack, addons) as load_addons:
-            load_addons.assert_called_once_with(unpacked, addon_types=[MetaCATAddon])
+            load_addons.assert_called_once_with(unpacked)
 
         self.assertIsNotNone(model_pack.concept_db)
         self.assertIsNotNone(model_pack.vocab)
@@ -137,7 +137,7 @@ class ModelPackAddonRegistrationTests(TestCase):
         model_pack, unpacked = self._prepare_model_pack(name="no-addon-pack")
 
         with self._register_model_pack(model_pack, []) as load_addons:
-            load_addons.assert_called_once_with(unpacked, addon_types=[MetaCATAddon])
+            load_addons.assert_called_once_with(unpacked)
 
         self.assertIsNotNone(model_pack.concept_db)
         self.assertIsNotNone(model_pack.vocab)
