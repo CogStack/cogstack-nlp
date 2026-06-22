@@ -543,9 +543,27 @@ class CatWithMetaCATSaveLoadTests(CatWithMetaCATTests):
 
     def test_can_load_meta_cat(self):
         addons = cat.CAT.load_addons(self.mpp)
+        self.assert_has_one_meta_cat(addons)
+
+    def assert_has_one_meta_cat(self, addons: list[AddonComponent]):
         self.assertEqual(len(addons), 1)
         _, addon = addons[0]
         self.assertIsInstance(addon, MetaCATAddon)
+
+    def test_can_filter_addons_empty(self):
+        # NONE -> empty
+        addons = cat.CAT.load_addons(self.mpp, addon_types=[])
+        self.assertFalse(addons)
+
+    def test_can_filter_addons_non_existing(self):
+        from medcat.components.addons.relation_extraction.rel_cat import RelCATAddon
+        addons = cat.CAT.load_addons(self.mpp, addon_types=[RelCATAddon])
+        self.assertFalse(addons)
+
+    def test_can_filter_addons_meta_cat(self):
+        # only meta cat -> same as regular
+        addons = cat.CAT.load_addons(self.mpp, addon_types=[MetaCATAddon])
+        self.assert_has_one_meta_cat(addons)
 
     def test_can_load_meta_cat_with_addon_cnf(self, seed: int = -41):
         mc: MetaCATAddon = cat.CAT.load_addons(

@@ -908,7 +908,8 @@ class CAT(AbstractSerialisable):
     @classmethod
     def load_addons(
             cls, model_pack_path: str,
-            addon_config_dict: Optional[dict[str, dict]] = None
+            addon_config_dict: Optional[dict[str, dict]] = None,
+            addon_types: Optional[list[Type[AddonComponent]]] = None,
             ) -> list[tuple[str, AddonComponent]]:
         """Load addons based on a model pack path.
 
@@ -920,6 +921,9 @@ class CAT(AbstractSerialisable):
                 For instance,
                 `{"meta_cat.Subject": {'general': {'device': 'cpu'}}}`
                 would apply to the specific MetaCAT.
+            addon_type (Optional[list[Type[AddonComponent]]]):
+                The types of adddons to include. If not specified, all
+                addons will be loaded. Defaults to None.
 
         Returns:
             List[tuple(str, AddonComponent)]: list of pairs of adddon names the addons.
@@ -934,6 +938,25 @@ class CAT(AbstractSerialisable):
                 components_folder, folder_name))
             and folder_name.startswith(AddonComponent.NAME_PREFIX)
         ]
+        if addon_types is not None:
+            # filter based on specified addon types
+            had_before = len(addon_paths_and_names)
+            expected_folder_names = [
+                addon_type.get_folder_name_for_addon_and_name(
+                    addon_type.addon_type, "")
+                for addon_type in addon_types
+            ]
+            addon_paths_and_names = [
+                (addon_path, addon)
+                for addon_path, addon in addon_paths_and_names
+                if any(
+                    os.path.basename(addon_path).startswith(expected_prefix)
+                    for expected_prefix in expected_folder_names
+                )
+            ]
+            logger.debug(
+                "Filtered %d addon paths down to %d from based on %s",
+                had_before, len(addon_paths_and_names), addon_types)
         loaded_addons = [
             addon for addon_path, addon_name in addon_paths_and_names
             if isinstance(addon := (
