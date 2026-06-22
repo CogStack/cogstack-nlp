@@ -13,7 +13,7 @@ class AddonComponent(BaseComponent, Protocol):
     """Base/abstract addon component class."""
     NAME_PREFIX: str = "addon_"
     NAME_SPLITTER: str = "."
-    # NOTE: need to implement
+    # NOTE: the following need to be a part of the implementation
     addon_type: str
     config: ComponentConfig
 
