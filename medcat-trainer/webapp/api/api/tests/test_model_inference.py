@@ -49,7 +49,7 @@ class ModelInferenceTests(TestCase):
         self.project = ProjectAnnotateEntities.objects.create(
             name="Test Project",
             model_pack=self.model_pack,
-            cuis=None,
+            cuis="",
             cuis_file=None,
             use_model_service=False,
             deid_model_annotation=False,
