@@ -11,11 +11,19 @@ from medcat.cat import CAT
 from api.models import ProjectAnnotateEntities, Document, ModelPack
 
 
-MODEL_PATH = os.path.join(
+RAW_MODEL_PATH = os.path.join(
     os.path.dirname(__file__),
-    "..", "..", "..", "..",
-    "../medcat-test-models",
+    "..", "..", "..", "..", "..",
+    "medcat-test-models",
     "mct2_model_pack_train_true.zip"
+)
+MODEL_PATH = os.path.join(
+
+)
+os.symlink(
+    RAW_MODEL_PATH,
+    os.path.join(os.path.dirname(__file__),
+    "..", "..", "media", "fake_model_pack.zip")
 )
 
 
