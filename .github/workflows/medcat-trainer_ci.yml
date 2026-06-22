@@ -148,6 +148,11 @@ jobs:
 
   test-backend:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        medcat-source:
+          - released   # current behaviour, pins to lockfile
+          - local      # tests against ../medcat-v2
     steps:
       - name: Checkout main
         uses: actions/checkout@v6
@@ -175,6 +180,12 @@ jobs:
         run: |
           cd webapp
           uv sync --frozen
+
+      - name: Swap in local medcat (local matrix leg only)
+        if: matrix.medcat-source == 'local'
+        run: |
+          cd webapp
+          uv pip install --editable ../medcat-v2
 
       - name: Ensure pip inside uv environment
         run: |
