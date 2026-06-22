@@ -60,6 +60,7 @@ class ModelInferenceTests(TestCase):
         self.document = Document.objects.create(
             name="Test Doc",
             text="The patient had sever kidney failure.",
+            dataset_id=-1,
         )
 
     @contextmanager
