@@ -30,7 +30,7 @@ MODEL_PATH = os.path.join(
 
 class ModelInferenceTests(TestCase):
     DS_FILE = os.path.join(MEDIA_PATH, "example_ds.csv")
-    DS_CONTENT = ((-1, "The patient had severe kidney failure"))
+    DS_CONTENT = ((-1, "The patient had severe kidney failure"),)
 
     @classmethod
     def setUpClass(cls):
