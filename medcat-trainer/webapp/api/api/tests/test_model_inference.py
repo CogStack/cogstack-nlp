@@ -53,6 +53,7 @@ class ModelInferenceTests(TestCase):
             cuis_file=None,
             use_model_service=False,
             deid_model_annotation=False,
+            dataset_id=-1,
         )
 
         # A document with some text the model can run on
