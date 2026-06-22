@@ -35,6 +35,7 @@ class ModelInferenceTests(TestCase):
         # Minimal project setup
         self.project = ProjectAnnotateEntities.objects.create(
             name="Test Project",
+            model_pack="ABC",
             cuis=None,
             cuis_file=None,
             use_model_service=False,
