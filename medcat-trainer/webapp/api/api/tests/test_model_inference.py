@@ -10,7 +10,7 @@ from django.urls import reverse
 
 from medcat.cat import CAT
 
-from api.models import ProjectAnnotateEntities, ModelPack, Dataset
+from api.models import Document, ProjectAnnotateEntities, ModelPack, Dataset
 
 
 RAW_MODEL_PATH = os.path.join(
@@ -88,10 +88,11 @@ class ModelInferenceTests(TestCase):
 
     def test_can_use_model_for_inference(self):
         with self.use_provided_model():
+            doc_ids = [doc.id for doc in Document.objects.all()]
             response = self.client.post(
                 "/api/prepare-documents/",
                 data={
-                    "document_ids": [self.document.id],
+                    "document_ids": doc_ids,
                     "project_id": self.project.id,
                     "force": 0,
                     "update": 0,
@@ -104,3 +105,4 @@ class ModelInferenceTests(TestCase):
 
         # The document should now be in prepared_documents
         self.assertTrye(self.project.prepared_documents.all())
+        self.assertEqual(len(self.project.prepared_documents), len(doc_ids))
