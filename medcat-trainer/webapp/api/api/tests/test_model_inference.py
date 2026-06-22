@@ -19,14 +19,17 @@ RAW_MODEL_PATH = os.path.join(
     "medcat-test-models",
     "mct2_model_pack_train_true.zip"
 )
-MODEL_PATH = os.path.join(
+MEDIA_PATH = os.path.join(
     os.path.dirname(__file__),
-    "..", "..", "media", "fake_model_pack.zip"
+    "..", "..", "media"
+)
+MODEL_PATH = os.path.join(
+    MEDIA_PATH, "fake_model_pack.zip"
 )
 
 
 class ModelInferenceTests(TestCase):
-    DS_FILE = "example_ds.csv"
+    DS_FILE = os.path.join(MEDIA_PATH, "example_ds.csv")
     DS_CONTENT = ((-1, "The patient had severe kidney failure"))
 
     @classmethod
