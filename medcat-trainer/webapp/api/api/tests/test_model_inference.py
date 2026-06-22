@@ -8,7 +8,7 @@ from django.urls import reverse
 
 from medcat.cat import CAT
 
-from api.models import ProjectAnnotateEntities, Document, ModelPack
+from api.models import ProjectAnnotateEntities, Document, ModelPack, Dataset
 
 
 RAW_MODEL_PATH = os.path.join(
@@ -45,6 +45,13 @@ class ModelInferenceTests(TestCase):
             model_pack=MODEL_PATH,
         )
 
+        # dataset
+        self.dataset = Dataset.objects.create(
+            name="fake_dataset",
+            original_file=__file__,
+            description="Fake Dataset"
+        )
+
         # Minimal project setup
         self.project = ProjectAnnotateEntities.objects.create(
             name="Test Project",
@@ -53,14 +60,14 @@ class ModelInferenceTests(TestCase):
             cuis_file=None,
             use_model_service=False,
             deid_model_annotation=False,
-            dataset_id=-1,
+            dataset_id=self.dataset.id,
         )
 
         # A document with some text the model can run on
         self.document = Document.objects.create(
             name="Test Doc",
             text="The patient had sever kidney failure.",
-            dataset_id=-1,
+            dataset_id=self.dataset.id,
         )
 
     @contextmanager
