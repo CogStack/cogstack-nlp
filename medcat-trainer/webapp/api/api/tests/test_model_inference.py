@@ -36,6 +36,7 @@ class ModelInferenceTests(TestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls._create_symlink()
+        cls._create_dataset_file()
         # Load once for the whole test class — it's expensive
         cls.cat = CAT.load_model_pack(MODEL_PATH)
 
