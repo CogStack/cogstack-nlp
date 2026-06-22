@@ -46,6 +46,7 @@ class ModelInferenceTests(TestCase):
     @classmethod
     def _create_dataset_file(cls):
         df = pd.DataFrame(cls.DS_CONTENT, columns=['id', 'text'])
+        df.to_csv(cls.DS_FILE)
 
     def setUp(self):
         # A real user — the view reads request.user
