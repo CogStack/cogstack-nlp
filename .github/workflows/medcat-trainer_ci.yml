@@ -184,6 +184,7 @@ jobs:
       - name: Swap in local medcat (local matrix leg only)
         if: matrix.medcat-source == 'local'
         run: |
+          uv venv .venv
           uv pip install --editable ../medcat-v2
 
       - name: Ensure pip inside uv environment
