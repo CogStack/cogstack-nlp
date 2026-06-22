@@ -13,7 +13,7 @@ from api.models import ProjectAnnotateEntities, Document
 
 MODEL_PATH = os.path.join(
     os.path.dirname(__file__),
-    "..", "..", "..", "..", "..",
+    "..", "..", "..", "..",
     "../medcat-test-models",
     "mct2_model_pack_train_true.zip"
 )
