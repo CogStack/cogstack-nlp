@@ -89,7 +89,7 @@ class ModelInferenceTests(TestCase):
     def test_can_use_model_for_inference(self):
         with self.use_provided_model():
             response = self.client.post(
-                reverse("prepare_documents"),  # adjust to your actual URL name
+                reverse("api/prepare_documents"),  # adjust to your actual URL name
                 data={
                     "document_ids": [self.document.id],
                     "project_id": self.project.id,
