@@ -8,7 +8,7 @@ from django.urls import reverse
 
 from medcat.cat import CAT
 
-from api.models import ProjectAnnotateEntities, Document
+from api.models import ProjectAnnotateEntities, Document, ModelPack
 
 
 MODEL_PATH = os.path.join(
@@ -32,10 +32,15 @@ class ModelInferenceTests(TestCase):
         self.user = User.objects.create_user(username="testuser", password="password")
         self.client.force_login(self.user)
 
+        self.model_pack = ModelPack.objects.create(
+            name='fake-model',
+            model_pack=MODEL_PATH,
+        )
+
         # Minimal project setup
         self.project = ProjectAnnotateEntities.objects.create(
             name="Test Project",
-            model_pack="ABC",
+            model_pack=self.model_pack,
             cuis=None,
             cuis_file=None,
             use_model_service=False,
