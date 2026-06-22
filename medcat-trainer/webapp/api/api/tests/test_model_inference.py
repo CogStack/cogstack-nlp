@@ -48,7 +48,7 @@ class ModelInferenceTests(TestCase):
         # dataset
         self.dataset = Dataset.objects.create(
             name="fake_dataset",
-            original_file=__file__,
+            original_file="some_file.csv",
             description="Fake Dataset"
         )
 
