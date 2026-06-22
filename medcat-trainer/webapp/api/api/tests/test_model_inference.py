@@ -30,7 +30,8 @@ MODEL_PATH = os.path.join(
 
 class ModelInferenceTests(TestCase):
     DS_FILE = os.path.join(MEDIA_PATH, "example_ds.csv")
-    DS_CONTENT = ((-1, "The patient had severe kidney failure"),)
+    DS_CONTENT = (("T0", "The patient had severe kidney failure"),)
+    DS_COLUMNS = ("name", "text")
 
     @classmethod
     def setUpClass(cls):
@@ -49,7 +50,7 @@ class ModelInferenceTests(TestCase):
 
     @classmethod
     def _create_dataset_file(cls):
-        df = pd.DataFrame(cls.DS_CONTENT, columns=['id', 'text'])
+        df = pd.DataFrame(cls.DS_CONTENT, columns=cls.DS_COLUMNS)
         df.to_csv(cls.DS_FILE)
 
     def setUp(self):
