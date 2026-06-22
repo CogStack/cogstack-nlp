@@ -8,7 +8,7 @@ from django.urls import reverse
 
 from medcat.cat import CAT
 
-from api.api.models import ProjectAnnotateEntities, Document
+from api.models import ProjectAnnotateEntities, Document
 
 
 MODEL_PATH = os.path.join(
