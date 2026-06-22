@@ -18,12 +18,12 @@ RAW_MODEL_PATH = os.path.join(
     "mct2_model_pack_train_true.zip"
 )
 MODEL_PATH = os.path.join(
-
+    os.path.dirname(__file__),
+    "..", "..", "media", "fake_model_pack.zip"
 )
 os.symlink(
     RAW_MODEL_PATH,
-    os.path.join(os.path.dirname(__file__),
-    "..", "..", "media", "fake_model_pack.zip")
+    MODEL_PATH
 )
 
 
