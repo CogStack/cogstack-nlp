@@ -1,19 +1,17 @@
 import os
 from contextlib import contextmanager
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 import shutil
 
-import pandas as pd
-
-from django.contrib.auth.models import User
 from django.test import TestCase
 import unittest
 from rest_framework.test import APIClient
+from ._helpers import create_dataset, create_user, create_document
 
 import medcat
 from medcat.cat import CAT
 
-from api.models import Document, ProjectAnnotateEntities, ModelPack, Dataset
+from api.models import Document, ProjectAnnotateEntities, ModelPack
 
 
 RAW_MODEL_PATH = os.path.join(
@@ -35,15 +33,11 @@ HAS_KNOWN_FAILURE = medcat.__version__ in ("2.8.0", "2.8.1", "2.8.2", "2.8.3")
 
 
 class ModelInferenceTests(TestCase):
-    DS_FILE = os.path.join(MEDIA_PATH, "example_ds.csv")
-    DS_CONTENT = (("T0", "The patient had severe kidney failure"),)
-    DS_COLUMNS = ("name", "text")
 
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
         cls._copy_model()
-        cls._create_dataset_file()
         # Load once for the whole test class — it's expensive
         cls.cat = CAT.load_model_pack(MODEL_PATH)
 
@@ -53,7 +47,6 @@ class ModelInferenceTests(TestCase):
         folder_path = MODEL_PATH.removesuffix(".zip")
         if os.path.exists(folder_path):
             shutil.rmtree(folder_path)
-        os.remove(cls.DS_FILE)
 
     @classmethod
     def _copy_model(cls):
@@ -62,14 +55,9 @@ class ModelInferenceTests(TestCase):
             MODEL_PATH
         )
 
-    @classmethod
-    def _create_dataset_file(cls):
-        df = pd.DataFrame(cls.DS_CONTENT, columns=cls.DS_COLUMNS)
-        df.to_csv(cls.DS_FILE)
-
     def setUp(self):
         # A real user — the view reads request.user
-        self.user = User.objects.create_user(username="testuser", password="password", is_staff=True)
+        self.user = create_user(username="testuser", password="password", is_staff=True)
         self.client = APIClient()
         self.client.force_authenticate(self.user)
 
@@ -79,11 +67,9 @@ class ModelInferenceTests(TestCase):
         )
 
         # dataset
-        self.dataset = Dataset.objects.create(
-            name="fake_dataset",
-            original_file=self.DS_FILE,
-            description="Fake Dataset"
-        )
+        self.dataset = create_dataset("FAKE-ds")
+        # NOTE: self.dataset will be used to map to the dataset
+        self.document = create_document(self, "DOC1", "Patient has severe kidney failure")
 
         # Minimal project setup
         self.project = ProjectAnnotateEntities.objects.create(
