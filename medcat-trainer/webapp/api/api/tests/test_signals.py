@@ -170,3 +170,44 @@ class ProjectTasksChangedSignalTests(TestCase):
             action='post_add',
         )
         self.assertIn(task, project.tasks.all())
+
+    def test_manual_tasks_persist_when_model_pack_has_no_meta_cats(self):
+        # 1. Create a manual task not tied to any automated prediction model
+        manual_task = MetaTask.objects.create(name='ManualPresenceTask')
+
+        # 2. Build a lightweight ModelPack that does NOT contain any meta_cats
+        cdb = ConceptDB(name='manual-cdb', cdb_file='manual-cdb.dat')
+        cdb.save(skip_load=True)
+        vocab = Vocabulary(name='manual-vocab', vocab_file='manual-vocab.dat')
+        vocab.save(skip_load=True)
+
+        mp = ModelPack(name='base-ner-pack', concept_db=cdb, vocab=vocab)
+        mp.save(skip_load=True)
+
+        # Write a dummy zip file onto the filesystem so model_pack file validation passes
+        pack_path = os.path.join(settings.MEDIA_ROOT, 'manual_base.zip')
+        with open(pack_path, 'wb') as fh:
+            fh.write(b'fake-zip')
+        ModelPack.objects.filter(pk=mp.pk).update(model_pack='manual_base.zip')
+        mp.refresh_from_db()
+
+        # 3. Create a project and attach this empty ModelPack
+        project = create_basic_project(name='manual-tasks-proj')
+        project.model_pack = mp
+        project.concept_db = None
+        project.vocab = None
+        project.save()
+
+        # 4. Add the manual task to the project's many-to-many field
+        project.tasks.add(manual_task)
+
+        # 5. Manually trigger the signal matching a Django admin 'post_add' save operation
+        api_signals.project_tasks_changed(
+            sender=ProjectAnnotateEntitiesFields.tasks.through,
+            instance=project,
+            action='post_add',
+        )
+
+        # 6. Assert that our manual task survived the signal handler execution
+        self.assertIn(manual_task, project.tasks.all())
+        self.assertEqual(project.tasks.count(), 1)
