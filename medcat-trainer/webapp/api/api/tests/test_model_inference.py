@@ -1,12 +1,12 @@
 import os
 from contextlib import contextmanager
 from unittest.mock import patch
+import shutil
 
 import pandas as pd
 
 from django.contrib.auth.models import User
 from django.test import TestCase
-from django.urls import reverse
 
 from medcat.cat import CAT
 
@@ -36,14 +36,22 @@ class ModelInferenceTests(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls._create_symlink()
+        cls._copy_model()
         cls._create_dataset_file()
         # Load once for the whole test class — it's expensive
         cls.cat = CAT.load_model_pack(MODEL_PATH)
 
     @classmethod
-    def _create_symlink(cls):
-        os.symlink(
+    def tearDownClass(cls):
+        os.remove(MODEL_PATH)
+        folder_path = MODEL_PATH.removesuffix(".zip")
+        if os.path.exists(folder_path):
+            shutil.rmtree(folder_path)
+        os.remove(cls.DS_FILE)
+
+    @classmethod
+    def _copy_model(cls):
+        shutil.copyfile(
             RAW_MODEL_PATH,
             MODEL_PATH
         )
