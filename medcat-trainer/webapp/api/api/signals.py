@@ -107,6 +107,12 @@ def project_tasks_changed(sender, instance, action, **kwargs):
     # post_remove or post_add actions, overwrite to model_pack supplied MetaCAT tasks.
     if (action.startswith('post') and isinstance(instance, ProjectAnnotateEntitiesFields) and
             instance.model_pack is not None):
+        # NOTE: This part deals with two different sources of information:
+        #       1. sometimes the model pack associated with the project can have meta-cats for meta-annotations
+        #       2. sometimes the project itself defines meta-tasks for the annotator to use
+        #
+        #       Currently the proccess here defaults to useing model-pack defined meta-tasks (if present),
+        #       while allowing for the project-defined ones otherwise.
 
         # Find automated tasks from the model pack
         db_tasks = [
