@@ -205,7 +205,8 @@ jobs:
           DEBUG: 1
         run: |
           cd webapp/api
-          uv run --with "coverage[toml]" coverage run manage.py test
+          # NOTE: no-sync allows usage of local install if required
+          uv run --no-sync --with "coverage[toml]" coverage run manage.py test
           uv run --with "coverage[toml]" coverage xml -o coverage.xml
           uv run --with "coverage[toml]" coverage html -d htmlcov
 
