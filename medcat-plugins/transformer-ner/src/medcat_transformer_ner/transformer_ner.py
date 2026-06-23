@@ -392,7 +392,7 @@ class NER(AbstractEntityProvidingComponent,
         token_end = None
 
         for token in doc:
-            if token.end_char_index <= start_char:
+            if token.char_index + len(token.text) <= start_char:
                 continue
             if token.char_index >= end_char:
                 break

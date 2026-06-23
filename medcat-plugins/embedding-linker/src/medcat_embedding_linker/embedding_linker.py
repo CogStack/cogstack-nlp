@@ -754,12 +754,6 @@ class Linker(AbstractEntityProvidingComponent):
     def predict_entities(
         self, doc: MutableDocument, ents: list[MutableEntity] | None = None
     ) -> list[MutableEntity]:
-        if self.cnf_l.train and self.name == "embedding_linker":
-            logger.warning(
-                "Attemping to train a static embedding linker. "
-                "This is not possible / required."
-                "Use the `trainable_embedding_linker` instead."
-            )
         if self.cnf_l.filters.cuis and self.cnf_l.filters.cuis_exclude:
             logger.warning(
                 "You have both include and exclude filters for CUIs set. "

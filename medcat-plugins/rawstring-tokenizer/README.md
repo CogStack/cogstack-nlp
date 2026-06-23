@@ -1,38 +1,80 @@
-# MedCAT-gliner
+# MedCAT Embedding Linker
 
-This provides [gliner](https://github.com/urchade/GLiNER) based NER step for MedCAT core library.
+A MedCAT plugin that provides an a Rawstring tokenizer, essentially splitting on whitespace characters (" ", "\n", "\t") only.
 
-# Usage
+## Overview
 
-First install from PyPI, e.g:
+This plugin replaces MedCAT's default tokenizing components with with rawstring, that are not limited by requiring SpaCy representations that perform linking.
+
+## Requirements
+
+- **MedCAT**: 2.0+ ([PyPI](https://pypi.org/project/medcat/) | [GitHub](https://github.com/CogStack/MedCAT))
+- Python 3.10+
+
+## Installation
+
+```bash
+pip install medcat-rawstring-tokenizer
 ```
-pip install medcat-gliner
-```
-Subsequently, if you have an existing model, you should be able to just change the NER component:
-```
-cat = CAT.load_model_pack("path/to/existing/model")
-# change component
-from medcat_gliner import GLiNERConfig
-cat.config.components.ner.comp_name = "gliner_ner"
-cat.config.components.ner.custom_cnf = GLiNERConfig()
-# recreate pipe with new NER component
+
+## Quick Start
+
+### Replacing current tokenizer with a rawstring_tokenizer
+
+```python
+from medcat.cat import CAT
+from medcat_rawstring_tokenizer.tokenizer import RawstringTokenizer
+from medcat.tokenizing.tokenizers import register_tokenizer
+
+MODEL_PACK_PATH = ".."
+TARGET_FOLDER = ".."
+TARGET_PACK_NAME = ".."
+TOKENIZER_NAME = "rawstring_tokenizer"
+
+# The custom tokenizer must be registered before we rebuild the pipeline.
+register_tokenizer(TOKENIZER_NAME, RawstringTokenizer)
+
+cat = CAT.load_model_pack(MODEL_PACK_PATH)
+print("Tokenizer provider before:", cat.config.general.nlp.provider)
+
+# Switch tokenizer provider in config, then recreate pipeline to apply it.
+cat.config.general.nlp.provider = TOKENIZER_NAME
+
+cat.config.components.addons.clear()
 cat._recreate_pipe()
-# use as needed
+
+print("Tokenizer provider after:", cat.config.general.nlp.provider)
+
+cat.save_model_pack(
+    target_folder=TARGET_FOLDER,
+    pack_name=TARGET_PACK_NAME,
+    add_hash_to_pack_name=False,
+    make_archive=False,
+)
+print("Saved model pack to:", f"{TARGET_FOLDER.rstrip('/')}/{TARGET_PACK_NAME}")
 ```
 
-## NER recall comparison (linkable SNOMED entities)
+## How It Works
 
-The following results compare the existing NER (vocab based NER with spell checking) implementation with the gliner implementation when used as the NER component within MedCAT.
-Evaluation was performed on the **2023 SNOMED CT Linking Challenge** dataset.
+### Component Registration
 
-> **Important caveat**
-> This is **not a measure of general NER quality**.
-> Recall is computed only with respect to annotated, linkable SNOMED CT entities present in the linking dataset.
-> Mentions outside the annotation scope are treated as false positives by construction, so precision is not meaningful here.
+Register the tokenizer by name before trying to add the tokenizer to the pipeline. If loading a model with a rawstring tokenizer register it beforehand.
 
-| Implementation         | True Positives | False Negatives | Recall | Runtime |
-| ---------------------- | -------------- | --------------- | ------ | ------- |
-| Vocab based NER        | 10,545         | 3,917           | 0.729  | ~5m 50s |
-| GliNER implementation  | 7,971          | 6,491           | 0.551  | ~34m    |
+### Embedding Generation
 
-As we can see, for this dataset, GliNER is significantly slower and performs worse than the standard vocab based implementation. This is likely because the vocab based NER step has been configured and tuned to work best within the MedCAT pipeline. It is likely that with additional tuning the GliNER implementation could perform as good or better than the vocab based linker does.
+## Limitations
+
+- Can NOT be used with the default `context_based_linker` as, that uses spacy tokens and spacy embeddings for linking. Which are not used with this tokenizer.
+
+## Citation
+
+If you use this plugin, please cite MedCAT:
+
+```bibtex
+@article{medcat2021,
+    title={Medical Concept Annotation Tool (MedCAT)},
+    author={Kraljevic, Zeljko and et al.},
+    journal={arXiv preprint arXiv:2010.01165},
+    year={2021}
+}
+```
