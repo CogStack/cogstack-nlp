@@ -31,6 +31,7 @@
 
           <!-- Action Buttons -->
           <div class="action-buttons">
+            <plugin-slot name="nav:actions" />
             <router-link v-if="isAdmin" to="/project-admin" class="admin-cog-link" title="Project Admin">
               <font-awesome-icon icon="cog"></font-awesome-icon>
             </router-link>
