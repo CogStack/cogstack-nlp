@@ -133,7 +133,7 @@ test = []  # TODO - list
 [build-system]
 # These are the assumed default build requirements from pip:
 # https://pip.pypa.io/en/stable/reference/pip/#pep-517-and-518-support
-requires = ["setuptools>=43.0.0", "setuptools_scm>=8", "wheel"]
+requires = ["setuptools>=43.0.0", "setuptools_scm>=8,<10.1.2", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
