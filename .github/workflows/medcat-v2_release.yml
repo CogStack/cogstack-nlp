@@ -66,7 +66,7 @@ jobs:
         run: pip install --upgrade build
 
       - name: Build package
-        run: python -m build
+        run: python -m build -v
 
       - name: Upload wheel artifact
         uses: actions/upload-artifact@v7
