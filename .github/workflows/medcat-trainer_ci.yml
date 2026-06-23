@@ -197,7 +197,6 @@ jobs:
         if: matrix.medcat-source == 'local'
         run: |
           cd webapp
-          uv venv .venv
           uv pip install --editable "../../medcat-v2[meta-cat,spacy,rel-cat,deid,dict-ner]"
 
       - name: Run Django tests with coverage
