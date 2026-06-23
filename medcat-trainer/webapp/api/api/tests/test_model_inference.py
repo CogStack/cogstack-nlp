@@ -114,5 +114,5 @@ class ModelInferenceTests(TestCase):
         self.assertEqual(response.data["message"], "Documents prepared successfully")
 
         # The document should now be in prepared_documents
-        self.assertTre(self.project.prepared_documents.all())
+        self.assertTrue(self.project.prepared_documents.all())
         self.assertEqual(len(self.project.prepared_documents), len(doc_ids))
