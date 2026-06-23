@@ -7,6 +7,7 @@ import pandas as pd
 
 from django.contrib.auth.models import User
 from django.test import TestCase
+from rest_framework.test import APIClient
 
 from medcat.cat import CAT
 
@@ -63,8 +64,9 @@ class ModelInferenceTests(TestCase):
 
     def setUp(self):
         # A real user — the view reads request.user
-        self.user = User.objects.create_user(username="testuser", password="password")
-        self.client.force_login(self.user)
+        self.user = User.objects.create_user(username="testuser", password="password", is_staff=True)
+        self.client = APIClient()
+        self.client.force_authenticate(self.user)
 
         self.model_pack = ModelPack.objects.create(
             name='fake-model',
@@ -112,5 +114,5 @@ class ModelInferenceTests(TestCase):
         self.assertEqual(response.data["message"], "Documents prepared successfully")
 
         # The document should now be in prepared_documents
-        self.assertTrye(self.project.prepared_documents.all())
+        self.assertTre(self.project.prepared_documents.all())
         self.assertEqual(len(self.project.prepared_documents), len(doc_ids))
