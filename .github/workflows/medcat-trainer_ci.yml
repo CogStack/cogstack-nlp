@@ -148,6 +148,11 @@ jobs:
 
   test-backend:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        medcat-source:
+          - released   # current behaviour, pins to lockfile
+          - local      # tests against ../medcat-v2
     steps:
       - name: Checkout main
         uses: actions/checkout@v6
@@ -187,6 +192,13 @@ jobs:
           cd webapp
           uv run python -m spacy download en_core_web_md
 
+      - name: Swap in local medcat (local matrix leg only)
+        # NOTE: doing this after all of the above to avoid re-installing
+        if: matrix.medcat-source == 'local'
+        run: |
+          cd webapp
+          uv pip install --editable "../../medcat-v2[meta-cat,spacy,rel-cat,deid,dict-ner]"
+
       - name: Run Django tests with coverage
         env:
           DB_ENGINE: sqlite3
@@ -194,9 +206,11 @@ jobs:
           DEBUG: 1
         run: |
           cd webapp/api
-          uv run --with "coverage[toml]" coverage run manage.py test
-          uv run --with "coverage[toml]" coverage xml -o coverage.xml
-          uv run --with "coverage[toml]" coverage html -d htmlcov
+          # NOTE: no-sync allows usage of local install if required
+          #       but shouldn't affect other installs since it should be in sync
+          uv run --no-sync --with "coverage[toml]" coverage run manage.py test
+          uv run --no-sync --with "coverage[toml]" coverage xml -o coverage.xml
+          uv run --no-sync --with "coverage[toml]" coverage html -d htmlcov
 
       - name: Backend coverage summary
         if: always()
