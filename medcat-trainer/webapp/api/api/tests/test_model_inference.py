@@ -7,8 +7,10 @@ import pandas as pd
 
 from django.contrib.auth.models import User
 from django.test import TestCase
+import unittest
 from rest_framework.test import APIClient
 
+import medcat
 from medcat.cat import CAT
 
 from api.models import Document, ProjectAnnotateEntities, ModelPack, Dataset
@@ -27,6 +29,9 @@ MEDIA_PATH = os.path.join(
 MODEL_PATH = os.path.join(
     MEDIA_PATH, "fake_model_pack.zip"
 )
+
+
+HAS_KNOWN_FAILURE = medcat.__version__ in ("2.8.0", "2.8.1", "2.8.2", "2.8.3")
 
 
 class ModelInferenceTests(TestCase):
@@ -96,6 +101,7 @@ class ModelInferenceTests(TestCase):
         with patch("api.views.get_medcat", return_value=self.cat):
             yield
 
+    @unittest.skipIf(HAS_KNOWN_FAILURE, "Known to fail in 2.8.* (<2.8.4), specfically")
     def test_can_use_model_for_inference(self):
         with self.use_provided_model():
             doc_ids = [doc.id for doc in Document.objects.all()]
