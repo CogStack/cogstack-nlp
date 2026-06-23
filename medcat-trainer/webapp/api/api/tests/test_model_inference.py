@@ -115,4 +115,4 @@ class ModelInferenceTests(TestCase):
 
         # The document should now be in prepared_documents
         self.assertTrue(self.project.prepared_documents.all())
-        self.assertEqual(len(self.project.prepared_documents), len(doc_ids))
+        self.assertEqual(len(self.project.prepared_documents.all()), len(doc_ids))
