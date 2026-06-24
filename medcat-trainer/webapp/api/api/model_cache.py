@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Collection, Dict, Optional, Any
+from typing import Dict, Optional, Any
 
 from pydantic import ValidationError
 from opentelemetry import trace
@@ -40,16 +40,16 @@ def _remember_full_addons(cat: CAT) -> None:
 
 
 def _apply_addon_filter(cat: CAT,
-                        addons: Optional[Collection[str]] = None) -> CAT:
+                        addons: Optional[list[str]] = None) -> CAT:
     """Return *cat* with pipeline addons filtered; full set is kept on the cache."""
     _remember_full_addons(cat)
     full_addons = getattr(cat, _FULL_ADDONS_ATTR)
     if addons is None:
         cat._pipeline._addons = list(full_addons)
     else:
-        allowed = set(addons)
+        allowed_addons = set(addons)
         cat._pipeline._addons = [
-            addon for addon in full_addons if addon.addon_type in allowed
+            addon for addon in full_addons if addon.addon_type in allowed_addons
         ]
     return cat
 
@@ -208,7 +208,7 @@ def get_medcat_from_model_pack_id(modelpack_id: int, cat_map: Dict[str, CAT]=CAT
 
 @tracer.start_as_current_span("get_medcat")
 def get_medcat(project,
-               addons: Optional[Collection[str]] = None,
+               addons: Optional[list[str]] = None,
                cdb_map: Dict[str, CDB]=CDB_MAP,
                vocab_map: Dict[str, Vocab]=VOCAB_MAP,
                cat_map: Dict[str, CAT]=CAT_MAP):
@@ -217,8 +217,8 @@ def get_medcat(project,
     Args:
         project: ``ProjectAnnotateEntities`` to load the model for.
         addons: Addon types to enable on the returned model, e.g.
-            ``['meta_cat']`` or ``['rel_cat']``. Pass an empty collection for
-            NER and linking only. Defaults to ``None`` (all addons enabled).
+            ``['meta_cat']`` or ``['rel_cat']``. Pass an empty list for NER and
+            linking only. Defaults to ``None`` (all addons enabled).
         cdb_map: Module-level CDB cache. Defaults to ``CDB_MAP``.
         vocab_map: Module-level vocab cache. Defaults to ``VOCAB_MAP``.
         cat_map: Module-level CAT cache. Defaults to ``CAT_MAP``.
