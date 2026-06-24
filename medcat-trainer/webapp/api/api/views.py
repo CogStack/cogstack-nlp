@@ -328,7 +328,7 @@ def prepare_documents(request):
                                         existing_annotations=anns)
                     else:
                         # Use local medcat model
-                        cat = get_medcat(project=project, addons=[])
+                        cat = get_medcat(project=project, addons=["meta_cat"])
                         logger.info('loaded medcat model for project: %s', project.id)
 
                         # Set CAT filters
