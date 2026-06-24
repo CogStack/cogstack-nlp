@@ -17,8 +17,6 @@ from medcat.components.addons.meta_cat.meta_cat import MetaCAT
 from medcat.config.config_meta_cat import ConfigMetaCAT
 from polymorphic.models import PolymorphicModel
 
-from .utils import load_meta_cat_info_from_model_folder
-
 from core.settings import MEDIA_ROOT
 
 STATUS_CHOICES = [
@@ -114,6 +112,8 @@ class ModelPack(models.Model):
             # DeID model packs do not have a vocab.dat file
             logger.warn('Error loading the Vocab from this model pack - '
                         f'if this is a DeID model pack, this is expected: {vocab_path_abs}')
+        # load dynamically to avoid circular imports
+        from .utils import load_meta_cat_info_from_model_folder
 
         # load MetaCATs
         try:
