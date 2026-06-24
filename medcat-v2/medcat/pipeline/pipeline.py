@@ -1,4 +1,4 @@
-from typing import Optional, Iterable, Union
+from typing import Optional, Iterable, Union, cast
 import logging
 import os
 import warnings
@@ -255,7 +255,8 @@ class Pipeline:
                     CoreComponentType[cct_name], model_load_path)
             self._components.append(comp)
         if addon_config_dict and _ENABLED_ADDONS_PATH in addon_config_dict:
-            self._filter_config_addons_at_load(addon_config_dict[_ENABLED_ADDONS_PATH])
+            self._filter_config_addons_at_load(
+                cast(list[str], addon_config_dict[_ENABLED_ADDONS_PATH]))
         for addon_cnf in self.config.components.addons:
             if addon_config_dict:
                 self._attempt_merge(addon_cnf, addon_config_dict)

@@ -867,7 +867,7 @@ class CAT(AbstractSerialisable):
             # out so they don't need to be loaded
             if addon_config_dict is None:
                 addon_config_dict = {}
-            addons_to_keep = {
+            addons_to_keep: dict = {
                 _ENABLED_ADDONS_PATH: [
                     addon_type.addon_type
                     for addon_type in keep_addons_of_types]
