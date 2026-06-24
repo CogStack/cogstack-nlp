@@ -23,7 +23,7 @@ from medcat.storage.serialisables import AbstractSerialisable
 from medcat.storage.mp_ents_save import BatchAnnotationSaver
 from medcat.utils.fileutils import ensure_folder_if_parent
 from medcat.utils.hasher import Hasher
-from medcat.pipeline import Pipeline
+from medcat.pipeline import Pipeline, _ENABLED_ADDONS_PATH
 from medcat.tokenizing.tokens import MutableDocument, MutableEntity
 from medcat.tokenizing.tokenizers import SaveableTokenizer, TOKENIZER_PREFIX
 from medcat.data.entities import Entity, Entities, OnlyCUIEntities
@@ -816,10 +816,12 @@ class CAT(AbstractSerialisable):
         return missing_plugins
 
     @classmethod
-    def load_model_pack(cls, model_pack_path: str,
-                        config_dict: Optional[dict] = None,
-                        addon_config_dict: Optional[dict[str, dict]] = None
-                        ) -> 'CAT':
+    def load_model_pack(
+        cls, model_pack_path: str,
+        config_dict: Optional[dict] = None,
+        addon_config_dict: Optional[dict[str, dict]] = None,
+        keep_addons_of_types: Optional[list[Type[AddonComponent]]] = None,
+    ) -> 'CAT':
         """Load the model pack from file.
 
         Args:
@@ -831,6 +833,9 @@ class CAT(AbstractSerialisable):
                 If specified, it needs to have an addon dict per name.
                 For instance, `{"meta_cat.Subject": {}}` would apply
                 to the specific MetaCAT.
+            keep_addons_of_types (Optional[list[Type[AddonComponent]]]):
+                Only load addons of specified types. If `None`, all addons
+                will be loaded. Defaults to `None`.
 
         Raises:
             ValueError: If the saved data does not represent a model pack.
@@ -854,6 +859,20 @@ class CAT(AbstractSerialisable):
 
         # Load model card to check for required plugins
         missing_plugins = cls._get_missing_plugins(model_pack_path)
+
+        if keep_addons_of_types:
+            # add these to addon_config_dict
+            # which will propgate to __init__
+            if addon_config_dict is None:
+                addon_config_dict = {}
+            addons_to_keep = {
+                _ENABLED_ADDONS_PATH: [
+                    addon_type.addon_type
+                    for addon_type in keep_addons_of_types]
+            }
+            # avoid mutating incoming dict
+            addons_to_keep.update(addon_config_dict)
+            addon_config_dict = addons_to_keep
 
         try:
             # NOTE: ignoring addons since they will be loaded later / separately
