@@ -339,8 +339,9 @@ class ProjectMetrics(object):
             meta_results = self._eval(meta_model, self.mct_export)
             if 'meta_values' not in meta_results:
                 logger.warning(
-                    "No meta_values found for task %s. Reverting to empty",
-                    meta_model_task)
+                    "No meta_values found for task %s. 'meta_values' no in results, "
+                    "available keys: %s. Reverting to empty results.",
+                    meta_model_task, list(meta_results.keys()))
                 meta_values = {}
             else:
                 meta_values = {v: k for k, v in meta_results['meta_values'].items()}
