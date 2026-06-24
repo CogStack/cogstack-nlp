@@ -532,7 +532,7 @@ def load_meta_cat_info_from_model_folder(
         raise ValueError(
             "Unable to load MetaCAT info without loading the meta cats from this model "
             "because of its serialisation type (%s) - we only have implementation for 'dill'")
-    with open(global_cnf_path) as f:
+    with open(global_cnf_path, 'rb') as f:
         cnf = dill.load(f)
     return [
         (_get_meta_cat_path(model_pack_path, mc_cnf), mc_cnf)
