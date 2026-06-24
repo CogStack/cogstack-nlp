@@ -863,6 +863,8 @@ class CAT(AbstractSerialisable):
         if keep_addons_of_types:
             # add these to addon_config_dict
             # which will propgate to __init__
+            # and then in the pipe the rest will be filtered
+            # out so they don't need to be loaded
             if addon_config_dict is None:
                 addon_config_dict = {}
             addons_to_keep = {
