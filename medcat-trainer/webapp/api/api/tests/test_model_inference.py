@@ -123,6 +123,9 @@ class ModelImportTests(BaseRealModelTests):
         super().setUpClass()
         cls._create_meta_cat_for_model()
 
+    # NOTE: if MetaCATAddons are going to be loaded,
+    #       it would fail with this, but with previous
+    #       code an attempt would have been made.
     @classmethod
     def _create_meta_cat_for_model(cls):
         # first, create the folder
