@@ -236,12 +236,14 @@ def get_medcat(project,
     cat = get_cached_medcat(project, cat_map)
     if cat is not None:
         trace.get_current_span().add_event("Loaded medcat from cache")
+        # NOTE: addon filtering needs to be handled on the core lib side in the future
         return _apply_addon_filter(cat, addons)
     try:
         if project.model_pack is None:
             cat = get_medcat_from_cdb_vocab(project, cdb_map, vocab_map, cat_map)
         else:
             cat = get_medcat_from_model_pack(project, cat_map)
+        # NOTE: addon filtering needs to be handled on the core lib side in the future
         return _apply_addon_filter(cat, addons)
     except AttributeError as err:
         raise Exception('Failure loading Project ConceptDB, Vocab or Model Pack. Are these set correctly?') from err
