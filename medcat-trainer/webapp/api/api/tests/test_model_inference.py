@@ -10,8 +10,10 @@ from ._helpers import create_dataset, create_user, create_document
 
 import medcat
 from medcat.cat import CAT
+from medcat.components.addons.meta_cat import MetaCATAddon
 
 from api.models import Document, ProjectAnnotateEntities, ModelPack
+from api.model_import import import_model_pack
 
 
 RAW_MODEL_PATH = os.path.join(
@@ -27,12 +29,13 @@ MEDIA_PATH = os.path.join(
 MODEL_PATH = os.path.join(
     MEDIA_PATH, "fake_model_pack.zip"
 )
+MODEL_PATH_UNPACKED = MODEL_PATH.removesuffix(".zip")
 
 
 HAS_KNOWN_FAILURE = medcat.__version__ in ("2.8.0", "2.8.1", "2.8.2", "2.8.3")
 
 
-class ModelInferenceTests(TestCase):
+class BaseRealModelTests(TestCase):
 
     @classmethod
     def setUpClass(cls):
@@ -54,6 +57,9 @@ class ModelInferenceTests(TestCase):
             RAW_MODEL_PATH,
             MODEL_PATH
         )
+
+
+class ModelInferenceTests(BaseRealModelTests):
 
     def setUp(self):
         # A real user — the view reads request.user
@@ -108,3 +114,54 @@ class ModelInferenceTests(TestCase):
         # The document should now be in prepared_documents
         self.assertTrue(self.project.prepared_documents.all())
         self.assertEqual(len(self.project.prepared_documents.all()), len(doc_ids))
+
+
+class ModelImportTests(BaseRealModelTests):
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls._create_meta_cat_for_model()
+
+    @classmethod
+    def _create_meta_cat_for_model(cls):
+        # first, create the folder
+        from api.utils import _PATH_TO_META_CAT_START, _PATH_TO_CNF_ON_DISK
+        mc_path = os.path.join(MODEL_PATH_UNPACKED, _PATH_TO_META_CAT_START + "Subject")
+        os.mkdir(os.path.dirname(mc_path))
+        os.mkdir(mc_path)
+        # then add .serialised_by
+        sb_path = os.path.join(mc_path, ".serialised_by")
+        with open(sb_path, 'w') as f:
+            f.write("dill")
+        # finally, add config
+        from medcat.config.config_meta_cat import ConfigMetaCAT
+        # create config
+        cnf = ConfigMetaCAT()
+        cnf.general.category_name = "Subject"
+        # load off disk
+        import dill
+        gcnf_path = os.path.join(MODEL_PATH_UNPACKED, _PATH_TO_CNF_ON_DISK)
+        with open(gcnf_path, 'rb') as f:
+            data = dill.load(f)
+        data['addons'] = [cnf]
+        # save to disk
+        with open(gcnf_path, 'wb') as f:
+            dill.dump(data, f)
+
+    def setUp(self):
+        # A real user — the view reads request.user
+        self.user = create_user(username="testuser", password="password", is_staff=True)
+
+    # NOTE: mocking dispatch just so it won't complain about missing sender
+    @patch('api.model_import.dispatch')
+    def test_model_import_does_not_load_addons(self, mock_dispatch):
+        with patch.object(MetaCATAddon, "__init__") as mock_init:
+            import_model_pack(
+                MODEL_PATH,
+                name='fake-test-model',
+                user=self.user,
+                description='Fake model!',
+                source_uri='https://some/fake/address',
+            )
+        mock_init.assert_not_called()
