@@ -2,6 +2,7 @@ import json
 import logging
 import os
 from typing import List
+import dill
 
 import requests
 from background_task import background
@@ -11,6 +12,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from medcat.cat import CAT
 from medcat.cdb import CDB
+from medcat.config.config_meta_cat import ConfigMetaCAT
 from medcat.components.ner.trf.deid import DeIdModel
 from medcat.tokenizing.tokens import UnregisteredDataPathException
 from opentelemetry import trace
@@ -499,3 +501,40 @@ def env_str_to_bool(var: str, default: bool):
         elif val.lower() in ('0', 'false', 'f', 'n'):
             return False
     return val
+
+
+# NOTE: meta cats are saved at
+#       saved_components/addon_meta_cat.<category>
+#       however, their configs are (uniquely!) saved
+#       along with the config for the entire model pack
+#       at cdb/config/components/raw_dict.dat at 'addons'
+#       so we will load that directly
+
+_PATH_TO_CNF_ON_DISK = os.path.join(
+    "cdb", "config", "components", "raw_dict.dat"
+)
+_PATH_TO_META_CAT_START = os.path.join(
+    "saved_components", "addon_meta_cat."
+)
+
+def _get_meta_cat_path(model_folder: str, cnf: ConfigMetaCAT) -> str:
+    return os.path.join(
+        model_folder, _PATH_TO_META_CAT_START) + cnf.category_name
+
+
+def load_meta_cat_info_from_model_folder(
+    model_pack_path: str
+) -> list[tuple[str, ConfigMetaCAT]]:
+    global_cnf_path = os.path.join(model_pack_path, _PATH_TO_CNF_ON_DISK)
+    with open(os.path.join(model_pack_path, '.serialised_by')) as f:
+        contents = f.read()
+    if contents.strip().lower() != "dill":
+        raise ValueError(
+            "Unable to load MetaCAT info without loading the meta cats from this model "
+            "because of its serialisation type (%s) - we only have implementation for 'dill'")
+    with open(global_cnf_path) as f:
+        cnf = dill.load(f)
+    return [
+        (_get_meta_cat_path(model_pack_path, mc_cnf), mc_cnf)
+        for mc_cnf in cnf['addons']
+    ]
