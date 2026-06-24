@@ -337,7 +337,13 @@ class ProjectMetrics(object):
                 continue
             meta_model = _meta_models[0]
             meta_results = self._eval(meta_model, self.mct_export)
-            meta_values = {v: k for k, v in meta_results['meta_values'].items()}
+            if 'meta_values' not in meta_results:
+                logger.warning(
+                    "No meta_values found for task %s. Reverting to empty",
+                    meta_model_task)
+                meta_values = {}
+            else:
+                meta_values = {v: k for k, v in meta_results['meta_values'].items()}
             pred_meta_values = []
             counter = 0
             for meta_value in meta_df[meta_model_task]:
