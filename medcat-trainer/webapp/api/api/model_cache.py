@@ -51,6 +51,9 @@ def _apply_addon_filter(cat: CAT,
         cat._pipeline._addons = [
             addon for addon in full_addons if addon.addon_type in allowed_addons
         ]
+        cat.config.components.addons = [
+            addon.config for addon in cat._pipeline._addons
+        ]
     return cat
 
 
