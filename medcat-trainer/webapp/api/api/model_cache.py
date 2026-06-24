@@ -22,8 +22,6 @@ CDB_MAP = {}
 VOCAB_MAP = {}
 CAT_MAP = {}
 
-_FULL_ADDONS_ATTR = '_trainer_full_addons'
-
 logger = logging.getLogger(__name__)
 tracer = trace.get_tracer("medcat-trainer")
 
@@ -34,16 +32,11 @@ except ValueError:
     logger.warning("MAX_MEDCAT_MODELS is not an integer, using default value of 1")
 
 
-def _remember_full_addons(cat: CAT) -> None:
-    if not hasattr(cat, _FULL_ADDONS_ATTR):
-        setattr(cat, _FULL_ADDONS_ATTR, list(cat._pipeline._addons))
-
 
 def _apply_addon_filter(cat: CAT,
                         addons: Optional[list[str]] = None) -> CAT:
     """Return *cat* with pipeline addons filtered; full set is kept on the cache."""
-    _remember_full_addons(cat)
-    full_addons = getattr(cat, _FULL_ADDONS_ATTR)
+    full_addons = cat.pipe._addons
     if addons is None:
         cat._pipeline._addons = list(full_addons)
     else:
