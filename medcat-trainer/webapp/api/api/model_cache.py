@@ -212,11 +212,23 @@ def get_medcat(project,
                cdb_map: Dict[str, CDB]=CDB_MAP,
                vocab_map: Dict[str, Vocab]=VOCAB_MAP,
                cat_map: Dict[str, CAT]=CAT_MAP):
-    """Load (and cache) a MedCAT model for a project.
+    """Load and cache a MedCAT model for a trainer project.
 
-    The full model is always cached. When *addons* is set, only matching addon
-    types (e.g. ``'meta_cat'``, ``'rel_cat'``) are active on the returned CAT.
-    Pass an empty collection for NER+linking only.
+    Args:
+        project: ``ProjectAnnotateEntities`` to load the model for.
+        addons: Addon types to enable on the returned model, e.g.
+            ``['meta_cat']`` or ``['rel_cat']``. Pass an empty collection for
+            NER and linking only. Defaults to ``None`` (all addons enabled).
+        cdb_map: Module-level CDB cache. Defaults to ``CDB_MAP``.
+        vocab_map: Module-level vocab cache. Defaults to ``VOCAB_MAP``.
+        cat_map: Module-level CAT cache. Defaults to ``CAT_MAP``.
+
+    Returns:
+        CAT: A cached MedCAT instance for the project.
+
+    Raises:
+        Exception: If the project ConceptDB, vocab, or model pack is missing
+            or misconfigured.
     """
     cat = get_cached_medcat(project, cat_map)
     if cat is not None:
