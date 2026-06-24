@@ -454,7 +454,7 @@ def prep_docs(project_id: List[int], doc_ids: List[int], user_id: int):
     else:
         # Use local medcat model
         logger.info('Loading CAT object in bg process for project: %s', project.id)
-        cat = get_medcat(project=project)
+        cat = get_medcat(project=project, addons=[])
 
         # Set CAT filters
         cat.config.components.linking.filters.cuis = cuis

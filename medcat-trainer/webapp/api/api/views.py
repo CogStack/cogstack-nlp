@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 from smtplib import SMTPException
@@ -44,7 +45,6 @@ print(os.environ)
 """
 
 logger = logging.getLogger(__name__)
-
 
 # Get the basic version of MedCAT
 cat = None
@@ -329,7 +329,7 @@ def prepare_documents(request):
                                         existing_annotations=anns)
                     else:
                         # Use local medcat model
-                        cat = get_medcat(project=project)
+                        cat = get_medcat(project=project, addons=[])
                         logger.info('loaded medcat model for project: %s', project.id)
 
                         # Set CAT filters
