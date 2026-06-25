@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Iterable
 from typing import Any
 
 import torch
@@ -17,6 +18,14 @@ def _coerce_loglevel(v: Any) -> int:
         # Map name to logging level; default INFO if unknown
         return getattr(logging, name, logging.INFO)
     return logging.INFO
+
+
+def parse_enabled_components(v: str | Iterable[str] | None) -> tuple[str, ...]:
+    if v is None:
+        return ()
+    if isinstance(v, str):
+        return tuple(x.strip() for x in v.split(",") if x.strip())
+    return tuple(v)
 
 
 class ObservabilitySettings(BaseSettings):
@@ -51,6 +60,8 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("deid_redact", "MEDCAT_DEID_REDACT"),
         description="Enable DEID redaction. Returns text like [***] instead of [ANNOTATION]",
     )
+
+    enabled_components: tuple[str, ...] = Field(default=(), alias="APP_ENABLED_COMPONENTS")
 
     enable_demo_ui: bool = Field(default=False, description="Enable the demo app", alias="APP_ENABLE_DEMO_UI")
     demo_ui_path: str = Field(default="", description="Path to the demo app", alias="APP_DEMO_UI_PATH")
@@ -103,6 +114,11 @@ class Settings(BaseSettings):
     @classmethod
     def _lower_mode(cls, v: str) -> str:
         return v.lower().strip()
+
+    @field_validator("enabled_components", mode="before")
+    @classmethod
+    def _parse_enabled_components(cls, v: str | Iterable[str] | None) -> tuple[str, ...]:
+        return parse_enabled_components(v)
 
     @field_validator("model_meta_path_list", "model_rel_path_list", mode="before")
     @classmethod

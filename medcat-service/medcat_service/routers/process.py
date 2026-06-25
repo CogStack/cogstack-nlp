@@ -1,13 +1,15 @@
 import logging
 from typing import Annotated, Union
 
-from fastapi import APIRouter, Body
+from fastapi import APIRouter, Body, Query
 from fastapi.exceptions import RequestValidationError
+from opentelemetry import trace
 from pydantic import ValidationError
 
+from medcat_service.config import parse_enabled_components
 from medcat_service.dependencies import MedCatProcessorDep
 from medcat_service.types import BulkProcessAPIInput, BulkProcessAPIResponse, ProcessAPIInput, ProcessAPIResponse
-from opentelemetry import trace
+
 log = logging.getLogger("API")
 
 router = APIRouter(tags=["Process"])
@@ -46,6 +48,10 @@ async def process(
         ),
     ],
     medcat_processor: MedCatProcessorDep,
+    enabled_components: Annotated[
+        str | None,
+        Query(description="Comma-separated MedCAT component names to run for this request."),
+    ] = None,
 ) -> ProcessAPIResponse:
     """
     Returns the annotations extracted from a provided single document
@@ -61,9 +67,16 @@ async def process(
                 meta_filters = validated.meta_anns_filters
             except ValidationError as ve:
                 log.error("Invalid payload", exc_info=ve)
-                raise RequestValidationError(errors=ve.errors())
+                raise RequestValidationError(errors=ve.errors()) from ve
 
-        process_result = medcat_processor.process_content(content, meta_anns_filters=meta_filters)
+        parsed_enabled_components = parse_enabled_components(enabled_components)
+
+        process_result = medcat_processor.process_content(
+            content,
+            meta_anns_filters=meta_filters,
+            enabled_components=parsed_enabled_components,
+        )
+
         app_info = medcat_processor.get_app_info()
         return ProcessAPIResponse(result=process_result, medcat_info=app_info)
     except Exception as e:
