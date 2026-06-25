@@ -23,24 +23,22 @@ from unittest.mock import MagicMock, patch
 from django.core.files.base import ContentFile
 from django.test import TestCase, override_settings
 
-from medcat.components.addons.meta_cat.meta_cat import MetaCATAddon
-from medcat.components.addons.relation_extraction.rel_cat import RelCATAddon
+from medcat.components.addons.meta_cat.meta_cat import ConfigMetaCAT
+from medcat.components.addons.relation_extraction.rel_cat import ConfigRelCAT
 
 from ..models import ModelPack
 
 
-def _make_meta_cat_addon(category_name="Status", model_name="bert"):
-    addon = MagicMock(spec=MetaCATAddon)
-    meta_cat = MagicMock()
-    meta_cat.config.general.category_name = category_name
-    meta_cat.config.model.model_name = model_name
-    meta_cat.config.general.category_value2id = {"True": 0, "False": 1}
-    addon.mc = meta_cat
-    return addon
+def _make_meta_cat_addon_cnf(category_name="Status", model_name="bert"):
+    meta_cat_cnf = MagicMock(ConfigMetaCAT)
+    meta_cat_cnf.general.category_name = category_name
+    meta_cat_cnf.model.model_name = model_name
+    meta_cat_cnf.general.category_value2id = {"True": 0, "False": 1}
+    return meta_cat_cnf
 
 
-def _make_rel_cat_addon():
-    return MagicMock(spec=RelCATAddon)
+def _make_rel_cat_addon_cnf():
+    return MagicMock(spec=ConfigRelCAT)
 
 
 @override_settings(MEDIA_ROOT=tempfile.mkdtemp())
@@ -60,7 +58,7 @@ class ModelPackAddonRegistrationTests(TestCase):
         with patch("api.models.CAT.attempt_unpack"), \
                 patch("api.models.CDB.load"), \
                 patch("api.models.Vocab.load"), \
-                patch("api.models.CAT.load_addons", return_value=addons) as load_addons:
+                patch("api.utils.load_meta_cat_info_from_model_folder", return_value=addons) as load_addons:
             model_pack.save()
             yield load_addons
 
@@ -68,7 +66,7 @@ class ModelPackAddonRegistrationTests(TestCase):
         model_pack, unpacked = self._prepare_model_pack(name="meta-cat-pack")
         comps = os.path.join(unpacked, "saved_components")
         meta_cat_path = os.path.join(comps, "addon_meta_cat.Status")
-        addons = [(meta_cat_path, _make_meta_cat_addon())]
+        addons = [(meta_cat_path, _make_meta_cat_addon_cnf())]
 
         with self._register_model_pack(model_pack, addons) as load_addons:
             load_addons.assert_called_once_with(unpacked)
@@ -84,7 +82,7 @@ class ModelPackAddonRegistrationTests(TestCase):
         model_pack, unpacked = self._prepare_model_pack(name="rel-cat-pack")
         comps = os.path.join(unpacked, "saved_components")
         rel_cat_path = os.path.join(comps, "addon_rel_cat.rel_cat")
-        addons = [(rel_cat_path, _make_rel_cat_addon())]
+        addons = [(rel_cat_path, _make_rel_cat_addon_cnf())]
 
         with self._register_model_pack(model_pack, addons) as load_addons:
             load_addons.assert_called_once_with(unpacked)
@@ -98,9 +96,9 @@ class ModelPackAddonRegistrationTests(TestCase):
         comps = os.path.join(unpacked, "saved_components")
         addons = [
             (os.path.join(comps, "addon_meta_cat.Status"),
-             _make_meta_cat_addon(category_name="Status", model_name="bert")),
+             _make_meta_cat_addon_cnf(category_name="Status", model_name="bert")),
             (os.path.join(comps, "addon_meta_cat.Experiencer"),
-             _make_meta_cat_addon(category_name="Experiencer", model_name="roberta")),
+             _make_meta_cat_addon_cnf(category_name="Experiencer", model_name="roberta")),
         ]
 
         with self._register_model_pack(model_pack, addons):
@@ -118,8 +116,8 @@ class ModelPackAddonRegistrationTests(TestCase):
         meta_cat_path = os.path.join(comps, "addon_meta_cat.Status")
         rel_cat_path = os.path.join(comps, "addon_rel_cat.rel_cat")
         addons = [
-            (meta_cat_path, _make_meta_cat_addon()),
-            (rel_cat_path, _make_rel_cat_addon()),
+            (meta_cat_path, _make_meta_cat_addon_cnf()),
+            (rel_cat_path, _make_rel_cat_addon_cnf()),
         ]
 
         with self._register_model_pack(model_pack, addons) as load_addons:
