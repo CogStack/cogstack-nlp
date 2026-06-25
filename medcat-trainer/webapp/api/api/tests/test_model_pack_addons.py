@@ -35,6 +35,10 @@ def _make_meta_cat_addon_cnf(category_name="Status", model_name="bert"):
     return meta_cat_cnf
 
 
+def _make_rel_cat_addon_cnf():
+    return MagicMock()
+
+
 @override_settings(MEDIA_ROOT=tempfile.mkdtemp())
 class ModelPackAddonRegistrationTests(TestCase):
     def _prepare_model_pack(self, name="addon-pack-test"):
@@ -70,6 +74,17 @@ class ModelPackAddonRegistrationTests(TestCase):
         self.assertEqual(meta_cat_model.name, "Status - bert")
         self.assertTrue(meta_cat_model.meta_cat_dir.endswith("addon_meta_cat.Status"))
 
+    def test_register_model_pack_with_rel_cat_only(self):
+        model_pack, unpacked = self._prepare_model_pack(name="rel-cat-pack")
+        addon_cnfs = [_make_rel_cat_addon_cnf()]
+
+        with self._register_model_pack(model_pack, addon_cnfs) as load_addons:
+            load_addons.assert_called_once_with(unpacked)
+
+        self.assertIsNotNone(model_pack.concept_db)
+        self.assertIsNotNone(model_pack.vocab)
+        self.assertEqual(model_pack.meta_cats.count(), 0)
+
     def test_register_model_pack_registers_multiple_meta_cats(self):
         model_pack, unpacked = self._prepare_model_pack(name="multi-meta-cat-pack")
         addon_cnfs = [
@@ -85,6 +100,22 @@ class ModelPackAddonRegistrationTests(TestCase):
             set(model_pack.meta_cats.values_list("name", flat=True)),
             {"Status - bert", "Experiencer - roberta"},
         )
+
+    def test_register_model_pack_with_meta_cat_and_rel_cat(self):
+        model_pack, unpacked = self._prepare_model_pack(name="mixed-addon-pack")
+        addon_cnfs = [_make_meta_cat_addon_cnf(), _make_rel_cat_addon_cnf(),]
+
+        with self._register_model_pack(model_pack, addon_cnfs) as load_addons:
+            load_addons.assert_called_once_with(unpacked)
+
+        self.assertIsNotNone(model_pack.concept_db)
+        self.assertIsNotNone(model_pack.vocab)
+        # All addons load; only MetaCAT rows are registered.
+        self.assertEqual(model_pack.meta_cats.count(), 1)
+        meta_cat_model = model_pack.meta_cats.get()
+        self.assertEqual(meta_cat_model.name, "Status - bert")
+        self.assertTrue(meta_cat_model.meta_cat_dir.endswith("addon_meta_cat.Status"))
+
 
     def test_register_model_pack_without_addons(self):
         model_pack, unpacked = self._prepare_model_pack(name="no-addon-pack")
