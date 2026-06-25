@@ -522,7 +522,7 @@ def _get_meta_cat_path(model_folder: str, cnf: ConfigMetaCAT) -> str:
         model_folder, _PATH_TO_META_CAT_START) + cnf.general.category_name
 
 
-def _load_global_cnf_addon_cnfs(model_pack_path: str) -> list[dict]:
+def _load_global_cnf_addon_cnfs(model_pack_path: str) -> list:
     global_cnf_path = os.path.join(model_pack_path, _PATH_TO_CNF_ON_DISK)
     with open(os.path.join(model_pack_path, '.serialised_by')) as f:
         contents = f.read()

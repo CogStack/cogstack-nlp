@@ -168,3 +168,20 @@ class ModelImportTests(BaseRealModelTests):
                 source_uri='https://some/fake/address',
             )
         mock_init.assert_not_called()
+
+
+# class RealModelTests(TestCase):
+#     MODEL_PATH = "../../../medcat-v2/.temp/20230227__kch_gstt_trained_model_f76d2121b77c3e9a/"
+
+#     def test_can_read_from_real_model(self):
+#         from api.utils import load_meta_cat_info_from_model_folder
+#         infos = load_meta_cat_info_from_model_folder(self.MODEL_PATH)
+#         self.assertEqual(len(infos), 3)
+#         categories = {
+#             cnf.general.category_name
+#             for _, cnf in infos
+#         }
+#         self.assertEqual(
+#             categories,
+#             {"Presence", "Subject", "Time"}
+#         )
