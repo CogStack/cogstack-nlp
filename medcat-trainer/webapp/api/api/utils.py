@@ -537,8 +537,9 @@ def _load_global_cnf_addon_cnfs(model_pack_path: str) -> list[dict]:
 def load_meta_cat_info_from_model_folder(
     model_pack_path: str
 ) -> list[tuple[str, ConfigMetaCAT]]:
-    addons = _load_global_cnf_addon_cnfs(model_pack_path)
+    addon_cnfs = _load_global_cnf_addon_cnfs(model_pack_path)
     return [
         (_get_meta_cat_path(model_pack_path, mc_cnf), mc_cnf)
-        for mc_cnf in addons
+        for mc_cnf in addon_cnfs
+        if mc_cnf['addon_type'] == "meta_cat"
     ]
