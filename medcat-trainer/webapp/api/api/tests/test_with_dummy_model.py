@@ -27,7 +27,7 @@ MEDIA_PATH = os.path.join(
     "..", "..", "media"
 )
 MODEL_PATH = os.path.join(
-    MEDIA_PATH, "fake_model_pack.zip"
+    MEDIA_PATH, "dummy_model_pack.zip"
 )
 MODEL_PATH_UNPACKED = MODEL_PATH.removesuffix(".zip")
 
@@ -68,7 +68,7 @@ class ModelInferenceTests(BaseRealModelTests):
         self.client.force_authenticate(self.user)
 
         self.model_pack = ModelPack.objects.create(
-            name='fake-model',
+            name='test-model',
             model_pack=MODEL_PATH,
         )
 
@@ -162,10 +162,10 @@ class ModelImportTests(BaseRealModelTests):
         with patch.object(MetaCATAddon, "__init__") as mock_init:
             import_model_pack(
                 MODEL_PATH,
-                name='fake-test-model',
+                name='test-model',
                 user=self.user,
                 description='Fake model!',
-                source_uri='https://some/fake/address',
+                source_uri='https://some/address',
             )
         mock_init.assert_not_called()
 
