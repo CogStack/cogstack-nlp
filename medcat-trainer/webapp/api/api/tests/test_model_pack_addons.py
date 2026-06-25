@@ -28,6 +28,7 @@ from ..models import ModelPack
 
 def _make_meta_cat_addon_cnf(category_name="Status", model_name="bert"):
     meta_cat_cnf = MagicMock()
+    meta_cat_cnf.comp_name = "meta_cat"
     meta_cat_cnf.general.category_name = category_name
     meta_cat_cnf.model.model_name = model_name
     meta_cat_cnf.general.category_value2id = {"True": 0, "False": 1}
@@ -47,21 +48,19 @@ class ModelPackAddonRegistrationTests(TestCase):
         return model_pack, unpacked
 
     @contextmanager
-    def _register_model_pack(self, model_pack, addons):
+    def _register_model_pack(self, model_pack, addon_cnfs):
         with patch("api.models.CAT.attempt_unpack"), \
                 patch("api.models.CDB.load"), \
                 patch("api.models.Vocab.load"), \
-                patch("api.utils.load_meta_cat_info_from_model_folder", return_value=addons) as load_addons:
+                patch("api.utils._load_global_cnf_addon_cnfs", return_value=addon_cnfs) as load_addons:
             model_pack.save()
             yield load_addons
 
     def test_register_model_pack_with_meta_cat_only(self):
         model_pack, unpacked = self._prepare_model_pack(name="meta-cat-pack")
-        comps = os.path.join(unpacked, "saved_components")
-        meta_cat_path = os.path.join(comps, "addon_meta_cat.Status")
-        addons = [(meta_cat_path, _make_meta_cat_addon_cnf())]
+        addon_cnfs = [_make_meta_cat_addon_cnf()]
 
-        with self._register_model_pack(model_pack, addons) as load_addons:
+        with self._register_model_pack(model_pack, addon_cnfs) as load_addons:
             load_addons.assert_called_once_with(unpacked)
 
         self.assertIsNotNone(model_pack.concept_db)
@@ -73,15 +72,12 @@ class ModelPackAddonRegistrationTests(TestCase):
 
     def test_register_model_pack_registers_multiple_meta_cats(self):
         model_pack, unpacked = self._prepare_model_pack(name="multi-meta-cat-pack")
-        comps = os.path.join(unpacked, "saved_components")
-        addons = [
-            (os.path.join(comps, "addon_meta_cat.Status"),
-             _make_meta_cat_addon_cnf(category_name="Status", model_name="bert")),
-            (os.path.join(comps, "addon_meta_cat.Experiencer"),
-             _make_meta_cat_addon_cnf(category_name="Experiencer", model_name="roberta")),
+        addon_cnfs = [
+             _make_meta_cat_addon_cnf(category_name="Status", model_name="bert"),
+             _make_meta_cat_addon_cnf(category_name="Experiencer", model_name="roberta"),
         ]
 
-        with self._register_model_pack(model_pack, addons):
+        with self._register_model_pack(model_pack, addon_cnfs):
             pass
 
         self.assertEqual(model_pack.meta_cats.count(), 2)
