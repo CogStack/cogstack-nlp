@@ -558,6 +558,8 @@ class CatWithMetaCATSaveLoadTests(CatWithMetaCATTests):
     def test_filter_meta_cat_loads_meta_cat(self):
         loaded = cat.CAT.load_model_pack(self.mpp, keep_addons_of_types=[MetaCATAddon])
         self.assert_has_one_meta_cat(list(enumerate(loaded.pipe.iter_addons())))
+        mc = next(loaded.pipe.iter_addons())
+        self.assertEqual(mc.config, self.addon.config)
 
     def test_can_filter_addons_empty(self):
         # NONE -> empty
