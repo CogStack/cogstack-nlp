@@ -522,9 +522,7 @@ def _get_meta_cat_path(model_folder: str, cnf: ConfigMetaCAT) -> str:
         model_folder, _PATH_TO_META_CAT_START) + cnf.category_name
 
 
-def load_meta_cat_info_from_model_folder(
-    model_pack_path: str
-) -> list[tuple[str, ConfigMetaCAT]]:
+def _load_global_cnf(model_pack_path: str) -> dict:
     global_cnf_path = os.path.join(model_pack_path, _PATH_TO_CNF_ON_DISK)
     with open(os.path.join(model_pack_path, '.serialised_by')) as f:
         contents = f.read()
@@ -533,7 +531,13 @@ def load_meta_cat_info_from_model_folder(
             "Unable to load MetaCAT info without loading the meta cats from this model "
             "because of its serialisation type (%s) - we only have implementation for 'dill'")
     with open(global_cnf_path, 'rb') as f:
-        cnf = dill.load(f)
+        return dill.load(f)
+
+
+def load_meta_cat_info_from_model_folder(
+    model_pack_path: str
+) -> list[tuple[str, ConfigMetaCAT]]:
+    cnf = _load_global_cnf(model_pack_path)
     return [
         (_get_meta_cat_path(model_pack_path, mc_cnf), mc_cnf)
         for mc_cnf in cnf['addons']
