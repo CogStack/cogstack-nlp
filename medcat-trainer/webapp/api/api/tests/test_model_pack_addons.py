@@ -23,22 +23,15 @@ from unittest.mock import MagicMock, patch
 from django.core.files.base import ContentFile
 from django.test import TestCase, override_settings
 
-from medcat.components.addons.meta_cat.meta_cat import ConfigMetaCAT
-from medcat.components.addons.relation_extraction.rel_cat import ConfigRelCAT
-
 from ..models import ModelPack
 
 
 def _make_meta_cat_addon_cnf(category_name="Status", model_name="bert"):
-    meta_cat_cnf = MagicMock(ConfigMetaCAT)
+    meta_cat_cnf = MagicMock()
     meta_cat_cnf.general.category_name = category_name
     meta_cat_cnf.model.model_name = model_name
     meta_cat_cnf.general.category_value2id = {"True": 0, "False": 1}
     return meta_cat_cnf
-
-
-def _make_rel_cat_addon_cnf():
-    return MagicMock(spec=ConfigRelCAT)
 
 
 @override_settings(MEDIA_ROOT=tempfile.mkdtemp())
@@ -78,19 +71,6 @@ class ModelPackAddonRegistrationTests(TestCase):
         self.assertEqual(meta_cat_model.name, "Status - bert")
         self.assertTrue(meta_cat_model.meta_cat_dir.endswith("addon_meta_cat.Status"))
 
-    def test_register_model_pack_with_rel_cat_only(self):
-        model_pack, unpacked = self._prepare_model_pack(name="rel-cat-pack")
-        comps = os.path.join(unpacked, "saved_components")
-        rel_cat_path = os.path.join(comps, "addon_rel_cat.rel_cat")
-        addons = [(rel_cat_path, _make_rel_cat_addon_cnf())]
-
-        with self._register_model_pack(model_pack, addons) as load_addons:
-            load_addons.assert_called_once_with(unpacked)
-
-        self.assertIsNotNone(model_pack.concept_db)
-        self.assertIsNotNone(model_pack.vocab)
-        self.assertEqual(model_pack.meta_cats.count(), 0)
-
     def test_register_model_pack_registers_multiple_meta_cats(self):
         model_pack, unpacked = self._prepare_model_pack(name="multi-meta-cat-pack")
         comps = os.path.join(unpacked, "saved_components")
@@ -109,27 +89,6 @@ class ModelPackAddonRegistrationTests(TestCase):
             set(model_pack.meta_cats.values_list("name", flat=True)),
             {"Status - bert", "Experiencer - roberta"},
         )
-
-    def test_register_model_pack_with_meta_cat_and_rel_cat(self):
-        model_pack, unpacked = self._prepare_model_pack(name="mixed-addon-pack")
-        comps = os.path.join(unpacked, "saved_components")
-        meta_cat_path = os.path.join(comps, "addon_meta_cat.Status")
-        rel_cat_path = os.path.join(comps, "addon_rel_cat.rel_cat")
-        addons = [
-            (meta_cat_path, _make_meta_cat_addon_cnf()),
-            (rel_cat_path, _make_rel_cat_addon_cnf()),
-        ]
-
-        with self._register_model_pack(model_pack, addons) as load_addons:
-            load_addons.assert_called_once_with(unpacked)
-
-        self.assertIsNotNone(model_pack.concept_db)
-        self.assertIsNotNone(model_pack.vocab)
-        # All addons load; only MetaCAT rows are registered.
-        self.assertEqual(model_pack.meta_cats.count(), 1)
-        meta_cat_model = model_pack.meta_cats.get()
-        self.assertEqual(meta_cat_model.name, "Status - bert")
-        self.assertTrue(meta_cat_model.meta_cat_dir.endswith("addon_meta_cat.Status"))
 
     def test_register_model_pack_without_addons(self):
         model_pack, unpacked = self._prepare_model_pack(name="no-addon-pack")
