@@ -74,7 +74,7 @@ def delete_orphan_docs(dataset: Dataset):
 
 
 def _prepare_state(proj: dict) -> tuple[set, dict, set, set, dict]:
-    # ensure current deployment has the neccessary - Entity, MetaTak, Relation, and warn on not present User objects.
+    # ensure current deployment has the neccessary - Entity, MetaTask, Relation, and warn on not present User objects.
     ent_labels, meta_tasks, rels, unavailable_users, available_users = set(), defaultdict(set), set(), set(), dict()
     for doc in proj['documents']:
         for anno in doc['annotations']:
