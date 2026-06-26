@@ -119,7 +119,7 @@ def _init_proj_ann_ents(
     return p
 
 
-def _create_dataset(proj: dict, p: ProjectAnnotateEntities) -> Dataset:
+def _create_dataset(proj: dict, p: ProjectAnnotateEntities) -> tuple[Dataset, dict[str, str]]:
     # escape - filename
     ds_file_name = MEDIA_ROOT + '/' + re.sub('/|\.', '_', p.name + '_dataset') + '.csv'
     names = [doc['name'] for doc in proj['documents']]
@@ -132,7 +132,13 @@ def _create_dataset(proj: dict, p: ProjectAnnotateEntities) -> Dataset:
     ds_mod.original_file.name = ds_file_name
     ds_mod.save()
     p.dataset = ds_mod
-    return ds_mod
+    # creating text 2 name mapping so we can find the doucments based on the name
+    # even if the text has been processed through pandas conversion and/or sanitisation
+    text2name: dict[str, str] = {
+        doc["text"]: name
+        for doc, name in zip(proj['documents'], names)
+    }
+    return ds_mod, text2name
 
 
 def _upload_project(
@@ -152,7 +158,7 @@ def _upload_project(
 
     ent_labels, meta_tasks, rels, unavailable_users, available_users = _prepare_state(proj)
 
-    ds_mod = _create_dataset(proj, p)
+    ds_mod, text2name = _create_dataset(proj, p)
 
     p.save()
 
@@ -200,11 +206,21 @@ def _upload_project(
 
 
     for doc in proj['documents']:
-        _process_doc(doc, p, ds_mod, available_users)
+        _process_doc(doc, p, ds_mod, available_users, text2name)
 
 
-def _process_doc(doc: dict, p: ProjectAnnotateEntities, ds_mod: Dataset, available_users: dict):
-    doc_mod = Document.objects.filter(Q(dataset=ds_mod) & Q(text=doc['text'])).first()
+def _process_doc(
+    doc: dict,
+    p: ProjectAnnotateEntities,
+    ds_mod: Dataset,
+    available_users: dict,
+    text2name: dict[str, str],
+):
+    # NOTE: using text2name mapping here since the text in the database
+    #       can be sanitised and changed during pandas serialisation (and deserialisation),
+    #       however we've kpet track of per-text names (which are unique) so will use these
+    #       instead here
+    doc_mod = Document.objects.filter(Q(dataset=ds_mod) & Q(name=text2name[doc['text']])).first()
     annos = []
     for anno in doc['annotations']:
         a = AnnotatedEntity()
