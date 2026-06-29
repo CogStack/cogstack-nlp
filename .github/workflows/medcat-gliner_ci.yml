@@ -31,7 +31,7 @@ jobs:
       max-parallel: 4
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Install uv for Python ${{ matrix.python-version }}
         uses: astral-sh/setup-uv@v7
@@ -63,7 +63,7 @@ jobs:
     needs: tests
     steps:
       - name: Checkout main
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0        # fetch all history
           fetch-tags: true      # fetch tags explicitly
@@ -99,7 +99,7 @@ jobs:
     needs: tests
     steps:
       - name: Checkout main
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Install uv for Python 3.10
         uses: astral-sh/setup-uv@v7
