@@ -6,11 +6,11 @@ medcat[meta-cat,spacy,deid]~=2.8.0
 # pinned because of issues with de-id models and past models (it will not do any de-id)
 transformers>=4.34.0,<5.0.0
 requests==2.33.0
-fastapi[standard]==0.128.0
+fastapi[standard]==0.136.3
 pydantic>=2.11.10,<2.12.5
 pydantic-settings==2.10.1
-gradio[mcp]==6.7.0
-prometheus-fastapi-instrumentator==7.1.0
+gradio[mcp]==6.17.3
+prometheus-fastapi-instrumentator==8.0.0
 opentelemetry-distro[otlp]==0.60b0
 opentelemetry-instrumentation==0.60b0
 opentelemetry-resource-detector-containerid==0.60b0

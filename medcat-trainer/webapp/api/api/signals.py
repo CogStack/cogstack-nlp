@@ -13,6 +13,7 @@ from api.extensions import (
     annotation_created,
     annotation_deleted,
     annotation_updated,
+    dispatch,
     project_group_created,
     project_group_updated,
 )
@@ -104,10 +105,33 @@ def remove_model_pack_assets(sender, instance, **kwargs):
 
 def project_tasks_changed(sender, instance, action, **kwargs):
     # post_remove or post_add actions, overwrite to model_pack supplied MetaCAT tasks.
-    if (action.startswith('post') and type(instance) is ProjectAnnotateEntitiesFields and
+    if (action.startswith('post') and isinstance(instance, ProjectAnnotateEntitiesFields) and
             instance.model_pack is not None):
-        instance.tasks.set([MetaTask.objects.filter(prediction_model_id=meta_cat.id).first() for meta_cat in
-                            instance.model_pack.meta_cats.all()])
+        # NOTE: This part deals with two different sources of information:
+        #       1. sometimes the model pack associated with the project can have meta-cats for meta-annotations
+        #       2. sometimes the project itself defines meta-tasks for the annotator to use
+        #
+        #       Currently the proccess here defaults to useing model-pack defined meta-tasks (if present),
+        #       while allowing for the project-defined ones otherwise.
+
+        # Find automated tasks from the model pack
+        db_tasks = [
+            MetaTask.objects.filter(prediction_model_id=meta_cat.id).first()
+            for meta_cat in instance.model_pack.meta_cats.all()
+        ]
+        # Filter out None values
+        automated_tasks = [t for t in db_tasks if t is not None]
+
+        # Only overwrite if the model pack actually brought automated tasks to the table.
+        # This preserves manual workflows when training from scratch.
+        if automated_tasks:
+            # Disconnect the signal temporarily to prevent infinite recursion loops
+            m2m_changed.disconnect(project_tasks_changed, sender=ProjectAnnotateEntitiesFields.tasks.through)
+            try:
+                instance.tasks.set(automated_tasks)
+            finally:
+                # Always reconnect the signal
+                m2m_changed.connect(project_tasks_changed, sender=ProjectAnnotateEntitiesFields.tasks.through)
 
 
 m2m_changed.connect(project_tasks_changed, sender=ProjectAnnotateEntitiesFields.tasks.through)
@@ -122,7 +146,8 @@ m2m_changed.connect(project_tasks_changed, sender=ProjectAnnotateEntitiesFields.
 @receiver(post_save, sender=AnnotatedEntity)
 def _emit_annotation_saved(sender, instance, created, **kwargs):
     sig = annotation_created if created else annotation_updated
-    sig.send(
+    dispatch(
+        sig,
         sender=AnnotatedEntity,
         annotation=instance,
         project=getattr(instance, 'project', None),
@@ -133,7 +158,8 @@ def _emit_annotation_saved(sender, instance, created, **kwargs):
 
 @receiver(post_delete, sender=AnnotatedEntity)
 def _emit_annotation_deleted(sender, instance, **kwargs):
-    annotation_deleted.send(
+    dispatch(
+        annotation_deleted,
         sender=AnnotatedEntity,
         annotation=instance,
         project=getattr(instance, 'project', None),
@@ -144,4 +170,4 @@ def _emit_annotation_deleted(sender, instance, **kwargs):
 @receiver(post_save, sender=ProjectGroup)
 def _emit_project_group_saved(sender, instance, created, **kwargs):
     sig = project_group_created if created else project_group_updated
-    sig.send(sender=ProjectGroup, project_group=instance)
+    dispatch(sig, sender=ProjectGroup, project_group=instance)

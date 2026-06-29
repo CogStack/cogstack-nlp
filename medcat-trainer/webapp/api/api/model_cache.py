@@ -32,6 +32,24 @@ except ValueError:
     logger.warning("MAX_MEDCAT_MODELS is not an integer, using default value of 1")
 
 
+
+def _apply_addon_filter(cat: CAT,
+                        addons: Optional[list[str]] = None) -> CAT:
+    """Return *cat* with pipeline addons filtered; full set is kept on the cache."""
+    full_addons = cat.pipe._addons
+    if addons is None:
+        cat._pipeline._addons = list(full_addons)
+    else:
+        allowed_addons = set(addons)
+        cat._pipeline._addons = [
+            addon for addon in full_addons if addon.addon_type in allowed_addons
+        ]
+        cat.config.components.addons = [
+            addon.config for addon in cat._pipeline._addons
+        ]
+    return cat
+
+
 def _clear_models(cdb_map: Dict[str, CDB]=CDB_MAP,
                   vocab_map: Dict[str, Vocab]=VOCAB_MAP,
                   cat_map: Dict[str, CAT]=CAT_MAP):
@@ -186,19 +204,40 @@ def get_medcat_from_model_pack_id(modelpack_id: int, cat_map: Dict[str, CAT]=CAT
 
 @tracer.start_as_current_span("get_medcat")
 def get_medcat(project,
+               addons: Optional[list[str]] = None,
                cdb_map: Dict[str, CDB]=CDB_MAP,
                vocab_map: Dict[str, Vocab]=VOCAB_MAP,
                cat_map: Dict[str, CAT]=CAT_MAP):
+    """Load and cache a MedCAT model for a trainer project.
+
+    Args:
+        project: ``ProjectAnnotateEntities`` to load the model for.
+        addons: Addon types to enable on the returned model, e.g.
+            ``['meta_cat']`` or ``['rel_cat']``. Pass an empty list for NER and
+            linking only. Defaults to ``None`` (all addons enabled).
+        cdb_map: Module-level CDB cache. Defaults to ``CDB_MAP``.
+        vocab_map: Module-level vocab cache. Defaults to ``VOCAB_MAP``.
+        cat_map: Module-level CAT cache. Defaults to ``CAT_MAP``.
+
+    Returns:
+        CAT: A cached MedCAT instance for the project.
+
+    Raises:
+        Exception: If the project ConceptDB, vocab, or model pack is missing
+            or misconfigured.
+    """
     cat = get_cached_medcat(project, cat_map)
     if cat is not None:
         trace.get_current_span().add_event("Loaded medcat from cache")
-        return cat
+        # NOTE: addon filtering needs to be handled on the core lib side in the future
+        return _apply_addon_filter(cat, addons)
     try:
         if project.model_pack is None:
             cat = get_medcat_from_cdb_vocab(project, cdb_map, vocab_map, cat_map)
         else:
             cat = get_medcat_from_model_pack(project, cat_map)
-        return cat
+        # NOTE: addon filtering needs to be handled on the core lib side in the future
+        return _apply_addon_filter(cat, addons)
     except AttributeError as err:
         raise Exception('Failure loading Project ConceptDB, Vocab or Model Pack. Are these set correctly?') from err
 

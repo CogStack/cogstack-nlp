@@ -13,7 +13,8 @@ from django.forms import forms, ModelForm
 from medcat.cat import CAT
 from medcat.cdb import CDB
 from medcat.vocab import Vocab
-from medcat.components.addons.meta_cat.meta_cat import MetaCAT, MetaCATAddon
+from medcat.components.addons.meta_cat.meta_cat import MetaCAT
+from medcat.config.config_meta_cat import ConfigMetaCAT
 from polymorphic.models import PolymorphicModel
 
 from core.settings import MEDIA_ROOT
@@ -111,22 +112,19 @@ class ModelPack(models.Model):
             # DeID model packs do not have a vocab.dat file
             logger.warn('Error loading the Vocab from this model pack - '
                         f'if this is a DeID model pack, this is expected: {vocab_path_abs}')
+        # load dynamically to avoid circular imports
+        from .utils import load_meta_cat_info_from_model_folder
 
         # load MetaCATs
         try:
+            meta_cat_addons = load_meta_cat_info_from_model_folder(unpacked_model_pack_path)
             metaCATmodels = []
-            # should raise an error if there already is a MetaCAT model with this definition
-            addons = CAT.load_addons(unpacked_model_pack_path)
-            meta_cat_addons = [
-                (addon_path, addon) for addon_path, addon in addons
-                if isinstance(addon, MetaCATAddon)]
-            for meta_cat_dir, meta_cat_addon in meta_cat_addons:
-                meta_cat = meta_cat_addon.mc
+            for meta_cat_dir, meta_cat_cnf in meta_cat_addons:
                 mc_model = MetaCATModel()
                 mc_model.meta_cat_dir = meta_cat_dir.replace(f'{MEDIA_ROOT}/', '')
-                mc_model.name = f'{meta_cat.config.general.category_name} - {meta_cat.config.model.model_name}'
+                mc_model.name = f'{meta_cat_cnf.general.category_name} - {meta_cat_cnf.model.model_name}'
                 mc_model.save(unpack_load_meta_cat_dir=False)
-                mc_model.get_or_create_meta_tasks_and_values(meta_cat)
+                mc_model.get_or_create_meta_tasks_and_values(meta_cat_cnf)
                 metaCATmodels.append(mc_model)
             self.meta_cats.set(metaCATmodels)  # Use set() instead of add() for atomic operation
         except Exception as exc:
@@ -211,8 +209,8 @@ class MetaCATModel(models.Model):
                                                   'is set via a model pack .zip upload',
                                         allow_folders=True, editable=False)
 
-    def get_or_create_meta_tasks_and_values(self, meta_cat: MetaCAT):
-        task = meta_cat.config.general.category_name
+    def get_or_create_meta_tasks_and_values(self, mc_config: ConfigMetaCAT):
+        task = mc_config.general.category_name
         mt = MetaTask.objects.filter(name=task).first()
         if not mt:
             mt = MetaTask()
@@ -224,7 +222,7 @@ class MetaCATModel(models.Model):
             mt.save()
 
         mt_vs = []
-        for meta_task_value in meta_cat.config.general.category_value2id.keys():
+        for meta_task_value in mc_config.general.category_value2id.keys():
             mt_v = MetaTaskValue.objects.filter(name=meta_task_value).first()
             if not mt_v:
                 mt_v = MetaTaskValue()

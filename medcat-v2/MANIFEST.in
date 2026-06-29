@@ -1,0 +1,4 @@
+# NOTE: Only relevant for sdist (source) distributions.
+#       The wheel build time package finding should be
+#       handled by options in pyproject.toml
+prune paper

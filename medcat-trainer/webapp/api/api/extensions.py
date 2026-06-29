@@ -13,14 +13,36 @@ mounted at ``/api/ee/<app_label>/`` when the ``AppConfig`` sets
 The shape of this module is contract-tested by ``test_extensions.py`` and the
 ``contract-tests`` CI job; changes that break the documented shape are
 breaking changes.
+
+Security / trust model
+----------------------
+An installed ``mct.plugins`` package runs as **first-class Django application
+code**: it executes at import time and in ``AppConfig.ready()`` with full access
+to the database, filesystem, environment, and request/session data. There is no
+sandbox. Treat plugins like kernel modules — only install packages you trust and
+have vetted. See ``docs/plugins.md`` for the full trust model and secure
+plugin-authoring guidance.
+
+The registry helpers below apply light input validation (URL-scheme validation on
+menu/route entries) and signal emission is isolated via :func:`dispatch` so that
+a plugin receiver cannot break core request flows. These are
+validation measures, **not** a security boundary against malicious code
+running in-process.
 """
 from __future__ import annotations
 
+
 import copy
+
+import logging
+import re
+
 from collections.abc import Callable, Iterable
 from typing import Any, Optional
 
 from django.dispatch import Signal
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Signals
@@ -65,6 +87,81 @@ project_group_updated = Signal()
 #: Sent after the OIDC user resolver returns a Django user.
 #: kwargs: ``user`` (User), ``id_token`` (dict), ``created`` (bool).
 user_oidc_resolved = Signal()
+
+#: Sent after :func:`api.model_import.import_model_pack` successfully registers
+#: a model pack. The linked ``concept_db`` and ``vocab`` are available on the
+#: ``model_pack`` itself.
+#: kwargs: ``model_pack`` (ModelPack), ``user`` (User or None),
+#:         ``description`` (str or None), ``source_uri`` (str or None).
+model_pack_imported = Signal()
+
+
+# ---------------------------------------------------------------------------
+# Signal dispatch (plugin-isolating)
+# ---------------------------------------------------------------------------
+
+def dispatch(signal: Signal, **kwargs: Any) -> None:
+    """Emit a plugin-facing signal without letting receivers break core flows.
+
+    Core OSS code only ever *emits* the signals in this module; all receivers
+    are third-party plugin code. We therefore use :meth:`Signal.send_robust`,
+    which isolates and returns any exception raised by a receiver instead of
+    propagating it into the request path. Receiver failures are logged and then
+    ignored so a plugin cannot block document submission,
+    annotation persistence, or OIDC login.
+    """
+    for receiver, response in signal.send_robust(**kwargs):
+        if isinstance(response, Exception):
+            logger.error(
+                "MCT plugin signal receiver %r raised %s: %s",
+                getattr(receiver, "__qualname__", receiver),
+                type(response).__name__,
+                response,
+                exc_info=response,
+            )
+
+
+# ---------------------------------------------------------------------------
+# URL validation for bootstrap-exposed entries
+# ---------------------------------------------------------------------------
+#
+# Menu ``href``/``route`` and route ``path`` values are served via
+# ``GET /api/bootstrap/`` and rendered into the authenticated SPA. A
+# plugin must not be able to inject ``javascript:``/``data:`` (etc.)
+# URLs that would execute in the browser of any logged-in user, nor
+# protocol-relative ("//host") references that navigate off-origin.
+
+_ALLOWED_URL_SCHEMES = ("http", "https")
+_URL_SCHEME_RE = re.compile(r"^([a-zA-Z][a-zA-Z0-9+.\-]*):")
+# Browsers ignore ASCII control chars / whitespace inside a scheme
+# (e.g. "java\tscript:..."), so strip them before inspecting the scheme.
+_URL_STRIP_RE = re.compile(r"[\x00-\x20\x7f]")
+
+
+def _validate_safe_url(value: Any, *, field: str) -> None:
+    """Reject dangerous URL values for bootstrap-exposed link fields.
+
+    Allowed: same-document/relative references (no scheme, e.g. ``/ee/adj``,
+    ``./x``, ``#frag``, ``?q=1``) and absolute ``http(s)`` URLs. Rejected:
+    any other scheme (``javascript:``, ``data:``, ``vbscript:``, ``file:`` …)
+    and protocol-relative ``//host`` references.
+    """
+    if not isinstance(value, str):
+        raise TypeError(f"{field} must be a string")
+    cleaned = _URL_STRIP_RE.sub("", value)
+    if cleaned == "":
+        raise ValueError(f"{field} must not be empty")
+    if cleaned.startswith("//"):
+        raise ValueError(f"{field} must not be a protocol-relative URL")
+    match = _URL_SCHEME_RE.match(cleaned)
+    if match is None:
+        # No scheme => relative path / fragment / query. Allowed.
+        return
+    if match.group(1).lower() not in _ALLOWED_URL_SCHEMES:
+        raise ValueError(
+            f"{field} has a disallowed URL scheme '{match.group(1)}'; "
+            f"only {', '.join(_ALLOWED_URL_SCHEMES)} and relative paths are permitted"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -123,11 +220,19 @@ def register_menu_extension(item: dict[str, Any]) -> None:
     ``item`` MUST contain ``id`` (str) and ``label`` (str). It SHOULD
     contain ``route`` (str) or ``href`` (str). Additional keys pass through
     verbatim to the frontend.
+
+    Any ``route``/``href`` value is validated to be a relative path or an
+    ``http(s)`` URL (see :func:`_validate_safe_url`) so a plugin cannot inject
+    a ``javascript:`` link that runs in an authenticated user's browser.
     """
     if not isinstance(item, dict):
         raise TypeError("menu extension item must be a dict")
     if "id" not in item or "label" not in item:
         raise ValueError("menu extension item requires 'id' and 'label'")
+    if "route" in item:
+        _validate_safe_url(item["route"], field="menu extension 'route'")
+    if "href" in item:
+        _validate_safe_url(item["href"], field="menu extension 'href'")
     _menu_extensions.append(copy.deepcopy(item))
 
 
@@ -140,11 +245,15 @@ def register_route(route: dict[str, Any]) -> None:
 
     ``route`` MUST contain ``path`` (str) and ``component`` (str — module
     specifier or registered component name resolved by the frontend).
+
+    ``path`` is validated to be a relative SPA path (no off-origin or
+    non-``http(s)`` scheme); see :func:`_validate_safe_url`.
     """
     if not isinstance(route, dict):
         raise TypeError("route must be a dict")
     if "path" not in route or "component" not in route:
         raise ValueError("route requires 'path' and 'component'")
+    _validate_safe_url(route["path"], field="route 'path'")
     _plugin_routes.append(copy.deepcopy(route))
 
 
@@ -188,6 +297,8 @@ __all__ = [
     "project_group_created",
     "project_group_updated",
     "user_oidc_resolved",
+    "model_pack_imported",
+    "dispatch",
     "register_permission_hook",
     "get_permission_hooks",
     "clear_permission_hooks",

@@ -45,7 +45,6 @@ print(os.environ)
 
 logger = logging.getLogger(__name__)
 
-
 # Get the basic version of MedCAT
 cat = None
 
@@ -329,7 +328,7 @@ def prepare_documents(request):
                                         existing_annotations=anns)
                     else:
                         # Use local medcat model
-                        cat = get_medcat(project=project)
+                        cat = get_medcat(project=project, addons=["meta_cat"])
                         logger.info('loaded medcat model for project: %s', project.id)
 
                         # Set CAT filters
@@ -543,9 +542,10 @@ def import_cdb_concepts(request):
 
 
 def _submit_document(project: ProjectAnnotateEntities, document: Document, user=None):
-    from .extensions import pre_document_submit, post_document_submit
+    from .extensions import pre_document_submit, post_document_submit, dispatch
 
-    pre_document_submit.send(
+    dispatch(
+        pre_document_submit,
         sender=ProjectAnnotateEntities,
         project=project,
         document=document,
@@ -578,7 +578,8 @@ def _submit_document(project: ProjectAnnotateEntities, document: Document, user=
             project.cuis += ',' + ','.join(extra_doc_cuis)
             project.save()
 
-    post_document_submit.send(
+    dispatch(
+        post_document_submit,
         sender=ProjectAnnotateEntities,
         project=project,
         document=document,
@@ -777,45 +778,46 @@ def annotate_text(request):
                 logger.warning(f'Failed to get children for CUI {parent_cui}: {e}')
         cuis_set = expanded_cuis
 
-    with temp_changed_config(cat.config.components.linking, 'filters', cuis_set):
+    with temp_changed_config(cat.config.components.linking.filters, 'cuis', cuis_set):
         spacy_doc = cat(message)
 
     ents = []
     anno_tkns = []
     for ent in spacy_doc.linked_ents:
-        cnt = Entity.objects.filter(label=ent.cui).count()
         inc_ent = all(tkn not in anno_tkns for tkn in ent)
-        if inc_ent and cnt != 0:
-            meta_annotations = []
-            if 'meta_cat_meta_anns' in ent.get_available_addon_paths():
-                meta_anns = ent.get_addon_data('meta_cat_meta_anns')
-                for meta_ann_task, pred in meta_anns.items():
-                    # Extract value and confidence from pred
-                    # pred can be a dict, object, or string
-                    if isinstance(pred, dict):
-                        pred_value = pred.get('value', str(pred))
-                        pred_confidence = pred.get('confidence', None)
-                    elif hasattr(pred, 'value'):
-                        pred_value = pred.value
-                        pred_confidence = getattr(pred, 'confidence', None)
-                    else:
-                        pred_value = str(pred)
-                        pred_confidence = None
-                    meta_annotations.append({
-                        'task': meta_ann_task,
-                        'value': pred_value,
-                        'confidence': pred_confidence
-                    })
-            anno_tkns.extend([tkn for tkn in ent])
-            entity = Entity.objects.get(label=ent.cui)
-            ents.append({
-                'entity': entity.id,
-                'value': ent.base.text,
-                'start_ind': ent.base.start_char_index,
-                'end_ind': ent.base.end_char_index,
-                'acc': ent.context_similarity,
-                'meta_annotations': meta_annotations
-            })
+        if not inc_ent:
+            continue
+        meta_annotations = []
+        if 'meta_cat_meta_anns' in ent.get_available_addon_paths():
+            meta_anns = ent.get_addon_data('meta_cat_meta_anns')
+            for meta_ann_task, pred in meta_anns.items():
+                # Extract value and confidence from pred
+                # pred can be a dict, object, or string
+                if isinstance(pred, dict):
+                    pred_value = pred.get('value', str(pred))
+                    pred_confidence = pred.get('confidence', None)
+                elif hasattr(pred, 'value'):
+                    pred_value = pred.value
+                    pred_confidence = getattr(pred, 'confidence', None)
+                else:
+                    pred_value = str(pred)
+                    pred_confidence = None
+                meta_annotations.append({
+                    'task': meta_ann_task,
+                    'value': pred_value,
+                    'confidence': pred_confidence
+                })
+        anno_tkns.extend([tkn for tkn in ent])
+        entity = Entity.objects.filter(label=ent.cui).first()
+        ents.append({
+            'entity': entity.id if entity is not None else -1,
+            'cui': ent.cui,
+            'value': ent.base.text,
+            'start_ind': ent.base.start_char_index,
+            'end_ind': ent.base.end_char_index,
+            'acc': ent.context_similarity,
+            'meta_annotations': meta_annotations
+        })
 
     ents.sort(key=lambda e: e['start_ind'])
     out = {'message': message, 'entities': ents}
@@ -1064,19 +1066,28 @@ def view_metrics(request, report_id):
         return Response(200)
 
 
+FLAT_CDB_ROOT_CUI = 'Root'
+FLAT_CDB_CHILDREN_LIMIT = 500
+
+
 @api_view(http_method_names=['GET'])
 def cdb_cui_children(request, cdb_id):
     parent_cui = request.GET.get('parent_cui')
     cdb = get_cached_cdb(cdb_id, CDB_MAP)
 
-    # root SNOMED CT code: 138875005
-    # root UMLS code: CUI:
-
-    if cdb.addl_info.get('pt2ch') is None:
-        return HttpResponseBadRequest('Requested MedCAT CDB model does not include parent2child metadata to'
-                                      ' explore a concept hierarchy')
+    if not cdb.addl_info.get('pt2ch'):
+        if parent_cui is None:
+            return Response({'results': [
+                {'cui': FLAT_CDB_ROOT_CUI, 'pretty_name': 'All concepts'},
+            ]})
+        cuis = sorted(cdb.cui2info)[:FLAT_CDB_CHILDREN_LIMIT]
+        return Response({'results': [
+            {'cui': cui, 'pretty_name': cdb.get_name(cui)}
+            for cui in cuis
+        ]})
 
     # currently assumes this is using the SNOMED CT terminology
+    # root SNOMED CT code: 138875005
     try:
         root_term = {'cui': '138875005', 'pretty_name': cdb.cui2info['138875005']['preferred_name']}
         if parent_cui is None:
@@ -1091,13 +1102,31 @@ def cdb_cui_children(request, cdb_id):
 
 @api_view(http_method_names=['GET'])
 def cdb_concept_path(request):
+    """
+    Get the concept path for a given CUI to a parent node.
+
+    If the CDB does not have a concept hierarchy, return a flat list of all concepts under a fake root.
+
+    Else, return the actual tree structure, but we only support SNOMED CT at the moment.
+    """
     cdb_id = int(request.GET.get('cdb_id'))
     cdb = get_cached_cdb(cdb_id, CDB_MAP)
+    cui = request.GET.get('cui')
+    if not cdb.addl_info.get('pt2ch'):
+        return Response({'results': {
+            'node_path': {
+                'cui': FLAT_CDB_ROOT_CUI,
+                'pretty_name': 'All concepts',
+                'children': [{
+                    'cui': cui,
+                    'pretty_name': cdb.get_name(cui),
+                }],
+            },
+            'links': [{'parent': FLAT_CDB_ROOT_CUI, 'child': cui}],
+        }})
     if not cdb.addl_info.get('ch2pt'):
         cdb.addl_info['ch2pt'] = ch2pt_from_pt2ch(cdb)
-    cui = request.GET.get('cui')
     # Again only SNOMED CT is supported
-    # 'cui': '138875005',
     result = snomed_ct_concept_path(cui, cdb)
     return Response({'results': result})
 
@@ -1131,8 +1160,8 @@ def generate_concept_filter(request):
         # get all children from 'parent' concepts above.
         final_filter = {}
         for cui in cuis:
-            final_filter[cui] = [{'cui': c, 'pretty_name': cdb.cui2info[cui]['preferred_name']} for c in get_all_ch(cui, cdb)
-                                 if c in cdb.cui2info[cui]['preferred_name'] and c != cui]
+            final_filter[cui] = [{'cui': c, 'pretty_name': cdb.get_name(c)} for c in get_all_ch(cui, cdb)
+                                 if c in cdb.cui2info and c != cui]
         resp = {'filter_len': sum(len(f) for f in final_filter.values()) + len(final_filter.keys())}
         if resp['filter_len'] < 10000:
             # only send across concept filters that are small enough to render

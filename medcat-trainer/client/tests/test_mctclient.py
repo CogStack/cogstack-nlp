@@ -1,4 +1,5 @@
 import json
+import time
 import unittest
 from unittest.mock import patch, MagicMock
 from mctclient import (
@@ -747,6 +748,61 @@ class TestMCTClient(unittest.TestCase):
             }
         )
         self.assertEqual(result, mock_upload_response)
+
+    @patch('mctclient.requests.post')
+    def test_ensure_token_fresh_is_noop_for_non_oidc_session(self, mock_post):
+        mock_post.return_value = MagicMock(status_code=200, text='{"token": "abc"}')
+        session = MedCATTrainerSession(server='http://localhost', username='u', password='p')
+        original_headers = dict(session.headers)
+        session.ensure_token_fresh()
+        self.assertEqual(session.headers, original_headers)
+        # Only the initial DRF auth call should have been made
+        mock_post.assert_called_once()
+
+    @patch('mctclient.requests.post')
+    def test_ensure_token_fresh_refreshes_expired_oidc_token(self, mock_post):
+        call_count = [0]
+
+        def post_side_effect(url, *args, **kwargs):
+            if url.endswith('/protocol/openid-connect/token'):
+                call_count[0] += 1
+                return MagicMock(status_code=200, json=lambda: {"access_token": f"token-{call_count[0]}"})
+            return MagicMock(status_code=404, text='')
+
+        mock_post.side_effect = post_side_effect
+
+        kc = KeycloakSettings(keycloak_url='http://kc', realm='r', client_id='c', client_secret='s')
+        session = MedCATTrainerSession(server='http://localhost', use_oidc=True, keycloak_settings=kc)
+        self.assertEqual(session.headers['Authorization'], 'Bearer token-1')
+
+        # Simulate expiry by setting _token_expiry to the past
+        session._token_expiry = time.monotonic() - 1
+
+        session.ensure_token_fresh()
+        self.assertEqual(session.headers['Authorization'], 'Bearer token-2')
+        self.assertEqual(call_count[0], 2)
+
+    @patch('mctclient.requests.post')
+    def test_ensure_token_fresh_does_not_refresh_valid_oidc_token(self, mock_post):
+        call_count = [0]
+
+        def post_side_effect(url, *args, **kwargs):
+            if url.endswith('/protocol/openid-connect/token'):
+                call_count[0] += 1
+                return MagicMock(status_code=200, json=lambda: {"access_token": f"token-{call_count[0]}"})
+            return MagicMock(status_code=404, text='')
+
+        mock_post.side_effect = post_side_effect
+
+        kc = KeycloakSettings(keycloak_url='http://kc', realm='r', client_id='c', client_secret='s')
+        session = MedCATTrainerSession(server='http://localhost', use_oidc=True, keycloak_settings=kc)
+        self.assertEqual(call_count[0], 1)
+
+        # Token is still fresh (_token_expiry is in the future)
+        session.ensure_token_fresh()
+        self.assertEqual(call_count[0], 1)
+        self.assertEqual(session.headers['Authorization'], 'Bearer token-1')
+
 
 if __name__ == '__main__':
     unittest.main()

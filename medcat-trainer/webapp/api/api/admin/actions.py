@@ -11,7 +11,7 @@ from django.http import HttpResponse
 from rest_framework.exceptions import PermissionDenied
 
 from api.models import AnnotatedEntity, MetaAnnotation, EntityRelation, Document, ConceptDB
-from api.solr_utils import drop_collection, import_all_concepts
+from api.solr_utils import drop_collection, import_all_concepts, solr_collection_name
 from api.utils import clear_cdb_cnf_addons
 
 from medcat.cdb import CDB
@@ -381,7 +381,7 @@ def reset_cdb_filters(modeladmin, request, queryset):
 
 def import_concepts(modeladmin, request, queryset):
     for concept_db in queryset:
-        logger.info(f'Importing concepts for collection {concept_db.name}_id_{concept_db.id}')
+        logger.info(f'Importing concepts for collection {solr_collection_name(concept_db)}')
         import_concepts_from_cdb(concept_db.id)
 
 

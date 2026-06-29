@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime
 import json
 import os
+import time
 from abc import ABC
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -287,6 +288,9 @@ class MedCATTrainerSession:
         self.username = username or os.getenv("MCTRAINER_USERNAME")
         self.password = password or os.getenv("MCTRAINER_PASSWORD")
         self.server = server or 'http://localhost:8001'
+        self._keycloak_settings: Optional[KeycloakSettings] = None
+        # positive infinity so that token refresh is never triggered for non-OIDC sessions
+        self._token_expiry: float = float('inf')
 
         env_use_oidc = os.getenv("MCTRAINER_USE_OIDC", "")
         env_use_oidc_truthy = env_use_oidc.strip() == "1"
@@ -299,9 +303,8 @@ class MedCATTrainerSession:
                 if not isinstance(keycloak_settings, KeycloakSettings):
                     raise TypeError("keycloak_settings must be a KeycloakSettings instance")
                 kc_settings = keycloak_settings
-
-            token = get_keycloak_access_token(kc_settings)
-            self.headers = {"Authorization": f"Bearer {token}"}
+            self._keycloak_settings = kc_settings
+            self._refresh_oidc_token()
             return
 
         payload = {"username": self.username, "password": self.password}
@@ -313,6 +316,19 @@ class MedCATTrainerSession:
             }
         else:
             raise MCTUtilsException(f"Failed to login to MedCATtrainer instance running at: {self.server}")
+
+    def _refresh_oidc_token(self) -> None:
+        """Fetch a new OIDC access token and update the Authorization header."""
+        token = get_keycloak_access_token(self._keycloak_settings)
+        self.headers = {"Authorization": f"Bearer {token}"}
+        # By default, refresh 60s before the typical 5-minute Keycloak access token lifetime (i.e., 4 minutes / 240 seconds from now)
+        interval = int(os.getenv("MCTRAINER_TOKEN_REFRESH_INTERVAL", "240"))
+        self._token_expiry = time.monotonic() + interval
+
+    def ensure_token_fresh(self) -> None:
+        """Refresh the OIDC token if it is near expiry. No-op for non-OIDC sessions."""
+        if self._keycloak_settings is not None and time.monotonic() >= self._token_expiry:
+            self._refresh_oidc_token()
 
     def create_project(self, name: str,
                        description: str,

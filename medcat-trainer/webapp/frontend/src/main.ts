@@ -24,6 +24,7 @@ import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 import {authPlugin} from "./auth";
 import { loadRuntimeConfig, isOidcEnabled } from './runtimeConfig';
+import { registerUnauthorizedInterceptor } from './httpAuth'
 import { initPluginBootstrap } from './plugins/bootstrap'
 import PluginSlot from '@/components/plugins/PluginSlot.vue'
 
@@ -54,6 +55,7 @@ async function bootstrap() {
 
   const app = createApp(App)
   app.config.globalProperties.$http = axios
+  registerUnauthorizedInterceptor(axios)
   app.component("v-select", vSelect)
   app.component('vue-simple-context-menu', VueSimpleContextMenu)
   app.component('font-awesome-icon', FontAwesomeIcon)

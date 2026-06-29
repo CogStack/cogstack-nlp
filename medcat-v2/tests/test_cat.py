@@ -120,12 +120,31 @@ class ModelLoadIWithHiddenFilesTests(unittest.TestCase):
 
 class TrainedModelTests(unittest.TestCase):
     TRAINED_MODEL_PATH = EXAMPLE_MODEL_PACK_ZIP
+    CONFIG_DICT = None
 
     @classmethod
     def setUpClass(cls):
-        cls.model = cat.CAT.load_model_pack(cls.TRAINED_MODEL_PATH)
-        if cls.model.config.components.linking.train:
-            cls.model.config.components.linking.train = False
+        cls.model = cat.CAT.load_model_pack(
+            cls.TRAINED_MODEL_PATH, config_dict=cls.CONFIG_DICT)
+
+
+class ModelLoadInitTests(TrainedModelTests):
+    # NOTE: as of writing, the saved model
+    #       has config.components.linking.train = True already
+    #       set but in case we change the model to a new one
+    #       this ensures that the "raw" output is always set to True
+    CONFIG_DICT = {
+        "components": {
+            "linking": {
+                "train": True,
+            }
+        }
+    }
+
+    def test_model_is_not_training(self):
+        self.assertFalse(
+            self.model.config.components.linking.train
+        )
 
 
 class ConfigMergeTests(unittest.TestCase):
@@ -524,9 +543,38 @@ class CatWithMetaCATSaveLoadTests(CatWithMetaCATTests):
 
     def test_can_load_meta_cat(self):
         addons = cat.CAT.load_addons(self.mpp)
+        self.assert_has_one_meta_cat(addons)
+
+    def assert_has_one_meta_cat(self, addons: list[tuple[str, AddonComponent]]):
         self.assertEqual(len(addons), 1)
         _, addon = addons[0]
         self.assertIsInstance(addon, MetaCATAddon)
+
+    def test_filter_non_existant_loads_no_addons(self):
+        from medcat.components.addons.relation_extraction.rel_cat import RelCATAddon
+        loaded = cat.CAT.load_model_pack(self.mpp, keep_addons_of_types=[RelCATAddon])
+        self.assertFalse(list(enumerate(loaded.pipe.iter_addons())))
+
+    def test_filter_meta_cat_loads_meta_cat(self):
+        loaded = cat.CAT.load_model_pack(self.mpp, keep_addons_of_types=[MetaCATAddon])
+        self.assert_has_one_meta_cat(list(enumerate(loaded.pipe.iter_addons())))
+        mc = next(loaded.pipe.iter_addons())
+        self.assertEqual(mc.config, self.addon.config)
+
+    def test_can_filter_addons_empty(self):
+        # NONE -> empty
+        addons = cat.CAT.load_addons(self.mpp, addon_types=[])
+        self.assertFalse(addons)
+
+    def test_can_filter_addons_non_existing(self):
+        from medcat.components.addons.relation_extraction.rel_cat import RelCATAddon
+        addons = cat.CAT.load_addons(self.mpp, addon_types=[RelCATAddon])
+        self.assertFalse(addons)
+
+    def test_can_filter_addons_meta_cat(self):
+        # only meta cat -> same as regular
+        addons = cat.CAT.load_addons(self.mpp, addon_types=[MetaCATAddon])
+        self.assert_has_one_meta_cat(addons)
 
     def test_can_load_meta_cat_with_addon_cnf(self, seed: int = -41):
         mc: MetaCATAddon = cat.CAT.load_addons(

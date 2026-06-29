@@ -1,4 +1,4 @@
-from .pipeline import Pipeline
+from .pipeline import Pipeline, _ENABLED_ADDONS_PATH
 
 
-__all__ = ['Pipeline']
+__all__ = ['Pipeline', '_ENABLED_ADDONS_PATH']

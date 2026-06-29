@@ -417,27 +417,50 @@ export default {
         } else {
           this.project = resp.data.results[0]
           this.fetchCDBSearchIndex()
+          const loadFirstUnvalidatedDoc = () => {
+            // find first unvalidated doc.
+            const ids = _.difference(this.docIds, this.project.validated_documents)
+            if (ids.length > 0) {
+              this.loadDoc(this.docIdsToDocs[ids[0]])
+            } else {
+              // no unvalidated docs and no next doc URL. Go back to first doc
+              this.loadDoc(this.docs[0])
+            }
+          }
           const loadedDocs = () => {
             this.docIds = this.docs.map(d => d.id)
             this.docIdsToDocs = Object.assign({}, ...this.docs.map(item => ({[item['id']]: item})))
             const docIdRoute = Number(this.$route.params.docId)
             if (docIdRoute) {
-              while (!this.docs.map(d => d.id).includes(docIdRoute)) {
+              if (this.docIdsToDocs[docIdRoute]) {
+                this.loadDoc(this.docIdsToDocs[docIdRoute])
+              } else if (this.nextDocSetUrl) {
+                // Target document hasn't been paged in yet. Load the next set and
+                // re-run this check once it resolves - fetchDocuments calls this same
+                // callback on completion. (Previously a synchronous while-loop here
+                // span forever, as this.docs only updates in the async response.)
                 this.fetchDocuments(0, loadedDocs)
-              }
-              this.loadDoc(this.docIdsToDocs[docIdRoute])
-            } else {
-              // find first unvalidated doc.
-              const ids = _.difference(this.docIds, this.project.validated_documents)
-              if (ids.length > 0) {
-                this.loadDoc(this.docIdsToDocs[ids[0]])
               } else {
-                // no unvalidated docs and no next doc URL. Go back to first doc
-                this.loadDoc(this.docs[0])
+                // docId is not present anywhere in the dataset, fall back to first doc.
+                loadFirstUnvalidatedDoc()
               }
+            } else {
+              loadFirstUnvalidatedDoc()
             }
           }
           this.fetchDocuments(0, loadedDocs)
+        }
+      }).catch(err => {
+        // 401 is handled globally by httpAuth (session-expired banner + login prompt).
+        if (err.response?.status === 401) {
+          return
+        }
+        this.errors.modal = true
+        this.errors.message = 'Failed to load project'
+        if (err.response) {
+          this.errors.message = err.response.data?.message || err.response.data?.detail || this.errors.message
+          this.errors.description = err.response.data?.description || ''
+          this.errors.stacktrace = err.response.data?.stacktrace
         }
       })
     },
@@ -567,6 +590,18 @@ export default {
               this.currentEnt = ent
             }
           }
+        }
+      }).catch(err => {
+        // Without this, a failed annotated-entities request was swallowed, leaving the
+        // document stuck on a loading state with no feedback - i.e. the document never loads.
+        this.nextEntSetUrl = null
+        this.loadingMsg = null
+        this.errors.modal = true
+        this.errors.message = 'Failed to load document annotations. Please try again by refreshing the page.'
+        if (err.response) {
+          this.errors.message = err.response.data?.message || this.errors.message
+          this.errors.description = err.response.data?.description || ''
+          this.errors.stacktrace = err.response.data?.stacktrace
         }
       })
     },

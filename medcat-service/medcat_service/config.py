@@ -55,6 +55,16 @@ class Settings(BaseSettings):
     enable_demo_ui: bool = Field(default=False, description="Enable the demo app", alias="APP_ENABLE_DEMO_UI")
     demo_ui_path: str = Field(default="", description="Path to the demo app", alias="APP_DEMO_UI_PATH")
 
+    use_cdn_for_docs: bool = Field(
+        default=True,
+        description=(
+            "Use a CDN for Swagger UI and ReDoc (default). "
+            "Set to false to serve docs from bundled static files. "
+            "This allows the docs UI to work for offline browsers."
+        ),
+        alias="APP_USE_CDN",
+    )
+
     # Model paths
     model_cdb_path: str | None = Field("/cat/models/medmen/cdb.dat", alias="APP_MODEL_CDB_PATH")
     model_vocab_path: str | None = Field("/cat/models/medmen/vocab.dat", alias="APP_MODEL_VOCAB_PATH")

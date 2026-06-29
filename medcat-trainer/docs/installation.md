@@ -193,3 +193,6 @@ An example compose file is available at
 
 ## Next Steps
 Now that medcat trainer is installed and running, proceed to [Administrator Setup](admin_setup.md) to create the Admin user.
+
+
+<!-- LRTEST_MARKER_123 -->

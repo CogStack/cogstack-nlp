@@ -26,13 +26,34 @@ solr_trace_attributes = {
 }
 
 
+def solr_collection_name(cdb_model: ConceptDB) -> str:
+    """
+    Solr-safe collection name for a ConceptDB.
+
+    The SOLR API specifically states this so just replace with underscores.
+    "collection names must consist entirely of periods, underscores,
+    hyphens, and alphanumerics as well not start with a hyphen"
+    """
+    safe_name = re.sub(r'[^a-zA-Z0-9._-]', '_', cdb_model.name).lstrip('-')
+    return f'{safe_name}_id_{cdb_model.id}'
+
+
 @tracer.start_as_current_span("cache_solr_collection_schema_types", attributes=solr_trace_attributes)
 def _cache_solr_collection_schema_types(collection):
     url = f'http://{SOLR_HOST}:{SOLR_PORT}/solr/{collection}/schema'
     logger.info(f'Retrieving solr schema: {url}')
     try:
         resp = json.loads(requests.get(url).text)
-        cui_type = [n for n in resp['schema']['fields'] if n['name'] == 'cui'][0]['type']
+        cui_type = next(
+            (f['type'] for f in resp['schema']['fields'] if f['name'] == 'cui'),
+            None,
+        )
+        if cui_type is None:
+            logger.debug(
+                'Skipping schema cache for collection %s: no cui field (not a MedCAT Trainer index)',
+                collection,
+            )
+            return
         # just store cui type for the time being
         SOLR_INDEX_SCHEMA[collection] = {'cui': cui_type}
     except ConnectionError as e:
@@ -85,7 +106,7 @@ def search_collection(cdbs: List[int], raw_query: str):
         uniq_results_map = {}
         for cdb in cdbs:
             cdb_model = ConceptDB.objects.get(id=cdb)
-            collection_name = f'{cdb_model.name}_id_{cdb_model.id}'
+            collection_name = solr_collection_name(cdb_model)
             trace.get_current_span().add_event("Searching collection for CDB",
                                                attributes={"collection_name": collection_name, "cdb_id": cdb_model.id, "cdb_name": cdb_model.name, "query": raw_query})
             if collection_name not in SOLR_INDEX_SCHEMA:
@@ -123,7 +144,7 @@ def search_collection(cdbs: List[int], raw_query: str):
 
 @tracer.start_as_current_span("import_all_concepts", attributes=solr_trace_attributes)
 def import_all_concepts(cdb: CDB, cdb_model: ConceptDB):
-    collection_name = f'{cdb_model.name}_id_{cdb_model.id}'
+    collection_name = solr_collection_name(cdb_model)
     base_url = f'http://{SOLR_HOST}:{SOLR_PORT}/solr'
     trace.get_current_span().add_event("Importing all concepts for CDB",
                                        attributes={
@@ -138,7 +159,6 @@ def import_all_concepts(cdb: CDB, cdb_model: ConceptDB):
 
     collections = json.loads(resp.text)['collections']
     if collection_name in collections:
-        # delete collection
         url = f'{base_url}/admin/collections?action=DELETE&name={collection_name}'
         requests.get(url)
 
@@ -171,7 +191,7 @@ def import_all_concepts(cdb: CDB, cdb_model: ConceptDB):
 
 
 def drop_collection(cdb_model: ConceptDB):
-    collection_name = f'{cdb_model.name}_id_{cdb_model.id}'
+    collection_name = solr_collection_name(cdb_model)
     base_url = f'http://{SOLR_HOST}:{SOLR_PORT}/solr'
     url = f'{base_url}/admin/collections?action=DELETE&name={collection_name}'
     resp = requests.get(url)
@@ -189,10 +209,10 @@ def ensure_concept_searchable(cui, cdb: CDB, cdb_model: ConceptDB):
         cdb: the MedCAT CDB where the cui can be found
         cdb_model: the associated Django model instance for the CDB.
     """
-    collection = f'{cdb_model.name}_id_{cdb_model.id}'
     base_url = f'http://{SOLR_HOST}:{SOLR_PORT}/solr'
     url = f'{base_url}/admin/collections?action=LIST'
     resp = requests.get(url)
+    collection = solr_collection_name(cdb_model)
     if resp.status_code == 200:
         collections = json.loads(resp.text)['collections']
         data = [_concept_dct(cui, cdb, cdb.cui2info[cui])]

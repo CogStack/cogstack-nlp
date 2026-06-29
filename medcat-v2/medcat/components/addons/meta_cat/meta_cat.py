@@ -223,7 +223,7 @@ class MetaCATAddon(AddonComponent):
                 # load legacy config (assuming it exists)
                 config_path += ".dat"
             logger.info(
-                "Was not provide a config when loading a meta cat from '%s'. "
+                "Was not provided a config when loading a meta cat from '%s'. "
                 "Inferring config from file at '%s'", folder_path,
                 config_path)
             cnf = ConfigMetaCAT.load(config_path)
