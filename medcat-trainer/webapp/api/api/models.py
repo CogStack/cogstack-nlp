@@ -370,8 +370,12 @@ class EntityRelation(models.Model):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
+        # so that the local project last_modified is updated
         self.project.last_modified = self.last_modified
-        self.project.save()
+        # so that the project last_modified is updated in the database
+        ProjectAnnotateEntities.objects.filter(pk=self.project_id).update(
+            last_modified=self.last_modified
+        )
 
     def __str__(self):
         return f'{self.start_entity} - {self.relation} - {self.end_entity}'
