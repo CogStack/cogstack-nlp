@@ -354,7 +354,7 @@ class Relation(models.Model):
         return str(self.label)
 
 
-def update_project_last_modified(project: ProjectAnnotateEntities, last_modified):
+def update_project_last_modified(project: 'ProjectAnnotateEntities', last_modified):
     # so that the local project last_modified is updated
     project.last_modified = last_modified
     # so that the project last_modified is updated in the database
