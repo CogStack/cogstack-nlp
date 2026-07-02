@@ -15,3 +15,8 @@ declare module 'tiny-emitter/instance' {
   const emitter: TinyEmitterInstance
   export default emitter
 }
+
+declare module '@mctee/enterprise' {
+  const plugin: unknown
+  export default plugin
+}
