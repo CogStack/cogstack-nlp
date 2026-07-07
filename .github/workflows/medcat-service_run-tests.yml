@@ -18,11 +18,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: checkout repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Cache MedMen Model
         id: cache-medmen
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: models/medmen
           key: medmen-${{ hashFiles('medcat-service/scripts/download_medmen.sh') }}

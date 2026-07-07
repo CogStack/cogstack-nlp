@@ -14,14 +14,14 @@ jobs:
   test-resource-utils:
    runs-on: ubuntu-latest
    steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Check test utils are in sync
         run: diff tests/resource_fetch.py ../medcat-den/tests/resource_fetch.py
 
   base-install-imports:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       # NOTE: using oldest supported python version
       - name: Install uv for Python 3.10
         uses: astral-sh/setup-uv@v7
@@ -43,7 +43,7 @@ jobs:
         python-version: [ '3.10', '3.11', '3.12', '3.13' ]
       max-parallel: 5
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Install uv for Python ${{ matrix.python-version }}
         uses: astral-sh/setup-uv@v7
         with:
