@@ -61,6 +61,17 @@ describe('Login.vue', () => {
     expect(wrapper.text()).toContain('Login')
     expect(wrapper.find('#uname').exists()).toBe(true)
     expect(wrapper.find('#password').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('does not emit login:success on mount', async () => {
+    const emitSpy = vi.spyOn(EventBus, '$emit')
+    const wrapper = mountLogin()
+    await flushPromises()
+
+    expect(emitSpy).not.toHaveBeenCalledWith('login:success')
+    emitSpy.mockRestore()
+    wrapper.unmount()
   })
 
   it('posts credentials and sets cookies on successful login', async () => {
