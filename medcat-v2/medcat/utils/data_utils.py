@@ -74,6 +74,7 @@ class TestTrainSplitter:
             for i_document in np.random.permutation(range(0, num_of_docs)):
                 # Do we have enough documents in the test set
                 if self.test_anns / self.total_anns >= self.test_size:
+                    train_project['documents'].append(project['documents'][i_document])
                     continue
                 document = project['documents'][i_document]
                 self._split_doc_train_test(document, cui_filter,
