@@ -61,6 +61,9 @@ COPY scripts ./scripts
 COPY templates ./templates
 COPY --from=frontend-builder /build/dist ./frontend/dist
 
+ENV UV_PROJECT=/home \
+    UV_NO_SYNC=1
+
 # MEDIA_ROOT is a runtime volume; ensure the directory exists without baking in local uploads
 RUN mkdir -p /home/api/media
 
