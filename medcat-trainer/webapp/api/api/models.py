@@ -354,6 +354,14 @@ class Relation(models.Model):
         return str(self.label)
 
 
+def update_project_last_modified(project: 'ProjectAnnotateEntities', last_modified):
+    # so that the local project last_modified is updated
+    project.last_modified = last_modified
+    # so that the project last_modified is updated in the database
+    ProjectAnnotateEntities.objects.filter(pk=project.id).update(
+        last_modified=last_modified
+    )
+
 class EntityRelation(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     project = models.ForeignKey('Project', on_delete=models.CASCADE)
@@ -370,8 +378,7 @@ class EntityRelation(models.Model):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
-        self.project.last_modified = self.last_modified
-        self.project.save()
+        update_project_last_modified(self.project, self.last_modified)
 
     def __str__(self):
         return f'{self.start_entity} - {self.relation} - {self.end_entity}'
@@ -402,8 +409,7 @@ class AnnotatedEntity(models.Model):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
-        self.project.last_modified = self.last_modified
-        self.project.save()
+        update_project_last_modified(self.project, self.last_modified)
 
     def __str__(self):
         return str(self.entity)
@@ -551,8 +557,7 @@ class MetaAnnotation(models.Model):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
-        self.annotated_entity.last_modified = self.last_modified
-        self.annotated_entity.save()
+        update_project_last_modified(self.annotated_entity.project, self.last_modified)
 
     def __str__(self):
         return str(self.annotated_entity)
