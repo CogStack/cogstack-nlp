@@ -102,12 +102,9 @@ export default {
   },
   created () {
     window.addEventListener('keyup', this.keyup)
-    this.$nextTick(function () {
-      document.getElementById('uname').focus()
+    this.$nextTick(() => {
+      document.getElementById('uname')?.focus()
     })
-  },
-  mounted () {
-    EventBus.$emit('login:success')
   },
 }
 </script>
