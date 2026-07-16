@@ -131,6 +131,71 @@ def verify_must_provide(
     )
 
 
+def verify_collections_contracts(
+    text: str,
+    doc_getter: Callable[[str], MutableDocument],
+    component: BaseComponent,
+    contract: ComponentContract,
+    raise_on_violation: bool = True,
+    min_feedbacks: int = 0,
+) -> list[str]:
+    """Verify the collection contracts portion of a contract.
+
+    Args:
+        text (str): The text to use.
+        doc_getter (Callable[[str], MutableDocument]): The document getter.
+        component (BaseComponent): The component to check.
+        contract (ComponentContract): The contract to check.
+        raise_on_violation (bool): Whether to raise on violations.
+            Defaults to True.
+        min_feedbacks (int): The minimum number of feedbacks expected.
+            Defaults to 0.
+
+    Returns:
+        list[str]: The list of violations, if any.
+    """
+    violations: list[str] = []
+    if not contract.collection_contracts:
+        return violations
+    doc = doc_getter(text)
+    doc = component(doc)
+    for cc in contract.collection_contracts:
+        if not cc.field.startswith("doc."):
+            violations.append(
+                f"Collection contract field '{cc.field}' is not a doc-level "
+                f"field — only doc.* fields are currently supported")
+            continue
+        attr = cc.field.split(".", 1)[1]
+        try:
+            collection = getattr(doc, attr)
+        except AttributeError:
+            violations.append(
+                f"Component {component.full_name} did not provide "
+                f"collection '{cc.field}' at all")
+            continue
+        items = list(collection)
+        if len(items) < min_feedbacks:
+            violations.append(
+                f"Collection '{cc.field}' has too few items "
+                f"({len(items)} with minimum {min_feedbacks})")
+        for i, item in enumerate(items):
+            for field in cc.must_provide:
+                try:
+                    val = getattr(item, field)
+                except AttributeError:
+                    violations.append(
+                        f"Item {i} in '{cc.field}' is missing "
+                        f"required field '{field}'")
+                    continue
+                if not val:
+                    violations.append(
+                        f"Item {i} in '{cc.field}' has falsy value "
+                        f"for required field '{field}' (got {val!r})")
+    if violations and raise_on_violation:
+        raise ContractViolation("\n".join(violations))
+    return violations
+
+
 def verify_contract(
     text: str,
     doc_getter: Callable[[str], MutableDocument],
@@ -139,6 +204,7 @@ def verify_contract(
     raise_on_violation: bool = True,
     min_feedbacks_need: int = 0,
     min_feedbacks_provide: int = 0,
+    min_feedbacks_contracts: int = 0,
 ) -> list[str]:
     """
     Verify a ComponentContract against a document before/after a component ran.
@@ -155,6 +221,11 @@ def verify_contract(
     violations += verify_must_provide(
         text, doc_getter, component, contract, raise_on_violation=False,
         min_feedbacks=min_feedbacks_provide,
+    )
+    # verify collections contracts
+    violations += verify_collections_contracts(
+        text, doc_getter, component, contract, raise_on_violation=False,
+        min_feedbacks=min_feedbacks_contracts,
     )
 
     if violations and raise_on_violation:
