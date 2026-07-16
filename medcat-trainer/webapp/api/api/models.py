@@ -122,8 +122,11 @@ class ModelPack(models.Model):
             for meta_cat_dir, meta_cat_cnf in meta_cat_addons:
                 meta_model_name = f'{meta_cat_cnf.general.category_name} - {meta_cat_cnf.model.model_name}'
                 if MetaCATModel.objects.filter(name=meta_model_name).exists():
-                    logger.info("Meta CAT Model '%s' already exists, avoiding duplicate registration", meta_model_name)
-                    continue
+                    prev_meta_can_name = meta_model_name
+                    meta_model_name = f'{meta_model_name} - from {self.id}'
+                    logger.info(
+                        "Meta CAT Model '%s' already exists, avoiding duplicate registration, renaming to %s",
+                        prev_meta_can_name, meta_model_name)
                 mc_model = MetaCATModel()
                 mc_model.meta_cat_dir = meta_cat_dir.replace(f'{MEDIA_ROOT}/', '')
                 mc_model.name = meta_model_name
