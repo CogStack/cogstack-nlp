@@ -128,7 +128,7 @@ class ModelPackAddonRegistrationTests(TestCase):
         self.assertEqual(model_pack.meta_cats.count(), 0)
 
 
-    def test_re_register_model_pack_with_same_meta_cat_does_not_create_duplicate(self):
+    def test_re_register_model_pack_with_same_meta_cat_reregisters_with_new_name(self):
         model_pack, _ = self._prepare_model_pack(name="dupe-addon-pack")
         addon_cnfs = [
             _make_meta_cat_addon_cnf(),
@@ -142,4 +142,4 @@ class ModelPackAddonRegistrationTests(TestCase):
         with self._register_model_pack(model_pack2, addon_cnfs):
             pass
         registered_meta_cats = MetaCATModel.objects.all()
-        self.assertEqual(len(registered_meta_cats), len(addon_cnfs))
+        self.assertEqual(len(registered_meta_cats), 2 * len(addon_cnfs))
