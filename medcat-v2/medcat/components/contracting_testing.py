@@ -15,7 +15,13 @@ _DEFAULT_COMP_TYPES_TO_CHECK = [
 
 
 class ContractViolationError(ValueError):
-    pass
+
+    def __init__(self, component_type: CoreComponentType, violations: list):
+        self.component_type = component_type
+        self.violations = violations
+        super().__init__(
+            f"Contract violations for {component_type.name}: {violations}"
+        )
 
 
 def assert_single_component_holds(
