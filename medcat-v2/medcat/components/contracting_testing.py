@@ -40,6 +40,11 @@ def assert_single_component_holds(
     min_feedbacks_need = (
         len(list(prep(text))) if component_type is CoreComponentType.ner else 1
     )
+    if not min_feedbacks_need:
+        # NOTE: this would normally happen with NER if/when there's no tokens
+        raise ContractViolationError(
+            "Cannot check for feedback needs if minimum is 0 "
+            f"for {component.full_name}")
     violations = verify_contract(
         text, prep, component, contract,
         raise_on_violation=False,
