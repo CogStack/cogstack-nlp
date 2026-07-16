@@ -141,6 +141,13 @@ def verify_collections_contracts(
 ) -> list[str]:
     """Verify the collection contracts portion of a contract.
 
+    This method only really checks the length of the collection
+    and that each item in there has a truthy value for each required
+    field. The expectation is that the write action (for the collection)
+    is checked by other parts. And because these entities may be created
+    in order to put them in the lists (i.e for NER) without the data filled
+    in, it's fair to assume that if the data exists, it was filled in.
+
     Args:
         text (str): The text to use.
         doc_getter (Callable[[str], MutableDocument]): The document getter.
