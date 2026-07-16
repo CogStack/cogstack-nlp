@@ -40,7 +40,7 @@ class TestContractingNer(TestCase):
             min_feedbacks_need=self.min_feedbacks_need,
             min_feedbacks_provide=self.min_feedbacks_provide,
         )
-        self.assertFalse(violations, "Expected not violations")
+        self.assertFalse(violations, "Expected no violations")
 
 
 class TestContractingLinker(TestContractingNer):
