@@ -87,7 +87,7 @@ def assert_component_contracts(
 
         def test_my_model_contract(self):
             cat = create_model_with_my_component()
-            assert_component_contract(cat)
+            assert_component_contracts(cat)
 
     Args:
         model (CAT): The model pack to use. This needs to refer to a model that
