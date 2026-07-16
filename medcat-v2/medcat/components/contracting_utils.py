@@ -109,9 +109,11 @@ def spy_token_class(
             per_instance_spied[self].append((str(old), str(value)))
 
     if access_type == AccessType.READ:
-        token_cls.__getattribute__ = __getattribute__
+        # NOTE: this should be fine, but mypy complains due to self
+        token_cls.__getattribute__ = __getattribute__  # type: ignore
     elif access_type == AccessType.WRITE:
-        token_cls.__setattr__ = __setattr__
+        # NOTE: this should be fine, but mypy complains due to self
+        token_cls.__setattr__ = __setattr__  # type: ignore
     else:
         raise ValueError(f"Unknown access type: {access_type}")
     try:
@@ -123,7 +125,8 @@ def spy_token_class(
             token_cls.__getattribute__ = prev_getattr
 
         if prev_setattr is _SENTINEL:
-            token_cls.__setattr__ = object.__setattr__
+            # NOTE: this should be fine, but mypy complains due to self
+            token_cls.__setattr__ = object.__setattr__  # type: ignore
         else:
             token_cls.__setattr__ = prev_setattr
 
