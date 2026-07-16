@@ -14,9 +14,11 @@ class TestContractingNer(TestCase):
     comp_type = CoreComponentType.ner
     comp_cls = NER
     args: Callable[[], list] = list
-    min_feedbacks_need = 0
+    min_feedbacks_need = 23
     min_feedbacks_provide = 1
-    text = "John had been diagnosed with acute Kidney Failure the week before."
+    text = """
+    John had been diagnosed with acute Kidney - Failure the week before.
+    """
 
     @classmethod
     def component_prep(cls, text: str) -> MutableDocument:
@@ -40,6 +42,8 @@ class TestContractingNer(TestCase):
             min_feedbacks_need=self.min_feedbacks_need,
             min_feedbacks_provide=self.min_feedbacks_provide,
         )
+        doc = self.component_prep(self.text)
+        print("PIPE man", doc, "->", [tkn for tkn in doc if tkn.to_skip])
         self.assertFalse(violations, "Expected no violations")
 
 
