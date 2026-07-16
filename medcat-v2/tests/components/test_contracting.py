@@ -14,17 +14,6 @@ class TestContractingNer(TestCase):
     comp_type = CoreComponentType.ner
     comp_cls = NER
     args: Callable[[], list] = list
-    # NOTE: these depend on the text and component
-    #       e.g for NER, this is called once per token to check
-    #           if they're skipped
-    #       e.g for linker, this counts the number of time
-    #           doc.ner_ents is read
-    min_feedbacks_need = 23
-    # NOTE: e.g for NER, this counts the setting of detected_name
-    #           for each token in doc.ner_ents
-    #       e.g for linker, this counts the setting of
-    #           cui and context_similarity for each token in doc.linked_ents
-    min_feedbacks_provide = 1
     text = """
     John had been diagnosed with acute Kidney - Failure the week before.
     """
@@ -45,21 +34,25 @@ class TestContractingNer(TestCase):
         return super().setUpClass()
 
     def test_contract_held(self):
+        min_feedbacks_need = (
+            len(list(self.component_prep(self.text)))
+            if self.comp_type is CoreComponentType.ner else
+            1
+        )
+        # for NER / linker it's just setting once
+        min_feedbacks_provide = 1
         violations = contracting.verify_contract(
             self.text, self.component_prep, self.comp, self.comp_type.value,
             raise_on_violation=False,
-            min_feedbacks_need=self.min_feedbacks_need,
-            min_feedbacks_provide=self.min_feedbacks_provide,
+            min_feedbacks_need=min_feedbacks_need,
+            min_feedbacks_provide=min_feedbacks_provide,
         )
-        doc = self.component_prep(self.text)
-        print("PIPE man", doc, "->", [tkn for tkn in doc if tkn.to_skip])
         self.assertFalse(violations, "Expected no violations")
 
 
 class TestContractingLinker(TestContractingNer):
     comp_type = CoreComponentType.linking
     comp_cls = Linker
-    min_feedbacks_need = 1
 
     @classmethod
     def setUpClass(cls) -> None:
