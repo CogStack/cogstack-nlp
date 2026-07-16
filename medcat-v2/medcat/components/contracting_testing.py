@@ -85,7 +85,7 @@ def assert_component_contracts(
 
     Example:
 
-        def test_my_ner_contract(self):
+        def test_my_model_contract(self):
             cat = create_model_with_my_component()
             assert_component_contract(cat)
 
