@@ -56,8 +56,9 @@ def assert_single_component_holds(
     if not min_feedbacks_need:
         # NOTE: this would normally happen with NER if/when there's no tokens
         raise ContractViolationError(
-            "Cannot check for feedback needs if minimum is 0 "
-            f"for {component.full_name}")
+            component_type,
+            ["Cannot check for feedback needs if minimum is 0 "
+             f"for {component.full_name}", ])
     violations = verify_contract(
         text, prep, component, contract,
         raise_on_violation=False,
