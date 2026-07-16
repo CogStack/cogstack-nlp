@@ -160,7 +160,34 @@ The vocabulary was compiled from [Wiktionary](https://en.wiktionary.org/wiki/Wik
 A big thank you goes to [spaCy](https://spacy.io/) and [Hugging Face](https://huggingface.co/) - who made life a million times easier.
 
 
-<!-- ## Citation
+## Citation
+MedCAT v2 citation:
+```
+@inproceedings{ratas-etal-2026-medcat,
+    title = "{M}ed{CAT} v2: a modular, extensible architecture for clinical named entity recognition and linking under real-world privacy and compute constraints",
+    author = "Ratas, Mart  and
+      Searle, Thomas  and
+      Sutton, Adam  and
+      Dobson, Richard",
+    editor = "Demner-Fushman, Dina  and
+      Ananiadou, Sophia  and
+      Roberts, Kirk  and
+      Tsujii, Junichi",
+    booktitle = "{B}io{NLP} 2026",
+    month = jul,
+    year = "2026",
+    address = "San Diego, California",
+    publisher = "Association for Computational Linguistics",
+    url = "https://aclanthology.org/2026.bionlp-1.17/",
+    doi = "10.18653/v1/2026.bionlp-1.17",
+    pages = "191--198",
+    ISBN = "979-8-89176-434-7",
+    abstract = "MedCAT is an open-source framework for clinical named entity recognition and linking (NER+L) widely used in research and healthcare settings. We present MedCAT v2, a re-engineered version designed to improve modularity, extensibility, and maintainability while preserving the core functionality and performance of previous releases. The new architecture introduces a registry-based component system and a flexible pipeline that enables easy substitution of components, integration of alternative methods, and future expansion, including support for pre-trained components across the full NER+L and contextualisation workflow. This enables systematic exploration of clinical NER+L design trade-offs by evaluating different components in the pipeline. Evaluation across multiple public datasets shows equivalent or improved performance compared to earlier versions, with reduced integration overhead and improved runtime flexibility. The framework also supports optional extensions such as meta-annotation, relation extraction, providing a unified and reproducible environment for clinical NLP in real-world settings."
+}
+```
+<details>
+<summary>MedCAT v1 citation</summary>
+
 ```
 @ARTICLE{Kraljevic2021-ln,
   title="Multi-domain clinical natural language processing with {MedCAT}: The Medical Concept Annotation Toolkit",
@@ -173,4 +200,5 @@ A big thank you goes to [spaCy](https://spacy.io/) and [Hugging Face](https://hu
   issn="0933-3657",
   doi="10.1016/j.artmed.2021.102083"
 }
-``` -->
+</details>
+```

@@ -3,6 +3,7 @@ import logging
 import os
 from typing import List
 import dill
+from functools import lru_cache
 
 import requests
 from background_task import background
@@ -482,15 +483,21 @@ def prep_docs(project_id: List[int], doc_ids: List[int], user_id: int):
                 project.id, project.prepared_documents)
 
 
+@lru_cache(maxsize=8)
+def _load_cuis_from_file(path):
+    with open(path) as f:
+        return json.load(f)
+
+
 @receiver(post_save, sender=ProjectAnnotateEntities)
 def save_project_anno(sender, instance, **kwargs):
     if instance.cuis_file:
-        post_save.disconnect(save_project_anno, sender=ProjectAnnotateEntities)
-        cuis_from_file = json.load(open(instance.cuis_file.path))
+        cuis_from_file = _load_cuis_from_file(instance.cuis_file.path)
         cui_list = [c.strip() for c in instance.cuis.split(',')]
-        instance.cuis = ','.join(set(cui_list) - set(cuis_from_file))
-        instance.save()
-        post_save.connect(save_project_anno, sender=ProjectAnnotateEntities)
+        new_cuis = ','.join(set(cui_list) - set(cuis_from_file))
+        if new_cuis != instance.cuis:
+            instance.cuis = new_cuis
+            ProjectAnnotateEntities.objects.filter(pk=instance.pk).update(cuis=new_cuis)
 
 
 def env_str_to_bool(var: str, default: bool):
