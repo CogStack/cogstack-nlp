@@ -64,6 +64,7 @@ def assert_single_component_holds(
         raise_on_violation=False,
         min_feedbacks_need=min_feedbacks_need,
         min_feedbacks_provide=1,
+        min_feedbacks_contracts=1,
     )
     if violations:
         raise ContractViolationError(component_type, violations)
