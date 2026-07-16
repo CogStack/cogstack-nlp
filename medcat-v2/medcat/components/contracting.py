@@ -18,7 +18,26 @@ def verify_part(
     access_type: AccessType,
     raise_on_violation: bool = True,
     min_feedbacks: int = 0,
-):
+) -> list[str]:
+    """Verify the parts for this text.
+
+    Args:
+        text (str): The text to use.
+        doc_getter (Callable[[str], MutableDocument]): The document getter.
+        component (BaseComponent): The component to check.
+        paths (list[str]): The paths to check.
+        access_type (AccessType): The type of access to check.
+        raise_on_violation (bool): Whether to raise on a violation.
+            Defaults to True.
+        min_feedbacks (int): The minimum number of feedbacks expected.
+            Defaults to 0.
+
+    Raises:
+        ContractViolation: If there are violations and instructed to raise.
+
+    Returns:
+        list[str]: The list of violations, if any.
+    """
     violations: list[str] = []
     for path in paths:
         doc = doc_getter(text)
@@ -60,6 +79,21 @@ def verify_needs(
     raise_on_violation: bool = True,
     min_feedbacks: int = 0,
 ) -> list[str]:
+    """Verify the needs portion of a contract.
+
+    Args:
+        text (str): The text to use.
+        doc_getter (Callable[[str], MutableDocument]): The document getter.
+        component (BaseComponent): The component to check.
+        contract (ComponentContract): The contract to check.
+        raise_on_violation (bool): Whether to raise on violations.
+            Defaults to True.
+        min_feedbacks (int,): The minimum number of feedbacks expected.
+            Defaults to 0.
+
+    Returns:
+        list[str]: The list of violations, if any.
+    """
     return verify_part(
         text, doc_getter, component, list(contract.needs),
         AccessType.READ, raise_on_violation=raise_on_violation,
@@ -75,6 +109,21 @@ def verify_must_provide(
     raise_on_violation: bool = True,
     min_feedbacks: int = 0,
 ) -> list[str]:
+    """Verify the must-provide portion of a contract.
+
+    Args:
+        text (str): The text to use.
+        doc_getter (Callable[[str], MutableDocument]): The document getter.
+        component (BaseComponent): The component to check.
+        contract (ComponentContract): The contract to check.
+        raise_on_violation (bool): Whether to raise on violations.
+            Defaults to True.
+        min_feedbacks (int,): The minimum number of feedbacks expected.
+            Defaults to 0.
+
+    Returns:
+        list[str]: The list of violations, if any.
+    """
     return verify_part(
         text, doc_getter, component, list(contract.must_provide),
         AccessType.WRITE, raise_on_violation=raise_on_violation,
