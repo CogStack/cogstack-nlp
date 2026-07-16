@@ -10,6 +10,8 @@ from medcat.components.contracting import verify_contract
 _DEFAULT_CONTRACT_TEXT = """
 John had been diagnosed with acute Kidney - Failure the week before.
 """
+_DEFAULT_COMP_TYPES_TO_CHECK = [
+    CoreComponentType.ner, CoreComponentType.linking]
 
 
 class ContractViolationError(ValueError):
@@ -78,7 +80,7 @@ def assert_component_contracts(
         ContractViolationError: If there are any violations found.
     """
     if to_check is None:
-        to_check = [CoreComponentType.ner, CoreComponentType.linking]
+        to_check = _DEFAULT_COMP_TYPES_TO_CHECK
     for cct in to_check:
         cur_comp = model.pipe.get_component(cct)
         assert_single_component_holds(model, cur_comp, text)
