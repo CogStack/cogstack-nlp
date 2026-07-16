@@ -25,6 +25,13 @@ def assert_single_component_holds(
 ):
     """Assert a specific component's contract holds.
 
+    Example:
+
+        def test_my_ner_contract(self):
+            cat = create_model_with_my_ner()
+            my_ner = cat.pipe.get_component(CoreComponentType.ner)
+            assert_single_component_holds(cat, my_ner)
+
     Args:
         model (CAT): The model with the specific component.
         component (CoreComponent): The component under test.
