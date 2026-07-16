@@ -160,7 +160,7 @@ def wrap_relevant_token_cls(
     with spy_token_class(
         tkn_cls, attr_name, access_type
     ) as per_instance_spied:
-        yield list(per_instance_spied.values())
+        yield per_instance_spied.values()
 
 
 @contextmanager
