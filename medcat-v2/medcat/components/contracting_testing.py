@@ -63,7 +63,10 @@ def assert_single_component_holds(
         text, prep, component, contract,
         raise_on_violation=False,
         min_feedbacks_need=min_feedbacks_need,
+        # NOTE: this means that the collection (ner_ents or linked_ents) is
+        #       written to at least once
         min_feedbacks_provide=1,
+        # NOTE: this means we expect at least 1 entity in output
         min_feedbacks_contracts=1,
     )
     if violations:
