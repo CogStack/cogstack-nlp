@@ -1,0 +1,84 @@
+from typing import Optional
+
+from medcat.cat import CAT
+from medcat.tokenizing.tokens import MutableDocument
+from medcat.components.base import CoreComponentType
+from medcat.components.types import CoreComponent
+from medcat.components.contracting import verify_contract
+
+
+_DEFAULT_CONTRACT_TEXT = """
+John had been diagnosed with acute Kidney - Failure the week before.
+"""
+
+
+class ContractViolationError(ValueError):
+    pass
+
+
+def assert_single_component_holds(
+    model: CAT,
+    component: CoreComponent,
+    text: str = _DEFAULT_CONTRACT_TEXT,
+):
+    """Assert a specific component's contract holds.
+
+    Args:
+        model (CAT): The model with the specific component.
+        component (CoreComponent): The component under test.
+        text (str): The text to use for the check.
+            Defaults to _DEFAULT_CONTRACT_TEXT.
+    """
+    component_type = component.get_type()
+
+    def prep(t: str) -> MutableDocument:
+        return model.pipe.pipe_until(t, component_type)
+
+    contract = component_type.value
+    min_feedbacks_need = (
+        len(list(prep(text))) if component_type is CoreComponentType.ner else 1
+    )
+    violations = verify_contract(
+        text, prep, component, contract,
+        raise_on_violation=False,
+        min_feedbacks_need=min_feedbacks_need,
+        min_feedbacks_provide=1,
+    )
+    if violations:
+        raise ContractViolationError(component_type, violations)
+
+
+def assert_component_contracts(
+    model: CAT,
+    text: str = _DEFAULT_CONTRACT_TEXT,
+    to_check: Optional[list[CoreComponentType]] = None
+):
+    """Verify that all components upholds its MedCAT contract.
+
+    Intended for use in tests by external component implementers.
+    Raises ContractViolationError if the contract is not upheld.
+
+    Example:
+
+        def test_my_ner_contract(self):
+            cat = create_model_with_my_component()
+            assert_component_contract(cat)
+
+    Args:
+        model (CAT): The model pack to use. This needs to refer to a model that
+            is able to NER and link at least 1 entity in the provided text.
+            This model needs to already have the relevant component(s) to be
+            checked.
+        to_check (Optional[list[CoreComponentType]]): The core component types
+            to check. Defaults to NER and linking.
+        text (str): The text to use for the check.
+            Defaults to _DEFAULT_CONTRACT_TEXT.
+
+    Raises:
+        ContractViolationError: If there are any violations found.
+    """
+    if to_check is None:
+        to_check = [CoreComponentType.ner, CoreComponentType.linking]
+    for cct in to_check:
+        cur_comp = model.pipe.get_component(cct)
+        assert_single_component_holds(model, cur_comp, text)
