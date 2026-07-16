@@ -14,7 +14,16 @@ class TestContractingNer(TestCase):
     comp_type = CoreComponentType.ner
     comp_cls = NER
     args: Callable[[], list] = list
+    # NOTE: these depend on the text and component
+    #       e.g for NER, this is called once per token to check
+    #           if they're skipped
+    #       e.g for linker, this counts the number of time
+    #           doc.ner_ents is read
     min_feedbacks_need = 23
+    # NOTE: e.g for NER, this counts the setting of detected_name
+    #           for each token in doc.ner_ents
+    #       e.g for linker, this counts the setting of
+    #           cui and context_similarity for each token in doc.linked_ents
     min_feedbacks_provide = 1
     text = """
     John had been diagnosed with acute Kidney - Failure the week before.
