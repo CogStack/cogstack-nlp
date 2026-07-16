@@ -10,7 +10,6 @@ from medcat.tokenizing.tokens import MutableDocument
 from tests import UNPACKED_EXAMPLE_MODEL_PACK_PATH
 
 
-
 class TestContractingNer(TestCase):
     comp_type = CoreComponentType.ner
     comp_cls = NER
@@ -42,7 +41,6 @@ class TestContractingNer(TestCase):
             min_feedbacks_provide=self.min_feedbacks_provide,
         )
         self.assertFalse(violations, "Expected not violations")
-        # self.assertTrue(self.comp(self.component_prep(self.text)))
 
 
 class TestContractingLinker(TestContractingNer):
