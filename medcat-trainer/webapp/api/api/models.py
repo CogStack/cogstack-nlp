@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 
 class ModelPack(models.Model):
     name = models.TextField(help_text='', unique=True)
-    model_pack = models.FileField(help_text='Model pack zip')
+    model_pack = models.FileField(max_length=255, help_text='Model pack zip')
     concept_db = models.ForeignKey('ConceptDB', on_delete=models.CASCADE, blank=True, null=True)
     vocab = models.ForeignKey('Vocabulary', on_delete=models.CASCADE, blank=True, null=True)
     meta_cats = models.ManyToManyField('MetaCATModel', blank=True, default=None)
@@ -149,7 +149,7 @@ class ModelPack(models.Model):
 
 class ConceptDB(models.Model):
     name = models.CharField(max_length=100, default='', blank=True, validators=[cdb_name_validator], unique=True)
-    cdb_file = models.FileField()
+    cdb_file = models.FileField(max_length=255)
     use_for_training = models.BooleanField(default=True)
     create_time = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
@@ -185,7 +185,7 @@ class ConceptDB(models.Model):
 
 class Vocabulary(models.Model):
     name = models.CharField(max_length=100, default='', blank=True)
-    vocab_file = models.FileField()
+    vocab_file = models.FileField(max_length=255)
     create_time = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
     last_modified_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, default=None, null=True)
@@ -207,7 +207,7 @@ class Vocabulary(models.Model):
 
 class MetaCATModel(models.Model):
     name = models.CharField(max_length=100, help_text="The task name followed by the underlying model impl", unique=True)
-    meta_cat_dir = models.FilePathField(help_text='The zip or dir for a MetaCAT model, not editable, '
+    meta_cat_dir = models.FilePathField(max_length=255, help_text='The zip or dir for a MetaCAT model, not editable, '
                                                   'is set via a model pack .zip upload',
                                         allow_folders=True, editable=False)
 
