@@ -120,9 +120,11 @@ class ModelPack(models.Model):
             meta_cat_addons = load_meta_cat_info_from_model_folder(unpacked_model_pack_path)
             metaCATmodels = []
             for meta_cat_dir, meta_cat_cnf in meta_cat_addons:
+                meta_model_name = f'{meta_cat_cnf.general.category_name} - {meta_cat_cnf.model.model_name}'
+                meta_model_name = f'{meta_model_name} - from {self.id}'
                 mc_model = MetaCATModel()
                 mc_model.meta_cat_dir = meta_cat_dir.replace(f'{MEDIA_ROOT}/', '')
-                mc_model.name = f'{meta_cat_cnf.general.category_name} - {meta_cat_cnf.model.model_name}'
+                mc_model.name = meta_model_name
                 mc_model.save(unpack_load_meta_cat_dir=False)
                 mc_model.get_or_create_meta_tasks_and_values(meta_cat_cnf)
                 metaCATmodels.append(mc_model)
