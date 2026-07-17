@@ -71,7 +71,7 @@ class ModelPackAddonRegistrationTests(TestCase):
         self.assertIsNotNone(model_pack.vocab)
         self.assertEqual(model_pack.meta_cats.count(), 1)
         meta_cat_model = model_pack.meta_cats.get()
-        self.assertEqual(meta_cat_model.name, "Status - bert")
+        self.assertEqual(meta_cat_model.name, "Status - bert - 1")
         self.assertTrue(meta_cat_model.meta_cat_dir.endswith("addon_meta_cat.Status"))
 
     def test_register_model_pack_with_rel_cat_only(self):
@@ -98,7 +98,7 @@ class ModelPackAddonRegistrationTests(TestCase):
         self.assertEqual(model_pack.meta_cats.count(), 2)
         self.assertEqual(
             set(model_pack.meta_cats.values_list("name", flat=True)),
-            {"Status - bert", "Experiencer - roberta"},
+            {"Status - bert - 1", "Experiencer - roberta - 1"},
         )
 
     def test_register_model_pack_with_meta_cat_and_rel_cat(self):
@@ -113,7 +113,7 @@ class ModelPackAddonRegistrationTests(TestCase):
         # All addons load; only MetaCAT rows are registered.
         self.assertEqual(model_pack.meta_cats.count(), 1)
         meta_cat_model = model_pack.meta_cats.get()
-        self.assertEqual(meta_cat_model.name, "Status - bert")
+        self.assertEqual(meta_cat_model.name, "Status - bert - from 1")
         self.assertTrue(meta_cat_model.meta_cat_dir.endswith("addon_meta_cat.Status"))
 
 
