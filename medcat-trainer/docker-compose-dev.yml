@@ -10,9 +10,6 @@ services:
     restart: always
     networks:
       - gateway-auth_gateway-net
-      - default
-    depends_on:
-      - trainer-postgres
     volumes:
       - api-media:/home/api/media
       - api-static:/home/api/static
@@ -38,25 +35,8 @@ services:
       - KEYCLOAK_INTERNAL_SERVICE_URL=http://keycloak:8080
       - KEYCLOAK_BACKEND_CLIENT_ID=cogstack-medcattrainer-backend
       - KEYCLOAK_BACKEND_CLIENT_SECRET=***
-      - DB_ENGINE=postgresql
-      - DB_NAME=postgres
-      - DB_USER=admin
-      - DB_PASSWORD=admin
-      - DB_HOST=trainer-postgres
-      - DB_PORT=5432
     command: /usr/bin/supervisord -c /etc/supervisord.conf
-  trainer-postgres:
-    image: postgres:17.6-alpine
-    restart: always
-    environment:
-      - POSTGRES_USER=admin
-      - POSTGRES_PASSWORD=admin
-    volumes:
-      - postgres-vol:/var/lib/postgresql/data
-    ports:
-      - 5432:5432
-    networks:
-      - default
+
   nginx:
     image: nginx
     restart: always
@@ -101,7 +81,7 @@ volumes:
   api-db:
   api-db-backup:
   solr-data:
-  postgres-vol:
+
 networks:
   gateway-auth_gateway-net:
     name: ${MCT_GATEWAY_NETWORK_NAME:-gateway-auth_gateway-net}
