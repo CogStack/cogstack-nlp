@@ -59,6 +59,7 @@ dependencies = [
   "transformers>=4.41.0,<5.0", # avoid major bump
   "torch>=2.4.0,<3.0",
   "tqdm",
+  "pytorch-crf"
 ]
 
 # List additional groups of dependencies here (e.g. development
@@ -115,3 +116,9 @@ git_describe_command = "git describe --dirty --tags --long --match 'medcat-trans
 select = ["E", "F"]
 # ignore unused local variables
 ignore = ["F841"]
+
+[tool.mypy]
+
+[[tool.mypy.overrides]]
+module = ["torchcrf"]
+ignore_missing_imports = true

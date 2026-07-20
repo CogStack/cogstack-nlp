@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, cast
 from medcat.tokenizing.tokens import MutableDocument, MutableEntity
 from medcat.components.types import CoreComponentType, TrainableComponent
 from medcat.components.types import AbstractEntityProvidingComponent
@@ -36,7 +36,9 @@ class NER(AbstractEntityProvidingComponent,
         self.config = self.cdb.config
 
         # NER model stuff!
-        self.cnf_ner: TransformerNER = self.config.components.ner
+        self.cnf_ner: TransformerNER = cast(
+            TransformerNER, self.config.components.ner
+        )
         self.label2id = {
             "O": 0,
             "B-ENT": 1,
@@ -150,7 +152,7 @@ class NER(AbstractEntityProvidingComponent,
             # Rebase entities to chunk
             # iff this is a training example
             if entities is not None:
-                chunk_entities = []
+                chunk_entities: list[dict[str, int]] = []
                 for ent in entities:
                     ent_start = ent.base.start_char_index
                     ent_end = ent.base.end_char_index # make end exclusive
@@ -180,12 +182,12 @@ class NER(AbstractEntityProvidingComponent,
                 ]
 
 
-                for ent in chunk_entities:
+                for chunk_ent in chunk_entities:
                     ent_token_indices = []
                     for i, (token_start, token_end) in enumerate(offsets_chunk):
                         if token_start == token_end:
                             continue
-                        if token_start < ent["end"] and token_end > ent["start"]:
+                        if token_start < chunk_ent["end"] and token_end > chunk_ent["start"]:
                             ent_token_indices.append(i)
 
                     if not ent_token_indices:
@@ -392,14 +394,14 @@ class NER(AbstractEntityProvidingComponent,
         token_end = None
 
         for token in doc:
-            if token.char_index + len(token.text) <= start_char:
+            if token.base.char_index + len(token.base.text) <= start_char:
                 continue
-            if token.char_index >= end_char:
+            if token.base.char_index >= end_char:
                 break
 
             if token_start is None:
-                token_start = token.index
-            token_end = token.index + 1
+                token_start = token.base.index
+            token_end = token.base.index + 1
 
         if token_start is None or token_end is None:
             return None
@@ -444,7 +446,7 @@ class NER(AbstractEntityProvidingComponent,
                     sub_tokens = list(doc[i:j])
                     # there might be more cleaning required here
                     detected_name = self.config.general.separator.join(
-                        token.text.lower() for token in sub_tokens
+                        token.base.text.lower() for token in sub_tokens
                     )
                     ent = None
                     if detected_name in self.cdb.name2info:
@@ -498,7 +500,7 @@ class NER(AbstractEntityProvidingComponent,
                 The NER'ed entities.
         """
         # Keep offset generation in the same coordinate space as spaCy char_span.
-        text = doc.text
+        text = doc.base.text
         input_ids, attention_masks, offset_mappings, chunk_char_starts, _ = (
             self._chunk_and_encode(text)
         )
@@ -529,7 +531,7 @@ class NER(AbstractEntityProvidingComponent,
     @classmethod
     def create_new_component(
             cls, cnf: ComponentConfig, tokenizer: BaseTokenizer,
-            cdb: CDB, vocab: Vocab, model_load_path: Optional[str]) -> 'TransformerNER':
+            cdb: CDB, vocab: Vocab, model_load_path: Optional[str]) -> 'NER':
         return cls(tokenizer, cdb)
     
     def serialise_to(self, folder_path: str) -> None:
