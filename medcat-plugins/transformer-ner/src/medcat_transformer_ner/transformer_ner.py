@@ -187,7 +187,11 @@ class NER(AbstractEntityProvidingComponent,
                     for i, (token_start, token_end) in enumerate(offsets_chunk):
                         if token_start == token_end:
                             continue
-                        if token_start < chunk_ent["end"] and token_end > chunk_ent["start"]:
+                        if (
+                            token_start < chunk_ent["end"] 
+                            and 
+                            token_end > chunk_ent["start"]
+                            ):
                             ent_token_indices.append(i)
 
                     if not ent_token_indices:
