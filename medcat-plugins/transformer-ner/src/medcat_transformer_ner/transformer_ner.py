@@ -155,7 +155,7 @@ class NER(AbstractEntityProvidingComponent,
                 chunk_entities: list[dict[str, int]] = []
                 for ent in entities:
                     ent_start = ent.base.start_char_index
-                    ent_end = ent.base.end_char_index # make end exclusive
+                    ent_end = ent.base.end_char_index  # make end exclusive
 
                     if ent_end > char_start and ent_start < char_end:
                         chunk_entities.append({
