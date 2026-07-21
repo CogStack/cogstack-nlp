@@ -32,7 +32,7 @@ repo_name: cogstack-nlp
 docs_dir: docs
 
 nav:
-  - Home: ../README.md
+  - Home: index.md
   - Architecture: architecture.md
   - Tutorials: '!include ../medcat-v2-tutorials/mkdocs.yml'
   - Upgrading:
