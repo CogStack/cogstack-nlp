@@ -474,8 +474,7 @@ class Linker(AbstractEntityProvidingComponent):
                     for cui in link_candidates
                     if self.cnf_l.filters.check_filters(cui)
                 ]
-            # TODO: Is this "not" correct? if I skip pre inference I don't care
-            # about the link candidates?
+
             if (
                 len(link_candidates) == 1 and 
                     (self.cnf_l.use_pre_inference or 
@@ -739,7 +738,6 @@ class Linker(AbstractEntityProvidingComponent):
             # if no candidates just skip it
             if not entity.link_candidates:
                 continue
-            # TODO: Check if this is right now with multiple entites being possible
             if len(entity.link_candidates) == 1:
                 # if the include filter exists and the only cui is in it
                 if self.cnf_l.filters.check_filters(entity.link_candidates[0]):

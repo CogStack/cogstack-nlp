@@ -1,4 +1,4 @@
-# MedCAT Embedding Linker
+# MedCAT Transformer NER
 
 A MedCAT plugin that provides an transformer based NER component using transformer models from HuggingFace.
 
