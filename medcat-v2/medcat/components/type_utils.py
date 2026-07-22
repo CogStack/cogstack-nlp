@@ -1,7 +1,7 @@
 import warnings
 from .types import (
     TrainableComponent, TrainingExample, BatchTrainableComponent,
-    CoreComponent)
+    BaseComponent)
 
 
 class _LegacyBatchAdapter:
@@ -16,7 +16,7 @@ class _LegacyBatchAdapter:
                 self._component.train(ex.cui, ex.entity, ex.doc, ex.negative)
 
 
-def as_batch_trainable(component: CoreComponent) -> BatchTrainableComponent:
+def as_batch_trainable(component: BaseComponent) -> BatchTrainableComponent:
     if isinstance(component, BatchTrainableComponent):
         return component
     if isinstance(component, TrainableComponent):
@@ -25,6 +25,14 @@ def as_batch_trainable(component: CoreComponent) -> BatchTrainableComponent:
         _warn_legacy_once(type(component))
         return _LegacyBatchAdapter(component)
     raise TypeError(f"{component!r} does not support training")
+
+
+def is_supervised_trainable(component: BaseComponent) -> bool:
+    try:
+        as_batch_trainable(component)
+        return True
+    except TypeError:
+        return False
 
 
 _warned_classes: set[type] = set()
