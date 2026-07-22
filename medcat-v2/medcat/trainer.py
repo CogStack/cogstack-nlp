@@ -15,7 +15,8 @@ from medcat.data.mctexport import (
     MedCATTrainerExport, MedCATTrainerExportAnnotation, MedCATTrainerExportProject,
     MedCATTrainerExportDocument, count_all_annotations, iter_anns)
 from medcat.preprocessors.cleaners import prepare_name, NameDescriptor
-from medcat.components.types import TrainableComponent
+from medcat.components.types import (
+    TrainableComponent, UnsupervisedTrainableComponent)
 from medcat.components.addons.addons import AddonComponent
 from medcat.pipeline import Pipeline
 
@@ -88,7 +89,6 @@ class Trainer:
                 # Convert to string
                 line = str(line).strip()
 
-
                 # inference run for the document
                 try:
                     doc = self._pipeline.get_doc(line)
@@ -97,7 +97,8 @@ class Trainer:
                     logger.warning("BECAUSE OF:", exc_info=e)
                     continue
                 for comp in self._pipeline.iter_all_components():
-                    if isinstance(comp, TrainableComponent):
+                    # NOTE: only needs to be trainable in an unsupervised manner
+                    if isinstance(comp, UnsupervisedTrainableComponent):
                         logger.debug("Training on component %s", comp.full_name)
                         comp.train_unsupervised(doc)
             else:
