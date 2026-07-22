@@ -1,5 +1,7 @@
 import warnings
-from .types import TrainableComponent, TrainingExample, BatchTrainableComponent
+from .types import (
+    TrainableComponent, TrainingExample, BatchTrainableComponent,
+    CoreComponent)
 
 
 class _LegacyBatchAdapter:
@@ -14,10 +16,12 @@ class _LegacyBatchAdapter:
                 self._component.train(ex.cui, ex.entity, ex.doc, ex.negative)
 
 
-def as_batch_trainable(component) -> BatchTrainableComponent:
+def as_batch_trainable(component: CoreComponent) -> BatchTrainableComponent:
     if isinstance(component, BatchTrainableComponent):
         return component
     if isinstance(component, TrainableComponent):
+        # NOTE: this is where we can (in the future) raise instead
+        #       if/when we decide to not support the old protocol
         _warn_legacy_once(type(component))
         return _LegacyBatchAdapter(component)
     raise TypeError(f"{component!r} does not support training")
