@@ -137,19 +137,24 @@ class ModelForBinaryNER(nn.Module):
 
             loss = crf_loss + self.aux_loss_weight * (start_loss + end_loss)
 
-        decoded_sequences = self.crf.decode(emissions, mask=valid_mask)
-        decoded_tensor = torch.zeros(
-            emissions.shape[:2],
-            dtype=torch.long,
-            device=emissions.device,
-        )
-        for row_idx, seq in enumerate(decoded_sequences):
-            if seq:
-                decoded_tensor[row_idx, : len(seq)] = torch.tensor(
-                    seq,
-                    dtype=torch.long,
-                    device=emissions.device,
-                )
+        decoded_sequences = None
+        decoded_tensor = None
+        # Decoding is only needed for inference.
+        # Skip it during training to avoid unnecessary CRF calls
+        if labels is None:
+            decoded_sequences = self.crf.decode(emissions, mask=valid_mask)
+            decoded_tensor = torch.zeros(
+                emissions.shape[:2],
+                dtype=torch.long,
+                device=emissions.device,
+            )
+            for row_idx, seq in enumerate(decoded_sequences):
+                if seq:
+                    decoded_tensor[row_idx, : len(seq)] = torch.tensor(
+                        seq,
+                        dtype=torch.long,
+                        device=emissions.device,
+                    )
 
         return SimpleNamespace(
             loss=loss,
