@@ -3,6 +3,7 @@ from typing import Literal
 from typing_extensions import Self
 from enum import Enum, auto
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 
 from medcat.utils.registry import Registry, MedCATRegistryException
 from medcat.tokenizing.tokens import MutableDocument, MutableEntity
@@ -198,7 +199,36 @@ class TrainableComponent(Protocol):
                 Optionally used to update the `status` of a name-cui
                 pair in the CDB.
         """
-        pass
+
+
+@dataclass
+class TrainingExample:
+    cui: str
+    entity: MutableEntity
+    doc: MutableDocument   # context needed to encode, nothing more
+    negative: bool = False
+    epochs: int = 1        #
+
+
+@runtime_checkable
+class BatchTrainableComponent(Protocol):
+    """This trainable component can batch-train for supervised data.
+
+    The idea is that most of the time the data is coming in on a per document
+    basis. And a number of implementations might be able to take advantage of
+    parallelisation when processing multiple entities together. However, the
+    new method's implementation allows for more flexibility - it does not
+    necessarily have to be called with examples only from one document, and
+    it each training example may have its own optionality (i.e whether it's
+    a negative example, the number of epochs, and so on).
+    """
+
+    def train_supervised_batch(self, examples: list[TrainingExample]) -> None:
+        """Train the component on a batch of examples.
+
+        Args:
+            examples (list[TrainingExample]): The examples to train on.
+        """
 
 
 _DEFAULT_TAGGERS: dict[str, tuple[str, str]] = {
