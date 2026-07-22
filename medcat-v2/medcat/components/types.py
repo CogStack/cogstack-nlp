@@ -181,7 +181,7 @@ class UnsupervisedTrainableComponent(Protocol):
 
 
 @runtime_checkable
-class TrainableComponent(UnsupervisedTrainableComponent):
+class TrainableComponent(UnsupervisedTrainableComponent, Protocol):
 
     def train(self, cui: str,
               entity: MutableEntity,
