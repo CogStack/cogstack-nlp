@@ -699,14 +699,18 @@ class CATSupTrainingTests(CATUnsupTrainingTests):
             self.assertEqual(self.cat.config.meta.unsup_trained, [])
             self.assertEqual(self.cat.config.meta.sup_trained, [])
 
+    def get_trainable_component(self):
+        return self.cat.pipe.get_component(CoreComponentType.linking)
+
     def test_training_happens_in_correct_order(self):
         with captured_state_cdb(self.cat.cdb):
-            with unittest.mock.patch.object(
-                    self.cat.trainer, "add_and_train_concept") as mock_add_and_train_concept:
+            tc = self.get_trainable_component()
+            with unittest.mock.patch.object(tc, "train") as mock_linker_train:
                 self._perform_training()
         mct_export = self._get_data()
         called_ents = [
-            args.kwargs['mut_entity'] for args in mock_add_and_train_concept.call_args_list
+            args.kwargs['entity'] if 'entity' in args.kwargs else args.args[1]
+            for args in mock_linker_train.call_args_list
         ]
         self.assertEqual(len(called_ents), count_all_annotations(mct_export))
         for (_, _, ann), ent in zip(iter_anns(mct_export), called_ents):
