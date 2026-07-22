@@ -2,6 +2,7 @@ from typing import Optional, Union
 from medcat_embedding_linker.config import EmbeddingLinking
 from torch import Tensor
 from medcat.cdb import CDB
+from medcat.components.types import TrainableComponent
 from medcat.config.config import Config, ComponentConfig
 from medcat.components.linking.vector_context_model import PerDocumentTokenCache
 from medcat.tokenizing.tokenizers import BaseTokenizer
@@ -17,7 +18,7 @@ import random
 logger = logging.getLogger(__name__)
 
 
-class Linker(StaticEmbeddingLinker, AbstractManualSerialisable):
+class Linker(StaticEmbeddingLinker, AbstractManualSerialisable, TrainableComponent):
     """Trainable variant of the embedding linker.
     This class inherits inference and embedding behavior from Linker and provides
     method hooks for online/offline training.
@@ -28,7 +29,10 @@ class Linker(StaticEmbeddingLinker, AbstractManualSerialisable):
     _MODEL_FOLDER_NAME = "trainable_embedding_model"
     _MODEL_STATE_FILE_NAME = "model_state.pt"
 
-    def __init__(self, cdb: CDB, config: Config) -> None:
+    def __init__(self, 
+                 cdb: CDB, 
+                 config: Config,
+                 tokenizer: BaseTokenizer) -> None:
         if not isinstance(config.components.linking, EmbeddingLinking):
             raise TypeError("Linking config must be an EmbeddingLinking instance")
         self.cnf_l: EmbeddingLinking = config.components.linking
@@ -41,6 +45,7 @@ class Linker(StaticEmbeddingLinker, AbstractManualSerialisable):
         super().__init__(
             cdb,
             config,
+            tokenizer,
             model_init_kwargs=model_init_kwargs,
         )
         self.training_batch: list[tuple] = []
@@ -407,7 +412,7 @@ class Linker(StaticEmbeddingLinker, AbstractManualSerialisable):
         vocab: Vocab,
         model_load_path: Optional[str],
     ) -> "Linker":
-        return cls(cdb, cdb.config)
+        return cls(cdb, cdb.config, tokenizer)
 
     def serialise_to(self, folder_path: str) -> None:
         os.makedirs(folder_path, exist_ok=True)
@@ -424,7 +429,8 @@ class Linker(StaticEmbeddingLinker, AbstractManualSerialisable):
         cls, folder_path: str, **init_kwargs
     ) -> "Linker":
         cdb = init_kwargs["cdb"]
-        linker = cls(cdb, cdb.config)
+        tokenizer = init_kwargs["tokenizer"]
+        linker = cls(cdb, cdb.config, tokenizer)
 
         model_state_path = os.path.join(
             folder_path, cls._MODEL_FOLDER_NAME, cls._MODEL_STATE_FILE_NAME

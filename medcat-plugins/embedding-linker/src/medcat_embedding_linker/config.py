@@ -70,13 +70,46 @@ class EmbeddingLinking(Linking):
     """Choose a device for the linking model to be stored. If None
     then an appropriate GPU device that is available will be chosen"""
     context_window_size: int = 14
-    """Choose the window size to get context vectors."""
+    """Choose the window size to get context vectors. In a trained model 
+    if you increase the context window after training then performance will
+    degrade significantly."""
     use_ner_link_candidates: bool = True
     """Link candidates are provided by some NER steps. This will flag if 
-    you want to trust them or not."""
+    you want to trust them or not. A good guideline is if you've trained 
+    on data from the same distribution then this is probably best set to True.
+    If you have no training data from the same source distribution then it MIGHT
+    be better set to false."""
+    append_to_ner_link_candidates: bool = False
+    """If `use_ner_link_candidates` is enabled, generate additional
+    candidates and append them to existing NER candidates instead of only
+    generating for entities that have none. This will often result in a slight
+    increase in recall, and precision."""
+    use_pre_inference: bool = True
+    """Whether to use the pre-inference step to filter candidates before
+    calculating similarities. This can speed up inference by only calculating
+    similarities for candidates that are likely to be correct based direct on word 
+    matching."""
     learning_rate: float = 1e-4
     """Learning rate for training the embedding linker. Only used if 
     the embedding linker is trainable."""
     weight_decay: float = 0.01
     """Weight decay for training the embedding linker. Only used if
     the embedding linker is trainable."""
+    multiple_predictions_per_detected_entity: bool = False
+    """Whether to allow multiple predictions per detected entity. If False, only 
+    the highest scoring candidate will be returned for each entity. If True, all 
+    candidates that exceed the similarity thresholds will be returned. This can be 
+    useful if you want to return multiple CUIs for an entity, but can also lead to 
+    more false positives."""
+    pre_inference_top_k_sampling: int = 1
+    """When using pre-inference to filter candidates, how many names to then add
+    their related CUIs as potential candidates. Higher numbers will increase recall 
+    but also increase inference time, and reduce precision. This is influenced by 
+    `short_similarity_threshold`, i.e. pass the top k samples over the threshold 
+    for inference."""
+    inference_top_k_sampling: int = 1
+    """At the inference step, after calculating similarity scores, how many candidates 
+    to keep for each entity. Higher numbers will increase recall but also increase 
+    inference time, and often reduce precision. This is influenced by 
+    `long_similarity_threshold`, i.e. take the top k samples over the threshold. This 
+    will be ignored if `multiple_predictions_per_detected_entity` is set to False."""
