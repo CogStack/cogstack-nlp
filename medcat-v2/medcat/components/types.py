@@ -167,7 +167,7 @@ HashableComponet = HashableComponent
 
 
 @runtime_checkable
-class TrainableComponent(Protocol):
+class UnsupervisedTrainableComponent(Protocol):
 
     def train_unsupervised(self, doc: MutableDocument) -> None:
         """Train unsupervised based on the given document.
@@ -178,7 +178,10 @@ class TrainableComponent(Protocol):
         Args:
             doc (MutableDocument): The document to train on.
         """
-        pass
+
+
+@runtime_checkable
+class TrainableComponent(UnsupervisedTrainableComponent):
 
     def train(self, cui: str,
               entity: MutableEntity,
