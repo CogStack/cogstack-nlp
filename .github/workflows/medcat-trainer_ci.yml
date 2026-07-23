@@ -271,12 +271,14 @@ jobs:
           tags: cogstacksystems/medcat-trainer:test
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=registry,ref=cogstacksystems/medcat-trainer:buildcache
-          cache-to: type=registry,ref=cogstacksystems/medcat-trainer:buildcache,mode=max
 
       - name: Run Django Tests
         run: |
           # run tests using the built image
           docker run --rm cogstacksystems/medcat-trainer:test /home/.venv/bin/python manage.py test
+
+      - name: Prune stale Docker build cache
+        run: docker system prune --all --force --volumes
 
       - name: Push Docker MedCATtrainer image
         id: docker_build_push
