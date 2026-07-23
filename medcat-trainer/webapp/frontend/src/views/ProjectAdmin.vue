@@ -463,7 +463,10 @@
 
       <!-- Model Packs Tab -->
       <div v-if="activeTab === 'modelpacks'" class="tab-content admin-section">
-        <plugin-slot name="project-admin:modelpacks" />
+        <plugin-slot
+          name="project-admin:modelpacks"
+          @model-service-linked="onMedcatteryModelLinked"
+        />
         <model-packs-list
           v-if="!showModelPackForm && !editingModelPack"
           :model-packs="modelPacks"
@@ -698,6 +701,32 @@ export default {
     async fetchModelPacks() {
       const response = await this.$http.get('/api/modelpacks/')
       this.modelPacks = response.data.results || response.data
+    },
+    async onMedcatteryModelLinked(payload) {
+      if (payload?.modelServiceUrl) {
+        this.formData.use_model_service = true
+        this.formData.model_service_url = payload.modelServiceUrl
+        this.formData.model_pack = null
+        this.formData.concept_db = null
+        this.formData.vocab = null
+        if (this.validationErrors.model_pack) {
+          delete this.validationErrors.model_pack
+        }
+        if (this.validationErrors.concept_db) {
+          delete this.validationErrors.concept_db
+        }
+        if (this.validationErrors.vocab) {
+          delete this.validationErrors.vocab
+        }
+        if (this.validationErrors.model_config) {
+          delete this.validationErrors.model_config
+        }
+        if (this.validationErrors.model_service_url) {
+          delete this.validationErrors.model_service_url
+        }
+      }
+      const label = payload?.label || 'model'
+      this.$toast?.success(`Linked ${label} via MedCAT Service`)
     },
     async fetchUsers() {
       const response = await this.$http.get('/api/users/')
