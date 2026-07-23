@@ -66,7 +66,7 @@ import Login from '@/components/common/Login.vue'
 import EventBus from '@/event-bus'
 import { isOidcEnabled, getRuntimeConfig } from './runtimeConfig';
 import { getMenuItems } from './plugins/registry'
-import { UNAUTHORIZED_EVENT, resetUnauthorizedGuard } from './httpAuth'
+import { UNAUTHORIZED_EVENT, resetUnauthorizedGuard, clearClientAuth } from './httpAuth'
 
 export default {
   name: 'App',
@@ -138,9 +138,12 @@ export default {
     logout () {
       this.uname = null
       this.isAdmin = false
+      // Clear header + cookies together so a refresh cannot resurrect a half-logged-in state.
+      clearClientAuth(this.$http)
       this.$cookies.remove('username')
       this.$cookies.remove('api-token')
       this.$cookies.remove('admin')
+      this.$cookies.remove('user-id')
 
       if (this.useOidc && this.$keycloak && this.$keycloak.authenticated) {
         this.$keycloak.logout({

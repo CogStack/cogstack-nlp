@@ -133,13 +133,15 @@ export default {
           } else {
             this.postLoadedProjects()
           }
-        }).catch(() => {
-          this.$cookies.remove('username')
-          this.$cookies.remove('api-token')
-          this.$cookies.remove('admin')
-          this.$cookies.remove('user-id')
+        }).catch((err) => {
           this.loadingProjects = false
-          this.loginSuccessful = false
+          // 401: httpAuth interceptor already clears cookie + Authorization together
+          // and opens the re-login prompt. Do not wipe cookies on other failures —
+          // that left Authorization in memory while removing the cookie, so the tab
+          // still sent a token until refresh forced an unexplained re-login.
+          if (err.response?.status === 401) {
+            this.loginSuccessful = false
+          }
         })
       }
     },
