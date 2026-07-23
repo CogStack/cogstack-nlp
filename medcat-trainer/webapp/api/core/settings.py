@@ -28,15 +28,27 @@ CSRF_TRUSTED_ORIGINS = ['http://127.0.0.1:8001', 'http://localhost:8001'] + trus
 SECURE_CROSS_ORIGIN_OPENER_POLICY = None
 
 # SECURITY WARNING: keep the secret key used in production secret!
-realm = os.environ.get('ENV', 'non-prod')
-secret_key = os.environ.get('SECRET_KEY')
-if realm == 'prod' and secret_key is None:
-    msg = 'No SECRET_KEY environment variable found for prod environment. Please add a secret key and re-run'
-    log.error(msg)
-    sys.exit(msg)
-else:
+NON_PROD_DEFAULT_SECRET_KEY = 'q$&esydgbn2=#-k5s5i(+^dtxs1@$50_(ln0wuw@zig4m&^m7='
+
+
+def resolve_secret_key(realm, secret_key):
+    """Resolve Django SECRET_KEY from ENV realm and SECRET_KEY env values.
+
+    Prod requires an explicit secret. Non-prod may fall back to a default.
+    When a secret is provided via the environment, it is always preferred.
+    """
+    if secret_key:
+        return secret_key
+    if realm == 'prod':
+        msg = 'No SECRET_KEY environment variable found for prod environment. Please add a secret key and re-run'
+        log.error(msg)
+        sys.exit(msg)
     log.info('Running non-prod environment, defaulting django SECRET_KEY')
-    SECRET_KEY = 'q$&esydgbn2=#-k5s5i(+^dtxs1@$50_(ln0wuw@zig4m&^m7='
+    return NON_PROD_DEFAULT_SECRET_KEY
+
+
+realm = os.environ.get('ENV', 'non-prod')
+SECRET_KEY = resolve_secret_key(realm, os.environ.get('SECRET_KEY'))
 
 # SECURITY WARNING: don't run with debug turned on in production!
 try:

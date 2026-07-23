@@ -13,7 +13,8 @@ from django.forms import forms, ModelForm
 from medcat.cat import CAT
 from medcat.cdb import CDB
 from medcat.vocab import Vocab
-from medcat.components.addons.meta_cat.meta_cat import MetaCAT, MetaCATAddon
+from medcat.components.addons.meta_cat.meta_cat import MetaCAT
+from medcat.config.config_meta_cat import ConfigMetaCAT
 from polymorphic.models import PolymorphicModel
 
 from core.settings import MEDIA_ROOT
@@ -36,7 +37,7 @@ logger = logging.getLogger(__name__)
 
 class ModelPack(models.Model):
     name = models.TextField(help_text='', unique=True)
-    model_pack = models.FileField(help_text='Model pack zip')
+    model_pack = models.FileField(max_length=255, help_text='Model pack zip')
     concept_db = models.ForeignKey('ConceptDB', on_delete=models.CASCADE, blank=True, null=True)
     vocab = models.ForeignKey('Vocabulary', on_delete=models.CASCADE, blank=True, null=True)
     meta_cats = models.ManyToManyField('MetaCATModel', blank=True, default=None)
@@ -111,22 +112,21 @@ class ModelPack(models.Model):
             # DeID model packs do not have a vocab.dat file
             logger.warn('Error loading the Vocab from this model pack - '
                         f'if this is a DeID model pack, this is expected: {vocab_path_abs}')
+        # load dynamically to avoid circular imports
+        from .utils import load_meta_cat_info_from_model_folder
 
         # load MetaCATs
         try:
+            meta_cat_addons = load_meta_cat_info_from_model_folder(unpacked_model_pack_path)
             metaCATmodels = []
-            # should raise an error if there already is a MetaCAT model with this definition
-            addons = CAT.load_addons(unpacked_model_pack_path)
-            meta_cat_addons = [
-                (addon_path, addon) for addon_path, addon in addons
-                if isinstance(addon, MetaCATAddon)]
-            for meta_cat_dir, meta_cat_addon in meta_cat_addons:
-                meta_cat = meta_cat_addon.mc
+            for meta_cat_dir, meta_cat_cnf in meta_cat_addons:
+                meta_model_name = f'{meta_cat_cnf.general.category_name} - {meta_cat_cnf.model.model_name}'
+                meta_model_name = f'{meta_model_name} - from {self.id}'
                 mc_model = MetaCATModel()
                 mc_model.meta_cat_dir = meta_cat_dir.replace(f'{MEDIA_ROOT}/', '')
-                mc_model.name = f'{meta_cat.config.general.category_name} - {meta_cat.config.model.model_name}'
+                mc_model.name = meta_model_name
                 mc_model.save(unpack_load_meta_cat_dir=False)
-                mc_model.get_or_create_meta_tasks_and_values(meta_cat)
+                mc_model.get_or_create_meta_tasks_and_values(meta_cat_cnf)
                 metaCATmodels.append(mc_model)
             self.meta_cats.set(metaCATmodels)  # Use set() instead of add() for atomic operation
         except Exception as exc:
@@ -149,7 +149,7 @@ class ModelPack(models.Model):
 
 class ConceptDB(models.Model):
     name = models.CharField(max_length=100, default='', blank=True, validators=[cdb_name_validator], unique=True)
-    cdb_file = models.FileField()
+    cdb_file = models.FileField(max_length=255)
     use_for_training = models.BooleanField(default=True)
     create_time = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
@@ -185,7 +185,7 @@ class ConceptDB(models.Model):
 
 class Vocabulary(models.Model):
     name = models.CharField(max_length=100, default='', blank=True)
-    vocab_file = models.FileField()
+    vocab_file = models.FileField(max_length=255)
     create_time = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
     last_modified_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, default=None, null=True)
@@ -207,12 +207,12 @@ class Vocabulary(models.Model):
 
 class MetaCATModel(models.Model):
     name = models.CharField(max_length=100, help_text="The task name followed by the underlying model impl", unique=True)
-    meta_cat_dir = models.FilePathField(help_text='The zip or dir for a MetaCAT model, not editable, '
+    meta_cat_dir = models.FilePathField(max_length=255, help_text='The zip or dir for a MetaCAT model, not editable, '
                                                   'is set via a model pack .zip upload',
                                         allow_folders=True, editable=False)
 
-    def get_or_create_meta_tasks_and_values(self, meta_cat: MetaCAT):
-        task = meta_cat.config.general.category_name
+    def get_or_create_meta_tasks_and_values(self, mc_config: ConfigMetaCAT):
+        task = mc_config.general.category_name
         mt = MetaTask.objects.filter(name=task).first()
         if not mt:
             mt = MetaTask()
@@ -224,7 +224,7 @@ class MetaCATModel(models.Model):
             mt.save()
 
         mt_vs = []
-        for meta_task_value in meta_cat.config.general.category_value2id.keys():
+        for meta_task_value in mc_config.general.category_value2id.keys():
             mt_v = MetaTaskValue.objects.filter(name=meta_task_value).first()
             if not mt_v:
                 mt_v = MetaTaskValue()
@@ -356,6 +356,14 @@ class Relation(models.Model):
         return str(self.label)
 
 
+def update_project_last_modified(project: 'ProjectAnnotateEntities', last_modified):
+    # so that the local project last_modified is updated
+    project.last_modified = last_modified
+    # so that the project last_modified is updated in the database
+    ProjectAnnotateEntities.objects.filter(pk=project.id).update(
+        last_modified=last_modified
+    )
+
 class EntityRelation(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     project = models.ForeignKey('Project', on_delete=models.CASCADE)
@@ -372,8 +380,7 @@ class EntityRelation(models.Model):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
-        self.project.last_modified = self.last_modified
-        self.project.save()
+        update_project_last_modified(self.project, self.last_modified)
 
     def __str__(self):
         return f'{self.start_entity} - {self.relation} - {self.end_entity}'
@@ -404,8 +411,7 @@ class AnnotatedEntity(models.Model):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
-        self.project.last_modified = self.last_modified
-        self.project.save()
+        update_project_last_modified(self.project, self.last_modified)
 
     def __str__(self):
         return str(self.entity)
@@ -553,8 +559,7 @@ class MetaAnnotation(models.Model):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
-        self.annotated_entity.last_modified = self.last_modified
-        self.annotated_entity.save()
+        update_project_last_modified(self.annotated_entity.project, self.last_modified)
 
     def __str__(self):
         return str(self.annotated_entity)

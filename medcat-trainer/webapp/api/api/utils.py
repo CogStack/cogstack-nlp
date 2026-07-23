@@ -2,6 +2,8 @@ import json
 import logging
 import os
 from typing import List
+import dill
+from functools import lru_cache
 
 import requests
 from background_task import background
@@ -11,6 +13,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from medcat.cat import CAT
 from medcat.cdb import CDB
+from medcat.config.config_meta_cat import ConfigMetaCAT
 from medcat.components.ner.trf.deid import DeIdModel
 from medcat.tokenizing.tokens import UnregisteredDataPathException
 from opentelemetry import trace
@@ -454,7 +457,7 @@ def prep_docs(project_id: List[int], doc_ids: List[int], user_id: int):
     else:
         # Use local medcat model
         logger.info('Loading CAT object in bg process for project: %s', project.id)
-        cat = get_medcat(project=project)
+        cat = get_medcat(project=project, addons=["meta_cat"])
 
         # Set CAT filters
         cat.config.components.linking.filters.cuis = cuis
@@ -480,15 +483,21 @@ def prep_docs(project_id: List[int], doc_ids: List[int], user_id: int):
                 project.id, project.prepared_documents)
 
 
+@lru_cache(maxsize=8)
+def _load_cuis_from_file(path):
+    with open(path) as f:
+        return json.load(f)
+
+
 @receiver(post_save, sender=ProjectAnnotateEntities)
 def save_project_anno(sender, instance, **kwargs):
     if instance.cuis_file:
-        post_save.disconnect(save_project_anno, sender=ProjectAnnotateEntities)
-        cuis_from_file = json.load(open(instance.cuis_file.path))
+        cuis_from_file = _load_cuis_from_file(instance.cuis_file.path)
         cui_list = [c.strip() for c in instance.cuis.split(',')]
-        instance.cuis = ','.join(set(cui_list) - set(cuis_from_file))
-        instance.save()
-        post_save.connect(save_project_anno, sender=ProjectAnnotateEntities)
+        new_cuis = ','.join(set(cui_list) - set(cuis_from_file))
+        if new_cuis != instance.cuis:
+            instance.cuis = new_cuis
+            ProjectAnnotateEntities.objects.filter(pk=instance.pk).update(cuis=new_cuis)
 
 
 def env_str_to_bool(var: str, default: bool):
@@ -499,3 +508,46 @@ def env_str_to_bool(var: str, default: bool):
         elif val.lower() in ('0', 'false', 'f', 'n'):
             return False
     return val
+
+
+# NOTE: meta cats are saved at
+#       saved_components/addon_meta_cat.<category>
+#       however, their configs are (uniquely!) saved
+#       along with the config for the entire model pack
+#       at cdb/config/components/raw_dict.dat at 'addons'
+#       so we will load that directly
+
+_PATH_TO_CNF_ON_DISK = os.path.join(
+    "cdb", "config", "components", "raw_dict.dat"
+)
+_PATH_TO_META_CAT_START = os.path.join(
+    "saved_components", "addon_meta_cat."
+)
+
+def _get_meta_cat_path(model_folder: str, cnf: ConfigMetaCAT) -> str:
+    return os.path.join(
+        model_folder, _PATH_TO_META_CAT_START) + cnf.general.category_name
+
+
+def _load_global_cnf_addon_cnfs(model_pack_path: str) -> list:
+    global_cnf_path = os.path.join(model_pack_path, _PATH_TO_CNF_ON_DISK)
+    with open(os.path.join(model_pack_path, '.serialised_by')) as f:
+        contents = f.read()
+    if contents.strip().lower() != "dill":
+        raise ValueError(
+            "Unable to load MetaCAT info without loading the meta cats from this model "
+            "because of its serialisation type (%s) - we only have implementation for 'dill'")
+    with open(global_cnf_path, 'rb') as f:
+        cnf = dill.load(f)
+        return cnf['addons']
+
+
+def load_meta_cat_info_from_model_folder(
+    model_pack_path: str
+) -> list[tuple[str, ConfigMetaCAT]]:
+    addon_cnfs = _load_global_cnf_addon_cnfs(model_pack_path)
+    return [
+        (_get_meta_cat_path(model_pack_path, mc_cnf), mc_cnf)
+        for mc_cnf in addon_cnfs
+        if mc_cnf.comp_name == "meta_cat"
+    ]

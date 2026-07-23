@@ -23,7 +23,7 @@ from medcat.storage.serialisables import AbstractSerialisable
 from medcat.storage.mp_ents_save import BatchAnnotationSaver
 from medcat.utils.fileutils import ensure_folder_if_parent
 from medcat.utils.hasher import Hasher
-from medcat.pipeline import Pipeline
+from medcat.pipeline import Pipeline, _ENABLED_ADDONS_PATH
 from medcat.tokenizing.tokens import MutableDocument, MutableEntity
 from medcat.tokenizing.tokenizers import SaveableTokenizer, TOKENIZER_PREFIX
 from medcat.data.entities import Entity, Entities, OnlyCUIEntities
@@ -116,7 +116,7 @@ class CAT(AbstractSerialisable):
             self.usage_monitor.log_inference(len(text), len(doc.linked_ents))
         return doc
 
-    def _ensure_not_training(self) -> None:
+    def _ensure_not_training(self, stage: str = 'inference') -> None:
         """Method to ensure config is not set to train.
 
         `config.components.linking.train` should only be True while training
@@ -125,8 +125,9 @@ class CAT(AbstractSerialisable):
         """
         # pass
         if self.config.components.linking.train:
-            logger.warning("Training was enabled during inference. "
-                           "It was automatically disabled.")
+            logger.debug("Training was enabled during %s. "
+                         "It was automatically disabled.",
+                         stage)
             self.config.components.linking.train = False
 
     @overload
@@ -815,10 +816,12 @@ class CAT(AbstractSerialisable):
         return missing_plugins
 
     @classmethod
-    def load_model_pack(cls, model_pack_path: str,
-                        config_dict: Optional[dict] = None,
-                        addon_config_dict: Optional[dict[str, dict]] = None
-                        ) -> 'CAT':
+    def load_model_pack(
+        cls, model_pack_path: str,
+        config_dict: Optional[dict] = None,
+        addon_config_dict: Optional[dict[str, dict]] = None,
+        keep_addons_of_types: Optional[list[Type[AddonComponent]]] = None,
+    ) -> 'CAT':
         """Load the model pack from file.
 
         Args:
@@ -830,6 +833,9 @@ class CAT(AbstractSerialisable):
                 If specified, it needs to have an addon dict per name.
                 For instance, `{"meta_cat.Subject": {}}` would apply
                 to the specific MetaCAT.
+            keep_addons_of_types (Optional[list[Type[AddonComponent]]]):
+                Only load addons of specified types. If `None`, all addons
+                will be loaded. Defaults to `None`.
 
         Raises:
             ValueError: If the saved data does not represent a model pack.
@@ -853,6 +859,22 @@ class CAT(AbstractSerialisable):
 
         # Load model card to check for required plugins
         missing_plugins = cls._get_missing_plugins(model_pack_path)
+
+        if keep_addons_of_types:
+            # add these to addon_config_dict
+            # which will propgate to __init__
+            # and then in the pipe the rest will be filtered
+            # out so they don't need to be loaded
+            if addon_config_dict is None:
+                addon_config_dict = {}
+            addons_to_keep: dict = {
+                _ENABLED_ADDONS_PATH: [
+                    addon_type.addon_type
+                    for addon_type in keep_addons_of_types]
+            }
+            # avoid mutating incoming dict
+            addons_to_keep.update(addon_config_dict)
+            addon_config_dict = addons_to_keep
 
         try:
             # NOTE: ignoring addons since they will be loaded later / separately
@@ -882,6 +904,8 @@ class CAT(AbstractSerialisable):
             raise ValueError(f"Unable to load CAT. Got: {cat}")
         # reset mapped ontologies at load time but after CDB load
         cat._set_and_get_mapped_ontologies()
+        # ensure training is disabled
+        cat._ensure_not_training('model load')
         return cat
 
     @classmethod
@@ -905,7 +929,8 @@ class CAT(AbstractSerialisable):
     @classmethod
     def load_addons(
             cls, model_pack_path: str,
-            addon_config_dict: Optional[dict[str, dict]] = None
+            addon_config_dict: Optional[dict[str, dict]] = None,
+            addon_types: Optional[list[Type[AddonComponent]]] = None,
             ) -> list[tuple[str, AddonComponent]]:
         """Load addons based on a model pack path.
 
@@ -917,6 +942,9 @@ class CAT(AbstractSerialisable):
                 For instance,
                 `{"meta_cat.Subject": {'general': {'device': 'cpu'}}}`
                 would apply to the specific MetaCAT.
+            addon_type (Optional[list[Type[AddonComponent]]]):
+                The types of adddons to include. If not specified, all
+                addons will be loaded. Defaults to None.
 
         Returns:
             List[tuple(str, AddonComponent)]: list of pairs of adddon names the addons.
@@ -931,6 +959,25 @@ class CAT(AbstractSerialisable):
                 components_folder, folder_name))
             and folder_name.startswith(AddonComponent.NAME_PREFIX)
         ]
+        if addon_types is not None:
+            # filter based on specified addon types
+            had_before = len(addon_paths_and_names)
+            expected_folder_names = [
+                addon_type.get_folder_name_for_addon_and_name(
+                    addon_type.addon_type, "")
+                for addon_type in addon_types
+            ]
+            addon_paths_and_names = [
+                (addon_path, addon)
+                for addon_path, addon in addon_paths_and_names
+                if any(
+                    os.path.basename(addon_path).startswith(expected_prefix)
+                    for expected_prefix in expected_folder_names
+                )
+            ]
+            logger.debug(
+                "Filtered %d addon paths down to %d from based on %s",
+                had_before, len(addon_paths_and_names), addon_types)
         loaded_addons = [
             addon for addon_path, addon_name in addon_paths_and_names
             if isinstance(addon := (

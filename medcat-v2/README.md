@@ -14,7 +14,7 @@ Details on breaking are outlined [here](docs/breaking_changes.md).
 [![Build Status](https://github.com/CogStack/cogstack-nlp/actions/workflows/medcat-v2_main.yml/badge.svg?branch=main)](https://github.com/CogStack/cogstack-nlp/actions/workflows/medcat-v2_main.yml/badge.svg?branch=main)
 [![Documentation Status](https://readthedocs.org/projects/cogstack-nlp/badge/?version=latest)](https://readthedocs.org/projects/cogstack-nlp/badge/?version=latest)
 [![Latest release](https://img.shields.io/github/v/release/CogStack/cogstack-nlp?filter=medcat/*)](https://github.com/CogStack/cogstack-nlp/releases/latest)
-<!-- [![pypi Version](https://img.shields.io/pypi/v/medcat.svg?style=flat-square&logo=pypi&logoColor=white)](https://pypi.org/project/medcat/) -->
+[![pypi Version](https://img.shields.io/pypi/v/medcat.svg?style=flat-square&logo=pypi&logoColor=white)](https://pypi.org/project/medcat/)
 
 **Official Docs [here](https://cogstack-nlp.readthedocs.io/)**
 
@@ -51,21 +51,8 @@ new_model_folder = "models"  # file in this folder
 ## News
 - **New public 2024 and 2025** Snomed models were uploaded and made available 7. October 2025.
 - **MedCAT 2.0.0**  was released 18. August 2025.
-<!-- - **Paper** van Es, B., Reteig, L.C., Tan, S.C. et al. [Negation detection in Dutch clinical texts: an evaluation of rule-based and machine learning methods](https://doi.org/10.1186/s12859-022-05130-x). BMC Bioinformatics 24, 10 (2023).
-- **New tool in the Cogstack ecosystem \[19. December 2022\]** [Foresight -- Deep Generative Modelling of Patient Timelines using Electronic Health Records](https://arxiv.org/abs/2212.08072)
-- **New Paper using MedCAT \[21. October 2022\]**: [A New Public Corpus for Clinical Section Identification: MedSecId.](https://aclanthology.org/2022.coling-1.326.pdf)
-- **Major Change to the Permissions of Use \[4. August 2022\]** MedCAT now uses the [Elastic License 2.0](https://github.com/CogStack/MedCAT/pull/271/commits/c9f4e86116ec751a97c618c97dadaa23e1feb6bc). For further information please click [here.](https://www.elastic.co/licensing/elastic-license)
-- **New Downloader \[15. March 2022\]**: You can now [download](https://uts.nlm.nih.gov/uts/login?service=https://medcat.rosalind.kcl.ac.uk/auth-callback) the latest SNOMED-CT and UMLS model packs via UMLS user authentication.
-- **New Feature and Tutorial \[7. December 2021\]**: [Exploring Electronic Health Records with MedCAT and Neo4j](https://towardsdatascience.com/exploring-electronic-health-records-with-medcat-and-neo4j-f376c03d8eef)
-- **New Minor Release \[20. October 2021\]** Introducing model packs, new faster multiprocessing for large datasets (100M+ documents) and improved MetaCAT.
-- **New Release \[1. August 2021\]**: Upgraded MedCAT to use spaCy v3, new scispaCy models have to be downloaded - all old CDBs (compatble with MedCAT v1) will work without any changes.
-- **New Feature and Tutorial \[8. July 2021\]**: [Integrating 🤗 Transformers with MedCAT for biomedical NER+L](https://towardsdatascience.com/integrating-transformers-with-medcat-for-biomedical-ner-l-8869c76762a)
-- **General \[1. April 2021\]**: MedCAT is upgraded to v1, unforunately this introduces breaking changes with older models (MedCAT v0.4),
-  as well as potential problems with all code that used the MedCAT package. MedCAT v0.4 is available on the legacy
-  branch and will still be supported until 1. July 2021
-  (with respect to potential bug fixes), after it will still be available but not updated anymore.
-- **Paper**: [What’s in a Summary? Laying the Groundwork for Advances in Hospital-Course Summarization](https://www.aclweb.org/anthology/2021.naacl-main.382.pdf)
-- ([more...](https://github.com/CogStack/cogstack-nlp/blob/main/medcat-v2/media/news.md)) -->
+
+[News pre v2.0.0](docs/v1_news.md).
 
 ## Installation
 
@@ -160,7 +147,34 @@ The vocabulary was compiled from [Wiktionary](https://en.wiktionary.org/wiki/Wik
 A big thank you goes to [spaCy](https://spacy.io/) and [Hugging Face](https://huggingface.co/) - who made life a million times easier.
 
 
-<!-- ## Citation
+## Citation
+MedCAT v2 citation:
+```
+@inproceedings{ratas-etal-2026-medcat,
+    title = "{M}ed{CAT} v2: a modular, extensible architecture for clinical named entity recognition and linking under real-world privacy and compute constraints",
+    author = "Ratas, Mart  and
+      Searle, Thomas  and
+      Sutton, Adam  and
+      Dobson, Richard",
+    editor = "Demner-Fushman, Dina  and
+      Ananiadou, Sophia  and
+      Roberts, Kirk  and
+      Tsujii, Junichi",
+    booktitle = "{B}io{NLP} 2026",
+    month = jul,
+    year = "2026",
+    address = "San Diego, California",
+    publisher = "Association for Computational Linguistics",
+    url = "https://aclanthology.org/2026.bionlp-1.17/",
+    doi = "10.18653/v1/2026.bionlp-1.17",
+    pages = "191--198",
+    ISBN = "979-8-89176-434-7",
+    abstract = "MedCAT is an open-source framework for clinical named entity recognition and linking (NER+L) widely used in research and healthcare settings. We present MedCAT v2, a re-engineered version designed to improve modularity, extensibility, and maintainability while preserving the core functionality and performance of previous releases. The new architecture introduces a registry-based component system and a flexible pipeline that enables easy substitution of components, integration of alternative methods, and future expansion, including support for pre-trained components across the full NER+L and contextualisation workflow. This enables systematic exploration of clinical NER+L design trade-offs by evaluating different components in the pipeline. Evaluation across multiple public datasets shows equivalent or improved performance compared to earlier versions, with reduced integration overhead and improved runtime flexibility. The framework also supports optional extensions such as meta-annotation, relation extraction, providing a unified and reproducible environment for clinical NLP in real-world settings."
+}
+```
+<details>
+<summary>MedCAT v1 citation</summary>
+
 ```
 @ARTICLE{Kraljevic2021-ln,
   title="Multi-domain clinical natural language processing with {MedCAT}: The Medical Concept Annotation Toolkit",
@@ -173,4 +187,5 @@ A big thank you goes to [spaCy](https://spacy.io/) and [Hugging Face](https://hu
   issn="0933-3657",
   doi="10.1016/j.artmed.2021.102083"
 }
-``` -->
+</details>
+```

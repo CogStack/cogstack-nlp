@@ -26,14 +26,20 @@ const project = {
 
 // Mount the view without triggering the created() data-fetch cascade: the default
 // $http.get returns a promise that never settles so we can drive fetchEntities directly.
-const mountView = (getImpl: (url: string) => Promise<unknown>) => {
+const mountView = (getImpl: (url: string) => Promise<unknown>, cookies: Record<string, string> = { 'api-token': 'test-token' }) => {
   const mockGet = vi.fn(getImpl)
   const wrapper = shallowMount(TrainAnnotations, {
     props: { projectId: 1 },
     global: {
       plugins: [router],
       mocks: {
-        $http: { get: mockGet }
+        $http: {
+          get: mockGet,
+          defaults: { headers: { common: { Authorization: 'Token test-token' } } }
+        },
+        $cookies: {
+          get: vi.fn((key: string) => cookies[key] ?? null)
+        }
       }
     }
   })
@@ -192,5 +198,17 @@ describe('TrainAnnotations.vue fetchEntities', () => {
     const entCalls = mockGet.mock.calls.filter(c => String(c[0]).startsWith('/api/annotated-entities/'))
     expect(entCalls.some(c => String(c[0]).includes('document=456'))).toBe(true)
     expect(entCalls.some(c => String(c[0]).includes('page=2'))).toBe(false)
+
+  it('does not load a document when the auth cookie is missing', async () => {
+    const { wrapper, mockGet } = mountView(() => new Promise(() => {}), {})
+    mockGet.mockClear()
+
+    wrapper.vm.project = project
+    wrapper.vm.loadDoc({ id: 123, text: 'clinical note' })
+    await flushPromises()
+
+    expect(mockGet).not.toHaveBeenCalled()
+    expect(wrapper.vm.currentDoc).toBeNull()
+
   })
 })

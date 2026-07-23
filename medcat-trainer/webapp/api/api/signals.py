@@ -107,8 +107,31 @@ def project_tasks_changed(sender, instance, action, **kwargs):
     # post_remove or post_add actions, overwrite to model_pack supplied MetaCAT tasks.
     if (action.startswith('post') and isinstance(instance, ProjectAnnotateEntitiesFields) and
             instance.model_pack is not None):
-        instance.tasks.set([MetaTask.objects.filter(prediction_model_id=meta_cat.id).first() for meta_cat in
-                            instance.model_pack.meta_cats.all()])
+        # NOTE: This part deals with two different sources of information:
+        #       1. sometimes the model pack associated with the project can have meta-cats for meta-annotations
+        #       2. sometimes the project itself defines meta-tasks for the annotator to use
+        #
+        #       Currently the proccess here defaults to useing model-pack defined meta-tasks (if present),
+        #       while allowing for the project-defined ones otherwise.
+
+        # Find automated tasks from the model pack
+        db_tasks = [
+            MetaTask.objects.filter(prediction_model_id=meta_cat.id).first()
+            for meta_cat in instance.model_pack.meta_cats.all()
+        ]
+        # Filter out None values
+        automated_tasks = [t for t in db_tasks if t is not None]
+
+        # Only overwrite if the model pack actually brought automated tasks to the table.
+        # This preserves manual workflows when training from scratch.
+        if automated_tasks:
+            # Disconnect the signal temporarily to prevent infinite recursion loops
+            m2m_changed.disconnect(project_tasks_changed, sender=ProjectAnnotateEntitiesFields.tasks.through)
+            try:
+                instance.tasks.set(automated_tasks)
+            finally:
+                # Always reconnect the signal
+                m2m_changed.connect(project_tasks_changed, sender=ProjectAnnotateEntitiesFields.tasks.through)
 
 
 m2m_changed.connect(project_tasks_changed, sender=ProjectAnnotateEntitiesFields.tasks.through)

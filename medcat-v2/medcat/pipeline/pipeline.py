@@ -1,4 +1,4 @@
-from typing import Optional, Iterable, Union
+from typing import Optional, Iterable, Union, cast
 import logging
 import os
 import warnings
@@ -23,6 +23,9 @@ from medcat.config.config_rel_cat import ConfigRelCAT
 
 
 logger = logging.getLogger(__name__)
+
+# NOTE: used only temporarily and internally
+_ENABLED_ADDONS_PATH = "==ENABLED_ADDONS=="
 
 
 class DelegatingTokenizer(BaseTokenizer):
@@ -225,6 +228,17 @@ class Pipeline:
                     "merge the config since it's ambiguous (@%s)",
                     len(similars), addon_cnf.comp_name, name)
 
+    def _filter_config_addons_at_load(self, addon_types: list[str]):
+        logger.info("Filtering addon types at model load time. Only allowing %s",
+                    addon_types)
+        for cnf in list(self.config.components.addons):
+            if any(cnf.comp_name == addon_type for addon_type in addon_types):
+                continue
+            logger.debug(
+                "Removing addon %s because it doesn't match any expected types",
+                cnf.comp_name)
+            self.config.components.addons.remove(cnf)
+
     def _init_components(self, model_load_path: Optional[str],
                          old_pipe: Optional['Pipeline'],
                          addon_config_dict: Optional[dict[str, dict]],
@@ -240,6 +254,9 @@ class Pipeline:
                 comp = self._init_component(
                     CoreComponentType[cct_name], model_load_path)
             self._components.append(comp)
+        if addon_config_dict and _ENABLED_ADDONS_PATH in addon_config_dict:
+            self._filter_config_addons_at_load(
+                cast(list[str], addon_config_dict[_ENABLED_ADDONS_PATH]))
         for addon_cnf in self.config.components.addons:
             if addon_config_dict:
                 self._attempt_merge(addon_cnf, addon_config_dict)

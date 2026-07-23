@@ -67,7 +67,8 @@ class NonTrainableEmbeddingLinkerTests(unittest.TestCase):
     cnf = Config()
     cnf.components.linking = embedding_linker.EmbeddingLinking()
     cnf.components.linking.comp_name = embedding_linker.Linker.name
-    linker = embedding_linker.Linker(FakeCDB(cnf), cnf)
+    vtokenizer = FakeTokenizer()
+    linker = embedding_linker.Linker(FakeCDB(cnf), cnf, vtokenizer)
 
     def test_linker_is_not_trainable(self):
         self.assertNotIsInstance(self.linker, TrainableComponent)
@@ -83,7 +84,8 @@ class TrainableEmbeddingLinkerTests(unittest.TestCase):
     cnf.components.linking.comp_name = (
         trainable_embedding_linker.Linker.name
     )
-    linker = trainable_embedding_linker.Linker(FakeCDB(cnf), cnf)
+    vtokenizer = FakeTokenizer()
+    linker = trainable_embedding_linker.Linker(FakeCDB(cnf), cnf, vtokenizer)
 
     def test_linker_is_trainable(self):
         self.assertIsInstance(self.linker, TrainableComponent)
