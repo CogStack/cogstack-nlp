@@ -381,7 +381,7 @@ class Trainer:
                     extra_cui_filter, use_filters):
                 self._train_supervised_for_project(
                     project, current_document, train_from_false_positives,
-                    devalue_others)
+                    devalue_others, disable_progress=disable_progress)
 
         if terminate_last and not never_terminate:
             # Remove entities that were terminated,
@@ -399,7 +399,8 @@ class Trainer:
                                       project: MedCATTrainerExportProject,
                                       current_document: int,
                                       train_from_false_positives: bool,
-                                      devalue_others: bool):
+                                      devalue_others: bool,
+                                      disable_progress: bool = False):
         with self.config.meta.prepare_and_report_training(
                 project['documents'], 1, True, project_name=project['name']
                 ) as docs:
@@ -407,7 +408,7 @@ class Trainer:
                                      'train', True):
                 self._train_supervised_for_project2(
                     docs, current_document, train_from_false_positives,
-                    devalue_others)
+                    devalue_others, disable_progress=disable_progress)
 
     def _get_processed_name(self, raw_name: str) -> str:
         pn_dict = prepare_name(
@@ -472,18 +473,20 @@ class Trainer:
             raise ValueError(msg_template % msg_context) from ve
         else:
             logger.warning(msg_template, *msg_context, exc_info=ve)
-# 480+ project
+
     def _train_supervised_for_project2(self,
                                        docs: list[MedCATTrainerExportDocument],
                                        current_document: int,
                                        train_from_false_positives: bool,
-                                       devalue_others: bool):
+                                       devalue_others: bool,
+                                       disable_progress: bool = False):
         # cnf_linking = self.config.components.linking
         for idx_doc in trange(current_document,
                               len(docs),
                               initial=current_document,
                               total=len(docs),
-                              desc='Document', leave=False):
+                              desc='Document', leave=False,
+                              disable=disable_progress):
             doc = docs[idx_doc]
             with temp_changed_config(self.config.components.linking,
                                      'train', False):
