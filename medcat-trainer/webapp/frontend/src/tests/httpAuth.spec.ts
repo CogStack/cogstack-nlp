@@ -3,7 +3,9 @@ import {
   UNAUTHORIZED_EVENT,
   handleUnauthorized,
   resetUnauthorizedGuard,
-  registerUnauthorizedInterceptor
+  registerUnauthorizedInterceptor,
+  ensureTraditionalAuth,
+  clearClientAuth
 } from '@/httpAuth'
 import EventBus from '@/event-bus'
 
@@ -54,6 +56,18 @@ describe('httpAuth unauthorized handling', () => {
     expect(onEvent).toHaveBeenCalledTimes(1)
   })
 
+  it('clearClientAuth clears header and cookies without emitting', () => {
+    const http = makeHttpStub()
+    const onEvent = vi.fn()
+    EventBus.$on(UNAUTHORIZED_EVENT, onEvent)
+
+    clearClientAuth(http as never)
+
+    expect(http.defaults.headers.common['Authorization']).toBeUndefined()
+    expect(document.cookie).not.toContain('api-token=value')
+    expect(onEvent).not.toHaveBeenCalled()
+  })
+
   it('only prompts once for a burst of 401s until the guard is reset', () => {
     const http = makeHttpStub()
     const onEvent = vi.fn()
@@ -91,5 +105,26 @@ describe('httpAuth unauthorized handling', () => {
     expect(onEvent).not.toHaveBeenCalled()
     // A successful response passes through untouched.
     expect(http.handlers.onFulfilled!({ ok: true })).toEqual({ ok: true })
+  })
+
+  it('ensureTraditionalAuth restores a missing Authorization header from the cookie', () => {
+    const http = makeHttpStub()
+    delete http.defaults.headers.common['Authorization']
+    const onEvent = vi.fn()
+    EventBus.$on(UNAUTHORIZED_EVENT, onEvent)
+
+    expect(ensureTraditionalAuth(http as never, 'fresh-token')).toBe(true)
+    expect(http.defaults.headers.common['Authorization']).toBe('Token fresh-token')
+    expect(onEvent).not.toHaveBeenCalled()
+  })
+
+  it('ensureTraditionalAuth forces re-login when the token cookie is missing', () => {
+    const http = makeHttpStub()
+    const onEvent = vi.fn()
+    EventBus.$on(UNAUTHORIZED_EVENT, onEvent)
+
+    expect(ensureTraditionalAuth(http as never, null)).toBe(false)
+    expect(http.defaults.headers.common['Authorization']).toBeUndefined()
+    expect(onEvent).toHaveBeenCalledTimes(1)
   })
 })

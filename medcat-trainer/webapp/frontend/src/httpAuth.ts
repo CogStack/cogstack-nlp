@@ -15,6 +15,14 @@ const AUTH_COOKIES = ['api-token', 'username', 'admin', 'user-id']
 // single re-login prompt. Reset via resetUnauthorizedGuard() on login success.
 let handlingUnauthorized = false
 
+/** Clear axios Authorization and auth cookies together so they cannot diverge. */
+export function clearClientAuth(http: AxiosInstance): void {
+  delete http.defaults.headers.common['Authorization']
+  for (const name of AUTH_COOKIES) {
+    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`
+  }
+}
+
 /** Clear stale auth state and notify the app that re-login is required. */
 export function handleUnauthorized(http: AxiosInstance): void {
   if (handlingUnauthorized) {
@@ -22,12 +30,31 @@ export function handleUnauthorized(http: AxiosInstance): void {
   }
   handlingUnauthorized = true
 
-  delete http.defaults.headers.common['Authorization']
-  for (const name of AUTH_COOKIES) {
-    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`
-  }
-
+  clearClientAuth(http)
   EventBus.$emit(UNAUTHORIZED_EVENT)
+}
+
+/**
+ * Traditional (non-OIDC) auth gate for project views.
+ *
+ * - No token cookie → force re-login (clears any leftover Authorization header).
+ * - Token cookie present but Authorization header missing → restore the header
+ *   so in-memory axios state matches the durable cookie.
+ *
+ * Returns false when the caller must stop and wait for re-login.
+ */
+export function ensureTraditionalAuth(
+  http: AxiosInstance,
+  token: string | null | undefined
+): boolean {
+  if (!token) {
+    handleUnauthorized(http)
+    return false
+  }
+  if (!http.defaults.headers.common['Authorization']) {
+    http.defaults.headers.common['Authorization'] = `Token ${token}`
+  }
+  return true
 }
 
 /** Re-arm the guard once the user has successfully re-authenticated. */
