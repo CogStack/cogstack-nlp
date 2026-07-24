@@ -368,8 +368,12 @@ class CDB(AbstractSerialisable):
             return
         ci = self.cui2info.pop(cui)
         for name in ci['names']:
-            ni = self.name2info[name]
-            del ni['per_cui_status'][cui]
+            ni = self.name2info.get(name)
+            if ni is None:
+                logger.debug("CUI '%s' name '%s' does not contain name info")
+                continue
+            if cui in ni['per_cui_status']:
+                del ni['per_cui_status'][cui]
             # if name name corresponds to no CUIs
             if not ni['per_cui_status']:
                 del self.name2info[name]
