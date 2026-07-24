@@ -34,7 +34,9 @@ dev = [
     "pandas-stubs",
     "types-tqdm",
     "pytest",
-    "ruff",
+    # NOTE: ruff 0.16.0 introduces new checks that I am unwilling
+    #       to tackle at this point in time
+    "ruff<0.16.0",
     "nbconvert",
 ]
 ES8 = [
