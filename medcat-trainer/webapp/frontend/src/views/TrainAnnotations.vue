@@ -529,7 +529,12 @@ export default {
           }
         })
       }
+      // Clear prior doc annotation state so we never render the new text with old ents
+      // (or continue paginating the previous document's annotated-entities URL).
       this.currentEnt = null
+      this.ents = null
+      this.nextEntSetUrl = null
+      this.loadingMsg = 'Loading document...'
       this.prepareDoc()
     },
     prepareDoc () {
@@ -620,7 +625,8 @@ export default {
         this.nextEntSetUrl = null
         this.loadingMsg = null
         this.errors.modal = true
-        this.errors.message = 'Failed to load document annotations. Please try again by refreshing the page.'
+        this.errors.message = `Failed to load document annotations for project ID ${this.projectId || ''}${this.currentDoc && this.currentDoc.id ? ', document ID ' + this.currentDoc.id : ''}. Please try again by refreshing the page. If the problem persists, please contact your administrator and provide them with this page's URL: ${window.location.href}`
+
         if (err.response) {
           this.errors.message = err.response.data?.message || this.errors.message
           this.errors.description = err.response.data?.description || ''

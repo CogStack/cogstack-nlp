@@ -52,7 +52,7 @@ describe('TrainAnnotations.vue fetchData', () => {
       if (url.startsWith('/api/project-annotate-entities/')) {
         return Promise.reject({ response: { status: 500, data: { message: 'Database unavailable' } } })
       }
-      return new Promise(() => {})
+      return new Promise(() => { })
     })
 
     wrapper.vm.fetchData()
@@ -68,7 +68,7 @@ describe('TrainAnnotations.vue fetchData', () => {
       if (url.startsWith('/api/project-annotate-entities/')) {
         return Promise.reject({ response: { status: 401, data: { detail: 'Invalid token.' } } })
       }
-      return new Promise(() => {})
+      return new Promise(() => { })
     })
 
     wrapper.vm.fetchData()
@@ -85,7 +85,7 @@ describe('TrainAnnotations.vue fetchEntities', () => {
         return Promise.reject({ response: { data: { message: 'Invalid token.' } } })
       }
       // Stall created() lifecycle requests so they don't interfere with the test.
-      return new Promise(() => {})
+      return new Promise(() => { })
     })
 
     wrapper.vm.project = project
@@ -134,7 +134,7 @@ describe('TrainAnnotations.vue fetchEntities', () => {
       if (url.startsWith('/api/annotated-entities/')) {
         return Promise.resolve({ data: { results: [], previous: null, next: null } })
       }
-      return new Promise(() => {})
+      return new Promise(() => { })
     })
 
     wrapper.vm.fetchData()
@@ -157,7 +157,7 @@ describe('TrainAnnotations.vue fetchEntities', () => {
           }
         })
       }
-      return new Promise(() => {})
+      return new Promise(() => { })
     })
 
     wrapper.vm.project = project
@@ -173,8 +173,36 @@ describe('TrainAnnotations.vue fetchEntities', () => {
     expect(wrapper.vm.currentEnt.id).toBe(10)
   })
 
+  it('resets annotation pagination state when switching documents', async () => {
+    const { wrapper, mockGet } = mountView((url) => {
+      if (url.startsWith('/api/annotated-entities/')) {
+        return Promise.resolve({
+          data: { results: [], previous: null, next: null }
+        })
+      }
+      return new Promise(() => { })
+    })
+
+    wrapper.vm.project = { ...project, prepared_documents: [123, 456] }
+    wrapper.vm.currentDoc = { id: 123, text: 'first doc' }
+    wrapper.vm.ents = [{ id: 1, start_ind: 0, end_ind: 1, assignedValues: {} }]
+    wrapper.vm.nextEntSetUrl = '/api/annotated-entities/?project=1&document=123&page=2'
+    wrapper.vm.loadingMsg = null
+
+    wrapper.vm.loadDoc({ id: 456, text: 'second doc with <tag> markup' })
+    await flushPromises()
+
+    expect(wrapper.vm.currentDoc.id).toBe(456)
+    expect(wrapper.vm.loadingMsg).toBeNull()
+    // Must request the new document, not continue the previous page URL.
+    const entCalls = mockGet.mock.calls.filter(c => String(c[0]).startsWith('/api/annotated-entities/'))
+    expect(entCalls.some(c => String(c[0]).includes('document=456'))).toBe(true)
+    expect(entCalls.some(c => String(c[0]).includes('page=2'))).toBe(false)
+
+  })
+
   it('does not load a document when the auth cookie is missing', async () => {
-    const { wrapper, mockGet } = mountView(() => new Promise(() => {}), {})
+    const { wrapper, mockGet } = mountView(() => new Promise(() => { }), {})
     mockGet.mockClear()
 
     wrapper.vm.project = project
@@ -183,5 +211,6 @@ describe('TrainAnnotations.vue fetchEntities', () => {
 
     expect(mockGet).not.toHaveBeenCalled()
     expect(wrapper.vm.currentDoc).toBeNull()
+
   })
 })
