@@ -499,7 +499,16 @@ class ProjectAnnotateEntitiesFields(models.Model):
     model_service_url = models.CharField(max_length=500, blank=True, null=True,
                                          help_text='URL of the remote MedCAT service API (e.g., http://medcat-service:8000)')
 
+    def _normalize_model_config(self):
+        """ModelPack and CDB/Vocab are mutually exclusive configuration options."""
+        if self.model_pack_id:
+            self.concept_db = None
+            self.vocab = None
+        elif self.concept_db_id and self.vocab_id:
+            self.model_pack = None
+
     def save(self, *args, **kwargs):
+        self._normalize_model_config()
         # If using remote model service, skip local model validation
         if not self.use_model_service:
             if self.model_pack is None and (self.concept_db is None or self.vocab is None):
