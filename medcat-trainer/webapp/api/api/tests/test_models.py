@@ -129,11 +129,27 @@ class ProjectAnnotateEntitiesValidationTests(TestCase):
         self.assertIsNone(proj.concept_db_id)
         self.assertIsNone(proj.vocab_id)
 
-    def test_save_with_cdb_vocab_clears_stale_model_pack(self):
+    def test_save_prefers_model_pack_when_cdb_vocab_also_set(self):
+        # When both are present (e.g. stale CDB/Vocab after a ModelPack change),
+        # ModelPack wins and CDB/Vocab are cleared.
         mp = ModelPack(name='normalize-mp-clear')
         mp.save(skip_load=True)
         proj = self._new_project(model_pack=mp)
         proj.save()
+        proj.concept_db = self.cdb
+        proj.vocab = self.vocab
+        proj.save()
+        proj.refresh_from_db()
+        self.assertEqual(proj.model_pack_id, mp.id)
+        self.assertIsNone(proj.concept_db_id)
+        self.assertIsNone(proj.vocab_id)
+
+    def test_save_with_cdb_vocab_after_clearing_model_pack(self):
+        mp = ModelPack(name='normalize-mp-switch')
+        mp.save(skip_load=True)
+        proj = self._new_project(model_pack=mp)
+        proj.save()
+        proj.model_pack = None
         proj.concept_db = self.cdb
         proj.vocab = self.vocab
         proj.save()
