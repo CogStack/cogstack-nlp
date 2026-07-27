@@ -695,6 +695,7 @@ class Trainer:
         """
         names = prepare_name(name, self._pipeline.tokenizer_with_tag, {},
                              self._pn_configs)
+        logger.debug("Prepared names: %s", names)
         if (not names and cui not in self.cdb.cui2info and
                 name_status == 'P'):
             logger.warning(
