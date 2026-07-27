@@ -96,8 +96,8 @@ class ContextModel(AbstractSerialisable):
         return tokens_left, tokens_center, tokens_right
 
     def _tokens2vecs(self, tokens: Sequence[Union[MutableToken, str]],
-                    step_start: int = 0
-                    ) -> Iterable[np.ndarray]:
+                     step_start: int = 0
+                     ) -> Iterable[np.ndarray]:
         for step, tkn in enumerate(tokens, start=step_start):
             lower = tkn.lower() if isinstance(tkn, str) else tkn.base.lower
             if lower not in self.vocab:
@@ -116,7 +116,10 @@ class ContextModel(AbstractSerialisable):
                                   tokens_center: list[MutableToken]
                                   ) -> Iterable[np.ndarray]:
         if cui is not None and self._should_change_name(cui):
-            new_name: str = random.choice(list(self.cui2info[cui]['names']))
+            new_name: str = random.choice(
+                sorted(list(self.cui2info[cui]['names'])))
+            logger.debug("CUI %s changes name from '%s' to '%s'",
+                         cui, tokens_center[0].base.text, new_name)
             new_tokens_center = new_name.split(self.name_separator)
             return self._tokens2vecs(new_tokens_center)
         else:
@@ -373,7 +376,9 @@ class ContextModel(AbstractSerialisable):
         if negative:
             # Change the status of the name so that it has
             # to be disambiguated always
+            logger.info("NEGATIVE for this one with: %s", names)
             for name in names:
+                logger.info(" Name: %s", name)
                 if name not in self.name2info:
                     continue
                 per_cui_status = self.name2info[name]['per_cui_status']
@@ -470,7 +475,7 @@ def get_similarity(cur_vectors: dict[str, np.ndarray],
                    weights: dict[str, float], cui: str,
                    cui2info: dict[str, CUIInfo]) -> float:
     sim = 0
-    for vec_type in weights:
+    for vec_type in sorted(weights):
         if vec_type not in other:
             # NOTE: sometimes the smaller context context types
             #       are unable to capture tokens that are present
