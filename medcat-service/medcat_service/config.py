@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 from typing import Any
 
 import torch
@@ -54,6 +55,14 @@ class Settings(BaseSettings):
 
     enable_demo_ui: bool = Field(default=False, description="Enable the demo app", alias="APP_ENABLE_DEMO_UI")
     demo_ui_path: str = Field(default="", description="Path to the demo app", alias="APP_DEMO_UI_PATH")
+    demo_ui_custom_markdown_path: str | None = Field(
+        default=None,
+        description=(
+            "Path to a custom markdown file for the demo UI footer. "
+            "When unset, the bundled default footer is used."
+        ),
+        alias="APP_DEMO_UI_CUSTOM_MARKDOWN_PATH",
+    )
 
     use_cdn_for_docs: bool = Field(
         default=True,
@@ -94,6 +103,27 @@ class Settings(BaseSettings):
     observability: ObservabilitySettings = ObservabilitySettings()
 
     # ---- Normalizers ---------------------------------------------------------
+    @field_validator("demo_ui_custom_markdown_path", mode="after")
+    @classmethod
+    def _validate_demo_ui_custom_markdown_path(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        path = v.strip()
+        if not path:
+            raise ValueError(
+                "APP_DEMO_UI_CUSTOM_MARKDOWN_PATH must be a non-empty path to a readable markdown file"
+            )
+        markdown_path = Path(path)
+        if not markdown_path.is_file():
+            raise ValueError(
+                f"APP_DEMO_UI_CUSTOM_MARKDOWN_PATH does not exist or is not a file: {path}"
+            )
+        try:
+            markdown_path.read_text(encoding="utf-8")
+        except OSError as exc:
+            raise ValueError(f"APP_DEMO_UI_CUSTOM_MARKDOWN_PATH cannot be read: {path} ({exc})") from exc
+        return path
+
     @field_validator("app_log_level", "medcat_log_level", mode="before")
     @classmethod
     def _val_log_levels(cls, v: Any) -> int:
