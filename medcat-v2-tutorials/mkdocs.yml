@@ -40,7 +40,7 @@ nav:
       - 2. Unsupervised training on model: introductory/basic/2._Unsupervised_training_on_model.ipynb
       - 3. Supervised training on model: introductory/basic/3._Supervised_training_on_model.ipynb
       - 4. Evaluating performance on dataset: introductory/basic/4._Evaluating_performance_on_dataset.ipynb
-      - 5. Running models on large datasets: 5._Running_model_on_large_datasets.ipynb
+      - 5. Running models on large datasets: introductory/basic/5._Running_model_on_large_datasets.ipynb
     - MetaCAT:
       - README: introductory/meta/README.md
       - 1. Add a MetaCat to a Model: introductory/meta/1._Add_a_MetaCat_to_a_Model.ipynb
