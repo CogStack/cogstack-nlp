@@ -477,27 +477,6 @@ class Trainer:
         else:
             logger.warning(msg_template, *msg_context, exc_info=ve)
 
-    def _get_examples(
-        self,
-        mut_doc: MutableDocument,
-        trainable_ents: list[MutableEntity]
-    ) -> list[TrainingExample]:
-        return [
-            TrainingExample(
-                cui=ent.cui,
-                entity=(
-                    self._pipeline.entity_from_tokens(ent)
-                    if isinstance(ent, list) else
-                    ent
-                ),
-                doc=mut_doc,
-                negative=False,
-                epochs=1,
-            )
-            for ent in trainable_ents
-            if ent.is_valid
-        ]
-
     def _train_supervised_for_project2(self,
                                        docs: list[MedCATTrainerExportDocument],
                                        current_document: int,
@@ -522,7 +501,21 @@ class Trainer:
             # NOTE: preparation sets both ner_ents and linked_ents
             #       to be the same, at least for now
             trainable_ents = mut_doc.ner_ents
-            cur_examples = self._get_examples(mut_doc, trainable_ents)
+            cur_examples = [
+                TrainingExample(
+                    cui=ent.cui,
+                    entity=(
+                        self._pipeline.entity_from_tokens(ent)
+                        if isinstance(ent, list) else
+                        ent
+                    ),
+                    doc=mut_doc,
+                    negative=False,
+                    epochs=1,
+                )
+                for ent in trainable_ents
+                if ent.is_valid
+            ]
             # NOTE: this was previosuly behind a flag that defaulted to True
             #       and was done on a per entity basis:
             for ent, ann in zip(trainable_ents, current_anns):
