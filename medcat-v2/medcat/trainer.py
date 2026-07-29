@@ -439,9 +439,6 @@ class Trainer:
                     err, doc.base.text,
                     (ann['cui'], ann['value'], ann['start'], ann['end']),
                     (None, ann_doc['id'], ann_doc['name']))
-                # NOTE: need to add something so that the orders don't get
-                #       out of whack
-                ents.append(self._pipeline.tokenizer.get_skip_entity())
         # set NER ents
         doc.ner_ents.clear()
         doc.ner_ents.extend(ents)
@@ -518,15 +515,6 @@ class Trainer:
             # NOTE: this was previosuly behind a flag that defaulted to True
             #       and was done on a per entity basis:
             for ent, ann in zip(trainable_ents, current_anns):
-                if not ent.is_valid:
-                    start, end = ann['start'], ann['end']
-                    logger.warning(
-                        "Skipping invalid entity for annotation: "
-                        "CUI=%s, value='%s' (start=%d, end=%d). "
-                        "Probably because it was unable to be tokenized in "
-                        "text. Text in document: '%s'", ann['cui'],
-                        ann['value'], start, end, doc['text'][start: end])
-                    continue
                 names = prepare_name(
                     ann['value'], self._pipeline.tokenizer_with_tag, {},
                     self._pn_configs
