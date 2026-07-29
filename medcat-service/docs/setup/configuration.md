@@ -27,6 +27,7 @@ The following environment variables are available for tailoring the MedCAT Servi
 - `APP_ENABLE_METRICS` - Enable prometheus metrics collection served on the path /metrics
 - `APP_ENABLE_DEMO_UI` - Enable the demo user interface to try models. (Default: `False`)
 - `APP_DEMO_UI_PATH` - Customise the path of the demo UI. (Default: `/`)
+- `APP_DEMO_UI_CUSTOM_MARKDOWN_PATH` - Path to a custom markdown file for the demo UI footer (for example a Docker volume or Kubernetes ConfigMap mount). When unset, the bundled default footer is used.
 - `APP_USE_CDN` - Load Swagger UI and ReDoc assets from a CDN. (Default: `True`) Set to `False` to serve docs from bundled static files instead. This allows the docs UI to work for offline browsers.
 - `GRADIO_ANALYTICS_ENABLED` - Optionally disable the telemetry of gradio when using the demo UI
 
@@ -75,3 +76,16 @@ The main settings that can be used to improve the performance when querying larg
 MedCAT parameters are defined in selected `envs/medcat*`  file.
 
 For details on available MedCAT parameters please refer to [the official GitHub repository](https://github.com/CogStack/cogstack-nlp/blob/main/medcat-v2/).
+
+## Custom footer markdown
+
+Both the MedCAT and AnonCAT UIs show the same bundled footer by default (CogStack contact, repository link, and licence). You can replace it at runtime with a markdown file mounted into the container — for example a Docker volume or a Kubernetes ConfigMap.
+
+```yaml
+environment:
+  - APP_DEMO_UI_CUSTOM_MARKDOWN_PATH=/config/demo-footer.md
+volumes:
+  - ./demo-footer.md:/config/demo-footer.md:ro
+```
+
+If the path is unset, the bundled default footer is used. If a path is set to an empty/whitespace value, or the file does not exist or cannot be read, settings validation fails and the service will not start.

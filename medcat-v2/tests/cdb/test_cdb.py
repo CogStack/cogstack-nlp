@@ -2,10 +2,12 @@ from typing import cast
 import os
 
 from medcat.storage.serialisers import deserialise
+from medcat.config import Config
 from medcat.cdb import cdb
 from medcat.utils.cdb_state import captured_state_cdb
 from medcat.preprocessors.cleaners import NameDescriptor
 
+import pandas as pd
 from unittest import TestCase
 import tempfile
 
@@ -143,3 +145,99 @@ class CDBTests(TestCase):
 
     def test_can_remove_cui_non_unique_names(self):
         self.assert_can_remove_cui(self.CUI_TO_REMOVE_NON_UNIQUE_NAMES, False)
+
+
+class CDBWithBrokenState(TestCase):
+    CUIS_NAMES = {
+        "C001": ["kidney failure", "renal disease"],
+        "C002": ["diabetes", "diabetes mellitus"],
+        "C003": ["diabetes", "type 2 diabetes"],
+        "C004": ["fever", "high temperature"],
+    }
+    TO_UNMAP = {
+        # we unmap this CUI from diabetes
+        "C003": ["diabetes", "diabete"]
+    }
+
+    def setUp(self) -> None:
+        self.cnf = Config()
+        self.cnf.general.nlp.provider = 'spacy'
+        self.cdb = cdb.CDB(self.cnf)
+        self._create_cdb()
+        self._break_cdb()
+        self.safe_to_remove = {
+            cui for cui in self.CUIS_NAMES
+            if cui not in self.TO_UNMAP
+        }
+        self.unsafe_to_remove = set(self.TO_UNMAP)
+
+    def _break_cdb(self):
+        for cui, names in self.TO_UNMAP.items():
+            for name in names:
+                ni = self.cdb.name2info.get(name)
+                if ni is None:
+                    continue
+                if cui in ni["per_cui_status"]:
+                    del ni["per_cui_status"][cui]
+
+    def _create_cdb(self):
+        from medcat.model_creation.cdb_maker import CDBMaker
+        maker = CDBMaker(self.cnf, self.cdb)
+        data = {
+            "cui": [cui for cui, names in self.CUIS_NAMES.items() for _ in names],
+            "name": [name for _, names in self.CUIS_NAMES.items() for name in names],
+        }
+        df = pd.DataFrame(data)
+        maker.prepare_csvs([df])
+
+    def test_has_all_cuis(self):
+        self.assertEqual(len(self.cdb.cui2info), len(self.CUIS_NAMES))
+
+    def test_has_all_names(self):
+        # NOTE: all names are kept, but not all mappings
+        expected = set(
+            name for names in self.CUIS_NAMES.values()
+            for name in names)
+        found = set(self.cdb.name2info)
+        # NOTE: the preprocessing may create a singular form
+        self.assertGreaterEqual(
+            len(found), len(expected),
+            f"Exepcted:\n{expected}\nFound:\n{found}"
+        )
+
+    def test_can_remove_one_regular(self):
+        for cui in self.safe_to_remove:
+            with self.subTest(f"Removing: {cui}"):
+                self.cdb.remove_cui(cui)
+                self.assertNotIn(cui, self.cdb.cui2info)
+
+    def test_can_remove_unsafe_one(self):
+        for cui in self.unsafe_to_remove:
+            with self.subTest(f"Removing {cui}"):
+                self.cdb.remove_cui(cui)
+                self.assertNotIn(cui, self.cdb.cui2info)
+
+    def test_can_filter_down_to_unsafe_cuis(self):
+        safe_but_no_same_names = {
+            cui for cui in self.safe_to_remove
+            if not any(
+                any(
+                    uscui in self.cdb.name2info[name]["per_cui_status"]
+                    for uscui in self.unsafe_to_remove
+                ) or any(
+                    name in self.cdb.cui2info[uscui]["names"]
+                    for uscui in self.unsafe_to_remove
+                )
+                for name in self.cdb.cui2info[cui]["names"]
+            )
+        }
+        self.cdb.filter_by_cui(self.unsafe_to_remove)
+        for other in safe_but_no_same_names:
+            with self.subTest(f"Checking {other}"):
+                self.assertNotIn(other, self.cdb.cui2info)
+
+    def test_can_filter_down_to_safe_cuis(self):
+        self.cdb.filter_by_cui(self.safe_to_remove)
+        for other in self.unsafe_to_remove:
+            with self.subTest(f"Checking {other}"):
+                self.assertNotIn(other, self.cdb.cui2info)

@@ -23,7 +23,7 @@ from unittest.mock import MagicMock, patch
 from django.core.files.base import ContentFile
 from django.test import TestCase, override_settings
 
-from ..models import ModelPack
+from ..models import ModelPack, MetaCATModel
 
 
 def _make_meta_cat_addon_cnf(category_name="Status", model_name="bert"):
@@ -71,7 +71,7 @@ class ModelPackAddonRegistrationTests(TestCase):
         self.assertIsNotNone(model_pack.vocab)
         self.assertEqual(model_pack.meta_cats.count(), 1)
         meta_cat_model = model_pack.meta_cats.get()
-        self.assertEqual(meta_cat_model.name, "Status - bert")
+        self.assertEqual(meta_cat_model.name, "Status - bert - from 1")
         self.assertTrue(meta_cat_model.meta_cat_dir.endswith("addon_meta_cat.Status"))
 
     def test_register_model_pack_with_rel_cat_only(self):
@@ -98,7 +98,7 @@ class ModelPackAddonRegistrationTests(TestCase):
         self.assertEqual(model_pack.meta_cats.count(), 2)
         self.assertEqual(
             set(model_pack.meta_cats.values_list("name", flat=True)),
-            {"Status - bert", "Experiencer - roberta"},
+            {"Status - bert - from 1", "Experiencer - roberta - from 1"},
         )
 
     def test_register_model_pack_with_meta_cat_and_rel_cat(self):
@@ -113,7 +113,7 @@ class ModelPackAddonRegistrationTests(TestCase):
         # All addons load; only MetaCAT rows are registered.
         self.assertEqual(model_pack.meta_cats.count(), 1)
         meta_cat_model = model_pack.meta_cats.get()
-        self.assertEqual(meta_cat_model.name, "Status - bert")
+        self.assertEqual(meta_cat_model.name, "Status - bert - from 1")
         self.assertTrue(meta_cat_model.meta_cat_dir.endswith("addon_meta_cat.Status"))
 
 
@@ -126,3 +126,20 @@ class ModelPackAddonRegistrationTests(TestCase):
         self.assertIsNotNone(model_pack.concept_db)
         self.assertIsNotNone(model_pack.vocab)
         self.assertEqual(model_pack.meta_cats.count(), 0)
+
+
+    def test_re_register_model_pack_with_same_meta_cat_reregisters_with_new_name(self):
+        model_pack, _ = self._prepare_model_pack(name="dupe-addon-pack")
+        addon_cnfs = [
+            _make_meta_cat_addon_cnf(),
+            _make_meta_cat_addon_cnf(category_name="Subject"),]
+        # once
+        with self._register_model_pack(model_pack, addon_cnfs):
+            pass
+        # new model pack
+        model_pack2, _ = self._prepare_model_pack(name="dupe-addon-pack-2")
+        # and register again
+        with self._register_model_pack(model_pack2, addon_cnfs):
+            pass
+        registered_meta_cats = MetaCATModel.objects.all()
+        self.assertEqual(len(registered_meta_cats), 2 * len(addon_cnfs))

@@ -72,7 +72,7 @@ describe('Home.vue', () => {
           if (url.startsWith('/api/project-groups/')) {
               return Promise.resolve({ data: { results: [] } });
           }
-          
+
           return Promise.resolve({});
       });
 
@@ -105,5 +105,81 @@ describe('Home.vue', () => {
     expect(mockGet).toHaveBeenCalledWith('/api/concept-db-search-index-created/?cdbs=');
     expect(mockGet).toHaveBeenCalledWith('/api/project-progress/?projects=1');
     expect(mockGet).toHaveBeenCalledWith('/api/project-groups/?id__in=');
+  });
+
+  it('does not wipe auth cookies when project fetch fails with a non-401 error', async () => {
+    const mockGet = vi.fn((url: string) => {
+      if (url === '/api/behind-rp/') {
+        return Promise.resolve({ data: true });
+      }
+      if (url === '/api/project-annotate-entities/') {
+        return Promise.reject({ response: { status: 500, data: { message: 'boom' } } });
+      }
+      return Promise.resolve({});
+    });
+    const mockCookies = {
+      get: vi.fn((key: string) => {
+        if (key === 'api-token') return 'token';
+        if (key === 'admin') return 'false';
+        return null;
+      }),
+      remove: vi.fn()
+    };
+
+    const wrapper = mount(Home, {
+      global: {
+        plugins: [router],
+        mocks: {
+          $http: { get: mockGet },
+          $cookies: mockCookies
+        },
+        stubs: ['login', 'modal', 'project-list', 'v-data-table', 'transition', 'router-link', 'router-view']
+      }
+    });
+
+    await router.isReady();
+    await flushPromises();
+
+    expect(mockCookies.remove).not.toHaveBeenCalled();
+    expect(wrapper.vm.loginSuccessful).toBe(true);
+    expect(wrapper.vm.loadingProjects).toBe(false);
+  });
+
+  it('marks login unsuccessful on 401 without clearing cookies itself', async () => {
+    const mockGet = vi.fn((url: string) => {
+      if (url === '/api/behind-rp/') {
+        return Promise.resolve({ data: true });
+      }
+      if (url === '/api/project-annotate-entities/') {
+        return Promise.reject({ response: { status: 401, data: { detail: 'Invalid token.' } } });
+      }
+      return Promise.resolve({});
+    });
+    const mockCookies = {
+      get: vi.fn((key: string) => {
+        if (key === 'api-token') return 'token';
+        if (key === 'admin') return 'false';
+        return null;
+      }),
+      remove: vi.fn()
+    };
+
+    const wrapper = mount(Home, {
+      global: {
+        plugins: [router],
+        mocks: {
+          $http: { get: mockGet },
+          $cookies: mockCookies
+        },
+        stubs: ['login', 'modal', 'project-list', 'v-data-table', 'transition', 'router-link', 'router-view']
+      }
+    });
+
+    await router.isReady();
+    await flushPromises();
+
+    // Cookie wipe is owned by httpAuth on 401; Home must not double-clear.
+    expect(mockCookies.remove).not.toHaveBeenCalled();
+    expect(wrapper.vm.loginSuccessful).toBe(false);
   });
 });

@@ -26,6 +26,7 @@ import {authPlugin} from "./auth";
 import { loadRuntimeConfig, isOidcEnabled } from './runtimeConfig';
 import { registerUnauthorizedInterceptor } from './httpAuth'
 import { initPluginBootstrap } from './plugins/bootstrap'
+import { loadEnterprisePlugin } from './plugins/enterprise'
 import PluginSlot from '@/components/plugins/PluginSlot.vue'
 
 const theme ={
@@ -52,6 +53,7 @@ const vuetify = createVuetify({
 
 async function bootstrap() {
   await loadRuntimeConfig();
+  await loadEnterprisePlugin()
 
   const app = createApp(App)
   app.config.globalProperties.$http = axios

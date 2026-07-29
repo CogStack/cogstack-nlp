@@ -368,7 +368,7 @@ class Linking(ComponentConfig):
     some point. Should add up to 1."""
     filters: LinkingFilters = LinkingFilters()
     """Filters"""
-    train: bool = True
+    train: bool = False
     """Should it train or not, this is set automatically ignore in 99% of
     cases and do not set manually"""
     random_replacement_unsupervised: float = 0.80

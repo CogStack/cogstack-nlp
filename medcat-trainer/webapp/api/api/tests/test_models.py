@@ -12,7 +12,9 @@ from ..models import (
     MetaAnnotation,
     MetaTask,
     MetaTaskValue,
+    ModelPack,
     ProjectAnnotateEntities,
+    ProjectGroup,
     Relation,
     Vocabulary,
     cdb_name_validator,
@@ -102,6 +104,93 @@ class ProjectAnnotateEntitiesValidationTests(TestCase):
         proj = self._new_project(use_model_service=True, model_service_url='http://x')
         proj.save()
         self.assertIsNotNone(proj.id)
+
+    def test_save_with_model_pack_clears_stale_cdb_vocab(self):
+        mp = ModelPack(name='normalize-mp')
+        mp.save(skip_load=True)
+        proj = self._new_project(concept_db=self.cdb, vocab=self.vocab, model_pack=mp)
+        proj.save()
+        proj.refresh_from_db()
+        self.assertEqual(proj.model_pack_id, mp.id)
+        self.assertIsNone(proj.concept_db_id)
+        self.assertIsNone(proj.vocab_id)
+
+    def test_save_amended_model_pack_with_stale_cdb_vocab_succeeds(self):
+        mp_a = ModelPack(name='normalize-mp-a')
+        mp_a.save(skip_load=True)
+        mp_b = ModelPack(name='normalize-mp-b')
+        mp_b.save(skip_load=True)
+        proj = self._new_project(concept_db=self.cdb, vocab=self.vocab, model_pack=mp_a)
+        proj.save()
+        proj.model_pack = mp_b
+        proj.save()
+        proj.refresh_from_db()
+        self.assertEqual(proj.model_pack_id, mp_b.id)
+        self.assertIsNone(proj.concept_db_id)
+        self.assertIsNone(proj.vocab_id)
+
+    def test_save_prefers_model_pack_when_cdb_vocab_also_set(self):
+        # When both are present (e.g. stale CDB/Vocab after a ModelPack change),
+        # ModelPack wins and CDB/Vocab are cleared.
+        mp = ModelPack(name='normalize-mp-clear')
+        mp.save(skip_load=True)
+        proj = self._new_project(model_pack=mp)
+        proj.save()
+        proj.concept_db = self.cdb
+        proj.vocab = self.vocab
+        proj.save()
+        proj.refresh_from_db()
+        self.assertEqual(proj.model_pack_id, mp.id)
+        self.assertIsNone(proj.concept_db_id)
+        self.assertIsNone(proj.vocab_id)
+
+    def test_save_with_cdb_vocab_after_clearing_model_pack(self):
+        mp = ModelPack(name='normalize-mp-switch')
+        mp.save(skip_load=True)
+        proj = self._new_project(model_pack=mp)
+        proj.save()
+        proj.model_pack = None
+        proj.concept_db = self.cdb
+        proj.vocab = self.vocab
+        proj.save()
+        proj.refresh_from_db()
+        self.assertIsNone(proj.model_pack_id)
+        self.assertEqual(proj.concept_db_id, self.cdb.id)
+        self.assertEqual(proj.vocab_id, self.vocab.id)
+
+
+@override_settings(MEDIA_ROOT='/tmp/mct-tests-models')
+class ProjectGroupModelConfigValidationTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cdb = ConceptDB(name='pg_val_cdb', cdb_file='pg_val_cdb.dat')
+        cdb.save(skip_load=True)
+        vocab = Vocabulary(name='pg_val_vocab', vocab_file='pg_val_vocab.dat')
+        vocab.save(skip_load=True)
+        cls.cdb = cdb
+        cls.vocab = vocab
+        cls.dataset = create_dataset(name='pg_val_ds', file_name='pg_val_ds.csv')
+
+    def test_save_amended_model_pack_clears_stale_cdb_vocab(self):
+        mp_a = ModelPack(name='pg-mp-a')
+        mp_a.save(skip_load=True)
+        mp_b = ModelPack(name='pg-mp-b')
+        mp_b.save(skip_load=True)
+        group = ProjectGroup(
+            name='pg-switch-model-pack',
+            dataset=self.dataset,
+            concept_db=self.cdb,
+            vocab=self.vocab,
+            model_pack=mp_a,
+            cuis='',
+        )
+        group.save()
+        group.model_pack = mp_b
+        group.save()
+        group.refresh_from_db()
+        self.assertEqual(group.model_pack_id, mp_b.id)
+        self.assertIsNone(group.concept_db_id)
+        self.assertIsNone(group.vocab_id)
 
 
 @override_settings(MEDIA_ROOT='/tmp/mct-tests-models')

@@ -315,6 +315,8 @@ import RelationAnnotationTaskContainer from '@/components/usecases/RelationAnnot
 import AnnotationSummary from '@/components/common/AnnotationSummary.vue'
 import ConceptFilter from "@/components/common/ConceptFilter.vue"
 import {Splitpanes, Pane} from 'splitpanes'
+import { ensureTraditionalAuth } from '@/httpAuth'
+import { isOidcEnabled } from '@/runtimeConfig'
 
 const TASK_NAME = 'Concept Annotation'
 const CONCEPT_CORRECT = 'Correct'
@@ -403,13 +405,31 @@ export default {
     this.fetchAnnoConf()
   },
   methods: {
+    ensureProjectAuth() {
+      if (isOidcEnabled()) {
+        if (this.$keycloak && !this.$keycloak.authenticated) {
+          this.$keycloak.login()
+          return false
+        }
+        return true
+      }
+      // Sync cookie ↔ Authorization header (or force re-login if the cookie is gone).
+      return ensureTraditionalAuth(this.$http, this.$cookies.get('api-token'))
+    },
     fetchAnnoConf() {
+      if (!this.ensureProjectAuth()) {
+        return
+      }
       this.$http.get(`/api/anno-conf/`).then(resp => {
         LOAD_NUM_DOC_PAGES = resp.data['LOAD_NUM_DOC_PAGES'] || LOAD_NUM_DOC_PAGES
         this.fetchData()
       })
     },
     fetchData() {
+      // Re-check when loading the project: cookie may have been cleared in another tab.
+      if (!this.ensureProjectAuth()) {
+        return
+      }
       this.$http.get(`/api/project-annotate-entities/?id=${this.projectId}`).then(resp => {
         if (resp.data.count === 0) {
           this.errors.modal = true
@@ -496,6 +516,9 @@ export default {
       }
     },
     loadDoc(doc) {
+      if (!this.ensureProjectAuth()) {
+        return
+      }
       this.currentDoc = doc
       if (String(this.$route.params.docId) !== String(doc.id)) {
         this.$router.replace({
@@ -506,7 +529,12 @@ export default {
           }
         })
       }
+      // Clear prior doc annotation state so we never render the new text with old ents
+      // (or continue paginating the previous document's annotated-entities URL).
       this.currentEnt = null
+      this.ents = null
+      this.nextEntSetUrl = null
+      this.loadingMsg = 'Loading document...'
       this.prepareDoc()
     },
     prepareDoc () {
@@ -597,7 +625,8 @@ export default {
         this.nextEntSetUrl = null
         this.loadingMsg = null
         this.errors.modal = true
-        this.errors.message = 'Failed to load document annotations. Please try again by refreshing the page.'
+        this.errors.message = `Failed to load document annotations for project ID ${this.projectId || ''}${this.currentDoc && this.currentDoc.id ? ', document ID ' + this.currentDoc.id : ''}. Please try again by refreshing the page. If the problem persists, please contact your administrator and provide them with this page's URL: ${window.location.href}`
+
         if (err.response) {
           this.errors.message = err.response.data?.message || this.errors.message
           this.errors.description = err.response.data?.description || ''

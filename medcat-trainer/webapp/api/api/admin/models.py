@@ -96,6 +96,10 @@ class ProjectGroupAdmin(admin.ModelAdmin):
         proj.project_status = group.project_status
         proj.concept_db = group.concept_db
         proj.vocab = group.vocab
+        proj.model_pack = group.model_pack
+        proj.deid_model_annotation = group.deid_model_annotation
+        proj.use_model_service = group.use_model_service
+        proj.model_service_url = group.model_service_url
         proj.require_entity_validation = group.require_entity_validation
         proj.train_model_on_submit = group.train_model_on_submit
         proj.add_new_entities = group.add_new_entities

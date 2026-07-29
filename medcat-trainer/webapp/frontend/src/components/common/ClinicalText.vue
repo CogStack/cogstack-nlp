@@ -74,8 +74,10 @@ export default {
     formattedText () {
       if (this.loading || !this.text || !this.ents) { return '' }
       if (this.ents.length === 0) {
-        let text = this.text.replace('&', '&amp').replace('<', '&gt').replace('>', '&gt')
-        text = text === 'nan' ? '' : text
+        // Must escape for vue3-runtime-template: raw '<' / '>' / '&' are compiled as Vue
+        // template HTML and throw (e.g. compiler-24 missing end tag), which can leave the
+        // annotator unable to render subsequent documents.
+        const text = this.text === 'nan' ? '' : _.escape(this.text)
         return this.addAnnos ? `<div @contextmenu.prevent.stop="showCtxMenu($event)">${text}</div>` : `<div>${text}</div>`
       }
 
