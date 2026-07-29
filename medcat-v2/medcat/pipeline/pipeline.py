@@ -46,9 +46,6 @@ class DelegatingTokenizer(BaseTokenizer):
         return self.tokenizer.create_entity(
             doc, token_start_index, token_end_index, label)
 
-    def get_skip_entity(self) -> MutableEntity:
-        return self.tokenizer.get_skip_entity()
-
     def entity_from_tokens(self, tokens: list[MutableToken]) -> MutableEntity:
         return self.tokenizer.entity_from_tokens(tokens)
 
