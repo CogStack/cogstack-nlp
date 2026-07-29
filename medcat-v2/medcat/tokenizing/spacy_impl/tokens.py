@@ -127,10 +127,6 @@ class Entity:
         self.detected_name = ''
 
     @property
-    def is_valid(self) -> bool:
-        return isinstance(self._delegate, SpacySpan)
-
-    @property
     def base(self) -> BaseEntity:
         return cast(BaseEntity, self)
 

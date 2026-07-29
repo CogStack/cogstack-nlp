@@ -76,9 +76,6 @@ class SpacyTokenizer(BaseTokenizer):
         span = Span(spacy_doc, token_start_index, token_end_index, label)
         return Entity(span)
 
-    def get_skip_entity(self) -> MutableEntity:
-        return Entity(None)  # type: ignore
-
     def entity_from_tokens(self, tokens: list[MutableToken]) -> MutableEntity:
         if not tokens:
             raise ValueError("Need at least one token for an entity")

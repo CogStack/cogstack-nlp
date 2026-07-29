@@ -48,17 +48,6 @@ class BaseTokenizer(Protocol):
         """
         pass
 
-    def get_skip_entity(self) -> MutableEntity:
-        """Get a "skip entity".
-
-        This is a placeholder entity where none can traiditionally be
-        obtained. It is designed to be skipped for the most part, but
-        may be needed in some situations to preserver oder of inputs.
-
-        Returns:
-            MutableEntity: The skip entity.
-        """
-
     def entity_from_tokens_in_doc(self, tokens: list[MutableToken],
                                   doc: MutableDocument) -> MutableEntity:
         """Get an entity from the list of tokens in the specified document.

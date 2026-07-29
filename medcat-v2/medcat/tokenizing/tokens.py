@@ -157,10 +157,6 @@ class MutableEntity(Protocol):
     """
 
     @property
-    def is_valid(self) -> bool:
-        """Whether the given entity revers to a valid one."""
-
-    @property
     def base(self) -> BaseEntity:
         """The base / static entity part."""
         pass
