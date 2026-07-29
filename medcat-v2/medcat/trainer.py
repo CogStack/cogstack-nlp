@@ -514,6 +514,7 @@ class Trainer:
                     epochs=1,
                 )
                 for ent in trainable_ents
+                if ent.is_valid
             ]
             # NOTE: this was previosuly behind a flag that defaulted to True
             #       and was done on a per entity basis:
