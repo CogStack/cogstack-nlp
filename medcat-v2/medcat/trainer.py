@@ -424,8 +424,10 @@ class Trainer:
         return processed_names[0]
 
     def _prepare_doc_with_anns(
-            self, doc: MutableDocument, ann_doc: MedCATTrainerExportDocument,
-            anns: list[MedCATTrainerExportAnnotation]) -> None:
+        self, doc: MutableDocument, ann_doc: MedCATTrainerExportDocument,
+        anns: list[MedCATTrainerExportAnnotation]
+    ) -> list[MedCATTrainerExportAnnotation]:
+        out_anns: list[MedCATTrainerExportAnnotation] = []
         ents = []
         for ann in anns:
             tkns = doc.get_tokens(ann['start'], ann['end'])
@@ -434,6 +436,7 @@ class Trainer:
                 ent.detected_name = self._get_processed_name(ann['value'])
                 ent.cui = ann['cui']
                 ents.append(ent)
+                out_anns.append(ann)
             except ValueError as err:
                 self._warn_on_error(
                     err, doc.base.text,
@@ -445,6 +448,7 @@ class Trainer:
         # duplicate for linked as well, but in a a separate list
         doc.linked_ents.clear()
         doc.linked_ents.extend(ents)
+        return out_anns
 
     def _warn_on_error(self, ve: BaseException, cur_text: str,
                        mut_context_start: tuple[str, str, int, int],
@@ -492,8 +496,8 @@ class Trainer:
                                      'train', False):
                 # NOTE: only need tokenization here
                 mut_doc = self._pipeline.tokenizer_with_tag(doc['text'])
-            current_anns = doc['annotations']
-            self._prepare_doc_with_anns(mut_doc, doc, current_anns)
+            current_anns = self._prepare_doc_with_anns(
+                mut_doc, doc, doc['annotations'])
 
             # NOTE: preparation sets both ner_ents and linked_ents
             #       to be the same, at least for now
