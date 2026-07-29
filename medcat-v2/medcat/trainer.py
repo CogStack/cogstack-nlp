@@ -574,6 +574,8 @@ class Trainer:
         # build devaluation of others
         devalued_examples: list[TrainingExample] = []
         for ent, name in zip(trained_ents, ent_names):
+            if not ent.is_valid:
+                continue
             cui = ent.cui
             names = prepare_name(
                 name, self._pipeline.tokenizer_with_tag, {},
