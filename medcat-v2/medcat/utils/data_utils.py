@@ -164,6 +164,8 @@ def get_false_positives(doc: MedCATTrainerExportDocument,
 
     fps = []
     for ent in spacy_doc.ner_ents:
+        if not ent.is_valid:
+            continue
         if (ent.base.start_index, ent.cui) not in truth:
             fps.append(ent)
 
