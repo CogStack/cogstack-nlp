@@ -141,6 +141,10 @@ class Entity:
         self.detected_name = ''
 
     @property
+    def is_valid(self) -> bool:
+        return self._start_char_index < self._end_char_index
+
+    @property
     def base(self) -> BaseEntity:
         return cast(BaseEntity, self)
 
@@ -340,6 +344,9 @@ class RegexTokenizer(BaseTokenizer):
         # spacy_doc = cast(Document, doc)._delegate
         # span = Span(spacy_doc, token_start_index, token_end_index, label)
         # return Entity(span)
+
+    def get_skip_entity(self) -> MutableEntity:
+        return Entity(None, '', 0, 0, 0, 0)  # type: ignore
 
     def entity_from_tokens(self, tokens: list[MutableToken]) -> MutableEntity:
         if not tokens:
