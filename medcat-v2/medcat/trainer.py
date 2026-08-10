@@ -525,6 +525,7 @@ class Trainer:
                     ann['value'], self._pipeline.tokenizer_with_tag, {},
                     self._pn_configs
                 )
+                logger.debug("Prepared names: %s", names)
                 self.cdb._add_concept(
                     cui=ent.cui, names=names, ontologies=set(),
                     name_status="A", type_ids=set(),
