@@ -519,6 +519,8 @@ class Trainer:
             # NOTE: this was previosuly behind a flag that defaulted to True
             #       and was done on a per entity basis:
             for ent, ann in zip(trainable_ents, current_anns):
+                logger.info("    Annotation %s (%s) [%d:%d]",
+                            ann['value'], ann['cui'], ann['start'], ann['end'])
                 names = prepare_name(
                     ann['value'], self._pipeline.tokenizer_with_tag, {},
                     self._pn_configs
