@@ -514,6 +514,9 @@ class Trainer:
                     negative=False,
                     epochs=1,
                     description="",
+                    name_status="A",
+                    ontologies=set(),
+                    type_ids=set(),
                 )
                 for ent in trainable_ents
             ]
@@ -528,8 +531,11 @@ class Trainer:
                 )
                 logger.debug("Prepared names: %s", names)
                 self.cdb._add_concept(
-                    cui=example.cui, names=names, ontologies=set(),
-                    name_status="A", type_ids=set(),
+                    cui=example.cui,
+                    names=names,
+                    ontologies=example.ontologies,
+                    name_status=example.name_status,
+                    type_ids=example.type_ids,
                     description=example.description,
                     full_build=True
                 )
@@ -544,6 +550,9 @@ class Trainer:
                         doc=mut_doc,
                         negative=True,
                         description="",
+                        name_status="A",
+                        ontologies=set(),
+                        type_ids=set(),
                     )
                     for fp in fps
                 ]

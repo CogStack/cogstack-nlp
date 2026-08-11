@@ -3,7 +3,7 @@ from typing import Literal
 from typing_extensions import Self
 from enum import Enum, auto
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from medcat.utils.registry import Registry, MedCATRegistryException
 from medcat.tokenizing.tokens import MutableDocument, MutableEntity
@@ -211,7 +211,11 @@ class TrainingExample:
     doc: MutableDocument   # context needed to encode, nothing more
     negative: bool = False
     epochs: int = 1        # can increase if needed
+    # NOTE: these are only really used if/when adding new names
     description: str = ""  # can define if needed
+    name_status: str = "A"  # A for automatic
+    ontologies: set[str] = field(default_factory=set)
+    type_ids: set[str] = field(default_factory=set)
 
 
 @runtime_checkable
