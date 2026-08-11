@@ -210,7 +210,8 @@ class TrainingExample:
     entity: MutableEntity
     doc: MutableDocument   # context needed to encode, nothing more
     negative: bool = False
-    epochs: int = 1        #
+    epochs: int = 1        # can increase if needed
+    description: str = ""  # can define if needed
 
 
 @runtime_checkable

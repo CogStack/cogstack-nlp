@@ -513,6 +513,7 @@ class Trainer:
                     doc=mut_doc,
                     negative=False,
                     epochs=1,
+                    description="",
                 )
                 for ent in trainable_ents
             ]
@@ -542,6 +543,7 @@ class Trainer:
                         entity=fp,
                         doc=mut_doc,
                         negative=True,
+                        description="",
                     )
                     for fp in fps
                 ]
