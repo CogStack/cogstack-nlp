@@ -148,7 +148,11 @@ class CDB(AbstractSerialisable):
         cui_info = self.cui2info[cui]
         for name, in_name_info in names.items():
             # add name and synonyms
-            cui_info['names'].add(name)
+            if name not in cui_info['names']:
+                cui_info['names'].add(name)
+                logger.debug(
+                    "Add new mapping for CUI '%s' - now maps to '%s'",
+                    cui, name)
             cui_info['subnames'].update(in_name_info.snames)
 
             if name not in self.name2info:
