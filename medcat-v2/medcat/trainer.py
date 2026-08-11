@@ -17,6 +17,7 @@ from medcat.data.mctexport import (
     MedCATTrainerExportDocument, count_all_annotations, iter_anns)
 from medcat.preprocessors.cleaners import prepare_name, NameDescriptor
 from medcat.components.types import TrainingExample, UnsupervisedTrainableComponent
+from medcat.components.type_utils import warn_on_error
 from medcat.components.addons.addons import AddonComponent
 from medcat.pipeline import Pipeline
 
@@ -453,30 +454,8 @@ class Trainer:
     def _warn_on_error(self, ve: BaseException, cur_text: str,
                        mut_context_start: tuple[str, str, int, int],
                        mut_context_end: tuple[MutableEntity | None, str, str]):
-        start, end = mut_context_start[2:]
-        context_window = 20  # characters
-        splitter_left, splitter_right = "<", ">"
-        context_start = max(start - context_window, 0)
-        context_end = min(end + context_window, len(cur_text) - 1)
-        context = (cur_text[context_start: start] +
-                    splitter_left +
-                    cur_text[start: end] +
-                    splitter_right +
-                    cur_text[end: context_end])
-        if context_start > 0:
-            context = "[...]" + context
-        if context_end < len(cur_text) - 1:
-            context += "[...]"
-        msg_template = (
-            "Failed to identify '%s' (%s) ([%d:%d]) "
-            "in '%s' %s within document %s | %s, "
-            "skipping training for this example")
-        msg_context = (
-            *mut_context_start, context, *mut_context_end)
-        if self.strict_train:
-            raise ValueError(msg_template % msg_context) from ve
-        else:
-            logger.warning(msg_template, *msg_context, exc_info=ve)
+        warn_on_error(
+            ve, cur_text, mut_context_start, mut_context_end, self.strict_train)
 
     def _train_supervised_for_project2(self,
                                        docs: list[MedCATTrainerExportDocument],
