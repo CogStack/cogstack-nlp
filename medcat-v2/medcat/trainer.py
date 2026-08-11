@@ -519,7 +519,7 @@ class Trainer:
             ]
             # NOTE: this was previosuly behind a flag that defaulted to True
             #       and was done on a per entity basis:
-            for ent, ann in zip(trainable_ents, current_anns):
+            for example, ann in zip(cur_examples, current_anns):
                 logger.info("    Annotation %s (%s) [%d:%d]",
                             ann['value'], ann['cui'], ann['start'], ann['end'])
                 names = prepare_name(
@@ -528,9 +528,9 @@ class Trainer:
                 )
                 logger.debug("Prepared names: %s", names)
                 self.cdb._add_concept(
-                    cui=ent.cui, names=names, ontologies=set(),
+                    cui=example.cui, names=names, ontologies=set(),
                     name_status="A", type_ids=set(),
-                    description="",
+                    description=example.description,
                     full_build=True
                 )
             self._train_supervised_for_batch(cur_examples)
