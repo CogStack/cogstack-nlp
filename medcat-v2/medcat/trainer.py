@@ -423,8 +423,10 @@ class Trainer:
 
     def _prepare_doc_with_anns(
             self, doc: MutableDocument, ann_doc: MedCATTrainerExportDocument,
-            anns: list[MedCATTrainerExportAnnotation]) -> None:
+            anns: list[MedCATTrainerExportAnnotation]
+        ) -> list[MedCATTrainerExportAnnotation]:
         ents = []
+        out_anns: list[MedCATTrainerExportAnnotation] = []
         for ann in anns:
             tkns = doc.get_tokens(ann['start'], ann['end'])
             try:
@@ -432,6 +434,7 @@ class Trainer:
                 ent.detected_name = self._get_processed_name(ann['value'])
                 ent.cui = ann['cui']
                 ents.append(ent)
+                out_anns.append(ann)
             except ValueError as err:
                 self._warn_on_error(
                     err, doc.base.text,
@@ -443,6 +446,7 @@ class Trainer:
         # duplicate for linked as well, but in a a separate list
         doc.linked_ents.clear()
         doc.linked_ents.extend(ents)
+        return out_anns
 
     def _warn_on_error(self, ve: BaseException, cur_text: str,
                        mut_context_start: tuple[str, str, int, int],
@@ -488,10 +492,10 @@ class Trainer:
                                      'train', False):
                 # NOTE: only need tokenization here
                 mut_doc = self._pipeline.tokenizer_with_tag(doc['text'])
-            self._prepare_doc_with_anns(mut_doc, doc, doc['annotations'])
+            anns = self._prepare_doc_with_anns(mut_doc, doc, doc['annotations'])
 
             # Compatibility with old output where annotations are a list
-            for ann, mut_entity in zip(doc['annotations'], mut_doc.linked_ents):
+            for ann, mut_entity in zip(anns, mut_doc.linked_ents):
                 if ann.get('killed', False):
                     continue
                 logger.info("    Annotation %s (%s) [%d:%d]",
