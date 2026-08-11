@@ -54,6 +54,7 @@ class ContextModel(AbstractSerialisable):
         self.name_separator = name_separator
         self._disamb_preprocessors = (  # copy if default/empty
             disamb_preprocessors or disamb_preprocessors.copy())
+        self._in_supervised_training = False
 
     def get_context_tokens(self, entity: MutableEntity, doc: MutableDocument,
                            size: int,
@@ -107,6 +108,8 @@ class ContextModel(AbstractSerialisable):
                 yield vec * self.weighted_average_function(step)
 
     def _should_change_name(self, cui: str) -> bool:
+        if self._in_supervised_training:
+            return False
         target = self.config.random_replacement_unsupervised
         if random.random() <= target:
             return False
@@ -340,8 +343,12 @@ class ContextModel(AbstractSerialisable):
             logger.warning("The provided entity for cui <%s> was empty, "
                            "nothing to train", cui)
             return
-        vectors = self.get_context_vectors(
-            entity, doc, per_doc_valid_token_cache, cui=cui)
+        self._in_supervised_training = True
+        try:
+            vectors = self.get_context_vectors(
+                entity, doc, per_doc_valid_token_cache, cui=cui)
+        finally:
+            self._in_supervised_training = False
         cui_info = self.cui2info[cui]
         lr = get_lr_linking(self.config, cui_info['count_train'])
         if not cui_info['context_vectors']:
