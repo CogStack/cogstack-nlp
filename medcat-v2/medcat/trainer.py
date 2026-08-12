@@ -477,6 +477,10 @@ class Trainer:
                 mut_doc = self._pipeline.tokenizer_with_tag(doc['text'])
             current_anns = self._prepare_doc_with_anns(
                 mut_doc, doc, doc['annotations'])
+            logger.debug(
+                "Using %d / %d annotations"
+                len(current_anns), len(doc['annotations'])
+            )
 
             # NOTE: preparation sets both ner_ents and linked_ents
             #       to be the same, at least for now
