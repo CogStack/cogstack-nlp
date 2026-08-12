@@ -478,7 +478,7 @@ class Trainer:
             current_anns = self._prepare_doc_with_anns(
                 mut_doc, doc, doc['annotations'])
             logger.debug(
-                "Using %d / %d annotations"
+                "Using %d / %d annotations",
                 len(current_anns), len(doc['annotations'])
             )
 
