@@ -29,13 +29,13 @@ class OntologyDifficultyEstimator:
         Normalized IC = 1 - (log(leaves(c)) / log(max_leaves))
         Ranges from 0.0 (root/broad) to 1.0 (leaf/specific).
         """
-        leaves_c = self.ontology.get_subtree_leaves_count(concept_id)
-        max_leaves = self.ontology.get_total_leaves_count()
+        descendants = self.ontology.get_subtree_node_count(concept_id)
+        total_concepts = self.ontology.get_total_concepts_count()
 
-        if max_leaves <= 1 or leaves_c <= 0:
+        if total_concepts <= 1 or descendants <= 0:
             return 0.0
 
-        return 1.0 - (math.log(leaves_c) / math.log(max_leaves))
+        return 1.0 - (math.log(descendants) / math.log(total_concepts))
 
     def intrinsic_ic_sanchez(self, concept_id: str) -> float:
         """
