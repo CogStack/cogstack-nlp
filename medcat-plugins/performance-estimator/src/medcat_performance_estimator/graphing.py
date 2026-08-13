@@ -35,6 +35,10 @@ class AbstractOntologyGraph(ABC):
         """Returns the maximum depth ($D$) of the ontology hierarchy."""
 
     @abstractmethod
+    def get_subtree_node_count(self, concept_id: str) -> int:
+        """Returns the count of all nodes subsumed by this concept."""
+
+    @abstractmethod
     def get_subtree_leaves_count(self, concept_id: str) -> int:
         """Returns the count of leaf nodes subsumed by this concept (subgraph leaves)."""
 
@@ -127,6 +131,9 @@ class SnomedGraph(AbstractOntologyGraph):
     def get_max_ontology_depth(self) -> int:
         """Returns the maximum depth ($D$) of the ontology hierarchy."""
         return self._max_ontology_depth
+
+    def get_subtree_node_count(self, concept_id: str) -> int:
+        return len(nx.descendants(self.G, concept_id))
 
     def get_subtree_leaves_count(self, concept_id: str) -> int:
         """Returns the count of leaf nodes subsumed by this concept (subgraph leaves)."""
