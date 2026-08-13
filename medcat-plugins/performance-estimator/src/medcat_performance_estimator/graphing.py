@@ -1,8 +1,9 @@
 from abc import ABC, abstractmethod
-from functools import lru_cache
 
 import networkx as nx
 from medcat.cdb import CDB
+
+from .utils import method_lru_cache as lru_cache
 
 
 class AbstractOntologyGraph(ABC):
