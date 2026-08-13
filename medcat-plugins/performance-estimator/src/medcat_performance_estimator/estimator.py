@@ -7,10 +7,9 @@ from .graphing import AbstractOntologyGraph
 
 
 class ConceptDifficulty(TypedDict):
-    concept_difficulty: float
+    predicted_accuracy: float
+    min_predicted_accuracy: float
     intrinsic_ic: float
-    avg_name_confusability: float
-    max_name_confusability: float
 
 
 class EstimationConfig(BaseModel):
