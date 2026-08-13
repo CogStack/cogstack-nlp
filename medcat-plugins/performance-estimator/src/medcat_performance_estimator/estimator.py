@@ -73,7 +73,7 @@ class OntologyDifficultyEstimator:
         max_ic = math.log(denominator)
         return raw_ic / max_ic if max_ic > 0 else 0.0
 
-    def intrinsic_ic(self, concept_id: str) -> float:
+    def get_intrinsic_ic(self, concept_id: str) -> float:
         return (
             self.intrinsic_ic_sanchez(concept_id)
             if self.config.ic_type == "sanchez"
@@ -109,10 +109,10 @@ class OntologyDifficultyEstimator:
         Sim = IC(LCS(concept_a, concept_b))
         """
         if concept_a == concept_b:
-            return self.intrinsic_ic(concept_a)
+            return self.get_intrinsic_ic(concept_a)
 
         lcs = self.ontology.get_lcs(concept_a, concept_b)
-        return self.intrinsic_ic(lcs)
+        return self.get_intrinsic_ic(lcs)
 
     def sim_lin_intrinsic(
         self, concept_a: str, concept_b: str,
@@ -124,14 +124,14 @@ class OntologyDifficultyEstimator:
         if concept_a == concept_b:
             return 1.0
 
-        ic_a = self.intrinsic_ic(concept_a)
-        ic_b = self.intrinsic_ic(concept_b)
-        ic_lcs = self.intrinsic_ic(self.ontology.get_lcs(concept_a, concept_b))
+        ic_a = self.get_intrinsic_ic(concept_a)
+        ic_b = self.get_intrinsic_ic(concept_b)
+        ic_lcs = self.get_intrinsic_ic(self.ontology.get_lcs(concept_a, concept_b))
 
         denom = ic_a + ic_b
         return (2.0 * ic_lcs) / denom if denom > 0 else 0.0
 
-    def sim_metric(
+    def get_sim_metric(
         self, concept_a: str, concept_b: str,
     ) -> float:
         if self.config.sim_metric == "wu_palmer":
@@ -166,7 +166,7 @@ class OntologyDifficultyEstimator:
         sim_scores = []
 
         for other in other_concepts:
-            sim = self.sim_metric(target_concept, other)
+            sim = self.get_sim_metric(target_concept, other)
             sim_scores.append(sim)
 
         # Average similarity of competing concepts + structural penalty for degree of ambiguity
@@ -190,7 +190,7 @@ class OntologyDifficultyEstimator:
         # competitor's likelyhood is its similarity, and if power >> 1 then
         # only near-identical competitors matter
         effective_N = 1 + sum(
-            max(min(self.sim_metric(target_concept, other), 1.0),
+            max(min(self.get_sim_metric(target_concept, other), 1.0),
                 self.config.similarity_floor) ** power
             for other in other_concepts
         )
@@ -205,7 +205,7 @@ class OntologyDifficultyEstimator:
             return ConceptDifficulty(
                 predicted_accuracy=1.0,
                 min_predicted_accuracy=1.0,
-                intrinsic_ic=self.intrinsic_ic(concept_id),
+                intrinsic_ic=self.get_intrinsic_ic(concept_id),
             )
 
         per_name_accuracy = [
@@ -221,10 +221,10 @@ class OntologyDifficultyEstimator:
                     "apply_extrinsic_ic_prior double-counts IC when combined "
                     f"with sim_metric={self.config.sim_metric!r}")
             # NOTE: multiplying accuracy, not difficulty now
-            overall_accuracy *= self.intrinsic_ic(concept_id)
+            overall_accuracy *= self.get_intrinsic_ic(concept_id)
 
         return ConceptDifficulty(
             predicted_accuracy=overall_accuracy,
             min_predicted_accuracy=worst_case_accuracy,
-            intrinsic_ic=self.intrinsic_ic(concept_id),
+            intrinsic_ic=self.get_intrinsic_ic(concept_id),
         )
