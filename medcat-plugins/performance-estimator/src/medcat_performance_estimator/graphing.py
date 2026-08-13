@@ -62,8 +62,8 @@ class SnomedGraph(AbstractOntologyGraph):
             for parent, children in self.pt2ch.items()
             for child in children
         )
-        self._root_concept = next([
-            cui for cui in self.G if self.G.in_degree(cui) == 0])
+        self._root_concept = next(
+            cui for cui in self.G if self.G.in_degree(cui) == 0)
         self._max_ontology_depth = max(
             self.get_concept_depth(cui) for cui in self.G
         )
