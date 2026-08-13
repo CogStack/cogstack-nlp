@@ -1,6 +1,8 @@
 import math
 from typing import TypedDict
 
+from pydantic import BaseModel
+
 from .graphing import AbstractOntologyGraph
 
 
@@ -11,13 +13,23 @@ class ConceptDifficulty(TypedDict):
     max_name_confusability: float
 
 
+class EstimationConfig(BaseModel):
+    sim_metric: str = "lin"
+    ic_type: str = "sanchez"
+
+
 class OntologyDifficultyEstimator:
     """
     Calculates difficulty metrics for a concept based strictly on ontology properties.
     """
 
-    def __init__(self, ontology: AbstractOntologyGraph):
+    def __init__(
+        self,
+        ontology: AbstractOntologyGraph,
+        config: EstimationConfig | None = None
+    ):
         self.ontology = ontology
+        self.config = config or EstimationConfig()
 
     # =========================================================================
     # 1. Intrinsic Information Content (IC) Formulations
@@ -55,6 +67,13 @@ class OntologyDifficultyEstimator:
         max_ic = math.log(denominator)
         return raw_ic / max_ic if max_ic > 0 else 0.0
 
+    def intrinsic_ic(self, concept_id: str) -> float:
+        return (
+            self.intrinsic_ic_sanchez(concept_id)
+            if self.config.ic_type == "sanchez"
+            else self.intrinsic_ic_seco(concept_id)
+        )
+
     # =========================================================================
     # 2. Concept Pair Similarity Measures
     # =========================================================================
@@ -77,27 +96,20 @@ class OntologyDifficultyEstimator:
         return (2.0 * depth_lcs) / denom if denom > 0 else 0.0
 
     def sim_resnik_intrinsic(
-        self, concept_a: str, concept_b: str, ic_type: str = "sanchez"
+        self, concept_a: str, concept_b: str,
     ) -> float:
         """
         Resnik (1995) similarity using Intrinsic IC:
         Sim = IC(LCS(concept_a, concept_b))
         """
-
-        ic_fn = (
-            self.intrinsic_ic_sanchez
-            if ic_type == "sanchez"
-            else self.intrinsic_ic_seco
-        )
-
         if concept_a == concept_b:
-            return ic_fn(concept_a)
+            return self.intrinsic_ic(concept_a)
 
         lcs = self.ontology.get_lcs(concept_a, concept_b)
-        return ic_fn(lcs)
+        return self.intrinsic_ic(lcs)
 
     def sim_lin_intrinsic(
-        self, concept_a: str, concept_b: str, ic_type: str = "sanchez"
+        self, concept_a: str, concept_b: str,
     ) -> float:
         """
         Lin (1998) similarity using Intrinsic IC:
@@ -106,17 +118,25 @@ class OntologyDifficultyEstimator:
         if concept_a == concept_b:
             return 1.0
 
-        ic_fn = (
-            self.intrinsic_ic_sanchez
-            if ic_type == "sanchez"
-            else self.intrinsic_ic_seco
-        )
-        ic_a = ic_fn(concept_a)
-        ic_b = ic_fn(concept_b)
-        ic_lcs = ic_fn(self.ontology.get_lcs(concept_a, concept_b))
+        ic_a = self.intrinsic_ic(concept_a)
+        ic_b = self.intrinsic_ic(concept_b)
+        ic_lcs = self.intrinsic_ic(self.ontology.get_lcs(concept_a, concept_b))
 
         denom = ic_a + ic_b
         return (2.0 * ic_lcs) / denom if denom > 0 else 0.0
+
+    def sim_metric(
+        self, concept_a: str, concept_b: str,
+    ) -> float:
+        if self.config.sim_metric == "wu_palmer":
+            return self.sim_wu_palmer(concept_a, concept_b)
+        elif self.config.sim_metric == "resnik":
+            return self.sim_resnik_intrinsic(concept_a, concept_b)
+        elif self.config.sim_metric == "lin":
+            return self.sim_lin_intrinsic(concept_a, concept_b)
+        else:
+            raise ValueError(
+                f"Unknown similarity metric: {self.config.sim_metric}")
 
     # =========================================================================
     # 3. Overall Concept Difficulty Calculations
@@ -126,8 +146,6 @@ class OntologyDifficultyEstimator:
         self,
         target_concept: str,
         name: str,
-        sim_metric: str = "lin",
-        ic_type: str = "sanchez",
     ) -> float:
         """
         Calculates how ambiguous/confusable a single name is for the target concept.
@@ -140,19 +158,9 @@ class OntologyDifficultyEstimator:
         other_concepts = competing_concepts - {target_concept}
 
         sim_scores = []
+
         for other in other_concepts:
-            if sim_metric == "wu_palmer":
-                sim = self.sim_wu_palmer(target_concept, other)
-            elif sim_metric == "resnik":
-                sim = self.sim_resnik_intrinsic(
-                    target_concept, other, ic_type=ic_type
-                )
-            elif sim_metric == "lin":
-                sim = self.sim_lin_intrinsic(
-                    target_concept, other, ic_type=ic_type
-                )
-            else:
-                raise ValueError(f"Unknown similarity metric: {sim_metric}")
+            sim = self.sim_metric(target_concept, other)
             sim_scores.append(sim)
 
         # Average similarity of competing concepts + structural penalty for degree of ambiguity
@@ -166,8 +174,6 @@ class OntologyDifficultyEstimator:
     def compute_concept_ontology_difficulty(
         self,
         concept_id: str,
-        sim_metric: str = "lin",
-        ic_type: str = "sanchez",
     ) -> ConceptDifficulty:
         """
         Computes the complete Stage-1 Ontology-Only Difficulty Profile for a given concept.
@@ -186,7 +192,7 @@ class OntologyDifficultyEstimator:
 
         confusability_scores = [
             self.compute_name_confusability(
-                concept_id, name, sim_metric=sim_metric, ic_type=ic_type
+                concept_id, name
             )
             for name in synonyms
         ]
@@ -196,11 +202,7 @@ class OntologyDifficultyEstimator:
         )
         max_confusability = max(confusability_scores)
 
-        ic_value = (
-            self.intrinsic_ic_sanchez(concept_id)
-            if ic_type == "sanchez"
-            else self.intrinsic_ic_seco(concept_id)
-        )
+        ic_value = self.intrinsic_ic(concept_id)
 
         # Combined Difficulty Score:
         # High name ambiguity increases difficulty, high concept specificity (IC) mitigates it.
