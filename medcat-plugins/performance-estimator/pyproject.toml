@@ -29,12 +29,14 @@ classifiers = [
 
 dependencies = [
     "medcat>=2.5",
+    "networkx",
 ]
 
 [project.optional-dependencies]
 dev = [
     "ruff",
     "mypy",
+    "types-networkx",
 ]
 
 # entry-points to add onto medcat
