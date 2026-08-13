@@ -161,6 +161,12 @@ class OntologyDifficultyEstimator:
         if len(competing_concepts) <= 1:
             return 0.0  # Name is completely unambiguous
 
+        if target_concept not in competing_concepts:
+            raise ValueError(
+                f"{target_concept!r} not found among concepts for name {name!r}; "
+                "ontology's name/concept lookups may be inconsistent"
+            )
+
         other_concepts = competing_concepts - {target_concept}
 
         sim_scores = []
