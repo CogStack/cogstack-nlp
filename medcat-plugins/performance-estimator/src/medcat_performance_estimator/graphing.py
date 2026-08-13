@@ -62,11 +62,26 @@ class SnomedGraph(AbstractOntologyGraph):
             for parent, children in self.pt2ch.items()
             for child in children
         )
-        self._root_concept = next(
-            cui for cui in self.G if self.G.in_degree(cui) == 0)
+        potential_roots = [cui for cui in self.G if self.G.in_degree(cui) == 0]
+        if len(potential_roots) != 1:
+            raise ValueError(
+                f"Unable to find unique root. Potentials: {potential_roots}")
+        self._root_concept = potential_roots[0]
+        self._depths = self._compute_all_depths()
         self._max_ontology_depth = max(
             self.get_concept_depth(cui) for cui in self.G
         )
+
+    def _compute_all_depths(self) -> dict[str, int]:
+        depth = {self._root_concept: 0}
+        for node in nx.topological_sort(self.G):
+            if node not in depth:
+                continue
+            for child in self.G.successors(node):
+                candidate = depth[node] + 1
+                if candidate > depth.get(child, -1):
+                    depth[child] = candidate
+        return depth
 
     def get_concepts_for_name(self, name: str) -> set[str]:
         """Returns all concept IDs that share this specific name/synonym."""
@@ -107,12 +122,7 @@ class SnomedGraph(AbstractOntologyGraph):
 
     def get_concept_depth(self, concept_id: str) -> int:
         """Returns the depth of a concept from the root (or max depth if multiple paths)."""
-        longest_path = max(
-            (path for path in nx.all_simple_paths(
-                self.G, self._root_concept, concept_id)),
-            key=len
-        )
-        return len(longest_path) - 1
+        return self._depths.get(concept_id, -1)
 
     def get_max_ontology_depth(self) -> int:
         """Returns the maximum depth ($D$) of the ontology hierarchy."""
@@ -139,7 +149,7 @@ class SnomedGraph(AbstractOntologyGraph):
     def get_total_leaves_count(self) -> int:
         """Returns the total number of leaf nodes in the whole ontology."""
         # just take away the root concept
-        return self.get_total_concepts_count() - 1
+        return sum(1 for n in self.G if self.G.out_degree(n) == 0)
 
     def get_total_concepts_count(self) -> int:
         """Returns the total number of concepts in the whole ontology."""
