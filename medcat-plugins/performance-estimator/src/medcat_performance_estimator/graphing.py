@@ -56,7 +56,7 @@ class SnomedGraph(AbstractOntologyGraph):
     def __init__(self, cdb: CDB) -> None:
         self.cdb = cdb
         self.pt2ch = self.cdb.addl_info['pt2ch']
-        self.G = nx.DiGraph()
+        self.G: nx.DiGraph = nx.DiGraph()
         self.G.add_edges_from(
             (parent, child)
             for parent, children in self.pt2ch.items()
@@ -67,7 +67,6 @@ class SnomedGraph(AbstractOntologyGraph):
         self._max_ontology_depth = max(
             self.get_concept_depth(cui) for cui in self.G
         )
-
 
     def get_concepts_for_name(self, name: str) -> set[str]:
         """Returns all concept IDs that share this specific name/synonym."""
@@ -89,8 +88,8 @@ class SnomedGraph(AbstractOntologyGraph):
         if common in (concept_a, concept_b):
             # ensure correct direction
             other = concept_a if common == concept_b else concept_b
-            return nx.shortest_path_length(self.G, common, other)
-        return (
+            return int(nx.shortest_path_length(self.G, common, other))
+        return int(
             nx.shortest_path_length(self.G, common, concept_a) +
             nx.shortest_path_length(self.G, common, concept_b)
         )
