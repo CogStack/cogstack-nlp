@@ -16,6 +16,12 @@ class ConceptDifficulty(TypedDict):
 class EstimationConfig(BaseModel):
     sim_metric: str = "lin"
     ic_type: str = "sanchez"
+    power: float = 1.0
+    # similarities below this are treated as exactly 0
+    similarity_floor: float = 0.0
+    # only sensible with sim_metric="wu_palmer";
+    # double-counts IC if combined with resnik
+    apply_extrinsic_ic_prior: bool = False
 
 
 class OntologyDifficultyEstimator:
@@ -171,46 +177,53 @@ class OntologyDifficultyEstimator:
 
         return avg_similarity * ambiguity_multiplier
 
+    def predict_accuracy(self, target_concept: str, name: str) -> float:
+        competing_concepts = self.ontology.get_concepts_for_name(name)
+        if len(competing_concepts) <= 1:
+            # Name is completely unambiguous
+            return 1.0
+        other_concepts = competing_concepts - {target_concept}
+        power = self.config.power
+        # based on the power, the below calculates the "effective number of"
+        # competitors that are weighed by their similarity; if power is 0
+        # then every competitor is as likely, if power is 1, then every
+        # competitor's likelyhood is its similarity, and if power >> 1 then
+        # only near-identical competitors matter
+        effective_N = 1 + sum(
+            self.sim_metric(target_concept, other) ** power
+            for other in other_concepts
+        )
+        return 1 / effective_N
+
     def compute_concept_ontology_difficulty(
         self,
         concept_id: str,
     ) -> ConceptDifficulty:
-        """
-        Computes the complete Stage-1 Ontology-Only Difficulty Profile for a given concept.
-
-        Returns:
-            Dict containing raw aggregated scores, IC, and ambiguity bounds.
-        """
         synonyms = self.ontology.get_synonyms_for_concept(concept_id)
         if not synonyms:
-            return {
-                "concept_difficulty": 0.0,
-                "intrinsic_ic": 0.0,
-                "avg_name_confusability": 0.0,
-                "max_name_confusability": 0.0,
-            }
-
-        confusability_scores = [
-            self.compute_name_confusability(
-                concept_id, name
+            return ConceptDifficulty(
+                predicted_accuracy=1.0,
+                min_predicted_accuracy=1.0,
+                intrinsic_ic=...
             )
+
+        per_name_accuracy = [
+            self.predict_accuracy(concept_id, name)
             for name in synonyms
         ]
+        overall_accuracy = sum(per_name_accuracy) / len(per_name_accuracy)
+        worst_case_accuracy = min(per_name_accuracy)
 
-        avg_confusability = sum(confusability_scores) / len(
-            confusability_scores
+        if self.config.apply_extrinsic_ic_prior:
+            if self.config.sim_metric in ("resnik", "lin"):
+                raise ValueError(
+                    "apply_extrinsic_ic_prior double-counts IC when combined "
+                    f"with sim_metric={self.config.sim_metric!r}")
+            # NOTE: multiplying accuracy, not difficulty now
+            overall_accuracy *= self.intrinsic_ic(concept_id)
+
+        return ConceptDifficulty(
+            predicted_accuracy=overall_accuracy,
+            min_predicted_accuracy=worst_case_accuracy,
+            intrinsic_ic=self.intrinsic_ic(concept_id),
         )
-        max_confusability = max(confusability_scores)
-
-        ic_value = self.intrinsic_ic(concept_id)
-
-        # Combined Difficulty Score:
-        # High name ambiguity increases difficulty, high concept specificity (IC) mitigates it.
-        overall_difficulty = avg_confusability * (1.01 - ic_value)
-
-        return {
-            "concept_difficulty": overall_difficulty,
-            "intrinsic_ic": ic_value,
-            "avg_name_confusability": avg_confusability,
-            "max_name_confusability": max_confusability,
-        }
