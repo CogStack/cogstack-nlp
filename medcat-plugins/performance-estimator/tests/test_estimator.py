@@ -3,7 +3,9 @@ import unittest
 
 from medcat_performance_estimator.graphing import AbstractOntologyGraph
 from medcat_performance_estimator.estimator import (
-    OntologyDifficultyEstimator, EstimationConfig)
+    MisconfiguredConcept, MisconfiguredSimMetric, OntologyDifficultyEstimator,
+    EstimationConfig, UnknownSimilarityMetric
+)
 
 
 # =============================================================================
@@ -125,7 +127,7 @@ class TestEdgeCases(unittest.TestCase):
 
         estimator = OntologyDifficultyEstimator(graph)
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises(MisconfiguredConcept):
             estimator.compute_name_confusability("C3", "shared_term")
 
     def test_invalid_similarity_metric_raises_value_error(self):
@@ -133,7 +135,7 @@ class TestEdgeCases(unittest.TestCase):
         config = EstimationConfig(sim_metric="invalid_metric")
         estimator = OntologyDifficultyEstimator(graph, config=config)
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises(UnknownSimilarityMetric):
             estimator.get_sim_metric("C1", "C2")
 
     def test_double_counting_ic_guard_raises_value_error(self):
@@ -143,7 +145,7 @@ class TestEdgeCases(unittest.TestCase):
         config = EstimationConfig(sim_metric="lin", apply_extrinsic_ic_prior=True)
         estimator = OntologyDifficultyEstimator(graph, config=config)
 
-        with self.assertRaises(ValueError):
+        with self.assertRaises(MisconfiguredSimMetric):
             estimator.compute_concept_ontology_difficulty("C1")
 
     def test_identity_similarity_equals_one(self):
