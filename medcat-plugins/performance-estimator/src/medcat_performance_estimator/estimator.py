@@ -141,7 +141,7 @@ class OntologyDifficultyEstimator:
         elif self.config.sim_metric == "lin":
             return self.sim_lin_intrinsic(concept_a, concept_b)
         else:
-            raise ValueError(
+            raise UnknownSimilarityMetric(
                 f"Unknown similarity metric: {self.config.sim_metric}")
 
     # =========================================================================
@@ -162,7 +162,7 @@ class OntologyDifficultyEstimator:
             return 0.0  # Name is completely unambiguous
 
         if target_concept not in competing_concepts:
-            raise ValueError(
+            raise MisconfiguredConcept(
                 f"{target_concept!r} not found among concepts for name {name!r}; "
                 "ontology's name/concept lookups may be inconsistent"
             )
@@ -223,7 +223,7 @@ class OntologyDifficultyEstimator:
 
         if self.config.apply_extrinsic_ic_prior:
             if self.config.sim_metric in ("resnik", "lin"):
-                raise ValueError(
+                raise MisconfiguredSimMetric(
                     "apply_extrinsic_ic_prior double-counts IC when combined "
                     f"with sim_metric={self.config.sim_metric!r}")
             # NOTE: multiplying accuracy, not difficulty now
@@ -234,3 +234,15 @@ class OntologyDifficultyEstimator:
             min_predicted_accuracy=worst_case_accuracy,
             intrinsic_ic=self.get_intrinsic_ic(concept_id),
         )
+
+
+class UnknownSimilarityMetric(ValueError):
+    pass
+
+
+class MisconfiguredSimMetric(ValueError):
+    pass
+
+
+class MisconfiguredConcept(ValueError):
+    pass
