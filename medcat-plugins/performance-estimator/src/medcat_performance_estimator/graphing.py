@@ -134,11 +134,11 @@ class SnomedGraph(AbstractOntologyGraph):
         """Returns the maximum depth ($D$) of the ontology hierarchy."""
         return self._max_ontology_depth
 
-    @lru_cache
+    @lru_cache(maxsize=10_000)
     def get_subtree_node_count(self, concept_id: str) -> int:
         return len(nx.descendants(self.G, concept_id))
 
-    @lru_cache
+    @lru_cache(maxsize=10_000)
     def get_subtree_leaves_count(self, concept_id: str) -> int:
         """Returns the count of leaf nodes subsumed by this concept (subgraph leaves)."""
         descendants = nx.descendants(self.G, concept_id)
@@ -153,7 +153,7 @@ class SnomedGraph(AbstractOntologyGraph):
 
         return len(leaves)
 
-    @lru_cache
+    @lru_cache(maxsize=10_000)
     def get_ancestors_count(self, concept_id: str) -> int:
         """Returns the total number of ancestor concepts for this concept."""
         return len(nx.ancestors(self.G, concept_id))
