@@ -29,6 +29,7 @@ classifiers = [
 
 dependencies = [
     "medcat>=2.5",
+    "pydantic",
     "networkx",
 ]
 
