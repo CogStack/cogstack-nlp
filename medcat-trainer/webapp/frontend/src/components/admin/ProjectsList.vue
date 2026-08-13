@@ -306,7 +306,15 @@ export default {
 .list-section {
   display: flex;
   flex-direction: column;
+  flex: 1;
   min-height: 0;
+
+  .table-container {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
 
   .admin-table {
     :deep(.v-table__wrapper) {
@@ -344,6 +352,7 @@ export default {
 
     :deep(.action-buttons) {
       justify-content: flex-start;
+      gap: 1px;
     }
 
     :deep(.col-hide-narrow) {
