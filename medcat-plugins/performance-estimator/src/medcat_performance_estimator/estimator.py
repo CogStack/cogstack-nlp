@@ -190,7 +190,8 @@ class OntologyDifficultyEstimator:
         # competitor's likelyhood is its similarity, and if power >> 1 then
         # only near-identical competitors matter
         effective_N = 1 + sum(
-            self.sim_metric(target_concept, other) ** power
+            max(self.sim_metric(target_concept, other),
+                self.config.similarity_floor) ** power
             for other in other_concepts
         )
         return 1 / effective_N
