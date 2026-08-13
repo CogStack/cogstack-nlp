@@ -205,7 +205,7 @@ class OntologyDifficultyEstimator:
             return ConceptDifficulty(
                 predicted_accuracy=1.0,
                 min_predicted_accuracy=1.0,
-                intrinsic_ic=...
+                intrinsic_ic=self.intrinsic_ic(concept_id),
             )
 
         per_name_accuracy = [
