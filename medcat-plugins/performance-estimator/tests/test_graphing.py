@@ -44,19 +44,25 @@ class BaseGraphedTests(TestCase):
             with self.subTest(f"CUI: {cui}"):
                 self.assertIn(cui, self.graph.G)
 
-    def test_leaves_count_as_leaf_in_subtree(self):
-        leaves = self.get_leaves()
+    def test_graph_has_leaves(self):
+        leaves =self.get_leaves()
         self.assertTrue(leaves)
-        for leaf in leaves:
+
+    def test_leaves_count_as_leaf_in_subtree(self):
+        for leaf in self.get_leaves():
             with self.subTest(leaf):
                 self.assertEqual(self.graph.get_subtree_leaves_count(leaf), 1)
 
     def test_leaves_have_0_nodes_in_subtree(self):
-        leaves = self.get_leaves()
-        self.assertTrue(leaves)
-        for leaf in leaves:
+        for leaf in self.get_leaves():
             with self.subTest(leaf):
                 self.assertEqual(self.graph.get_subtree_node_count(leaf), 0)
+
+    def test_root_has_all_leaves_in_subtree(self):
+        root = self.graph._root_concept
+        leaves = self.get_leaves()
+        self.assertEqual(
+            self.graph.get_subtree_leaves_count(root), len(leaves))
 
 
 class SimpleGraphTests(BaseGraphedTests):
