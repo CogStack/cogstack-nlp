@@ -51,6 +51,7 @@ nav:
   - Advanced Tutorials:
     - 1. Creating and using a custom tokenizer: advanced/1._Creating_and_using_a_custom_tokenizer.ipynb
     - 2. Create and use component: advanced/2._Create_and_use_component.ipynb
+    - 3. Create and use a custom addon: advanced/3._Create_and_use_a_custom_addon.ipynb
     - Custom Components:
       - README: introductory/custom/README.md
       - 1. Create Modelpack with 2step linker: introductory/custom/1._Create_Modelpack_with_2step_linker.ipynb
