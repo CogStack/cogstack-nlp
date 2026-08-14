@@ -1433,9 +1433,10 @@ export default {
 @import '@/styles/admin.scss';
 
 .project-admin-view {
-  padding: 16px 20px;
-  max-width: 1400px;
-  margin: 0 auto;
+  padding: 16px 24px;
+  width: 100%;
+  max-width: none;
+  margin: 0;
   background: var(--color-background);
   display: flex;
   flex-direction: column;
