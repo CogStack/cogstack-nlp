@@ -163,11 +163,17 @@
 
     <div v-else class="empty-state">
       <h4>No Projects Yet</h4>
-      <p>You don't have any projects yet. Create one to get started!</p>
-      <button class="btn btn-primary btn-create-empty" @click="$emit('create-project')">
-        <font-awesome-icon icon="plus"></font-awesome-icon>
-        <span>Create Your First Project</span>
-      </button>
+      <p>You don't have any projects yet. Create a project or a project group to get started.</p>
+      <div class="empty-state-actions">
+        <button class="btn btn-primary btn-create-empty" @click="$emit('create-project')">
+          <font-awesome-icon icon="plus"></font-awesome-icon>
+          <span>Create Your First Project</span>
+        </button>
+        <button class="btn btn-outline-primary btn-create-empty" @click="$emit('create-project-group')">
+          <font-awesome-icon icon="layer-group"></font-awesome-icon>
+          <span>Create a Project Group</span>
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -192,7 +198,7 @@ export default {
       required: true
     }
   },
-  emits: ['select-project', 'clone-project', 'confirm-reset', 'confirm-delete', 'create-project'],
+  emits: ['select-project', 'clone-project', 'confirm-reset', 'confirm-delete', 'create-project', 'create-project-group'],
   data() {
     return {
       searchQuery: '',
@@ -366,6 +372,13 @@ export default {
   .empty-state-filtered {
     padding: 40px 20px;
     text-align: center;
+  }
+
+  .empty-state-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
   }
 }
 </style>

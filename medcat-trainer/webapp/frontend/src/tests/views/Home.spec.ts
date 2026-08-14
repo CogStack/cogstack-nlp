@@ -92,7 +92,7 @@ describe('Home.vue', () => {
           $http: { get: mockGet },
           $cookies: mockCookies
         },
-        stubs: ['login', 'modal', 'project-list', 'v-data-table', 'transition', 'router-link', 'router-view']
+        stubs: ['login', 'modal', 'project-list', 'v-data-table', 'transition', 'router-link', 'router-view', 'font-awesome-icon', 'plugin-slot']
       }
     });
 
@@ -133,7 +133,7 @@ describe('Home.vue', () => {
           $http: { get: mockGet },
           $cookies: mockCookies
         },
-        stubs: ['login', 'modal', 'project-list', 'v-data-table', 'transition', 'router-link', 'router-view']
+        stubs: ['login', 'modal', 'project-list', 'v-data-table', 'transition', 'router-link', 'router-view', 'font-awesome-icon', 'plugin-slot']
       }
     });
 
@@ -171,7 +171,7 @@ describe('Home.vue', () => {
           $http: { get: mockGet },
           $cookies: mockCookies
         },
-        stubs: ['login', 'modal', 'project-list', 'v-data-table', 'transition', 'router-link', 'router-view']
+        stubs: ['login', 'modal', 'project-list', 'v-data-table', 'transition', 'router-link', 'router-view', 'font-awesome-icon', 'plugin-slot']
       }
     });
 
@@ -181,5 +181,58 @@ describe('Home.vue', () => {
     // Cookie wipe is owned by httpAuth on 401; Home must not double-clear.
     expect(mockCookies.remove).not.toHaveBeenCalled();
     expect(wrapper.vm.loginSuccessful).toBe(false);
+  });
+
+  it('shows Projects / Project Groups tabs for admins and switches the list', async () => {
+    const mockGet = vi.fn((url: string) => {
+      if (url === '/api/behind-rp/') {
+        return Promise.resolve({ data: true });
+      }
+      if (url === '/api/project-annotate-entities/') {
+        return Promise.resolve({ data: { results: [testProjectsResponse], next: null } });
+      }
+      if (url.startsWith('/api/concept-db-search-index-created/')) {
+        return Promise.resolve({ data: { results: [] } });
+      }
+      if (url === '/api/project-progress/?projects=1') {
+        return Promise.resolve({ data: testProjectProgress });
+      }
+      if (url.startsWith('/api/project-groups/')) {
+        return Promise.resolve({ data: { results: [] } });
+      }
+      return Promise.resolve({});
+    });
+    const mockCookies = {
+      get: vi.fn((key: string) => {
+        if (key === 'api-token') return 'token';
+        if (key === 'admin') return 'true';
+        return null;
+      }),
+      remove: vi.fn()
+    };
+
+    const wrapper = mount(Home, {
+      global: {
+        plugins: [router],
+        mocks: {
+          $http: { get: mockGet },
+          $cookies: mockCookies
+        },
+        stubs: ['login', 'modal', 'project-list', 'v-data-table', 'transition', 'router-link', 'router-view', 'font-awesome-icon', 'plugin-slot']
+      }
+    });
+
+    await router.isReady();
+    await flushPromises();
+
+    const tabs = wrapper.findAll('.tab-button')
+    expect(tabs).toHaveLength(2)
+    expect(tabs[0].text()).toContain('Projects')
+    expect(tabs[1].text()).toContain('Project Groups')
+    expect(tabs[0].classes()).toContain('active')
+
+    await tabs[1].trigger('click')
+    expect(wrapper.vm.projectGroupView).toBe(true)
+    expect(tabs[1].classes()).toContain('active')
   });
 });
