@@ -74,9 +74,6 @@ class SnomedGraph(AbstractOntologyGraph):
                 f"Unable to find unique root. Potentials: {potential_roots}")
         self._root_concept = potential_roots[0]
         self._depths = self._compute_all_depths()
-        self._max_ontology_depth = max(
-            self.get_concept_depth(cui) for cui in self.G
-        )
 
     def _compute_all_depths(self) -> dict[str, int]:
         depth = {self._root_concept: 0}
@@ -130,9 +127,12 @@ class SnomedGraph(AbstractOntologyGraph):
         """Returns the depth of a concept from the root (or max depth if multiple paths)."""
         return self._depths.get(concept_id, -1)
 
+    @lru_cache(maxsize=1)
     def get_max_ontology_depth(self) -> int:
         """Returns the maximum depth ($D$) of the ontology hierarchy."""
-        return self._max_ontology_depth
+        return max(
+            self.get_concept_depth(cui) for cui in self.G
+        )
 
     @lru_cache(maxsize=10_000)
     def get_subtree_node_count(self, concept_id: str) -> int:
@@ -158,6 +158,7 @@ class SnomedGraph(AbstractOntologyGraph):
         """Returns the total number of ancestor concepts for this concept."""
         return len(nx.ancestors(self.G, concept_id))
 
+    @lru_cache(maxsize=1)
     def get_total_leaves_count(self) -> int:
         """Returns the total number of leaf nodes in the whole ontology."""
         # just take away the root concept
