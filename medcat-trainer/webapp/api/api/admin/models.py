@@ -6,6 +6,7 @@ from django.shortcuts import get_object_or_404
 
 from .actions import *
 from ..models import *
+from ..project_groups import create_projects_for_group, update_projects_for_group
 
 _PROJECT_ANNO_ENTS_SETTINGS_FIELD_ORDER = (
     'concept_db', 'vocab', 'model_pack', 'cdb_search_filter', 'deid_model_annotation', 'require_entity_validation', 'train_model_on_submit',
@@ -80,44 +81,6 @@ class ProjectGroupAdmin(admin.ModelAdmin):
         form = super().get_form(request, obj, **kwargs)
         return form
 
-    def _set_proj_from_group(self, proj: ProjectAnnotateEntities, group: ProjectGroup,
-                             annotator: settings.AUTH_USER_MODEL, admins: List[User],
-                             cdb_search_filters: List[ConceptDB], tasks: List[MetaTask], relations: List[Relation]):
-        proj.group = group
-        proj.name = f'{group.name} - {str(annotator)}'
-        proj.description = group.description
-        proj.dataset = group.dataset
-        proj.annotation_guideline_link = group.annotation_guideline_link
-        proj.create_time = group.create_time
-        proj.cuis = group.cuis
-        proj.cuis_file = group.cuis_file
-        proj.annotation_classification = group.annotation_classification
-        proj.project_locked = group.project_locked
-        proj.project_status = group.project_status
-        proj.concept_db = group.concept_db
-        proj.vocab = group.vocab
-        proj.model_pack = group.model_pack
-        proj.deid_model_annotation = group.deid_model_annotation
-        proj.use_model_service = group.use_model_service
-        proj.model_service_url = group.model_service_url
-        proj.require_entity_validation = group.require_entity_validation
-        proj.train_model_on_submit = group.train_model_on_submit
-        proj.add_new_entities = group.add_new_entities
-        proj.restrict_concept_lookup = group.restrict_concept_lookup
-        proj.terminate_available = group.terminate_available
-        proj.irrelevant_available = group.irrelevant_available
-        proj.enable_entity_annotation_comments = group.enable_entity_annotation_comments
-
-        # project specific attrs / m2m fields
-        proj.save()
-        proj.cdb_search_filter.set(cdb_search_filters)
-        proj.members.set(admins)
-        proj.members.add(annotator)
-        proj.tasks.set(tasks)
-        proj.relations.set(relations)
-        proj.save()
-        return proj
-
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
         annotators = [get_object_or_404(User, pk=id) for id in request.POST.getlist('annotators')]
@@ -126,25 +89,25 @@ class ProjectGroupAdmin(admin.ModelAdmin):
         tasks = [get_object_or_404(MetaTask, pk=id) for id in request.POST.getlist('tasks')]
         relations = [get_object_or_404(Relation, pk=id) for id in request.POST.getlist('relations')]
 
-        # create the underlying ProjectAnnotateEntities models or edit them
         if obj.create_associated_projects:
             if not change:
-                # new ProjectGroup being created
-                for annotator in annotators:
-                    self._set_proj_from_group(ProjectAnnotateEntities(), obj, annotator,
-                                              admins, cdb_search_filters, tasks, relations)
+                create_projects_for_group(
+                    obj,
+                    annotators=annotators,
+                    admins=admins,
+                    cdb_search_filters=cdb_search_filters,
+                    tasks=tasks,
+                    relations=relations,
+                )
             else:
-                # applying these settings to all previously created projects within this group
-                projs = ProjectAnnotateEntities.objects.filter(group=obj)
-                if len(projs) == len(obj.annotators.all()):
-                    for proj, annotator in zip(projs, obj.annotators.all()):
-                       self._set_proj_from_group(proj, obj, annotator, admins, cdb_search_filters,
-                                                 tasks, relations)
-                else:
-                    raise ValueError("Attempting to update a ProjectGroup but one or more "
-                                     "of underlying ProjectAnnotateEntities have been removed / or added "
-                                     "manually. To fix, go into each project separately, or create new projects "
-                                     "and link to the ProjectGroup within ProjectAnnotateEntities page.")
+                update_projects_for_group(
+                    obj,
+                    annotators=list(obj.annotators.all()),
+                    admins=admins,
+                    cdb_search_filters=cdb_search_filters,
+                    tasks=tasks,
+                    relations=relations,
+                )
 
 
 class AnnotatedEntityAdmin(admin.ModelAdmin):

@@ -7,9 +7,9 @@
           <p class="subtitle">Manage your annotation projects</p>
         </div>
         <div class="header-actions">
-          <button v-if="activeTab === 'projects'" class="btn btn-primary btn-create" @click="showCreateForm = true">
+          <button v-if="activeTab === 'projects'" class="btn btn-primary btn-create" @click="openCreateForm('project')">
             <font-awesome-icon icon="plus"></font-awesome-icon>
-            <span>Create New Project</span>
+            <span>Create</span>
           </button>
           <button v-if="activeTab === 'modelpacks'" class="btn btn-primary btn-create" @click="showModelPackForm = true; editingModelPack = null">
             <font-awesome-icon icon="plus"></font-awesome-icon>
@@ -77,7 +77,8 @@
         @clone-project="cloneProject"
         @confirm-reset="confirmReset"
         @confirm-delete="confirmDelete"
-        @create-project="showCreateForm = true"
+        @create-project="openCreateForm('project')"
+        @create-project-group="openCreateForm('group')"
       />
 
       <!-- Project Form View (replaces list) -->
@@ -87,13 +88,48 @@
             <font-awesome-icon icon="arrow-left"></font-awesome-icon>
             <span>Back</span>
           </button>
-          <h3>{{ editingProject ? 'Edit Project' : 'Create New Project' }}</h3>
+          <div
+            v-if="!editingProject"
+            class="form-type-switch"
+            role="tablist"
+            aria-label="What to create">
+            <button
+              type="button"
+              role="tab"
+              class="form-type-btn"
+              :class="{ active: createMode === 'project' }"
+              :aria-selected="createMode === 'project'"
+              @click="createMode = 'project'">
+              <font-awesome-icon icon="folder"></font-awesome-icon>
+              <span>Project</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              class="form-type-btn"
+              :class="{ active: createMode === 'group' }"
+              :aria-selected="createMode === 'group'"
+              @click="createMode = 'group'">
+              <font-awesome-icon icon="layer-group"></font-awesome-icon>
+              <span>Project Group</span>
+            </button>
+          </div>
+          <h3 v-else>{{ formTitle }}</h3>
           <div class="form-header-actions">
             <button type="submit" form="project-admin-form" class="btn btn-primary" :disabled="saving">
               <font-awesome-icon v-if="saving" icon="spinner" spin></font-awesome-icon>
-              <span>{{ saving ? 'Saving...' : 'Save Project' }}</span>
+              <span>{{ saving ? 'Saving...' : saveButtonLabel }}</span>
             </button>
           </div>
+        </div>
+        <div v-if="isCreatingGroup" class="form-toolbar">
+          <p class="form-toolbar-hint">
+            Shared settings across annotators. Used for agreement metrics and adjudication.
+          </p>
+          <label class="form-toolbar-check">
+            <input v-model="formData.create_associated_projects" type="checkbox" class="checkbox-input" />
+            <span>Create an annotation project for each annotator</span>
+          </label>
         </div>
         <div class="form-content">
           <form id="project-admin-form" @submit.prevent="saveProject" class="project-form">
@@ -385,8 +421,33 @@
             </div>
 
             <div class="form-section">
-              <h4>Members</h4>
-              <div class="form-group">
+              <h4>{{ isCreatingGroup ? 'Group Members' : 'Members' }}</h4>
+              <template v-if="isCreatingGroup">
+                <div class="form-group">
+                  <label>Administrators</label>
+                  <select v-model="formData.administrators" multiple class="form-control">
+                    <option v-for="user in users" :key="'admin-' + user.id" :value="user.id">{{ user.username }}</option>
+                  </select>
+                  <small class="form-text text-muted">Users who can see and manage all projects in this group. You are added automatically. Hold Ctrl/Cmd to select multiple.</small>
+                </div>
+                <div class="form-group">
+                  <label>Annotators <span v-if="formData.create_associated_projects">*</span></label>
+                  <select
+                    v-model="formData.annotators"
+                    multiple
+                    name="annotators"
+                    data-field="annotators"
+                    class="form-control"
+                    :class="{ 'is-invalid': validationErrors.annotators }"
+                    @change="clearValidationError('annotators')"
+                  >
+                    <option v-for="user in users" :key="'annotator-' + user.id" :value="user.id">{{ user.username }}</option>
+                  </select>
+                  <small v-if="validationErrors.annotators" class="form-text text-danger">{{ validationErrors.annotators }}</small>
+                  <small v-else class="form-text text-muted">Hold Ctrl/Cmd to select multiple. One annotation project is created per annotator.</small>
+                </div>
+              </template>
+              <div v-else class="form-group">
                 <label>Project Members</label>
                 <select v-model="formData.members" multiple class="form-control">
                   <option v-for="user in users" :key="user.id" :value="user.id">{{ user.username }}</option>
@@ -602,6 +663,7 @@ export default {
       modelPacks: [],
       users: [],
       showCreateForm: false,
+      createMode: 'project',
       editingProject: null,
       projectToDelete: null,
       projectToReset: null,
@@ -648,7 +710,10 @@ export default {
         enable_entity_annotation_comments: false,
         cuis: '',
         cuis_file: null,
-        members: []
+        members: [],
+        administrators: [],
+        annotators: [],
+        create_associated_projects: true
       },
       validationErrors: {},
       tableHeaders: [
@@ -662,6 +727,18 @@ export default {
   },
   created() {
     this.loadData()
+  },
+  computed: {
+    isCreatingGroup() {
+      return !this.editingProject && this.createMode === 'group'
+    },
+    formTitle() {
+      if (this.editingProject) return 'Edit Project'
+      return this.isCreatingGroup ? 'Create Project Group' : 'Create Annotation Project'
+    },
+    saveButtonLabel() {
+      return this.isCreatingGroup ? 'Save Project Group' : 'Save Project'
+    }
   },
   methods: {
     async loadData() {
@@ -736,6 +813,10 @@ export default {
       // v-data-table click:row passes (event, { item })
       this.editProject(item)
     },
+    openCreateForm(mode = 'project') {
+      this.createMode = mode === 'group' ? 'group' : 'project'
+      this.showCreateForm = true
+    },
     editProject(project) {
       this.editingProject = project
       this.formData = {
@@ -777,6 +858,7 @@ export default {
     closeForm() {
       this.showCreateForm = false
       this.editingProject = null
+      this.createMode = 'project'
       this.useBackupOption = false
       this.useDefaultGuideline = false
       this.validationErrors = {}
@@ -815,7 +897,10 @@ export default {
         enable_entity_annotation_comments: false,
         cuis: '',
         cuis_file: null,
-        members: []
+        members: [],
+        administrators: [],
+        annotators: [],
+        create_associated_projects: true
       }
       this.useBackupOption = false
       this.useDefaultGuideline = false
@@ -873,6 +958,28 @@ export default {
       }
       return null
     },
+    toIntList(values) {
+      if (!Array.isArray(values)) return []
+      return values
+        .map(val => {
+          if (val === null || val === undefined || val === '') return null
+          const numVal = typeof val === 'string' ? parseInt(val, 10) : Number(val)
+          return (!isNaN(numVal) && isFinite(numVal)) ? numVal : null
+        })
+        .filter(val => val !== null)
+    },
+    resolveConceptDbIdForFilter() {
+      if (this.formData.model_pack) {
+        const modelPack = this.modelPacks.find(mp => mp.id === this.formData.model_pack)
+        if (modelPack?.concept_db != null) {
+          return typeof modelPack.concept_db === 'object' ? modelPack.concept_db.id : modelPack.concept_db
+        }
+      }
+      if (this.formData.concept_db) {
+        return this.formData.concept_db
+      }
+      return null
+    },
     handleInvalid(event) {
       // Prevent browser's default validation message popup
       event.preventDefault()
@@ -906,6 +1013,13 @@ export default {
       if (!this.formData.dataset) {
         this.validationErrors.dataset = 'Dataset is required'
         isValid = false
+      }
+
+      if (this.isCreatingGroup && this.formData.create_associated_projects) {
+        if (!this.formData.annotators || this.formData.annotators.length === 0) {
+          this.validationErrors.annotators = 'Select at least one annotator to create associated projects'
+          isValid = false
+        }
       }
 
       // Model configuration validation
@@ -964,6 +1078,17 @@ export default {
           this.formData.vocab = null
         }
 
+        if (this.isCreatingGroup) {
+          const newCdbId = await this.saveProjectGroup()
+          this.$toast?.success('Project group created successfully')
+          if (newCdbId) {
+            await this.ensureConceptsImported(newCdbId)
+          }
+          this.closeForm()
+          await this.fetchProjects()
+          return
+        }
+
         // Prepare data payload - convert members to integers
         const payload = { ...this.formData }
 
@@ -989,29 +1114,22 @@ export default {
 
         // Ensure members are integers
         if (Array.isArray(payload.members)) {
-          payload.members = payload.members
-            .map(val => {
-              if (val === null || val === undefined || val === '') return null
-              const numVal = typeof val === 'string' ? parseInt(val, 10) : Number(val)
-              return (!isNaN(numVal) && isFinite(numVal)) ? numVal : null
-            })
-            .filter(val => val !== null)
+          payload.members = this.toIntList(payload.members)
         } else {
           payload.members = []
         }
 
         // Ensure cdb_search_filter are integers
         if (Array.isArray(payload.cdb_search_filter)) {
-          payload.cdb_search_filter = payload.cdb_search_filter
-            .map(val => {
-              if (val === null || val === undefined || val === '') return null
-              const numVal = typeof val === 'string' ? parseInt(val, 10) : Number(val)
-              return (!isNaN(numVal) && isFinite(numVal)) ? numVal : null
-            })
-            .filter(val => val !== null)
+          payload.cdb_search_filter = this.toIntList(payload.cdb_search_filter)
         } else {
           payload.cdb_search_filter = []
         }
+
+        // Group-only fields are not valid on a single project
+        delete payload.administrators
+        delete payload.annotators
+        delete payload.create_associated_projects
 
         // Remove cuis_file from JSON payload (file uploads would need separate handling if needed)
         delete payload.cuis_file
@@ -1046,7 +1164,7 @@ export default {
       } catch (error) {
         console.error('Error saving project:', error)
         console.error('Error response:', error.response?.data)
-        let errorMsg = 'Failed to save project'
+        let errorMsg = this.isCreatingGroup ? 'Failed to save project group' : 'Failed to save project'
         if (error.response?.data) {
           if (typeof error.response.data === 'string') {
             errorMsg = error.response.data
@@ -1069,6 +1187,18 @@ export default {
       } finally {
         this.saving = false
       }
+    },
+    async saveProjectGroup() {
+      const payload = { ...this.formData }
+      const conceptDbIdForFilter = this.resolveConceptDbIdForFilter()
+      payload.cdb_search_filter = conceptDbIdForFilter != null ? this.toIntList([conceptDbIdForFilter]) : []
+      payload.administrators = this.toIntList(payload.administrators)
+      payload.annotators = this.toIntList(payload.annotators)
+      payload.create_associated_projects = !!payload.create_associated_projects
+      delete payload.members
+      delete payload.cuis_file
+      await this.$http.post('/api/project-groups/', payload)
+      return conceptDbIdForFilter
     },
     async ensureConceptsImported(cdbId) {
       // Mirrors the "Concepts Imported" check from ProjectList.vue: ask Solr whether the
@@ -1374,6 +1504,11 @@ export default {
         delete this.validationErrors.dataset
       }
     },
+    'formData.annotators'() {
+      if (this.validationErrors.annotators) {
+        delete this.validationErrors.annotators
+      }
+    },
     'formData.model_service_url'() {
       if (this.validationErrors.model_service_url) {
         delete this.validationErrors.model_service_url
@@ -1565,6 +1700,45 @@ export default {
       }
     }
 
+    .form-type-switch {
+      display: flex;
+      flex: 1;
+      min-width: 0;
+      max-width: 420px;
+      margin: 0 auto;
+      padding: 3px;
+      background: rgba(255, 255, 255, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      border-radius: 8px;
+    }
+
+    .form-type-btn {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border: none;
+      border-radius: 6px;
+      background: transparent;
+      color: rgba(255, 255, 255, 0.88);
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+
+      &:hover:not(.active) {
+        background: rgba(255, 255, 255, 0.12);
+      }
+
+      &.active {
+        background: white;
+        color: $primary;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+      }
+    }
+
     .btn-back {
       background: rgba(255, 255, 255, 0.2);
       border: 1px solid rgba(255, 255, 255, 0.3);
@@ -1587,6 +1761,46 @@ export default {
       svg {
         font-size: 0.9rem;
       }
+    }
+  }
+
+  .form-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 8px 16px;
+    background: #eef6fc;
+    border-bottom: 1px solid var(--color-border);
+    flex-shrink: 0;
+  }
+
+  .form-toolbar-hint {
+    margin: 0;
+    font-size: 0.82rem;
+    color: var(--color-text);
+    opacity: 0.8;
+    line-height: 1.4;
+  }
+
+  .form-toolbar-check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--color-heading);
+    white-space: nowrap;
+    cursor: pointer;
+    flex-shrink: 0;
+
+    .checkbox-input {
+      margin: 0;
+      width: 15px;
+      height: 15px;
+      accent-color: $primary;
+      cursor: pointer;
     }
   }
 
@@ -1918,6 +2132,22 @@ export default {
         padding: 4px 10px;
         font-size: 0.85rem;
       }
+
+      .form-type-switch {
+        flex: 1 1 100%;
+        max-width: none;
+        order: 3;
+      }
+    }
+
+    .form-toolbar {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .form-toolbar-check {
+      white-space: normal;
     }
 
     .form-content {
