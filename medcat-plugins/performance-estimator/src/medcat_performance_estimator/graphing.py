@@ -139,19 +139,23 @@ class SnomedGraph(AbstractOntologyGraph):
         return len(nx.descendants(self.G, concept_id))
 
     @lru_cache(maxsize=10_000)
+    def _get_subtree_leaves(self, concept_id: str) -> set[str]:
+        # doing this recursively we we don't
+        # have to recalculate every time
+        children = self.pt2ch.get(concept_id, set())
+        leaves = set()
+        if not children:
+            # this is a leaf!
+            return {concept_id}
+        for ch in children:
+            child_leaves = self._get_subtree_leaves(ch)
+            leaves.update(child_leaves)
+        return leaves
+
+    @lru_cache(maxsize=10_000)
     def get_subtree_leaves_count(self, concept_id: str) -> int:
         """Returns the count of leaf nodes subsumed by this concept (subgraph leaves)."""
-        descendants = nx.descendants(self.G, concept_id)
-
-        leaves = {
-            n for n in descendants
-            if self.G.out_degree(n) == 0
-        }
-
-        if self.G.out_degree(concept_id) == 0:
-            leaves.add(concept_id)
-
-        return len(leaves)
+        return len(self._get_subtree_leaves(concept_id))
 
     @lru_cache(maxsize=10_000)
     def get_ancestors_count(self, concept_id: str) -> int:
