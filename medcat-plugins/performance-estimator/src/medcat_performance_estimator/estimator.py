@@ -4,6 +4,7 @@ from typing import TypedDict
 from pydantic import BaseModel
 
 from .graphing import AbstractOntologyGraph
+from .utils import method_lru_cache as lru_cache
 
 
 class ConceptDifficulty(TypedDict):
@@ -130,6 +131,7 @@ class OntologyDifficultyEstimator:
         denom = ic_a + ic_b
         return (2.0 * ic_lcs) / denom if denom > 0 else 0.0
 
+    @lru_cache(maxsize=10_000)
     def get_sim_metric(
         self, concept_a: str, concept_b: str,
     ) -> float:
