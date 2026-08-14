@@ -10,6 +10,13 @@ class BaseGraphedTests(TestCase):
         "C": {"C1"}
     }
 
+    def get_leaves(self):
+        return {
+            cui for children in self.PT2CH.values()
+            for cui in children
+            if cui not in self.PT2CH
+        }
+
     def num_cuis(self):
         cuis = set(self.PT2CH)
         for vals in self.PT2CH.values():
@@ -36,6 +43,20 @@ class BaseGraphedTests(TestCase):
         for cui in all_cuis:
             with self.subTest(f"CUI: {cui}"):
                 self.assertIn(cui, self.graph.G)
+
+    def test_leaves_count_as_leaf_in_subtree(self):
+        leaves = self.get_leaves()
+        self.assertTrue(leaves)
+        for leaf in leaves:
+            with self.subTest(leaf):
+                self.assertEqual(self.graph.get_subtree_leaves_count(leaf), 1)
+
+    def test_leaves_have_0_nodes_in_subtree(self):
+        leaves = self.get_leaves()
+        self.assertTrue(leaves)
+        for leaf in leaves:
+            with self.subTest(leaf):
+                self.assertEqual(self.graph.get_subtree_node_count(leaf), 0)
 
 
 class SimpleGraphTests(BaseGraphedTests):
