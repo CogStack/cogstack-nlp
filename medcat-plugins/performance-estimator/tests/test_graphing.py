@@ -103,6 +103,12 @@ class SimpleGraphTests(BaseGraphedTests):
                 exp = len(cui) - len(self.ROOT)
                 self.assertEqual(depth, exp)
 
+    def test_subtree_count_for_root(self):
+        root = self.graph._root_concept
+        nodes = self.graph.get_subtree_node_count(root)
+        # without root?
+        self.assertEqual(nodes, self.NUM_CUIS - 1)
+
 
 class SimpleDiGraphTests(BaseGraphedTests):
     AMBIG = "C21"
