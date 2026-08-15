@@ -315,8 +315,10 @@ import RelationAnnotationTaskContainer from '@/components/usecases/RelationAnnot
 import AnnotationSummary from '@/components/common/AnnotationSummary.vue'
 import ConceptFilter from "@/components/common/ConceptFilter.vue"
 import {Splitpanes, Pane} from 'splitpanes'
-import { ensureTraditionalAuth } from '@/httpAuth'
+import { ensureTraditionalAuth, UNAUTHORIZED_EVENT } from '@/httpAuth'
+import { readTraditionalSession } from '@/authCookies'
 import { isOidcEnabled } from '@/runtimeConfig'
+import EventBus from '@/event-bus'
 
 const TASK_NAME = 'Concept Annotation'
 const CONCEPT_CORRECT = 'Correct'
@@ -404,6 +406,9 @@ export default {
   created() {
     this.fetchAnnoConf()
   },
+  mounted() {
+    EventBus.$on(UNAUTHORIZED_EVENT, this.onUnauthorized)
+  },
   methods: {
     ensureProjectAuth() {
       if (isOidcEnabled()) {
@@ -413,8 +418,19 @@ export default {
         }
         return true
       }
-      // Sync cookie ↔ Authorization header (or force re-login if the cookie is gone).
-      return ensureTraditionalAuth(this.$http, this.$cookies.get('api-token'))
+      const session = readTraditionalSession(name => this.$cookies.get(name))
+      return ensureTraditionalAuth(this.$http, session?.token)
+    },
+    onUnauthorized () {
+      this.project = null
+      this.docs = []
+      this.docIds = []
+      this.docIdsToDocs = {}
+      this.ents = []
+      this.currentDoc = null
+      this.currentEnt = null
+      this.currentRel = null
+      this.loadingMsg = null
     },
     fetchAnnoConf() {
       if (!this.ensureProjectAuth()) {
@@ -886,6 +902,7 @@ export default {
     }
   },
   beforeDestroy() {
+    EventBus.$off(UNAUTHORIZED_EVENT, this.onUnauthorized)
     this.confirmSubmitListenerRemove()
   }
 }

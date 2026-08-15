@@ -2,6 +2,19 @@ import { describe, it, expect, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import Home from '@/views/Home.vue';
 import { createRouter, createWebHistory } from 'vue-router'
+import { authCookieNames } from '@/authCookies'
+
+const names = authCookieNames()
+
+const authCookies = (admin = 'false') => ({
+  get: vi.fn((key: string) => {
+    if (key === names.token) return 'token';
+    if (key === names.username) return 'alice';
+    if (key === names.admin) return admin;
+    return null;
+  }),
+  remove: vi.fn()
+})
 
 // Mock routes for router
 const routes = [
@@ -76,14 +89,7 @@ describe('Home.vue', () => {
           return Promise.resolve({});
       });
 
-    const mockCookies = {
-      get: vi.fn((key) => {
-        if (key === 'api-token') return 'token';
-        if (key === 'admin') return 'false';
-        return null;
-      }),
-      remove: vi.fn()
-    };
+    const mockCookies = authCookies();
 
     mount(Home, {
       global: {
@@ -92,7 +98,7 @@ describe('Home.vue', () => {
           $http: { get: mockGet },
           $cookies: mockCookies
         },
-        stubs: ['login', 'modal', 'project-list', 'v-data-table', 'transition', 'router-link', 'router-view', 'font-awesome-icon', 'plugin-slot']
+        stubs: ['modal', 'project-list', 'v-data-table', 'transition', 'router-link', 'router-view', 'font-awesome-icon', 'plugin-slot']
       }
     });
 
@@ -117,14 +123,7 @@ describe('Home.vue', () => {
       }
       return Promise.resolve({});
     });
-    const mockCookies = {
-      get: vi.fn((key: string) => {
-        if (key === 'api-token') return 'token';
-        if (key === 'admin') return 'false';
-        return null;
-      }),
-      remove: vi.fn()
-    };
+    const mockCookies = authCookies();
 
     const wrapper = mount(Home, {
       global: {
@@ -133,7 +132,7 @@ describe('Home.vue', () => {
           $http: { get: mockGet },
           $cookies: mockCookies
         },
-        stubs: ['login', 'modal', 'project-list', 'v-data-table', 'transition', 'router-link', 'router-view', 'font-awesome-icon', 'plugin-slot']
+        stubs: ['modal', 'project-list', 'v-data-table', 'transition', 'router-link', 'router-view', 'font-awesome-icon', 'plugin-slot']
       }
     });
 
@@ -155,14 +154,7 @@ describe('Home.vue', () => {
       }
       return Promise.resolve({});
     });
-    const mockCookies = {
-      get: vi.fn((key: string) => {
-        if (key === 'api-token') return 'token';
-        if (key === 'admin') return 'false';
-        return null;
-      }),
-      remove: vi.fn()
-    };
+    const mockCookies = authCookies();
 
     const wrapper = mount(Home, {
       global: {
@@ -171,7 +163,7 @@ describe('Home.vue', () => {
           $http: { get: mockGet },
           $cookies: mockCookies
         },
-        stubs: ['login', 'modal', 'project-list', 'v-data-table', 'transition', 'router-link', 'router-view', 'font-awesome-icon', 'plugin-slot']
+        stubs: ['modal', 'project-list', 'v-data-table', 'transition', 'router-link', 'router-view', 'font-awesome-icon', 'plugin-slot']
       }
     });
 
@@ -202,14 +194,7 @@ describe('Home.vue', () => {
       }
       return Promise.resolve({});
     });
-    const mockCookies = {
-      get: vi.fn((key: string) => {
-        if (key === 'api-token') return 'token';
-        if (key === 'admin') return 'true';
-        return null;
-      }),
-      remove: vi.fn()
-    };
+    const mockCookies = authCookies('true');
 
     const wrapper = mount(Home, {
       global: {
@@ -218,7 +203,7 @@ describe('Home.vue', () => {
           $http: { get: mockGet },
           $cookies: mockCookies
         },
-        stubs: ['login', 'modal', 'project-list', 'v-data-table', 'transition', 'router-link', 'router-view', 'font-awesome-icon', 'plugin-slot']
+        stubs: ['modal', 'project-list', 'v-data-table', 'transition', 'router-link', 'router-view', 'font-awesome-icon', 'plugin-slot']
       }
     });
 
@@ -234,5 +219,68 @@ describe('Home.vue', () => {
     await tabs[1].trigger('click')
     expect(wrapper.vm.projectGroupView).toBe(true)
     expect(tabs[1].classes()).toContain('active')
+  });
+
+  it('does not render the project list without a complete session', async () => {
+    const mockGet = vi.fn((url: string) => {
+      if (url === '/api/behind-rp/') {
+        return Promise.resolve({ data: true });
+      }
+      return Promise.resolve({});
+    });
+    const mockCookies = {
+      get: vi.fn((key: string) => (key === names.token ? 'token' : null)),
+      remove: vi.fn()
+    };
+
+    const wrapper = mount(Home, {
+      global: {
+        plugins: [router],
+        mocks: {
+          $http: { get: mockGet },
+          $cookies: mockCookies
+        },
+        stubs: ['modal', 'project-list', 'v-data-table', 'transition', 'router-link', 'router-view', 'font-awesome-icon', 'plugin-slot']
+      }
+    });
+
+    await router.isReady();
+    await flushPromises();
+
+    expect(wrapper.vm.loginSuccessful).toBe(false);
+    expect(wrapper.find('.home-content').exists()).toBe(false);
+    expect(mockGet).not.toHaveBeenCalledWith('/api/project-annotate-entities/');
+  });
+
+  it('clears loaded projects when the project fetch returns 401', async () => {
+    const mockGet = vi.fn((url: string) => {
+      if (url === '/api/behind-rp/') {
+        return Promise.resolve({ data: true });
+      }
+      if (url === '/api/project-annotate-entities/') {
+        return Promise.reject({ response: { status: 401, data: { detail: 'Invalid token.' } } });
+      }
+      return Promise.resolve({});
+    });
+    const mockCookies = authCookies();
+
+    const wrapper = mount(Home, {
+      global: {
+        plugins: [router],
+        mocks: {
+          $http: { get: mockGet },
+          $cookies: mockCookies
+        },
+        stubs: ['modal', 'project-list', 'v-data-table', 'transition', 'router-link', 'router-view', 'font-awesome-icon', 'plugin-slot']
+      }
+    });
+
+    wrapper.vm.projects.items = [{ id: 1, name: 'Stale Project' }];
+    await router.isReady();
+    await flushPromises();
+
+    expect(wrapper.vm.loginSuccessful).toBe(false);
+    expect(wrapper.vm.projects.items).toEqual([]);
+    expect(wrapper.find('.home-content').exists()).toBe(false);
   });
 });

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import EventBus from '@/event-bus'
+import { authCookieNames, COOKIE_EXPIRES } from '@/authCookies'
 
 const { mockAxiosPost } = vi.hoisted(() => ({
   mockAxiosPost: vi.fn()
@@ -20,9 +21,10 @@ vi.mock('@/runtimeConfig.ts', () => ({
 import Login from '@/components/common/Login.vue'
 
 describe('Login.vue', () => {
+  const names = authCookieNames()
   const mockGet = vi.fn()
   const mockCookies = {
-    get: vi.fn((key: string) => (key === 'api-token' ? 'test-token' : undefined)),
+    get: vi.fn((key: string) => (key === names.token ? 'test-token' : undefined)),
     set: vi.fn(),
     remove: vi.fn()
   }
@@ -90,10 +92,11 @@ describe('Login.vue', () => {
       { username: 'alice', password: 'secret' },
       {}
     )
-    expect(mockCookies.set).toHaveBeenCalledWith('api-token', 'test-token', { expires: 7 })
-    expect(mockCookies.set).toHaveBeenCalledWith('username', 'alice')
+    expect(mockCookies.set).toHaveBeenCalledWith(names.token, 'test-token', COOKIE_EXPIRES)
+    expect(mockCookies.set).toHaveBeenCalledWith(names.username, 'alice', COOKIE_EXPIRES)
     expect(mockGet).toHaveBeenCalledWith('/api/users/?username=alice')
-    expect(emitSpy).toHaveBeenCalledWith('login:success')
+    expect(mockCookies.set).toHaveBeenCalledWith(names.admin, 'false', COOKIE_EXPIRES)
+    expect(emitSpy).toHaveBeenCalledWith('login:success', { username: 'alice', isAdmin: false })
     emitSpy.mockRestore()
     wrapper.unmount()
   })
@@ -116,6 +119,29 @@ describe('Login.vue', () => {
 
     expect(vm.failed).toBe(true)
     expect(wrapper.text()).toContain('incorrect')
+    wrapper.unmount()
+  })
+
+  it('sets the namespaced admin cookie and emits isAdmin for staff users', async () => {
+    mockGet.mockResolvedValueOnce({
+      data: {
+        results: [{ id: 2, username: 'bob', is_staff: true, is_superuser: false }]
+      }
+    })
+    const emitSpy = vi.spyOn(EventBus, '$emit')
+    const wrapper = mountLogin()
+    await flushPromises()
+
+    const vm = wrapper.vm as { uname: string; password: string; login: () => void }
+    vm.uname = 'bob'
+    vm.password = 'secret'
+    vm.login()
+    await flushPromises()
+
+    expect(mockCookies.set).toHaveBeenCalledWith(names.admin, 'true', COOKIE_EXPIRES)
+    expect(mockCookies.set).toHaveBeenCalledWith(names.userId, 2, COOKIE_EXPIRES)
+    expect(emitSpy).toHaveBeenCalledWith('login:success', { username: 'bob', isAdmin: true })
+    emitSpy.mockRestore()
     wrapper.unmount()
   })
 
