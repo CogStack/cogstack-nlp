@@ -254,6 +254,18 @@ export default {
     border-bottom-color: var(--color-primary, $primary);
     font-weight: 600;
   }
+
+  &.active {
+    color: var(--color-primary, $primary);
+    border-bottom-color: var(--color-primary, $primary);
+    font-weight: 600;
+  }
+}
+
+.home-content {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .home-content {
