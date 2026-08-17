@@ -136,7 +136,9 @@ class DummyCAT:
     def __call__(self, text: str):
         doc = DummyDocument(text)
         for mention, cui in [("asthma", "195967001"), 
-                             ("aspirin", "387458008")]:
+                             ("aspirin", "387458008"),
+                            #  patient is incorrect linkage
+                             ("patient", "25609006")]:
             idx = text.index(mention)
             end = idx + len(mention)
             ent = DummyEntity(
@@ -147,20 +149,48 @@ class DummyCAT:
                 context_similarity=1.0,
             )
             doc.linked_ents.append(ent)
-        # now an incorrect prediction for testing false positives
-        ent = DummyEntity(
-            text="patient",
-            start_char_index=text.index("patient"),
-            end_char_index=text.index("patient") + len("patient"),
-            cui="25609006",  # has patient
-            context_similarity=1.0,
+        return doc
+    
+class DummyCATLinker:
+    """Small fake CAT object that supports the stats API. Useful for testing the linker."""
+
+    def __init__(self):
+        self.config = SimpleNamespace(
+            components=SimpleNamespace(
+                linking=SimpleNamespace(filters=DummyLinkingFilters())
+            )
         )
+        self.cdb = SimpleNamespace(
+            cui2info={
+                "195967001": {"preferred_name": "Asthma", "names": {"asthma", "Asthma"}},
+                "387458008": {"preferred_name": "Aspirin", "names": {"aspirin", "Aspirin"}},
+                "116154003": {"preferred_name": "Patient", "names": {"patient", "Patient"}},
+                "387517004": {"preferred_name": "Paracetamol", "names": {"paracetamol", "Paracetamol"}}
+            }
+        )
+        self.pipe = DummyPipe()
+
+    def __call__(self, text: str):
+        doc = DummyDocument(text)
+        for mention, cui in [("asthma", "195967001"), 
+                             ("aspirin", "387458008"),
+                             ("patient", "25609006"),
+                             ("paracetamol", "387517004")]:
+            idx = text.index(mention)
+            end = idx + len(mention)
+            ent = DummyEntity(
+                text=mention,
+                start_char_index=idx,
+                end_char_index=end,
+                cui=cui,
+                context_similarity=1.0,
+            )
+            doc.linked_ents.append(ent)
         doc.linked_ents.append(ent)
         return doc
 
-
 def make_fake_test_project() -> dict:
-    text = "The patient has asthma and takes aspirin."
+    text = "The patient has asthma and takes aspirin, and paracetamol."
     annotations = [
         {
             "start": text.index("asthma"),
@@ -174,11 +204,17 @@ def make_fake_test_project() -> dict:
             "cui": "387458008",
             "value": "aspirin",
         },
-        {
+        { # Incorrect CUI linked
             "start": text.index("patient"),
             "end": text.index("patient") + len("patient"),
             "cui": "116154003",
             "value": "patient",
+        },
+        { # Didn't get NER'd
+            "start": text.index("paracetamol"),
+            "end": text.index("paracetamol") + len("paracetamol"),
+            "cui": "387517004",
+            "value": "paracetamol"
         }
     ]
     return {
@@ -203,35 +239,159 @@ class StatsTests(TrainedModelTests):
     @classmethod
     def setUpClass(cls):
         cls.cat = DummyCAT()
+        cls.cat_linker = DummyCATLinker()
         cls.data = {"projects": [make_fake_test_project()]}
         cls.result = stats.get_stats(
             cat=cls.cat,
             data=cls.data,
             use_project_filters=False,
             ner_performance=True,
+            linking_performance=False,
+            do_print=False,
+        )
+        cls.linker_result = stats.get_stats(
+            cat=cls.cat_linker,
+            data=cls.data,
+            use_project_filters=False,
+            ner_performance=False,
             linking_performance=True,
             do_print=False,
         )
         
-    def test_returns_StatsCollection(self) -> None:
-        self.assertIsInstance(self.result, stats.StatsCollection)
+    def test_returns_StatsCalculator(self) -> None:
+        self.assertIsInstance(self.result, stats.StatsCalculator)
         
     def test_basic_counts(self) -> None:
-        # Raw counts
-        self.assertEqual(self.result.all_projects.get_mode("full").stats.cui_gold_counts["195967001"], 1)
-        self.assertEqual(self.result.all_projects.get_mode("full").stats.cui_gold_counts["387458008"], 1)
-        self.assertEqual(self.result.all_projects.get_mode("full").stats.no_tokens, 0)
-        self.assertDictEqual(self.result.all_projects.get_mode("full").stats.cui_no_tokens, {})
+        stats = self.result.stats.all_projects.get_mode("full").stats
+        # Raw counts of the full pipeline
+        self.assertEqual(stats.cui_gold_counts["195967001"], 1)
+        self.assertEqual(stats.cui_gold_counts["387458008"], 1)
+        self.assertEqual(stats.no_tokens, 0)
+        self.assertDictEqual(stats.cui_no_tokens, {})
+
+        ner_stats = self.result.stats.all_projects.get_mode("ner").stats
+        # Raw counts of the NER only mode
+        self.assertEqual(ner_stats.cui_gold_counts["__NER__"], 4)
         
-    def test_binary_statistics_full_pipe(self) -> None:
+    def test_raw_counts_full_pipe(self) -> None:
+        stats = self.result.stats.all_projects.get_mode("full").stats
         # What we got correct
-        self.assertEqual(self.result.all_projects.get_mode("full").stats.tp, 2)
-        self.assertEqual(self.result.all_projects.get_mode("full").stats.cui_tp["195967001"], 1)
-        self.assertEqual(self.result.all_projects.get_mode("full").stats.cui_tp["387458008"], 1)
+        self.assertEqual(stats.tp, 2)
+        self.assertEqual(stats.cui_tp["195967001"], 1)
+        self.assertEqual(stats.cui_tp["387458008"], 1)
         # The patient error, wrong linked CUI
-        self.assertEqual(self.result.all_projects.get_mode("full").stats.fp, 1)
-        self.assertEqual(self.result.all_projects.get_mode("full").stats.fn, 1)
-        self.assertEqual(self.result.all_projects.get_mode("full").stats.cui_fp["25609006"], 1)
-        self.assertEqual(self.result.all_projects.get_mode("full").stats.cui_fn["116154003"], 1)
+        self.assertEqual(stats.fp, 1)
+        self.assertEqual(stats.fn, 2)
+        self.assertEqual(stats.cui_fp["25609006"], 1)
+        self.assertEqual(stats.cui_fn["116154003"], 1)
+
+    def test_raw_counts_ner_only(self) -> None:
+        stats = self.result.stats.all_projects.get_mode("ner").stats
+        # NER only will correctly fix the patient error, as it doesn't care about the CUI, just the span
+        self.assertEqual(stats.tp, 3)
+        self.assertEqual(stats.fp, 0)
+        self.assertEqual(stats.fn, 1)
+
+    def test_raw_counts_linking_only(self) -> None:
+        stats = self.linker_result.stats.all_projects.get_mode("linking").stats
+        # it's not easily possible to test the linker 
+        # as predictions in the dummy set are hard coded
+        self.assertEqual(stats.tp, 3)
+        self.assertEqual(stats.fp, 2)
+        self.assertEqual(stats.fn, 1)
+
+    def test_precision_recall_f1(self) -> None:
+        # Full pipeline
+        metrics = self.result.stats.all_projects.get_mode("full").metrics.overall
+        self.assertAlmostEqual(metrics.precision, 2/3)
+        self.assertAlmostEqual(metrics.recall, 2/4)
+        self.assertAlmostEqual(metrics.f1, 0.57, places=2)
+
+        # NER only
+        ner_pipe = self.result.stats.all_projects.get_mode("ner").metrics.overall
+        self.assertAlmostEqual(ner_pipe.precision, 3/3)
+        self.assertAlmostEqual(ner_pipe.recall, 3/4)
+        self.assertAlmostEqual(ner_pipe.f1, 0.85, places=1)
+
+        # Linking only
+        linking_pipe = self.linker_result.stats.all_projects.get_mode("linking").metrics.overall
+        self.assertAlmostEqual(linking_pipe.precision, 0.6)
+        self.assertAlmostEqual(linking_pipe.recall, 3/4)
+        self.assertAlmostEqual(linking_pipe.f1, 0.666, places=2)
+
+    def test_per_cui_precision_recall_f1(self) -> None:
+        full_pipe = self.result.stats.all_projects.get_mode("full").metrics.per_cui
+        for cui in ["195967001", "387458008"]:
+            self.assertAlmostEqual(full_pipe[cui].precision, 1.0)
+            self.assertAlmostEqual(full_pipe[cui].recall, 1.0)
+            self.assertAlmostEqual(full_pipe[cui].f1, 1.0)
+
+        for cui in ["25609006", "116154003"]:
+            self.assertAlmostEqual(full_pipe[cui].precision, 0.0)
+            self.assertAlmostEqual(full_pipe[cui].recall, 0.0)
+            self.assertAlmostEqual(full_pipe[cui].f1, 0.0)
+
+        ner_pipe = self.result.stats.all_projects.get_mode("ner").metrics.per_cui
+        self.assertAlmostEqual(ner_pipe["__NER__"].precision, 1.0)
+        self.assertAlmostEqual(ner_pipe["__NER__"].recall, 0.75)
+        self.assertAlmostEqual(ner_pipe["__NER__"].f1, 0.85, places=1)
+
+    def test_cuis_exist(self) -> None:
+        cui_metrics = self.result.stats.all_projects.get_mode("full").metrics.per_cui
+        ner_cui_metrics = self.result.stats.all_projects.get_mode("ner").metrics.per_cui
+        linker_cui_metrics = self.linker_result.stats.all_projects.get_mode("linking").metrics.per_cui
+        self.assertIn("__NER__", ner_cui_metrics)
+        self.assertNotIn("__NER__", cui_metrics)
+        for cui in ["195967001", "387458008", "25609006", "116154003", "387517004"]:
+            self.assertNotIn(cui, ner_cui_metrics)
+            self.assertIn(cui, cui_metrics)
+            self.assertIn(cui, linker_cui_metrics)
+
+    def test_character_statistics(self) -> None:
+        full_metrics = self.result.stats.all_projects.get_mode("full").metrics.overall
+        # two cuis are perfect 1 + 1 = 2
+        # two are incorrect 2 intersection, 5 union = 0.4
+        self.assertAlmostEqual(full_metrics.char_iou, 0.4)
+        # two are incorrect 2 intersection, 4 union = 0.5
+        self.assertAlmostEqual(full_metrics.char_giou, 0.5)
+        self.assertAlmostEqual(full_metrics.char_cohen_k, 0.45, places=1)
+
+        ner_metrics = self.result.stats.all_projects.get_mode("ner").metrics.overall
+        # there's only one CUI, so it's the length calculations as below
+        intersection = len("asthma") + len("aspirin") + len("patient")
+        union = len("asthma") + len("aspirin") + len("patient") + len("paracetamol")
+        self.assertAlmostEqual(ner_metrics.char_iou, intersection/union)
+        self.assertAlmostEqual(ner_metrics.char_giou, intersection/union)
+        self.assertAlmostEqual(ner_metrics.char_cohen_k, 0.63, places=2)
         
-    # def test_character_statistics_
+        linking_metrics = self.linker_result.stats.all_projects.get_mode("linking").metrics.overall
+        self.assertAlmostEqual(linking_metrics.char_iou, 0.6)
+        # one is incorrect 2 intersection, 4 union = 0.5
+        self.assertAlmostEqual(linking_metrics.char_giou, 0.75)
+        self.assertAlmostEqual(linking_metrics.char_cohen_k, 0.6, places=1)
+
+    def test_per_cui_character_statistics(self) -> None:
+        full_metrics = self.result.stats.all_projects.get_mode("full").metrics.per_cui
+        # 195967001 and 387458008 are perfect, so IoU = 1
+        self.assertAlmostEqual(full_metrics["195967001"].char_iou, 1.0)
+        self.assertAlmostEqual(full_metrics["387458008"].char_iou, 1.0)
+        # 25609006 and 116154003 are incorrect, so IoU = 0
+        self.assertAlmostEqual(full_metrics["25609006"].char_iou, 0.0)
+        self.assertAlmostEqual(full_metrics["116154003"].char_iou, 0.0)
+
+        ner_metrics = self.result.stats.all_projects.get_mode("ner").metrics.per_cui
+        # there's only one CUI, so it's the length calculations as below
+        # same as previous!
+        intersection = len("asthma") + len("aspirin") + len("patient")
+        union = len("asthma") + len("aspirin") + len("patient") + len("paracetamol")
+        self.assertAlmostEqual(ner_metrics["__NER__"].char_iou, intersection/union)
+        self.assertAlmostEqual(ner_metrics["__NER__"].char_giou, intersection/union)
+        self.assertAlmostEqual(ner_metrics["__NER__"].char_cohen_k, 0.63, places=2)
+        
+        linker_metrics = self.linker_result.stats.all_projects.get_mode("linking").metrics.per_cui
+        self.assertAlmostEqual(linker_metrics["195967001"].char_iou, 1.0)
+        self.assertAlmostEqual(linker_metrics["387458008"].char_iou, 1.0)
+        self.assertAlmostEqual(linker_metrics["25609006"].char_iou, 0.0)
+        self.assertAlmostEqual(linker_metrics["116154003"].char_iou, 0.0)
+        self.assertAlmostEqual(linker_metrics["387517004"].char_iou, 1.0)
+        

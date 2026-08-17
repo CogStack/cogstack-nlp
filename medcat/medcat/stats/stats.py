@@ -1,473 +1,19 @@
-from typing import Optional, Callable, cast, Any
+from typing import Optional, Callable
 
 from tqdm import tqdm
-import traceback
 
 from medcat.cat import CAT
 from medcat.utils.filters import project_filters
 from medcat.data.mctexport import (
     MedCATTrainerExport, MedCATTrainerExportProject,
-    MedCATTrainerExportDocument, MedCATTrainerExportAnnotation)
+    MedCATTrainerExportDocument)
 from medcat.config.config import LinkingFilters
 from medcat.cdb.concepts import CUIInfo, get_new_cui_info
-from medcat.tokenizing.tokens import MutableEntity, MutableDocument
+from medcat.tokenizing.tokens import MutableEntity
 from medcat.components.types import CoreComponentType
 from medcat.utils.training_utils import dataset_aware_component
 from collections import defaultdict
 from pydantic import BaseModel, Field
-
-
-class StatsBuilder:
-
-    def __init__(self,
-                 filters: LinkingFilters,
-                 addl_info: dict,
-                 doc_getter: Callable[[str], Optional[MutableDocument]],
-                 cui2info: dict[str, CUIInfo],
-                 use_project_filters: bool = False,
-                 use_overlaps: bool = False,
-                 #  use_cui_doc_limit: bool = False,
-                 #  use_groups: bool = False,
-                 extra_cui_filter: Optional[set[str]] = None) -> None:
-        self.filters = filters
-        self.addl_info = addl_info
-        self.doc_getter = doc_getter
-        self.cui2info = cui2info
-        self.use_project_filters = use_project_filters
-        self.use_overlaps = use_overlaps
-        # self.use_cui_doc_limit = use_cui_doc_limit
-        # self.use_groups = use_groups
-        self.extra_cui_filter = extra_cui_filter
-        self._reset_stats()
-
-    def _reset_stats(self):
-        self.tp = 0
-        self.fp = 0
-        self.fn = 0
-        self.fps: dict[str, int] = {}
-        self.fns: dict[str, int] = {}
-        self.tps: dict[str, int] = {}
-        self.cui_prec: dict[str, float] = {}
-        self.cui_rec: dict[str, float] = {}
-        self.cui_f1: dict[str, float] = {}
-        self.cui_counts: dict[str, int] = {}
-        self.examples: dict = {'fp': {}, 'fn': {}, 'tp': {}}
-        self.fp_docs: set = set()
-        self.fn_docs: set = set()
-
-    def process_project(self, project: MedCATTrainerExportProject) -> None:
-        """Process the project.
-
-        This processes each document in the project.
-
-        Args:
-            project (MedCATTrainerExportProject): The trainer export project.
-        """
-        project_name = cast(str, project.get('name'))
-        project_id = cast(str, project.get('id'))
-
-        documents = project["documents"]
-        for dind, doc in tqdm(
-            enumerate(documents),
-            desc="Stats document",
-            total=len(documents),
-            leave=False,
-        ):
-            self.process_document(project_name, project_id, doc)
-
-    def process_document(self, project_name: str, project_id: str,
-                         doc: MedCATTrainerExportDocument
-                         ) -> None:
-        """Process the trainer export document.
-
-        Args:
-            project_name (str): The project within which this document lies.
-            project_id (str): The project ID for the project.
-            doc (MedCATTrainerExportDocument): The trainer export document.
-        """
-        anns = doc['annotations']
-
-        # Apply document level filtering, in this case project_filter is
-        # ignored while the extra_cui_filter is respected still
-        # if self.use_cui_doc_limit:
-        #     _cuis = set([ann['cui'] for ann in anns])
-        #     if _cuis:
-        #         self.filters.cuis = intersect_nonempty_set(_cuis,
-        #             self.extra_cui_filter)
-        #     else:
-        #         self.filters.cuis = {'empty'}
-
-        mut_doc: MutableDocument = self.doc_getter(
-            doc['text'])  # type: ignore
-
-        p_anns = mut_doc.linked_ents  # or all ents?
-
-        (anns_norm, anns_norm_neg,
-         anns_examples, _) = self._preprocess_annotations(
-             project_name, project_id, doc, anns)
-
-        p_anns_norm, p_anns_examples = self._process_p_anns(
-            project_name, project_id, doc, p_anns)
-        self._count_p_anns_norm(doc, anns_norm, anns_norm_neg,
-                                p_anns_norm, p_anns_examples)
-        self._process_anns_norm(doc, anns_norm, p_anns_norm, anns_examples)
-
-    def _process_anns_norm(self, doc: MedCATTrainerExportDocument,
-                           anns_norm: list[tuple[int, str]],
-                           p_anns_norm: list[tuple[int, str]],
-                           anns_examples: list[dict]) -> None:
-        for iann, ann in enumerate(anns_norm):
-            if ann not in p_anns_norm:
-                cui = ann[1]
-                self.fn += 1
-                self.fn_docs.add(doc.get('name', 'unk'))
-
-                self.fns[cui] = self.fns.get(cui, 0) + 1
-                examples = self.examples['fn'].get(cui, [])
-                self.examples['fn'][cui] = examples + [anns_examples[iann]]
-
-    def _process_p_anns(self, project_name: str, project_id: str,
-                        doc: MedCATTrainerExportDocument,
-                        p_anns: list[MutableEntity]
-                        ) -> tuple[list[tuple[int, str]], list[dict]]:
-        p_anns_norm: list[tuple[int, str]] = []
-        p_anns_examples: list[dict] = []
-        for ann in p_anns:
-            cui = ann.cui
-
-            p_anns_norm.append((ann.base.start_char_index, cui))
-            p_anns_examples.append(self._create_annotation_2(
-                project_name, project_id, cui, doc, ann))
-        return p_anns_norm, p_anns_examples
-
-    def _count_p_anns_norm(self, doc: MedCATTrainerExportDocument,
-                           anns_norm: list[tuple[int, str]],
-                           anns_norm_neg: list[tuple[int, str]],
-                           p_anns_norm: list[tuple[int, str]],
-                           p_anns_examples: list[dict]) -> None:
-        for iann, ann in enumerate(p_anns_norm):
-            cui = ann[1]
-            if ann in anns_norm:
-                self.tp += 1
-                self.tps[cui] = self.tps.get(cui, 0) + 1
-
-                example = p_anns_examples[iann]
-
-                examples = self.examples['tp'].get(cui, [])
-                self.examples['tp'][cui] = examples + [example]
-            else:
-                self.fp += 1
-                self.fps[cui] = self.fps.get(cui, 0) + 1
-                self.fp_docs.add(doc.get('name', 'unk'))
-
-                # Add example for this FP prediction
-                example = p_anns_examples[iann]
-                if ann in anns_norm_neg:
-                    # Means that it really was annotated as negative
-                    example['real_fp'] = True
-
-                examples = self.examples['fp'].get(cui, [])
-                self.examples['fp'][cui] = examples + [example]
-
-    def _create_annotation(self, project_name: str, project_id: str, cui: str,
-                           doc: MedCATTrainerExportDocument,
-                           ann: MedCATTrainerExportAnnotation) -> dict:
-        return {"text": doc['text'][max(0, ann['start'] - 60):ann['end'] + 60],
-                "cui": cui,
-                "start": ann['start'],
-                "end": ann['end'],
-                "source value": ann['value'],
-                "acc": 1,
-                "project name": project_name,
-                "document name": doc.get('name'),
-                "project id": project_id,
-                "document id": doc.get('id')}
-
-    def _create_annotation_2(self, project_name: str, project_id: str,
-                             cui: str, doc: MedCATTrainerExportDocument,
-                             ann: MutableEntity) -> dict:
-        start = max(0, ann.base.start_char_index - 60)
-        end = ann.base.end_char_index + 60
-        return {"text": doc['text'][start:end],
-                "cui": cui,
-                "start": ann.base.start_char_index,
-                "end": ann.base.start_char_index,
-                "source value": ann.base.text,
-                "acc": float(ann.context_similarity),
-                "project name": project_name,
-                "document name": doc.get('name'),
-                "project id": project_id,
-                "document id": doc.get('id')}
-
-    def _preprocess_annotations(self, project_name: str, project_id: str,
-                                doc: MedCATTrainerExportDocument,
-                                anns: list[MedCATTrainerExportAnnotation]
-                                ) -> tuple[list[tuple[int, str]],
-                                           list[tuple[int, str]],
-                                           list[dict],
-                                           list[str]]:
-        anns_norm: list[tuple[int, str]] = []
-        anns_norm_neg: list[tuple[int, str]] = []
-        anns_examples: list[dict] = []
-        anns_norm_cui: list[str] = []
-        for ann in anns:
-            cui = ann['cui']
-            if self.filters.check_filters(cui):
-
-                if (ann.get('validated', True) and
-                    (not ann.get('killed', False) and not ann.get('deleted',
-                                                                  False))):
-                    anns_norm.append((ann['start'], cui))
-                    anns_examples.append(self._create_annotation(
-                        project_name, project_id, cui, doc, ann))
-                elif (ann.get('validated', True) and
-                      (ann.get('killed', False) or ann.get('deleted', False))):
-                    anns_norm_neg.append((ann['start'], cui))
-
-                if ann.get("validated", True):
-                    # This is used to test was someone annotating for this
-                    # CUI in this document
-                    anns_norm_cui.append(cui)
-                    self.cui_counts[cui] = self.cui_counts.get(cui, 0) + 1
-        return anns_norm, anns_norm_neg, anns_examples, anns_norm_cui
-
-    def finalise_report(self, epoch: int, do_print: bool = True):
-        """Finalise the report / metrics.
-
-        This prints out the overall metrics and calculates per CUI metrics.
-
-        Args:
-            epoch (int): The number of the current epoch.
-            do_print (bool, optional): Whether to print the output.
-                Defaults to True.
-        """
-        try:
-            if self.tp + self.fp == 0:
-                prec = 0.0
-            else:
-                prec = self.tp / (self.tp + self.fp)
-            if self.tp + self.fp == 0:
-                rec = 0.0
-            else:
-                rec = self.tp / (self.tp + self.fn)
-            if prec == 0 and rec == 0:
-                f1 = 0.0
-            else:
-                f1 = 2 * (prec * rec) / (prec + rec)
-            if do_print:
-                print("Epoch: {}, Prec: {}, Rec: {}, F1: {}\n".format(
-                    epoch, prec, rec, f1))
-                print("Docs with false positives: {}\n".format("; ".join(
-                    [str(x) for x in list(self.fp_docs)[0:10]])))
-                print("Docs with false negatives: {}\n".format("; ".join(
-                    [str(x) for x in list(self.fn_docs)[0:10]])))
-
-            # Sort fns & prec
-            fps = {k: v for k, v in sorted(self.fps.items(),
-                   key=lambda item: item[1], reverse=True)}
-            fns = {k: v for k, v in sorted(self.fns.items(),
-                   key=lambda item: item[1], reverse=True)}
-            tps = {k: v for k, v in sorted(self.tps.items(),
-                   key=lambda item: item[1], reverse=True)}
-
-            # F1 per concept
-            for cui in tps.keys():
-                prec = tps[cui] / (tps.get(cui, 0) + fps.get(cui, 0))
-                rec = tps[cui] / (tps.get(cui, 0) + fns.get(cui, 0))
-                f1 = 2 * (prec * rec) / (prec + rec)
-                self.cui_prec[cui] = prec
-                self.cui_rec[cui] = rec
-                self.cui_f1[cui] = f1
-
-            # Get top 10
-            pr_fps = [(self._get_pref_name(cui),
-                      cui, fps[cui]) for cui in list(fps.keys())[0:10]]
-            pr_fns = [(self._get_pref_name(cui),
-                       cui, fns[cui]) for cui in list(fns.keys())[0:10]]
-            pr_tps = [(self._get_pref_name(cui),
-                       cui, tps[cui]) for cui in list(tps.keys())[0:10]]
-
-            if do_print:
-                print("\n\nFalse Positives\n")
-                for one in pr_fps:
-                    print("{:70} - {:20} - {:10}".format(str(one[0])[0:69],
-                                                         str(one[1])[0:19],
-                                                         one[2]))
-                print("\n\nFalse Negatives\n")
-                for one in pr_fns:
-                    print("{:70} - {:20} - {:10}".format(str(one[0])[0:69],
-                                                         str(one[1])[0:19],
-                                                         one[2]))
-                print("\n\nTrue Positives\n")
-                for one in pr_tps:
-                    print("{:70} - {:20} - {:10}".format(str(one[0])[0:69],
-                                                         str(one[1])[0:19],
-                                                         one[2]))
-                print("*" * 110 + "\n")
-
-        except Exception:
-            traceback.print_exc()
-
-    def _empty(self, cui: str) -> CUIInfo:
-        return get_new_cui_info(
-            cui=cui, preferred_name=cui, names=set((cui, )))
-
-    def _get_or_empty(self, cui: str) -> CUIInfo:
-        return self.cui2info.get(cui, self._empty(cui))
-
-    def _get_pref_name(self, cui: str) -> str:
-        info = self._get_or_empty(cui)
-        return info['preferred_name'] or list(info['names'])[0]
-
-    def unwrap(self) -> tuple[
-        dict[str, int], dict[str, int], dict[str, int],
-        dict[str, float], dict[str, float], dict[str, float],
-        dict[str, int], dict
-    ]:
-        return (self.fps, self.fns, self.tps,
-                self.cui_prec, self.cui_rec, self.cui_f1,
-                self.cui_counts, self.examples)
-
-    @classmethod
-    def from_cat(cls, cat: CAT,
-                 use_project_filters: bool = False,
-                 use_overlaps: bool = False,
-                 #  use_cui_doc_limit: bool = False,
-                 #  use_groups: bool = False,
-                 extra_cui_filter: Optional[set[str]] = None
-                 ) -> 'StatsBuilder':
-        """Get the stats builder from a model pack and some extra information.
-
-        Args:
-            cat (CAT):
-                The model pack.
-            use_project_filters (bool, optional):
-                Whether to use per project filters. Defaults to False.
-            use_overlaps (bool, optional):
-                Whether to allow overlaps. Defaults to False.
-            extra_cui_filter (Optional[set[str]], optional):
-                Extra CUI filter. Defaults to None.
-
-        Returns:
-            StatsBuilder: The stats builder.
-        """
-        return StatsBuilder(addl_info=cat.cdb.addl_info,
-                            filters=cat.config.components.linking.filters,
-                            doc_getter=cat.__call__,
-                            # cui2group=cat.cdb.addl_info['cui2group'],
-                            # cui2preferred_name=cat.cdb.cui2preferred_name,
-                            cui2info=cat.cdb.cui2info,
-                            use_project_filters=use_project_filters,
-                            use_overlaps=use_overlaps,
-                            # use_cui_doc_limit=use_cui_doc_limit,
-                            # use_groups=use_groups,
-                            extra_cui_filter=extra_cui_filter)
-    
-def get_stats_old(cat: CAT,
-              data: MedCATTrainerExport,
-              epoch: int = 0,
-              use_project_filters: bool = False,
-              use_overlaps: bool = False,
-              #   use_cui_doc_limit: bool = False,
-              #   use_groups: bool = False,
-              extra_cui_filter: Optional[set[str]] = None,
-              do_print: bool = True) -> tuple[
-        dict[str, int], dict[str, int], dict[str, int],
-        dict[str, float], dict[str, float], dict[str, float],
-        dict[str, int], dict
-]:
-    """TODO: Refactor and make nice
-    Print metrics on a dataset (F1, P, R), it will also print the concepts
-    that have the most FP,FN,TP.
-
-    Args:
-        cat: (CAT):
-            The model pack.
-        data (dict):
-            The json object that we get from MedCATtrainer on export.
-        epoch (int):
-            Used during training, so we know what epoch is it.
-        use_project_filters (bool):
-            Each project in MedCATtrainer can have filters, do we want to
-            respect those filters when calculating metrics.
-        use_overlaps (bool):
-            Allow overlapping entities, nearly always False as it is very
-            difficult to annotate overlapping entities.
-        use_cui_doc_limit (bool):
-            If True the metrics for a CUI will be only calculated if that CUI
-            appears in a document, in other words if the document was
-            annotated for that CUI. Useful in very specific situations when
-            during the annotation process the set of CUIs changed.
-        use_groups (bool):
-            If True concepts that have groups will be combined and stats will
-            be reported on groups.
-        extra_cui_filter(Optional[set]):
-            This filter will be intersected with all other filters, or if all
-            others are not set then only this one will be used.
-        do_print (bool):
-            Whether to print stats out. Defaults to True.
-
-    Returns:
-        fps (dict):
-            False positives for each CUI.
-        fns (dict):
-            False negatives for each CUI.
-        tps (dict):
-            True positives for each CUI.
-        cui_prec (dict):
-            Precision for each CUI.
-        cui_rec (dict):
-            Recall for each CUI.
-        cui_f1 (dict):
-            F1 for each CUI.
-        cui_counts (dict):
-            Number of occurrence for each CUI.
-        examples (dict):
-            Examples for each of the fp, fn, tp.
-            Format will be examples['fp']['cui'][<list_of_examples>].
-    """
-    builder = StatsBuilder.from_cat(cat,
-                                    use_project_filters=use_project_filters,
-                                    use_overlaps=use_overlaps,
-                                    # use_cui_doc_limit=use_cui_doc_limit,
-                                    # use_groups=use_groups,
-                                    extra_cui_filter=extra_cui_filter)
-    for pind, project in tqdm(enumerate(data['projects']),
-                              desc="Stats project",
-                              total=len(data['projects']),
-                              leave=False):
-        with project_filters(cat.config.components.linking.filters,
-                             project,
-                             builder.extra_cui_filter,
-                             builder.use_project_filters):
-            builder.process_project(project)
-    # this is the part that prints out the stats
-    builder.finalise_report(epoch, do_print=do_print)
-    return builder.unwrap()
-
-def get_stats(cat: CAT,
-              data: MedCATTrainerExport,
-              epoch: int = 0,
-              use_project_filters: bool = False,
-              use_overlaps: bool = False,
-              extra_cui_filter: Optional[set[str]] = None,
-              do_print: bool = True,
-              ner_performance: bool = False,
-              linking_performance: bool = False
-              ) -> "StatsCollection":
-    # get_stats_old(cat, data, epoch, use_project_filters, use_overlaps,
-    #               extra_cui_filter, do_print)
-    return get_stats_new(
-        cat=cat,
-        data=data,
-        epoch=epoch,
-        use_project_filters=use_project_filters,
-        use_overlaps=use_overlaps,
-        extra_cui_filter=extra_cui_filter,
-        do_print=do_print,
-        ner_performance=ner_performance,
-        linking_performance=linking_performance
-    )
 
 class RawStats(BaseModel):
     """Raw accumulated state for a single evaluation mode."""
@@ -489,13 +35,13 @@ class RawStats(BaseModel):
     cui_no_tokens: dict[str, int] = Field(default_factory=dict)
 
     cui_iou: defaultdict[str, list[float]] = Field(
-        default_factory=lambda: defaultdict(list)
+        default_factory=lambda: defaultdict[str, list[float]](list)
     )
     cui_giou: defaultdict[str, list[float]] = Field(
-        default_factory=lambda: defaultdict(list)
+        default_factory=lambda: defaultdict[str, list[float]](list)
     )
     cui_cohen_k: defaultdict[str, list[float]] = Field(
-        default_factory=lambda: defaultdict(list)
+        default_factory=lambda: defaultdict[str, list[float]](list)
     )
 
 
@@ -533,9 +79,9 @@ class CUIMetrics(BaseModel):
     char_giou: float = 0.0
     char_cohen_k: float = 0.0
 
-    char_iou_n: int = 0
-    char_giou_n: int = 0
-    char_cohen_k_n: int = 0
+    char_iou_n: float = 0.0
+    char_giou_n: float = 0.0
+    char_cohen_k_n: float = 0.0
 
 
 class Metrics(BaseModel):
@@ -673,15 +219,20 @@ class StatsCalculator:
                 if ann.get('killed', False) or ann.get('deleted', False):
                     continue
     
-                # Support both single CUI and multiple acceptable CUIs
-                cuis = ann.get('acceptable_cuis', ann['cui'])
-                if not isinstance(cuis, list):
-                    cuis = [cuis]
-    
-                # Filter to valid CUIs
+                # Support both single CUI and multiple acceptable CUIs.
+                acceptable_cuis = ann.get('acceptable_cuis', ann['cui'])
+                if isinstance(acceptable_cuis, list):
+                    cuis = acceptable_cuis
+                else:
+                    cuis = [acceptable_cuis]
+
+                # Filter to valid CUIs.
                 valid_cuis = [
-                    cui for cui in cuis
-                    if self.filters.check_filters(cui)]
+                    cui
+                    for cui in cuis
+                    if isinstance(cui, str)
+                    and self.filters.check_filters(cui)
+                ]
                 if valid_cuis:
                     gold_anns.append({
                         'start': ann['start'],
@@ -699,15 +250,23 @@ class StatsCalculator:
         apply_filters: bool = True,
     ) -> list[dict]:
         """Extract relevant info from predicted entities."""
-        return [{
-            'start': ent.base.start_char_index,
-            'end': ent.base.end_char_index,
-            'cui': ent.cui,
-            'text': ent.base.text,
-            'confidence': float(ent.context_similarity),
-            'raw': ent,
-            'no_tokens': 1 if ent.id == -1000 else 0
-        } for ent in predictions if not apply_filters or self.filters.check_filters(ent.cui)]
+        extracted = []
+
+        for ent in predictions:
+            if apply_filters and not self.filters.check_filters(ent.cui):
+                continue
+
+            extracted.append({
+                'start': ent.base.start_char_index,
+                'end': ent.base.end_char_index,
+                'cui': ent.cui,
+                'text': ent.base.text,
+                'confidence': float(ent.context_similarity),
+                'raw': ent,
+                'no_tokens': 1 if ent.id == -1000 else 0,
+            })
+
+        return extracted
 
     def _count_gold_annotations(
         self,
@@ -718,7 +277,6 @@ class StatsCalculator:
         """Count gold annotations for a project and all-projects aggregate."""
         for project_stats in self.stats.get_projects(project_index):
             mode_stats = project_stats.get_mode(mode)
-
             if mode_stats is None:
                 continue
             state = mode_stats.stats
@@ -753,7 +311,7 @@ class StatsCalculator:
         # When there's an entity with no way for the tokenizer to parse it
         # (commonly, this means that it's a subtoken span i.e. mRBC -> RBC isn't viable)
         # There's no tokens, throwing an error at get_tokens
-        # this handles it as a false positive nad that we don't represent the dataset as well
+        # this handles it as a false positive and that we don't represent the dataset
         cui = pred['cui']
         state.fn += 1
         state.no_tokens += 1
@@ -792,12 +350,19 @@ class StatsCalculator:
     
             return None
         
-    def _score_annotations(self, gold_anns: list[dict], pred_anns: list[dict],
-                           project_index: int, mode: str, filter_fp_by_cui: bool = True) -> None:
+    def _score_annotations(self, 
+                           gold_anns: list[dict], 
+                           pred_anns: list[dict],
+                           project_index: int, 
+                           mode: str, 
+                           filter_fp_by_cui: bool = True) -> None:
         # Track which predictions have been matched
         matched_preds: set[int] = set()
         all_projects_state = self.stats.all_projects.get_mode(mode)
         project_state = self.stats.projects[project_index].get_mode(mode)
+        
+        if all_projects_state is None or project_state is None:
+            return
 
         # this is a bit counter intuitive.
         # essentially if you're looking at the linking performance,
@@ -870,10 +435,10 @@ class StatsCalculator:
         document_length: int,
     ) -> float:
         """
-        The voices in my chatbot told me this is faster than the sklearn implementation, 
-        and it is also more memory efficient.
+        The voices in my chatbot told me this is faster than the 
+        sklearn implementation, and it is also more memory efficient.
         
-        Testing shows same performances, and halving computation speed.
+        Testing shows same metrics, and halving computation speed.
         """
 
         tp = len(gold_chars & pred_chars)
@@ -910,13 +475,18 @@ class StatsCalculator:
 
         return (po - pe) / denominator
     
-    def _score_character_annotations(self, gold_anns: list[dict], pred_anns: list[dict],
-                                     project_index: int, mode: str, doc_length: int) -> None:
+    def _score_character_annotations(self, 
+                                     gold_anns: list[dict], 
+                                     pred_anns: list[dict],
+                                     project_index: int, 
+                                     mode: str, 
+                                     doc_length: int) -> None:
         """
         Calculate:
-        Character Intersection over Union (IoU) for gold and predicted annotations.
-        Gold label Character Intersection over Union (IoU) for gold and predicted annotations.
-        Cohen's Kappa for gold and predicted annotations.
+        - Character Intersection over Union (IoU) for gold and predicted annotations.
+        - Gold label Character Intersection over Union (IoU) for gold and 
+        predicted annotations.
+        - Cohen's Kappa for gold and predicted annotations.
         
         Cheat sheet of what we're generating:
         # iou = sum of document-level macro IoUs
@@ -934,6 +504,9 @@ class StatsCalculator:
         """
         state = self.stats.projects[project_index].get_mode(mode)
         all_project_state = self.stats.all_projects.get_mode(mode)
+        
+        if state is None or all_project_state is None:
+            return
 
         gold_chars_by_cui = self._build_character_sets(gold_anns)
         pred_chars_by_cui = self._build_character_sets(pred_anns)
@@ -1048,23 +621,36 @@ class StatsCalculator:
             full_pipe_pred_anns = self._extract_predictions(predictions)
             
             self._count_gold_annotations(full_pipe_gold_anns, project_index, mode=mode)
-            self._score_annotations(full_pipe_gold_anns, full_pipe_pred_anns,
-                                    project_index, mode=mode,
-                                    filter_fp_by_cui=True)
-            self._score_character_annotations(full_pipe_gold_anns, full_pipe_pred_anns,
-                                              project_index, mode=mode, doc_length=len(doc['text']))
+            self._score_annotations(
+                full_pipe_gold_anns, 
+                full_pipe_pred_anns,
+                project_index, 
+                mode=mode,
+                filter_fp_by_cui=True
+            )
+            self._score_character_annotations(
+                full_pipe_gold_anns,
+                full_pipe_pred_anns,
+                project_index, 
+                mode=mode, doc_length=len(doc['text'])
+            )
 
             # This gets called in the full pipeline call, if ner performance is called.
             if calculate_ner_performance:
                 ner_gold_anns, ner_pred_anns = self._to_ner_views(
                     full_pipe_gold_anns, full_pipe_pred_anns)
                 self._count_gold_annotations(ner_gold_anns, project_index,
-                                            mode=mode)
+                                            mode=self.BUCKET_NER)
                 self._score_annotations(ner_gold_anns, ner_pred_anns,
                                         project_index, mode=self.BUCKET_NER,
                                         filter_fp_by_cui=False)
-                self._score_character_annotations(ner_gold_anns, ner_pred_anns,
-                                                  project_index, mode=self.BUCKET_NER, doc_length=len(doc['text']))
+                self._score_character_annotations(
+                    ner_gold_anns, 
+                    ner_pred_anns,
+                    project_index, 
+                    mode=self.BUCKET_NER, 
+                    doc_length=len(doc['text'])
+                )
         
     def process_project(self, project: MedCATTrainerExportProject,
                         project_index: int,
@@ -1089,6 +675,13 @@ class StatsCalculator:
                     calculate_ner_performance=calculate_ner_performance,
                 )
 
+    def _get_linked_ents(self, cat: CAT, text: str) -> list[MutableEntity]:
+        """Required for mypy cleanliness"""
+        doc = cat(text)
+        if doc is None:
+            return []
+        return doc.linked_ents
+
     def process_export(self, cat: CAT, export: MedCATTrainerExport,
                        mode: str,
                        calculate_ner_performance: bool = False,
@@ -1101,12 +694,12 @@ class StatsCalculator:
             self.process_project(
                 proj, 
                 i,
-                lambda text: cat(text).linked_ents,
+                lambda text: self._get_linked_ents(cat, text),
                 mode=mode,
                 calculate_ner_performance=calculate_ner_performance,
                 use_project_filters=use_project_filters,
                 extra_cui_filter=extra_cui_filter
-                )
+            )
             
     @staticmethod
     def _compute_prf(tp: int, fp: int, fn: int, no_tokens: int) -> dict:
@@ -1115,7 +708,13 @@ class StatsCalculator:
         rec = tp / (tp + fn) if (tp + fn) > 0 else 0.0
         f1 = 2 * prec * rec / (prec + rec) if (prec + rec) > 0 else 0.0
         no_tokens_ratio = no_tokens / (tp + fn) if (tp + fn) > 0 else 0.0
-        return {'precision': prec, 'recall': rec, 'f1': f1, 'no_tokens': no_tokens, 'no_tokens_ratio': f'{no_tokens_ratio:.4f}'}
+        return {
+            'precision': prec, 
+            'recall': rec, 
+            'f1': f1, 
+            'no_tokens': no_tokens, 
+            'no_tokens_ratio': f'{no_tokens_ratio:.4f}'
+        }
 
     def _get_cui_name(self, cui: str) -> str:
             """Get preferred name for CUI."""
@@ -1143,33 +742,35 @@ class StatsCalculator:
             raw_stats = mode_stats.stats
 
             # project metrics
-            overall = {
-                'tp': raw_stats.tp,
-                'fp': raw_stats.fp,
-                'fn': raw_stats.fn,
-                'no_tokens': raw_stats.no_tokens
-            }
-            overall.update(self._compute_prf(
+            prf_values = self._compute_prf(
                 raw_stats.tp,
                 raw_stats.fp,
                 raw_stats.fn,
                 raw_stats.no_tokens,
-            ))
+            )
 
             if raw_stats.char_docs > 0:
-                overall["char_iou"] = (
-                    raw_stats.iou_sum / raw_stats.char_docs
-                )
-                overall["char_giou"] = (
-                    raw_stats.giou_sum / raw_stats.char_docs
-                )
-                overall["char_cohen_k"] = (
-                    raw_stats.cohen_k_sum / raw_stats.char_docs
-                )
+                char_iou = raw_stats.iou_sum / raw_stats.char_docs
+                char_giou = raw_stats.giou_sum / raw_stats.char_docs
+                char_cohen_k = raw_stats.cohen_k_sum / raw_stats.char_docs
             else:
-                overall["char_iou"] = 0.0
-                overall["char_giou"] = 0.0
-                overall["char_cohen_k"] = 0.0
+                char_iou = 0.0
+                char_giou = 0.0
+                char_cohen_k = 0.0
+
+            overall = OverallMetrics(
+                precision=prf_values['precision'],
+                recall=prf_values['recall'],
+                f1=prf_values['f1'],
+                no_tokens=raw_stats.no_tokens,
+                no_tokens_ratio=float(prf_values['no_tokens_ratio']),
+                tp=raw_stats.tp,
+                fp=raw_stats.fp,
+                fn=raw_stats.fn,
+                char_iou=char_iou,
+                char_giou=char_giou,
+                char_cohen_k=char_cohen_k,
+            )
 
             # cui metrics
             all_cuis = (
@@ -1214,7 +815,7 @@ class StatsCalculator:
 
             # Store computed metrics in the ModeStats object
             mode_stats.metrics = Metrics(
-                overall=OverallMetrics(**overall),
+                overall=overall,
                 per_cui={
                     cui: CUIMetrics(**metrics)
                     for cui, metrics in per_cui.items()
@@ -1246,6 +847,8 @@ class StatsCalculator:
             epoch (int): The number of the current epoch.
             mode_stats (ModeStats): The statistics for the current mode.
         """
+        if mode_stats.metrics is None:
+            raise ValueError("Metrics have not been computed yet. Call compute_metrics() first.")
         print("Epoch: {}, Prec: {}, Rec: {}, F1: {}\n".format(
             epoch, 
             mode_stats.metrics.overall.precision, 
@@ -1286,7 +889,7 @@ class StatsCalculator:
         print("*" * 110 + "\n")
 
 
-def get_stats_new(cat: CAT, 
+def get_stats(cat: CAT, 
                   data: MedCATTrainerExport,
                   epoch: int = 0,
                   use_project_filters: bool = False,
@@ -1294,7 +897,7 @@ def get_stats_new(cat: CAT,
                   ner_performance: bool = False,
                   linking_performance: bool = False,
                   extra_cui_filter: Optional[set[str]] = None,
-                  do_print: bool = True,) -> "StatsCollection":
+                  do_print: bool = True,) -> "StatsCalculator":
     calculator = StatsCalculator(
         filters=cat.config.components.linking.filters,
         cui2info=cat.cdb.cui2info,
@@ -1333,12 +936,19 @@ def get_stats_new(cat: CAT,
     
     if calculator.num_projects > 1:
         for i in range(calculator.num_projects):
-            calculator.compute_metrics(StatsCalculator.BUCKET_FULL, project_index=i)
+            calculator.compute_metrics(StatsCalculator.BUCKET_FULL, 
+                                       project_index=i)
             if ner_performance:
-                calculator.compute_metrics(StatsCalculator.BUCKET_NER, project_index=i)
+                calculator.compute_metrics(StatsCalculator.BUCKET_NER, 
+                                           project_index=i)
             if linking_performance:
-                calculator.compute_metrics(StatsCalculator.BUCKET_LINKING, project_index=i)
+                calculator.compute_metrics(StatsCalculator.BUCKET_LINKING, 
+                                           project_index=i)
 
     if do_print:
-        calculator.print_stats(epoch, calculator.stats.all_projects.get_mode(StatsCalculator.BUCKET_FULL))
-    return calculator.stats
+        to_print = calculator.stats.all_projects.get_mode(StatsCalculator.BUCKET_FULL)
+        if to_print is None:
+            raise ValueError("No statistics available for the full pipeline mode.")
+        calculator.print_stats(epoch,
+                               to_print)
+    return calculator
