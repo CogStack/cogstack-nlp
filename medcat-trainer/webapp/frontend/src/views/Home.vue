@@ -1,6 +1,5 @@
 <template>
   <div class="full-height home-page">
-    <login v-if="!loginSuccessful" @login:success="loggedIn()"></login>
     <transition name="alert"><div class="alert alert-danger" v-if="routeAlert" role="alert">{{routeAlert}}</div></transition>
     <div v-if="isAdmin && loginSuccessful" class="home-tabs">
       <button
@@ -20,7 +19,7 @@
         Project Groups
       </button>
     </div>
-    <div class="home-content">
+    <div v-if="loginSuccessful" class="home-content">
       <div v-if="projectGroupView" class="full-height project-group-table">
         <v-data-table id="projectGroupTable" :items="projectGroups.items"
                       :headers="projectGroups.headers"
@@ -55,16 +54,16 @@
 import _ from 'lodash'
 
 import Modal from '@/components/common/Modal.vue'
-import Login from '@/components/common/Login.vue'
 import EventBus from '@/event-bus'
 import ProjectList from "@/components/common/ProjectList.vue"
+import { readTraditionalSession } from '../authCookies'
 import { isOidcEnabled } from '../runtimeConfig';
+import { UNAUTHORIZED_EVENT } from '../httpAuth'
 
 export default {
   name: 'Home',
   components: {
     ProjectList,
-    Login,
     Modal
   },
   data () {
@@ -98,9 +97,11 @@ export default {
   },
   mounted () {
     EventBus.$on('login:success', this.loggedIn)
+    EventBus.$on(UNAUTHORIZED_EVENT, this.onUnauthorized)
   },
   beforeDestroy () {
-    EventBus.$off('login:success')
+    EventBus.$off('login:success', this.loggedIn)
+    EventBus.$off(UNAUTHORIZED_EVENT, this.onUnauthorized)
   },
   methods: {
     loggedIn () {
@@ -113,17 +114,29 @@ export default {
           }, 5000)
         }
       })
-      // assume if there's an api-token we've logged in before and will try get projects
-      // fallback to logging in otherwise
-      if (!this.useOidc && this.$cookies.get('api-token')) {
+      if (!this.useOidc) {
+        const session = readTraditionalSession(name => this.$cookies.get(name))
+        if (session) {
           this.loginSuccessful = true
-          this.isAdmin = this.$cookies.get('admin') === 'true'
+          this.isAdmin = session.isAdmin
           this.fetchProjects()
+        }
       } else if (this.useOidc && this.$keycloak && this.$keycloak.authenticated) {
           this.loginSuccessful = true
           this.isAdmin = (this.$keycloak.tokenParsed?.realm_access?.roles ?? []).includes('medcattrainer_superuser')
           this.fetchProjects()
         }
+    },
+    onUnauthorized () {
+      this.loginSuccessful = false
+      this.isAdmin = false
+      this.clearLoadedProjects()
+    },
+    clearLoadedProjects () {
+      this.projects.items = []
+      this.projectGroups.items = []
+      this.selectedProjectGroup = null
+      this.cdbSearchIndexStatus = {}
     },
     fetchProjectGroups () {
       const projectGroupIds = new Set(this.projects.items.filter(p => p.group !== null).map(p => p.group))
@@ -144,11 +157,10 @@ export default {
         }).catch((err) => {
           this.loadingProjects = false
           // 401: httpAuth interceptor already clears cookie + Authorization together
-          // and opens the re-login prompt. Do not wipe cookies on other failures —
-          // that left Authorization in memory while removing the cookie, so the tab
-          // still sent a token until refresh forced an unexplained re-login.
+          // and opens the re-login prompt. Drop in-memory rows so the login overlay
+          // cannot sit on top of previously fetched project names.
           if (err.response?.status === 401) {
-            this.loginSuccessful = false
+            this.onUnauthorized()
           }
         })
       }
@@ -242,6 +254,18 @@ export default {
     border-bottom-color: var(--color-primary, $primary);
     font-weight: 600;
   }
+
+  &.active {
+    color: var(--color-primary, $primary);
+    border-bottom-color: var(--color-primary, $primary);
+    font-weight: 600;
+  }
+}
+
+.home-content {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .home-content {
