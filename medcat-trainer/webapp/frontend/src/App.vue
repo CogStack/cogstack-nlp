@@ -65,7 +65,8 @@
 import Login from '@/components/common/Login.vue'
 import EventBus from '@/event-bus'
 import { isOidcEnabled, getRuntimeConfig } from './runtimeConfig';
-import { getMenuItems } from './plugins/registry'
+import { getMenuItems, clearBootstrap } from './plugins/registry'
+import { initPluginBootstrap } from './plugins/bootstrap'
 import { UNAUTHORIZED_EVENT, resetUnauthorizedGuard, clearClientAuth } from './httpAuth'
 
 export default {
@@ -79,6 +80,7 @@ export default {
       version: '',
       useOidc: isOidcEnabled(),
       sessionExpired: false,
+      pluginBootstrapTick: 0,
     }
   },
   computed: {
@@ -88,6 +90,7 @@ export default {
       return `${v.slice(0, 7)}…${v.slice(-6)}`
     },
     pluginMenuItems () {
+      void this.pluginBootstrapTick
       return getMenuItems()
     }
   },
@@ -99,14 +102,32 @@ export default {
     openLogin () {
       if (!this.useOidc) {
         this.loginModal = true
-      } else {
-        // Kick off OIDC login if needed
-        if (this.$keycloak && !this.$keycloak.authenticated) {
-          this.$keycloak.login()
-        }
+      } else if (this.$keycloak && !this.$keycloak.authenticated) {
+        this.$keycloak.login()
       }
     },
-    loginSuccessful () {
+    applyTraditionalSession (payload) {
+      const session = readTraditionalSession(name => this.$cookies.get(name))
+      this.uname = payload?.username ?? session?.username ?? null
+      this.isAdmin = payload?.isAdmin ?? session?.isAdmin ?? false
+    },
+    discardIncompleteTraditionalSession () {
+      const names = authCookieNames()
+      const token = this.$cookies.get(names.token)
+      const username = this.$cookies.get(names.username)
+      if ((token && !username) || (!token && username)) {
+        clearClientAuth(this.$http)
+      }
+    },
+    async refreshPluginBootstrap () {
+      await initPluginBootstrap(this.$http)
+      this.pluginBootstrapTick++
+    },
+    dropPluginBootstrap () {
+      clearBootstrap()
+      this.pluginBootstrapTick++
+    },
+    async loginSuccessful (payload) {
       this.sessionExpired = false
       resetUnauthorizedGuard()
       if (!this.useOidc) {
@@ -116,6 +137,7 @@ export default {
       } else {
         this.updateOidcUser()
       }
+      await this.refreshPluginBootstrap()
       if (this.$route.name !== 'home') {
         this.$router.push({ name: 'home' })
       }
@@ -126,6 +148,7 @@ export default {
       this.uname = null
       this.isAdmin = false
       this.sessionExpired = true
+      this.dropPluginBootstrap()
       this.openLogin()
     },
     updateOidcUser () {
@@ -138,7 +161,9 @@ export default {
     logout () {
       this.uname = null
       this.isAdmin = false
-      // Clear header + cookies together so a refresh cannot resurrect a half-logged-in state.
+      this.dropPluginBootstrap()
+      // Clear header + namespaced cookies together. Do not touch bare
+      // `api-token` / `admin` names — those belong to other MCT versions.
       clearClientAuth(this.$http)
       this.$cookies.remove('username')
       this.$cookies.remove('api-token')
