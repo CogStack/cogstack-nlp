@@ -33,6 +33,9 @@ class RawStats(BaseModel):
     cui_fn: dict[str, int] = Field(default_factory=dict)
     cui_gold_counts: dict[str, int] = Field(default_factory=dict)
     cui_no_tokens: dict[str, int] = Field(default_factory=dict)
+    
+    examples: dict[str, dict[str, list]] = {
+        'tp': {}, 'fp': {}, 'fn': {}}
 
     cui_iou: defaultdict[str, list[float]] = Field(
         default_factory=lambda: defaultdict[str, list[float]](list)
@@ -65,8 +68,6 @@ class OverallMetrics(BaseModel):
 
 class CUIMetrics(BaseModel):
     """Metrics on a per cui basis."""
-    name: str
-
     precision: float = 0.0
     recall: float = 0.0
     f1: float = 0.0
@@ -299,13 +300,43 @@ class StatsCalculator:
             cui = pred['cui']
             state.tp += 1
             state.cui_tp[cui] = state.cui_tp.get(cui, 0) + 1
-    
+            if cui not in state.examples['tp']:
+                state.examples['tp'][cui] = []
+                state.examples['tp'][cui].append({
+                    'gold_text': gold['text'],
+                    'pred_text': pred['text'],
+                    'cui': cui,
+                    'start': pred['start'],
+                    'confidence': pred['confidence']
+                })
+
     def _record_fn(self, state: RawStats, gold: dict) -> None:
         """Record a false negative."""
         cui = gold['cui']
         state.fn += 1
         state.cui_fn[cui] = state.cui_fn.get(cui, 0) + 1
+        if cui not in state.examples['fn']:
+            state.examples['fn'][cui] = []
+            state.examples['fn'][cui].append({
+                'text': gold['text'],
+                'acceptable_cuis': gold['cuis'],
+                'start': gold['start']
+            })
         
+    def _record_fp(self, state: RawStats, pred: dict) -> None:
+        """Record a false positive."""
+        cui = pred['cui']
+        state.fp += 1
+        state.cui_fp[cui] = state.cui_fp.get(cui, 0) + 1
+        if cui not in state.examples['fp']:
+            state.examples['fp'][cui] = []
+            state.examples['fp'][cui].append({
+                'text': pred['text'],
+                'cui': cui,
+                'start': pred['start'],
+                'confidence': pred['confidence']
+            })
+            
     def _record_no_tokens(self, state: RawStats, pred: dict) -> None:
         """Record a prediction with no tokens (ID -1000)."""
         # When there's an entity with no way for the tokenizer to parse it
@@ -313,16 +344,9 @@ class StatsCalculator:
         # There's no tokens, throwing an error at get_tokens
         # this handles it as a false positive and that we don't represent the dataset
         cui = pred['cui']
-        state.fn += 1
         state.no_tokens += 1
-        state.cui_fn[cui] = state.cui_fn.get(cui, 0) + 1
         state.cui_no_tokens[cui] = state.cui_no_tokens.get(cui, 0) + 1
-
-    def _record_fp(self, state: RawStats, pred: dict) -> None:
-        """Record a false positive."""
-        cui = pred['cui']
-        state.fp += 1
-        state.cui_fp[cui] = state.cui_fp.get(cui, 0) + 1
+        self._record_fn(state, pred)
         
     def _find_matching_prediction(
             self,
