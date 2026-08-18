@@ -26,6 +26,7 @@
 import Modal from '@/components/common/Modal.vue'
 import EventBus from '@/event-bus'
 import axios from 'axios'
+import { authCookieNames, COOKIE_EXPIRES } from '@/authCookies'
 import { isOidcEnabled } from '@/runtimeConfig.ts';
 
 const instance = axios.create({
@@ -63,23 +64,24 @@ export default {
       }
       if(!this.useOidc) {
         instance.post('/api/api-token-auth/', payload, {}).then(resp => {
-          this.$cookies.set('api-token', resp.data.token, { expires: 7 })
-          this.$cookies.set('username', this.uname)
-          this.$http.defaults.headers.common['Authorization'] = `Token ${this.$cookies.get('api-token')}`
+          const names = authCookieNames()
+          this.$cookies.set(names.token, resp.data.token, COOKIE_EXPIRES)
+          this.$cookies.set(names.username, this.uname, COOKIE_EXPIRES)
+          this.$http.defaults.headers.common['Authorization'] = `Token ${this.$cookies.get(names.token)}`
           window.removeEventListener('keyup', this.keyup)
           this.$http.get(`/api/users/?username=${this.uname}`).then(resp => {
             if (resp.data.results.length > 0) {
-              const adminState = resp.data.results[0].is_staff || resp.data.results[0].is_superuser
+              const isAdmin = !!(resp.data.results[0].is_staff || resp.data.results[0].is_superuser)
               const userId = resp.data.results[0].id
-              this.$cookies.set('admin', adminState)
-              this.$cookies.set('user-id', userId)
-              EventBus.$emit('login:success')
+              this.$cookies.set(names.admin, isAdmin ? 'true' : 'false', COOKIE_EXPIRES)
+              this.$cookies.set(names.userId, userId, COOKIE_EXPIRES)
+              EventBus.$emit('login:success', { username: this.uname, isAdmin })
             } else {
               this.failedAdminStatusCheck = true
               setTimeout(() => {
-                this.$cookies.set('admin', false)
-                this.$cookies.remove('user-id')
-                EventBus.$emit('login:success')
+                this.$cookies.set(names.admin, 'false', COOKIE_EXPIRES)
+                this.$cookies.remove(names.userId)
+                EventBus.$emit('login:success', { username: this.uname, isAdmin: false })
               }, 1000)
             }
           }).catch(() => {

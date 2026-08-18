@@ -36,8 +36,7 @@
               <font-awesome-icon icon="cog"></font-awesome-icon>
             </router-link>
             <div class="user-section">
-              <span v-if="!uname" class="login-link" @click="openLogin">Login</span>
-              <span v-else class="user-info">
+              <span v-if="uname" class="user-info">
                 <span class="username">({{ uname }}) <font-awesome-icon icon="user"></font-awesome-icon></span>
                 <span class="logout-link" @click="logout">logout</span>
               </span>
@@ -56,14 +55,14 @@
     </main>
     <login v-if="!useOidc && loginModal"
            @login:success="loginSuccessful"
-           :closable="true"
-           @login:close="loginModal=false" />
+           :closable="false" />
   </div>
 </template>
 
 <script>
 import Login from '@/components/common/Login.vue'
 import EventBus from '@/event-bus'
+import { readTraditionalSession, authCookieNames } from './authCookies'
 import { isOidcEnabled, getRuntimeConfig } from './runtimeConfig';
 import { getMenuItems, clearBootstrap } from './plugins/registry'
 import { initPluginBootstrap } from './plugins/bootstrap'
@@ -128,12 +127,27 @@ export default {
       this.pluginBootstrapTick++
     },
     async loginSuccessful (payload) {
+      }
+    },
+    applyTraditionalSession (payload) {
+      const session = readTraditionalSession(name => this.$cookies.get(name))
+      this.uname = payload?.username ?? session?.username ?? null
+      this.isAdmin = payload?.isAdmin ?? session?.isAdmin ?? false
+    },
+    discardIncompleteTraditionalSession () {
+      const names = authCookieNames()
+      const token = this.$cookies.get(names.token)
+      const username = this.$cookies.get(names.username)
+      if ((token && !username) || (!token && username)) {
+        clearClientAuth(this.$http)
+      }
+    },
+    loginSuccessful (payload) {
       this.sessionExpired = false
       resetUnauthorizedGuard()
       if (!this.useOidc) {
         this.loginModal = false
-        this.uname = this.$cookies.get('username')
-        this.isAdmin = this.$cookies.get('admin') === 'true'
+        this.applyTraditionalSession(payload)
       } else {
         this.updateOidcUser()
       }
@@ -165,16 +179,13 @@ export default {
       // Clear header + namespaced cookies together. Do not touch bare
       // `api-token` / `admin` names — those belong to other MCT versions.
       clearClientAuth(this.$http)
-      this.$cookies.remove('username')
-      this.$cookies.remove('api-token')
-      this.$cookies.remove('admin')
-      this.$cookies.remove('user-id')
 
       if (this.useOidc && this.$keycloak && this.$keycloak.authenticated) {
         this.$keycloak.logout({
           redirectUri: getRuntimeConfig().KEYCLOAK_LOGOUT_REDIRECT_URI
         })
       } else {
+        this.openLogin()
         if (this.$route.name !== 'home') {
           this.$router.push({name: 'home'})
         } else {
@@ -188,14 +199,24 @@ export default {
     EventBus.$on(UNAUTHORIZED_EVENT, this.onUnauthorized)
 
     if (!this.useOidc) {
-      this.uname = this.$cookies.get('username') || null
-      this.isAdmin = this.$cookies.get('admin') === 'true'
+      const session = readTraditionalSession(name => this.$cookies.get(name))
+      if (session) {
+        this.uname = session.username
+        this.isAdmin = session.isAdmin
+      } else {
+        this.discardIncompleteTraditionalSession()
+        this.uname = null
+        this.isAdmin = false
+        this.openLogin()
+      }
     } else {
       if (this.$keycloak && this.$keycloak.authenticated) {
         this.updateOidcUser()
         // Watch for token refresh events
         this.$keycloak.onAuthRefreshSuccess = () => this.updateOidcUser()
         this.$keycloak.onAuthSuccess = () => this.updateOidcUser()
+      } else if (this.$keycloak) {
+        this.$keycloak.login()
       }
     }
   },
@@ -366,16 +387,6 @@ export default {
   align-items: center;
   gap: 16px;
   margin-left: 16px;
-}
-
-.login-link {
-  color: white;
-  cursor: pointer;
-  font-size: 14px;
-
-  &:hover {
-    opacity: 0.8;
-  }
 }
 
 .user-info {
