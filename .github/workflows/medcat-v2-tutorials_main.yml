@@ -8,7 +8,7 @@ on:
       - 'medcat/**'
       - 'medcat-tutorials/**'
       - '.github/workflows/medcat-v2**'
-      - '.github/workflows/medcat-v2-tutorials**'
+      - '.github/workflows/medcat-tutorials**'
 defaults:
   run:
     working-directory: ./medcat-tutorials
