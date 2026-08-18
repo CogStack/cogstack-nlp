@@ -16,31 +16,13 @@ Coming from MedCAT v1? See [here](docs/v1_info.md) for more info.
 
 ## Available Models
 
-We have 2 public v2 models available:
+We have 2 (relatively recent) public models available:
 1) SnomedCT UK Clinical edition 39.0 (Oct 2024) and UK Drug Extension 39.0 (July 2024) based model enriched with UMLS 2024AA; trained only on MIMIC-IV
 2) SnomedCT UK Clinical edition 40.2 (June 2025) and UK Drug Extension 40.3 (July 2024) based model enriched with UMLS 2024AA; trained only on MIMIC-IV
 
-There are also a number of MedCAT v1 models available that can automatically be converted if required.
+There are also a number of legacy MedCAT models available that can automatically be converted if required.
 
 To download any of these models, please [follow this link](https://medcat.sites.er.kcl.ac.uk/auth-callback-api) and sign in using your NIH / UMLS API key. You will then be redirected to the MedCAT model download form. Please complete this form and you will be provided a download link.
-
-While we encourage you use MedCAT v2 and the models in that native format, if you download an older version MedCAT v2 will be able to load it and covnert it to the format it knows. However, the loading process will be considerably longerin those cases.
-
-If you wish you can also convert the v1 models into the v2 format (see [tutorial](../medcat-tutorials/notebooks/introductory/migration/1._Migrate_v1_model_to_v2.ipynb)).
-
-```python
-from medcat.utils.legacy import legacy_converter
-from medcat.storage.serialisers import AvailableSerialisers
-old_model = '<path to old v1 model>'
-new_model_dir = '<dir to place new model in>'
-legacy_converter.do_conversion(old_model_path, new_model_dir, AvailableSerialisers.dill)
-```
-OR
-```bash
-model_path = "models/medcat1_model_pack.zip"
-new_model_folder = "models"  # file in this folder
-! python -m  medcat.utils.legacy.legacy_converter $model_path $new_model_folder --verbose
-```
 
 ## News
 - **New public 2024 and 2025** Snomed models were uploaded and made available 7. October 2025.
