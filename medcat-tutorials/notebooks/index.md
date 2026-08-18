@@ -23,7 +23,7 @@ To get set up to run the tutorials interactively, clone the repo and install the
 
 ```bash
 git clone https://github.com/CogStack/cogstack-nlp.git
-cd cogstack-nlp/medcat-v2-tutorials
+cd cogstack-nlp/medcat-tutorials
 
 python -m venv .venv
 source .venv/bin/activate
