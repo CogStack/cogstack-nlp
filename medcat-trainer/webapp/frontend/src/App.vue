@@ -127,22 +127,6 @@ export default {
       this.pluginBootstrapTick++
     },
     async loginSuccessful (payload) {
-      }
-    },
-    applyTraditionalSession (payload) {
-      const session = readTraditionalSession(name => this.$cookies.get(name))
-      this.uname = payload?.username ?? session?.username ?? null
-      this.isAdmin = payload?.isAdmin ?? session?.isAdmin ?? false
-    },
-    discardIncompleteTraditionalSession () {
-      const names = authCookieNames()
-      const token = this.$cookies.get(names.token)
-      const username = this.$cookies.get(names.username)
-      if ((token && !username) || (!token && username)) {
-        clearClientAuth(this.$http)
-      }
-    },
-    loginSuccessful (payload) {
       this.sessionExpired = false
       resetUnauthorizedGuard()
       if (!this.useOidc) {
