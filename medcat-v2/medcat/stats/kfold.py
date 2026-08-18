@@ -302,7 +302,11 @@ def get_per_fold_metrics(cat: CAT, folds: list[MedCATTrainerExport],
             stats_calc = get_stats(cat, cast(MedCATTrainerExport, cur_fold),
                               use_project_filters=use_project_filters)
             full_stats = stats_calc.stats.all_projects.full_pipeline
-            per_cui = full_stats.metrics.per_cui if full_stats.metrics is not None else {}
+            per_cui = (
+                full_stats.metrics.per_cui
+                if full_stats.metrics is not None
+                else {}
+            )
             stats = (
                 full_stats.stats.cui_fp,
                 full_stats.stats.cui_fn,

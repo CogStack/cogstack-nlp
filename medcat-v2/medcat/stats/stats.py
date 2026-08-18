@@ -872,7 +872,10 @@ class StatsCalculator:
             mode_stats (ModeStats): The statistics for the current mode.
         """
         if mode_stats.metrics is None:
-            raise ValueError("Metrics have not been computed yet. Call compute_metrics() first.")
+            raise ValueError(
+                "Metrics have not been computed yet. "
+                "Call compute_metrics() first."
+            )
         print("Epoch: {}, Prec: {}, Rec: {}, F1: {}\n".format(
             epoch, 
             mode_stats.metrics.overall.precision, 
