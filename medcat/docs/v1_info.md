@@ -6,3 +6,4 @@ MedCAT v2 is a comprehensive refactor designed to improve modularity, flexibilit
 When moving from v1 to v2, please refer to the [migration guide](migration_guide_v2.md).
 Details on breaking are outlined [here](breaking_changes.md).
 
+Legacy model conversion is addressed [here](v1_conversion.md).
