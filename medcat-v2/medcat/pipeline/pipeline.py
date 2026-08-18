@@ -346,8 +346,18 @@ class Pipeline:
             logger.info("Running component %s for %d of text (%s)",
                         comp.full_name, len(text), id(text))
             doc = comp(doc)
+            if doc is None:
+                raise IncorrectCoreComponent(
+                    f"Core component {comp.full_name} returned None "
+                    "instead of the document."
+                )
         for addon in self._addons:
             doc = addon(doc)
+            if doc is None:
+                raise IncorrectAddonComponent(
+                    f"Addon component {addon.full_name} returned None "
+                    "instead of the document."
+                )
         return doc
 
     def entity_from_tokens(self, tokens: list[MutableToken]) -> MutableEntity:
@@ -463,6 +473,12 @@ class IncorrectArgumentsForComponent(TypeError):
 
 
 class IncorrectCoreComponent(ValueError):
+
+    def __init__(self, *args):
+        super().__init__(*args)
+
+
+class IncorrectAddonComponent(ValueError):
 
     def __init__(self, *args):
         super().__init__(*args)
