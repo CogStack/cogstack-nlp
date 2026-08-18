@@ -1,17 +1,17 @@
-name: medcat-v2-tutorials - Test
+name: medcat-tutorials - Test
 
 on:
   push:
     branches: [ main ]
   pull_request:
     paths:
-      - 'medcat-v2/**'
-      - 'medcat-v2-tutorials/**'
+      - 'medcat/**'
+      - 'medcat-tutorials/**'
       - '.github/workflows/medcat-v2**'
       - '.github/workflows/medcat-v2-tutorials**'
 defaults:
   run:
-    working-directory: ./medcat-v2-tutorials
+    working-directory: ./medcat-tutorials
 
 jobs:
   basic-and-meta:
@@ -32,7 +32,7 @@ jobs:
         run: |
           pip install -U pip
           pip install -r requirements.txt
-          pip install "../medcat-v2[spacy,deid,rel-cat,meta-cat]"
+          pip install "../medcat[spacy,deid,rel-cat,meta-cat]"
 
       - name: Install IPython kernel
         run: |
@@ -79,7 +79,7 @@ jobs:
         run: |
           pip install -U pip
           pip install -r requirements.txt
-          pip install "../medcat-v2[spacy,deid,rel-cat,meta-cat]"
+          pip install "../medcat[spacy,deid,rel-cat,meta-cat]"
 
       - name: Install IPython kernel
         run: |
