@@ -23,6 +23,7 @@ class _FakeEntity:
         self.base = _FakeEntityBase(start, end, text)
         self.cui = cui
         self.context_similarity = 1.0
+        self.id = 0
 
 
 class _FakeToken:
@@ -216,8 +217,12 @@ class TrainingUtilsTests(unittest.TestCase):
 
         with dataset_aware_component(cat, CoreComponentType.ner, self.DATASET):
             with dataset_aware_component(cat, CoreComponentType.linking, self.DATASET):
-                _, fns, tps, _, _, cui_f1, _, _ = get_stats(
-                    cat, self.DATASET, do_print=False)
+                full_calc = get_stats(cat, self.DATASET, do_print=False)
+                full_stats = full_calc.stats.all_projects.full_pipeline
+                per_cui = full_stats.metrics.per_cui if full_stats.metrics is not None else {}
+                fns = full_stats.stats.cui_fn
+                tps = full_stats.stats.cui_tp
+                cui_f1 = {cui: metrics.f1 for cui, metrics in per_cui.items()}
 
         self.assertEqual(fns, {})
         self.assertEqual(tps.get("C1"), 1)
@@ -227,9 +232,12 @@ class TrainingUtilsTests(unittest.TestCase):
         cat = _FakeCat(self.DATASET, [_EmptyNER(), _PassThroughLinker()])
 
         with dataset_aware_component(cat, CoreComponentType.ner, self.DATASET):
-            _, fns, tps, _, _, cui_f1, _, _ = get_stats(
-                cat, self.DATASET, do_print=False)
-
+            full_calc = get_stats(cat, self.DATASET, do_print=False)
+            full_stats = full_calc.stats.all_projects.full_pipeline
+            per_cui = full_stats.metrics.per_cui if full_stats.metrics is not None else {}
+            fns = full_stats.stats.cui_fn
+            tps = full_stats.stats.cui_tp
+            cui_f1 = {cui: metrics.f1 for cui, metrics in per_cui.items()}
         self.assertEqual(fns, {})
         self.assertEqual(tps.get("C1"), 1)
         self.assertEqual(cui_f1.get("C1"), 1.0)
