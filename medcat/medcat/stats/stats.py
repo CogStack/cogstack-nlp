@@ -208,42 +208,42 @@ class StatsCalculator:
         )
 
     def _extract_gold_annotations(
-            self,
-            doc: MedCATTrainerExportDocument
-        ) -> list[dict]:
-            """Extract validated gold annotations, supporting multi-CUI options."""
-            gold_anns = []
+        self,
+        doc: MedCATTrainerExportDocument
+    ) -> list[dict]:
+        """Extract validated gold annotations, supporting multi-CUI options."""
+        gold_anns = []
 
-            for ann in doc['annotations']:
-                if not ann.get('validated', True):
-                    continue
-                if ann.get('killed', False) or ann.get('deleted', False):
-                    continue
-    
-                # Support both single CUI and multiple acceptable CUIs.
-                acceptable_cuis = ann.get('acceptable_cuis', ann['cui'])
-                if isinstance(acceptable_cuis, list):
-                    cuis = acceptable_cuis
-                else:
-                    cuis = [acceptable_cuis]
+        for ann in doc['annotations']:
+            if not ann.get('validated', True):
+                continue
+            if ann.get('killed', False) or ann.get('deleted', False):
+                continue
 
-                # Filter to valid CUIs.
-                valid_cuis = [
-                    cui
-                    for cui in cuis
-                    if isinstance(cui, str)
-                    and self.filters.check_filters(cui)
-                ]
-                if valid_cuis:
-                    gold_anns.append({
-                        'start': ann['start'],
-                        'end': ann['end'],
-                        'cuis': valid_cuis,  # List of acceptable CUIs
-                        'cui': valid_cuis[0],  # For counting
-                        'text': ann['value'],
-                        'raw': ann
-                    })
-            return gold_anns
+            # Support both single CUI and multiple acceptable CUIs.
+            acceptable_cuis = ann.get('acceptable_cuis', ann['cui'])
+            if isinstance(acceptable_cuis, list):
+                cuis = acceptable_cuis
+            else:
+                cuis = [acceptable_cuis]
+
+            # Filter to valid CUIs.
+            valid_cuis = [
+                cui
+                for cui in cuis
+                if isinstance(cui, str)
+                and self.filters.check_filters(cui)
+            ]
+            if valid_cuis:
+                gold_anns.append({
+                    'start': ann['start'],
+                    'end': ann['end'],
+                    'cuis': valid_cuis,  # List of acceptable CUIs
+                    'cui': valid_cuis[0],  # For counting
+                    'text': ann['value'],
+                    'raw': ann
+                })
+        return gold_anns
     
     def _extract_predictions(
         self,
@@ -296,19 +296,19 @@ class StatsCalculator:
                 )
         
     def _record_tp(self, state: RawStats, gold: dict, pred: dict) -> None:
-            """Record a true positive."""
-            cui = pred['cui']
-            state.tp += 1
-            state.cui_tp[cui] = state.cui_tp.get(cui, 0) + 1
-            if cui not in state.examples['tp']:
-                state.examples['tp'][cui] = []
-                state.examples['tp'][cui].append({
-                    'gold_text': gold['text'],
-                    'pred_text': pred['text'],
-                    'cui': cui,
-                    'start': pred['start'],
-                    'confidence': pred['confidence']
-                })
+        """Record a true positive."""
+        cui = pred['cui']
+        state.tp += 1
+        state.cui_tp[cui] = state.cui_tp.get(cui, 0) + 1
+        if cui not in state.examples['tp']:
+            state.examples['tp'][cui] = []
+            state.examples['tp'][cui].append({
+                'gold_text': gold['text'],
+                'pred_text': pred['text'],
+                'cui': cui,
+                'start': pred['start'],
+                'confidence': pred['confidence']
+            })
 
     def _record_fn(self, state: RawStats, gold: dict) -> None:
         """Record a false negative."""
@@ -349,30 +349,30 @@ class StatsCalculator:
         self._record_fn(state, pred)
         
     def _find_matching_prediction(
-            self,
-            gold: dict,
-            predictions: list[dict],
-            matched_preds: set[int]
-        ) -> int | None:
-            """
-            Find a prediction that matches this gold annotation.
-    
-            Matching criteria:
-            - Same start position (can be relaxed for fuzzy matching)
-            - Predicted CUI is in gold's acceptable CUIs
-            - Not already matched
-            """
-            for idx, pred in enumerate(predictions):
-                if idx in matched_preds:
-                    continue
-    
-                # Exact span match
-                if pred['start'] == gold['start']:
-                    # Check if predicted CUI is acceptable
-                    if pred['cui'] in gold['cuis']:
-                        return idx
-    
-            return None
+        self,
+        gold: dict,
+        predictions: list[dict],
+        matched_preds: set[int]
+    ) -> int | None:
+        """
+        Find a prediction that matches this gold annotation.
+
+        Matching criteria:
+        - Same start position (can be relaxed for fuzzy matching)
+        - Predicted CUI is in gold's acceptable CUIs
+        - Not already matched
+        """
+        for idx, pred in enumerate(predictions):
+            if idx in matched_preds:
+                continue
+
+            # Exact span match
+            if pred['start'] == gold['start']:
+                # Check if predicted CUI is acceptable
+                if pred['cui'] in gold['cuis']:
+                    return idx
+
+        return None
         
     def _score_annotations(self, 
                            gold_anns: list[dict], 
@@ -627,54 +627,54 @@ class StatsCalculator:
 
 
     def process_document(
-            self,
-            doc: MedCATTrainerExportDocument,
-            project_index: int,
-            predictions: list[MutableEntity],
-            mode: str,
-            calculate_ner_performance: bool = False,
-        ) -> None:
-            """
-            Process a single document's annotations and predictions.
-    
-            Args:
-                doc: Gold-standard annotated document
-                predictions: Model's predicted entities
-            """
-            full_pipe_gold_anns = self._extract_gold_annotations(doc)
-            full_pipe_pred_anns = self._extract_predictions(predictions)
-            
-            self._count_gold_annotations(full_pipe_gold_anns, project_index, mode=mode)
-            self._score_annotations(
-                full_pipe_gold_anns, 
-                full_pipe_pred_anns,
-                project_index, 
-                mode=mode,
-                filter_fp_by_cui=True
-            )
-            self._score_character_annotations(
-                full_pipe_gold_anns,
-                full_pipe_pred_anns,
-                project_index, 
-                mode=mode, doc_length=len(doc['text'])
-            )
+        self,
+        doc: MedCATTrainerExportDocument,
+        project_index: int,
+        predictions: list[MutableEntity],
+        mode: str,
+        calculate_ner_performance: bool = False,
+    ) -> None:
+        """
+        Process a single document's annotations and predictions.
 
-            # This gets called in the full pipeline call, if ner performance is called.
-            if calculate_ner_performance:
-                ner_gold_anns, ner_pred_anns = self._to_ner_views(
-                    full_pipe_gold_anns, full_pipe_pred_anns)
-                self._count_gold_annotations(ner_gold_anns, project_index,
-                                            mode=self.BUCKET_NER)
-                self._score_annotations(ner_gold_anns, ner_pred_anns,
-                                        project_index, mode=self.BUCKET_NER,
-                                        filter_fp_by_cui=False)
-                self._score_character_annotations(
-                    ner_gold_anns, 
-                    ner_pred_anns,
-                    project_index, 
-                    mode=self.BUCKET_NER, 
-                    doc_length=len(doc['text'])
-                )
+        Args:
+            doc: Gold-standard annotated document
+            predictions: Model's predicted entities
+        """
+        full_pipe_gold_anns = self._extract_gold_annotations(doc)
+        full_pipe_pred_anns = self._extract_predictions(predictions)
+        
+        self._count_gold_annotations(full_pipe_gold_anns, project_index, mode=mode)
+        self._score_annotations(
+            full_pipe_gold_anns, 
+            full_pipe_pred_anns,
+            project_index, 
+            mode=mode,
+            filter_fp_by_cui=True
+        )
+        self._score_character_annotations(
+            full_pipe_gold_anns,
+            full_pipe_pred_anns,
+            project_index, 
+            mode=mode, doc_length=len(doc['text'])
+        )
+
+        # This gets called in the full pipeline call, if ner performance is called.
+        if calculate_ner_performance:
+            ner_gold_anns, ner_pred_anns = self._to_ner_views(
+                full_pipe_gold_anns, full_pipe_pred_anns)
+            self._count_gold_annotations(ner_gold_anns, project_index,
+                                        mode=self.BUCKET_NER)
+            self._score_annotations(ner_gold_anns, ner_pred_anns,
+                                    project_index, mode=self.BUCKET_NER,
+                                    filter_fp_by_cui=False)
+            self._score_character_annotations(
+                ner_gold_anns, 
+                ner_pred_anns,
+                project_index, 
+                mode=self.BUCKET_NER, 
+                doc_length=len(doc['text'])
+            )
         
     def process_project(self, project: MedCATTrainerExportProject,
                         project_index: int,
@@ -741,11 +741,11 @@ class StatsCalculator:
         }
 
     def _get_cui_name(self, cui: str) -> str:
-            """Get preferred name for CUI."""
-            info = self.cui2info.get(cui)
-            if info:
-                return info.get('preferred_name') or list(info['names'])[0]
-            return cui
+        """Get preferred name for CUI."""
+        info = self.cui2info.get(cui)
+        if info:
+            return info.get('preferred_name') or list(info['names'])[0]
+        return cui
     
     def _safe_mean(self, values):
         return sum(values) / len(values) if values else 0.0
