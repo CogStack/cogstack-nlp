@@ -14,7 +14,9 @@ class ConceptDifficulty(TypedDict):
 
 
 class EstimationConfig(BaseModel):
+    # options: lin, or resnik, or wu_palmer
     sim_metric: str = "lin"
+    # options: # sanchez, or seco
     ic_type: str = "sanchez"
     power: float = 1.0
     # similarities below this are treated as exactly 0
