@@ -39,6 +39,13 @@ nav:
     - Information for users coming from MedCAT v1: v1_info.md
     - Migration guide (v2): migration_guide_v2.md
     - Breaking changes: breaking_changes.md
+
+# to fix medcat folder and medcat/medcat folder confusion
+# within mkdocs-monorepo-plugin that caused relative
+# links in README.md not properly work when it was pulled
+# into docs/index.md
+hooks:
+  - docs/hooks.py
   
 plugins:
   - search
