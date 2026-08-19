@@ -95,7 +95,8 @@ def _create_general_predictor(
                 ent = tokens2entity(tkns, doc)
             except ValueError:
                 while not tkns:
-                    # If no tokens found, try expanding the range by 1 character on each side
+                    # If no tokens found, try expanding the 
+                    # range by 1 character on each side
                     start = max(0, start - 1)
                     end = end + 1
                     tkns = doc.get_tokens(start, end)
