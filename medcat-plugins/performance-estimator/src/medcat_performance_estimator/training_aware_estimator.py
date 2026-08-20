@@ -172,7 +172,7 @@ class TrainingAwareDifficultyEstimator:
         """Ontology similarity, shrunk toward vector similarity in proportion
         to how much we trust the vectors. Reduces to pure ontology similarity
         when confidence is 0 (untrained concepts)."""
-        ontology_sim = self.ontology_estimator.sim_metric(concept_a, concept_b)
+        ontology_sim = self.ontology_estimator.get_sim_metric(concept_a, concept_b)
         vector_sim, vector_confidence = self._vector_similarity_and_confidence(
             concept_a, concept_b
         )
