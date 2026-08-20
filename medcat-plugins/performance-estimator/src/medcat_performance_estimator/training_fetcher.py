@@ -43,7 +43,7 @@ class CDBTrainingFetcher:
     def get_cui_context_vector(self, cui: str) -> dict[str, np.ndarray]:
         if cui not in self.cdb.cui2info:
             return {}
-        return self.cdb.cui2info[cui]['context_vectors']
+        return self.cdb.cui2info[cui]['context_vectors'] or {}
 
     def get_cui2count_train(self) -> dict[str, int]:
         return self.cdb.get_cui2count_train()
