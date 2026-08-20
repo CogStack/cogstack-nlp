@@ -52,4 +52,7 @@ class CDBTrainingFetcher:
         return self.cdb.get_name2count_train()
 
     def get_cui2context_vector(self) -> dict[str, dict[str, np.ndarray]]:
-        return self.cdb.get_cui2context_vectors()
+        return {
+            cui: (self.cdb.cui2info[cui]['context_vectors'] or {})
+            for cui in self.cdb.cui2info
+        }

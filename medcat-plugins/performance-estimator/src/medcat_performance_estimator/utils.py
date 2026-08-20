@@ -89,6 +89,7 @@ def relative_mass(
 def combine_context_vector(
     vectors: dict[str, np.ndarray],
     weights: dict[str, float],
+    default_size: int = 300,
 ) -> np.ndarray:
     """Combine the small/medium/large/xlarge context vectors into one,
     using `config.components.linking.context_vector_weights`.
@@ -108,5 +109,5 @@ def combine_context_vector(
         used_weight += w
 
     if combined is None or used_weight <= 0:
-        raise ValueError("Unable to combine empty vectors")
+        return np.zeros(default_size)
     return combined / used_weight
