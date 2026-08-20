@@ -33,12 +33,12 @@ class CDBTrainingFetcher:
     def get_cui_train_count(self, cui: str) -> int:
         if cui not in self.cdb.cui2info:
             return 0
-        return self.cdb.cui2info[cui]['train_count']
+        return self.cdb.cui2info[cui]['count_train']
 
     def get_name_train_count(self, name: str) -> int:
         if name not in self.cdb.name2info:
             return 0
-        return self.cdb.name2info[name]['train_count']
+        return self.cdb.name2info[name]['count_train']
 
     def get_cui_context_vector(self, cui: str) -> dict[str, np.ndarray]:
         if cui not in self.cdb.cui2info:
