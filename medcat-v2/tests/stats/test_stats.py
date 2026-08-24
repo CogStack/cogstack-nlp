@@ -6,7 +6,7 @@ import re
 from dataclasses import dataclass, field
 from types import SimpleNamespace
 from typing import Union
-
+from medcat.stats.stats import MetricMode
 from medcat.components.types import CoreComponentType
 from medcat.stats import stats
 from medcat.data.mctexport import MedCATTrainerExport
@@ -241,7 +241,7 @@ class StatsTests(TrainedModelTests):
         cls.cat = DummyCAT()
         cls.cat_linker = DummyCATLinker()
         cls.data = {"projects": [make_fake_test_project()]}
-        cls.result = stats.get_stats(
+        cls.result = stats.get_stats_calculator(
             cat=cls.cat,
             data=cls.data,
             use_project_filters=False,
@@ -249,7 +249,7 @@ class StatsTests(TrainedModelTests):
             linking_performance=False,
             do_print=False,
         )
-        cls.linker_result = stats.get_stats(
+        cls.linker_result = stats.get_stats_calculator(
             cat=cls.cat_linker,
             data=cls.data,
             use_project_filters=False,
@@ -257,24 +257,21 @@ class StatsTests(TrainedModelTests):
             linking_performance=True,
             do_print=False,
         )
-        
-    def test_returns_StatsCalculator(self) -> None:
-        self.assertIsInstance(self.result, stats.StatsCalculator)
-        
+      
     def test_basic_counts(self) -> None:
-        stats = self.result.stats.all_projects.get_mode("full").stats
+        stats = self.result.stats.all_projects.get_mode(MetricMode.FULL).stats
         # Raw counts of the full pipeline
         self.assertEqual(stats.cui_gold_counts["195967001"], 1)
         self.assertEqual(stats.cui_gold_counts["387458008"], 1)
         self.assertEqual(stats.no_tokens, 0)
         self.assertDictEqual(stats.cui_no_tokens, {})
 
-        ner_stats = self.result.stats.all_projects.get_mode("ner").stats
+        ner_stats = self.result.stats.all_projects.get_mode(MetricMode.NER).stats
         # Raw counts of the NER only mode
         self.assertEqual(ner_stats.cui_gold_counts["__NER__"], 4)
         
     def test_raw_counts_full_pipe(self) -> None:
-        stats = self.result.stats.all_projects.get_mode("full").stats
+        stats = self.result.stats.all_projects.get_mode(MetricMode.FULL).stats
         # What we got correct
         self.assertEqual(stats.tp, 2)
         self.assertEqual(stats.cui_tp["195967001"], 1)
@@ -286,14 +283,14 @@ class StatsTests(TrainedModelTests):
         self.assertEqual(stats.cui_fn["116154003"], 1)
 
     def test_raw_counts_ner_only(self) -> None:
-        stats = self.result.stats.all_projects.get_mode("ner").stats
+        stats = self.result.stats.all_projects.get_mode(MetricMode.NER).stats
         # NER only will correctly fix the patient error, as it doesn't care about the CUI, just the span
         self.assertEqual(stats.tp, 3)
         self.assertEqual(stats.fp, 0)
         self.assertEqual(stats.fn, 1)
 
     def test_raw_counts_linking_only(self) -> None:
-        stats = self.linker_result.stats.all_projects.get_mode("linking").stats
+        stats = self.linker_result.stats.all_projects.get_mode(MetricMode.LINKING).stats
         # it's not easily possible to test the linker 
         # as predictions in the dummy set are hard coded
         self.assertEqual(stats.tp, 3)
@@ -302,25 +299,25 @@ class StatsTests(TrainedModelTests):
 
     def test_precision_recall_f1(self) -> None:
         # Full pipeline
-        metrics = self.result.stats.all_projects.get_mode("full").metrics.overall
+        metrics = self.result.stats.all_projects.get_mode(MetricMode.FULL).metrics.overall
         self.assertAlmostEqual(metrics.precision, 2/3)
         self.assertAlmostEqual(metrics.recall, 2/4)
         self.assertAlmostEqual(metrics.f1, 0.57, places=2)
 
         # NER only
-        ner_pipe = self.result.stats.all_projects.get_mode("ner").metrics.overall
+        ner_pipe = self.result.stats.all_projects.get_mode(MetricMode.NER).metrics.overall
         self.assertAlmostEqual(ner_pipe.precision, 3/3)
         self.assertAlmostEqual(ner_pipe.recall, 3/4)
         self.assertAlmostEqual(ner_pipe.f1, 0.85, places=1)
 
         # Linking only
-        linking_pipe = self.linker_result.stats.all_projects.get_mode("linking").metrics.overall
+        linking_pipe = self.linker_result.stats.all_projects.get_mode(MetricMode.LINKING).metrics.overall
         self.assertAlmostEqual(linking_pipe.precision, 0.6)
         self.assertAlmostEqual(linking_pipe.recall, 3/4)
         self.assertAlmostEqual(linking_pipe.f1, 0.666, places=2)
 
     def test_per_cui_precision_recall_f1(self) -> None:
-        full_pipe = self.result.stats.all_projects.get_mode("full").metrics.per_cui
+        full_pipe = self.result.stats.all_projects.get_mode(MetricMode.FULL).metrics.per_cui
         for cui in ["195967001", "387458008"]:
             self.assertAlmostEqual(full_pipe[cui].precision, 1.0)
             self.assertAlmostEqual(full_pipe[cui].recall, 1.0)
@@ -331,15 +328,15 @@ class StatsTests(TrainedModelTests):
             self.assertAlmostEqual(full_pipe[cui].recall, 0.0)
             self.assertAlmostEqual(full_pipe[cui].f1, 0.0)
 
-        ner_pipe = self.result.stats.all_projects.get_mode("ner").metrics.per_cui
+        ner_pipe = self.result.stats.all_projects.get_mode(MetricMode.NER).metrics.per_cui
         self.assertAlmostEqual(ner_pipe["__NER__"].precision, 1.0)
         self.assertAlmostEqual(ner_pipe["__NER__"].recall, 0.75)
         self.assertAlmostEqual(ner_pipe["__NER__"].f1, 0.85, places=1)
 
     def test_cuis_exist(self) -> None:
-        cui_metrics = self.result.stats.all_projects.get_mode("full").metrics.per_cui
-        ner_cui_metrics = self.result.stats.all_projects.get_mode("ner").metrics.per_cui
-        linker_cui_metrics = self.linker_result.stats.all_projects.get_mode("linking").metrics.per_cui
+        cui_metrics = self.result.stats.all_projects.get_mode(MetricMode.FULL).metrics.per_cui
+        ner_cui_metrics = self.result.stats.all_projects.get_mode(MetricMode.NER).metrics.per_cui
+        linker_cui_metrics = self.linker_result.stats.all_projects.get_mode(MetricMode.LINKING).metrics.per_cui
         self.assertIn("__NER__", ner_cui_metrics)
         self.assertNotIn("__NER__", cui_metrics)
         for cui in ["195967001", "387458008", "25609006", "116154003", "387517004"]:
@@ -348,7 +345,7 @@ class StatsTests(TrainedModelTests):
             self.assertIn(cui, linker_cui_metrics)
 
     def test_character_statistics(self) -> None:
-        full_metrics = self.result.stats.all_projects.get_mode("full").metrics.overall
+        full_metrics = self.result.stats.all_projects.get_mode(MetricMode.FULL).metrics.overall
         # two cuis are perfect 1 + 1 = 2
         # two are incorrect 2 intersection, 5 union = 0.4
         self.assertAlmostEqual(full_metrics.char_iou, 0.4)
@@ -356,7 +353,7 @@ class StatsTests(TrainedModelTests):
         self.assertAlmostEqual(full_metrics.char_giou, 0.5)
         self.assertAlmostEqual(full_metrics.char_cohen_k, 0.45, places=1)
 
-        ner_metrics = self.result.stats.all_projects.get_mode("ner").metrics.overall
+        ner_metrics = self.result.stats.all_projects.get_mode(MetricMode.NER).metrics.overall
         # there's only one CUI, so it's the length calculations as below
         intersection = len("asthma") + len("aspirin") + len("patient")
         union = len("asthma") + len("aspirin") + len("patient") + len("paracetamol")
@@ -364,14 +361,14 @@ class StatsTests(TrainedModelTests):
         self.assertAlmostEqual(ner_metrics.char_giou, intersection/union)
         self.assertAlmostEqual(ner_metrics.char_cohen_k, 0.63, places=2)
         
-        linking_metrics = self.linker_result.stats.all_projects.get_mode("linking").metrics.overall
+        linking_metrics = self.linker_result.stats.all_projects.get_mode(MetricMode.LINKING).metrics.overall
         self.assertAlmostEqual(linking_metrics.char_iou, 0.6)
         # one is incorrect 2 intersection, 4 union = 0.5
         self.assertAlmostEqual(linking_metrics.char_giou, 0.75)
         self.assertAlmostEqual(linking_metrics.char_cohen_k, 0.6, places=1)
 
     def test_per_cui_character_statistics(self) -> None:
-        full_metrics = self.result.stats.all_projects.get_mode("full").metrics.per_cui
+        full_metrics = self.result.stats.all_projects.get_mode(MetricMode.FULL).metrics.per_cui
         # 195967001 and 387458008 are perfect, so IoU = 1
         self.assertAlmostEqual(full_metrics["195967001"].char_iou, 1.0)
         self.assertAlmostEqual(full_metrics["387458008"].char_iou, 1.0)
@@ -379,7 +376,7 @@ class StatsTests(TrainedModelTests):
         self.assertAlmostEqual(full_metrics["25609006"].char_iou, 0.0)
         self.assertAlmostEqual(full_metrics["116154003"].char_iou, 0.0)
 
-        ner_metrics = self.result.stats.all_projects.get_mode("ner").metrics.per_cui
+        ner_metrics = self.result.stats.all_projects.get_mode(MetricMode.NER).metrics.per_cui
         # there's only one CUI, so it's the length calculations as below
         # same as previous!
         intersection = len("asthma") + len("aspirin") + len("patient")
@@ -388,7 +385,7 @@ class StatsTests(TrainedModelTests):
         self.assertAlmostEqual(ner_metrics["__NER__"].char_giou, intersection/union)
         self.assertAlmostEqual(ner_metrics["__NER__"].char_cohen_k, 0.63, places=2)
         
-        linker_metrics = self.linker_result.stats.all_projects.get_mode("linking").metrics.per_cui
+        linker_metrics = self.linker_result.stats.all_projects.get_mode(MetricMode.LINKING).metrics.per_cui
         self.assertAlmostEqual(linker_metrics["195967001"].char_iou, 1.0)
         self.assertAlmostEqual(linker_metrics["387458008"].char_iou, 1.0)
         self.assertAlmostEqual(linker_metrics["25609006"].char_iou, 0.0)

@@ -218,21 +218,8 @@ class KFoldCATTests(MCTExportTests):
         # return (self.fps, self.fns, self.tps,
         #         self.cui_prec, self.cui_rec, self.cui_f1,
                 # self.cui_counts, self.examples)
-        reg_calc = reg_stats.get_stats(
+        self.reg_stats = reg_stats.get_stats(
             self.cat, self.mct_export, do_print=False)
-        full_stats = reg_calc.stats.all_projects.full_pipeline
-        per_cui = full_stats.metrics.per_cui if full_stats.metrics is not None else {}
-        stats = (
-                        full_stats.stats.cui_fp,
-                        full_stats.stats.cui_fn,
-                        full_stats.stats.cui_tp,
-                        {cui: metrics.precision for cui, metrics in per_cui.items()},
-                        {cui: metrics.recall for cui, metrics in per_cui.items()},
-                        {cui: metrics.f1 for cui, metrics in per_cui.items()},
-                        full_stats.stats.cui_gold_counts,
-                        full_stats.stats.examples,
-        )
-        self.reg_stats = stats
         # TODO - remove
         self.maxDiff = 4000
 
@@ -255,20 +242,8 @@ class KFoldStatsConsistencyTests(KFoldCATTests):
         self.assertIsMCTExport(self.mct_export)
 
     def test_stats_consistent(self):
-        full_calc = reg_stats.get_stats(
+        stats = reg_stats.get_stats(
             self.cat, self.mct_export, do_print=False)
-        full_stats = full_calc.stats.all_projects.full_pipeline
-        per_cui = full_stats.metrics.per_cui if full_stats.metrics is not None else {}
-        stats = (
-                        full_stats.stats.cui_fp,
-                        full_stats.stats.cui_fn,
-                        full_stats.stats.cui_tp,
-                        {cui: metrics.precision for cui, metrics in per_cui.items()},
-                        {cui: metrics.recall for cui, metrics in per_cui.items()},
-                        {cui: metrics.f1 for cui, metrics in per_cui.items()},
-                        full_stats.stats.cui_gold_counts,
-                        full_stats.stats.examples,
-        )
         for name, stats1, stats2 in zip(self._names, self.reg_stats, stats):
             with self.subTest(name):
                 # NOTE: These should be EXACTLY equal since there shouldn't be

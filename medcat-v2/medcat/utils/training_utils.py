@@ -8,7 +8,9 @@ from medcat.components.types import (
     CoreComponentType, AbstractEntityProvidingComponent)
 from medcat.config.config import ComponentConfig
 from medcat.tokenizing.tokenizers import BaseTokenizer
-from medcat.tokenizing.tokens import MutableDocument, MutableEntity, MutableToken
+from medcat.tokenizing.tokens import (
+    MutableDocument, MutableEntity, MutableToken, UNTOKENIZABLE_ENTITY_ID,
+)
 from medcat.data.mctexport import (
     MedCATTrainerExport, MedCATTrainerExportDocument, count_all_docs, iter_docs)
 from medcat.vocab import Vocab
@@ -101,7 +103,7 @@ def _create_general_predictor(
                     end = end + 1
                     tkns = doc.get_tokens(start, end)
                 ent = tokens2entity(tkns, doc)
-                ent.id = -1000
+                ent.id = UNTOKENIZABLE_ENTITY_ID
             if set_cui:
                 ent.cui = ann["cui"]
             ents.append(ent)
