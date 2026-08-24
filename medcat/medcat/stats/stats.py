@@ -365,7 +365,7 @@ class StatsCalculator:
         state.cui_fn[cui] = state.cui_fn.get(cui, 0) + 1
         
         if cui not in state.examples['fn']:
-                    state.examples['fn'][cui] = []
+            state.examples['fn'][cui] = []
         state.examples['fn'][cui].append({
             'text': gold['text'],
             'acceptable_cuis': gold['cuis'],
@@ -379,7 +379,7 @@ class StatsCalculator:
         state.cui_fp[cui] = state.cui_fp.get(cui, 0) + 1
         
         if cui not in state.examples['fp']:
-                    state.examples['fp'][cui] = []
+            state.examples['fp'][cui] = []
         state.examples['fp'][cui].append({
             'text': pred['text'],
             'cui': cui,
