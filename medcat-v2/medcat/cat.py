@@ -91,6 +91,8 @@ class CAT(AbstractSerialisable):
         self._pipeline = Pipeline(self.cdb, self.vocab, model_load_path,
                                   old_pipe=old_pipe,
                                   addon_config_dict=addon_config_dict)
+        # reset trainer so it tracks new pipe!!
+        self._trainer = None
         return self._pipeline
 
     @property

@@ -148,17 +148,27 @@ class CDB(AbstractSerialisable):
         cui_info = self.cui2info[cui]
         for name, in_name_info in names.items():
             # add name and synonyms
-            cui_info['names'].add(name)
+            if name not in cui_info['names']:
+                cui_info['names'].add(name)
+                logger.debug(
+                    "Add new mapping for CUI '%s' - now maps to '%s'",
+                    cui, name)
             cui_info['subnames'].update(in_name_info.snames)
 
             if name not in self.name2info:
                 self.name2info[name] = get_new_name_info(name=name)
+                logger.debug(
+                    "Added totally new name ('%s') corresponding to CUI '%s'",
+                    name, cui)
             # Add whether concept is uppercase
             name_info = self.name2info[name]
             name_info['is_upper'] = in_name_info.is_upper
             status_map = name_info['per_cui_status']
             if cui not in status_map:
                 status_map[cui] = name_status
+                logger.debug(
+                    "Add new mapping for name ('%s') - now maps to CUI '%s'",
+                    name, cui)
             elif name_status == ST.PRIMARY_STATUS_NO_DISAMB:
                 # if this is primary, overwrite old status
                 status_map[cui] = name_status

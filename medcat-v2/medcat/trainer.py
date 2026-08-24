@@ -4,6 +4,7 @@ import tempfile
 from itertools import chain, repeat, islice
 from tqdm import trange
 
+from medcat.components.type_utils import as_batch_trainable, is_supervised_trainable
 from medcat.tokenizing.tokens import (MutableDocument, MutableEntity,
                                       MutableToken)
 from medcat.cdb import CDB
@@ -15,7 +16,8 @@ from medcat.data.mctexport import (
     MedCATTrainerExport, MedCATTrainerExportAnnotation, MedCATTrainerExportProject,
     MedCATTrainerExportDocument, count_all_annotations, iter_anns)
 from medcat.preprocessors.cleaners import prepare_name, NameDescriptor
-from medcat.components.types import TrainableComponent
+from medcat.components.types import TrainingExample, UnsupervisedTrainableComponent
+from medcat.components.type_utils import warn_on_error
 from medcat.components.addons.addons import AddonComponent
 from medcat.pipeline import Pipeline
 
@@ -88,7 +90,6 @@ class Trainer:
                 # Convert to string
                 line = str(line).strip()
 
-
                 # inference run for the document
                 try:
                     doc = self._pipeline.get_doc(line)
@@ -97,7 +98,8 @@ class Trainer:
                     logger.warning("BECAUSE OF:", exc_info=e)
                     continue
                 for comp in self._pipeline.iter_all_components():
-                    if isinstance(comp, TrainableComponent):
+                    # NOTE: only needs to be trainable in an unsupervised manner
+                    if isinstance(comp, UnsupervisedTrainableComponent):
                         logger.debug("Training on component %s", comp.full_name)
                         comp.train_unsupervised(doc)
             else:
@@ -380,7 +382,7 @@ class Trainer:
                     extra_cui_filter, use_filters):
                 self._train_supervised_for_project(
                     project, current_document, train_from_false_positives,
-                    devalue_others)
+                    devalue_others, disable_progress=disable_progress)
 
         if terminate_last and not never_terminate:
             # Remove entities that were terminated,
@@ -398,7 +400,8 @@ class Trainer:
                                       project: MedCATTrainerExportProject,
                                       current_document: int,
                                       train_from_false_positives: bool,
-                                      devalue_others: bool):
+                                      devalue_others: bool,
+                                      disable_progress: bool = False):
         with self.config.meta.prepare_and_report_training(
                 project['documents'], 1, True, project_name=project['name']
                 ) as docs:
@@ -406,7 +409,7 @@ class Trainer:
                                      'train', True):
                 self._train_supervised_for_project2(
                     docs, current_document, train_from_false_positives,
-                    devalue_others)
+                    devalue_others, disable_progress=disable_progress)
 
     def _get_processed_name(self, raw_name: str) -> str:
         pn_dict = prepare_name(
@@ -422,8 +425,10 @@ class Trainer:
         return processed_names[0]
 
     def _prepare_doc_with_anns(
-            self, doc: MutableDocument, ann_doc: MedCATTrainerExportDocument,
-            anns: list[MedCATTrainerExportAnnotation]) -> None:
+        self, doc: MutableDocument, ann_doc: MedCATTrainerExportDocument,
+        anns: list[MedCATTrainerExportAnnotation]
+    ) -> list[MedCATTrainerExportAnnotation]:
+        out_anns: list[MedCATTrainerExportAnnotation] = []
         ents = []
         for ann in anns:
             tkns = doc.get_tokens(ann['start'], ann['end'])
@@ -432,6 +437,7 @@ class Trainer:
                 ent.detected_name = self._get_processed_name(ann['value'])
                 ent.cui = ann['cui']
                 ents.append(ent)
+                out_anns.append(ann)
             except ValueError as err:
                 self._warn_on_error(
                     err, doc.base.text,
@@ -443,98 +449,152 @@ class Trainer:
         # duplicate for linked as well, but in a a separate list
         doc.linked_ents.clear()
         doc.linked_ents.extend(ents)
+        return out_anns
 
     def _warn_on_error(self, ve: BaseException, cur_text: str,
                        mut_context_start: tuple[str, str, int, int],
                        mut_context_end: tuple[MutableEntity | None, str, str]):
-        start, end = mut_context_start[2:]
-        context_window = 20  # characters
-        splitter_left, splitter_right = "<", ">"
-        context_start = max(start - context_window, 0)
-        context_end = min(end + context_window, len(cur_text) - 1)
-        context = (cur_text[context_start: start] +
-                    splitter_left +
-                    cur_text[start: end] +
-                    splitter_right +
-                    cur_text[end: context_end])
-        if context_start > 0:
-            context = "[...]" + context
-        if context_end < len(cur_text) - 1:
-            context += "[...]"
-        msg_template = (
-            "Failed to identify '%s' (%s) ([%d:%d]) "
-            "in '%s' %s within document %s | %s, "
-            "skipping training for this example")
-        msg_context = (
-            *mut_context_start, context, *mut_context_end)
-        if self.strict_train:
-            raise ValueError(msg_template % msg_context) from ve
-        else:
-            logger.warning(msg_template, *msg_context, exc_info=ve)
-# 480+ project
+        warn_on_error(
+            ve, cur_text, mut_context_start, mut_context_end, self.strict_train)
+
     def _train_supervised_for_project2(self,
                                        docs: list[MedCATTrainerExportDocument],
                                        current_document: int,
                                        train_from_false_positives: bool,
-                                       devalue_others: bool):
-        cnf_linking = self.config.components.linking
+                                       devalue_others: bool,
+                                       disable_progress: bool = False):
+        # cnf_linking = self.config.components.linking
         for idx_doc in trange(current_document,
                               len(docs),
                               initial=current_document,
                               total=len(docs),
-                              desc='Document', leave=False):
+                              desc='Document', leave=False,
+                              disable=disable_progress):
             doc = docs[idx_doc]
             with temp_changed_config(self.config.components.linking,
                                      'train', False):
                 # NOTE: only need tokenization here
                 mut_doc = self._pipeline.tokenizer_with_tag(doc['text'])
-            self._prepare_doc_with_anns(mut_doc, doc, doc['annotations'])
+            current_anns = self._prepare_doc_with_anns(
+                mut_doc, doc, doc['annotations'])
+            logger.debug(
+                "Using %d / %d annotations",
+                len(current_anns), len(doc['annotations'])
+            )
 
-            # Compatibility with old output where annotations are a list
-            for ann, mut_entity in zip(doc['annotations'], mut_doc.linked_ents):
-                if ann.get('killed', False):
-                    continue
+            # NOTE: preparation sets both ner_ents and linked_ents
+            #       to be the same, at least for now
+            trainable_ents = mut_doc.ner_ents
+            cur_examples = [
+                TrainingExample(
+                    cui=ent.cui,
+                    entity=(
+                        self._pipeline.entity_from_tokens(ent)
+                        if isinstance(ent, list) else
+                        ent
+                    ),
+                    doc=mut_doc,
+                    negative=False,
+                    epochs=1,
+                    description="",
+                    name_status="A",
+                    ontologies=set(),
+                    type_ids=set(),
+                )
+                for ent in trainable_ents
+            ]
+            # NOTE: this was previosuly behind a flag that defaulted to True
+            #       and was done on a per entity basis:
+            for example, ann in zip(cur_examples, current_anns):
                 logger.info("    Annotation %s (%s) [%d:%d]",
                             ann['value'], ann['cui'], ann['start'], ann['end'])
-                cui = ann['cui']
-                start = ann['start']
-                end = ann['end']
-                if not mut_entity:
-                    logger.warning(
-                        "When looking for CUI '%s' (value '%s') [%d...%d] "
-                        "within the document '%s' (ID %s) was unable "
-                        "to get any tokens that match the start and end. ",
-                        cui, ann['value'], start, end,
-                        doc['name'], doc['id'])
-                    continue
-                deleted = bool(ann.get('deleted', False))
-                if not cnf_linking.filters.check_filters(cui):
-                    continue
-                try:
-                    self.add_and_train_concept(
-                        cui=cui, name=ann['value'], mut_doc=mut_doc,
-                        mut_entity=mut_entity, negative=deleted,
-                        devalue_others=devalue_others)
-                except (ValueError, KeyError) as ve:
-                    self._warn_on_error(
-                        ve, doc['text'],
-                        (cui, ann['value'], ann['start'], ann['end']),
-                        (mut_entity, doc['id'], doc['name']))
+                names = prepare_name(
+                    ann['value'], self._pipeline.tokenizer_with_tag, {},
+                    self._pn_configs
+                )
+                logger.debug("Prepared names: %s", names)
+                self.cdb._add_concept(
+                    cui=example.cui,
+                    names=names,
+                    ontologies=example.ontologies,
+                    name_status=example.name_status,
+                    type_ids=example.type_ids,
+                    description=example.description,
+                    full_build=True
+                )
+            self._train_supervised_for_batch(cur_examples)
+
             if train_from_false_positives:
                 fps: list[MutableEntity] = get_false_positives(doc, mut_doc)
+                fp_examples = [
+                    TrainingExample(
+                        cui=fp.cui,
+                        entity=fp,
+                        doc=mut_doc,
+                        negative=True,
+                        description="",
+                        name_status="A",
+                        ontologies=set(),
+                        type_ids=set(),
+                    )
+                    for fp in fps
+                ]
 
-                for fp in fps:  # type: ignore
-                    fp_: MutableEntity = fp  # type: ignore
-                    # TODO: allow adding/training
-                    self.add_and_train_concept(
-                        cui=fp_.cui, name=fp_.base.text,
-                        mut_doc=mut_doc, mut_entity=fp_,
-                        negative=True, do_add_concept=False)
+                self._train_supervised_for_batch(fp_examples)
 
-            # latest_trained_step += 1
-            # if (checkpoint is not None and checkpoint.steps is not None
-            #         and latest_trained_step % checkpoint.steps == 0):
-            #     checkpoint.save(self.cdb, latest_trained_step)
+                if devalue_others:
+                    ann_names = [ann['value'] for ann in current_anns]
+                    self._train_devalue_others(mut_doc, trainable_ents, ann_names)
+
+    def _train_devalue_others(
+        self,
+        mut_doc: MutableDocument,
+        trained_ents: list[MutableEntity],
+        ent_names: list[str],
+    ):
+        # build devaluation of others
+        devalued_examples: list[TrainingExample] = []
+        for ent, name in zip(trained_ents, ent_names):
+            cui = ent.cui
+            names = prepare_name(
+                name, self._pipeline.tokenizer_with_tag, {},
+                self._pn_configs
+            )
+            # Find all cuis
+            cuis: set[str] = set()
+            for n in names:
+                if n in self.cdb.name2info:
+                    info = self.cdb.name2info[n]
+                    cuis.update(info['per_cui_status'].keys())
+            # Remove the cui for which we just added positive training
+            if cui in cuis:
+                cuis.remove(cui)
+            # Add negative training for all other CUIs that link to
+            # these names
+            for _cui in cuis:
+                devalued_examples.append(
+                    TrainingExample(
+                        cui=_cui, entity=ent, doc=mut_doc,
+                        negative=True, epochs=1,
+                    )
+                )
+        self._train_supervised_for_batch(devalued_examples)
+
+    def _train_supervised_for_batch(
+        self,
+        examples: list[TrainingExample],
+    ) -> None:
+        trained_comps = 0
+        for component in self._pipeline.iter_all_components():
+            if not is_supervised_trainable(component):
+                continue
+            trainable_component = as_batch_trainable(component)
+            trainable_component.train_supervised_batch(examples)
+            trained_comps += 1
+        if trained_comps == 0:
+            logger.warning(
+                "Nothing was trained during add_and_train_concept because "
+                "no components followed the TrainableComponent protocol")
 
     def unlink_concept_name(self, cui: str, name: str,
                             preprocessed_name: bool = False) -> None:
@@ -636,6 +696,7 @@ class Trainer:
         """
         names = prepare_name(name, self._pipeline.tokenizer_with_tag, {},
                              self._pn_configs)
+        logger.debug("Prepared names: %s", names)
         if (not names and cui not in self.cdb.cui2info and
                 name_status == 'P'):
             logger.warning(
@@ -655,30 +716,26 @@ class Trainer:
             return
         trained_comps = 0
         for component in self._pipeline.iter_all_components():
-            if not isinstance(component, TrainableComponent):
+            if not is_supervised_trainable(component):
                 continue
+            trainable_component = as_batch_trainable(component)
             # Train Linking
             if isinstance(mut_entity, list):
                 mut_entity = self._pipeline.entity_from_tokens(mut_entity)
-            component.train(cui=cui, entity=mut_entity, doc=mut_doc,
-                            negative=negative, names=names)
+            trainable_component.train_supervised_batch(
+                [TrainingExample(
+                    cui=cui,
+                    entity=mut_entity,
+                    doc=mut_doc,
+                    negative=negative,
+                    epochs=1,
+                )])
             trained_comps += 1
 
             if not negative and devalue_others:
-                # Find all cuis
-                cuis: set[str] = set()
-                for n in names:
-                    if n in self.cdb.name2info:
-                        info = self.cdb.name2info[n]
-                        cuis.update(info['per_cui_status'].keys())
-                # Remove the cui for which we just added positive training
-                if cui in cuis:
-                    cuis.remove(cui)
-                # Add negative training for all other CUIs that link to
-                # these names
-                for _cui in cuis:
-                    component.train(cui=_cui, entity=mut_entity, doc=mut_doc,
-                                    negative=True)
+                self._train_devalue_others(
+                    mut_doc, [mut_entity], [name],
+                )
         if trained_comps == 0:
             logger.warning(
                 "Nothing was trained during add_and_train_concept because "
