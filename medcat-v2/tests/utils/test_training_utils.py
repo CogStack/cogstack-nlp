@@ -23,6 +23,7 @@ class _FakeEntity:
         self.base = _FakeEntityBase(start, end, text)
         self.cui = cui
         self.context_similarity = 1.0
+        self.id = 0
 
 
 class _FakeToken:

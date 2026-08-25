@@ -215,6 +215,9 @@ class KFoldCATTests(MCTExportTests):
 
     def setUp(self) -> None:
         super().setUp()
+        # return (self.fps, self.fns, self.tps,
+        #         self.cui_prec, self.cui_rec, self.cui_f1,
+                # self.cui_counts, self.examples)
         self.reg_stats = reg_stats.get_stats(
             self.cat, self.mct_export, do_print=False)
         # TODO - remove
