@@ -19,7 +19,7 @@ from enum import Enum
 class MetricMode(str, Enum):
     """Supported evaluation modes for statistics collection."""
 
-    FULL = "full"
+    FULL = "full_pipeline"
     NER = "ner"
     LINKING = "linking"
 
@@ -151,21 +151,9 @@ class ProjectStats(BaseModel):
     ner: ModeStats | None = None
     linking: ModeStats | None = None
 
-    _MODE_FIELDS = {
-        MetricMode.FULL: "full_pipeline",
-        MetricMode.NER: "ner",
-        MetricMode.LINKING: "linking",
-    }
-
     def get_mode(self, mode: MetricMode) -> ModeStats | None:
-        """Get statistics for the requested evaluation mode."""
-        try:
-            normalized_mode = MetricMode(mode)
-            field_name = self._MODE_FIELDS[normalized_mode]
-        except (KeyError, ValueError) as e:
-            raise ValueError(f"Unknown metric mode: {mode}") from e
-
-        return getattr(self, field_name)
+        normalized = MetricMode(mode)
+        return getattr(self, normalized.value)
     
     @classmethod
     def create(
