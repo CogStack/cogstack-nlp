@@ -5,10 +5,18 @@ import io
 import logging
 import re
 
+from medcat.cdb import CDB
+from medcat.config.config import ComponentConfig, Ner
 from medcat.tokenizing.tokenizers import BaseTokenizer
 from medcat.tokenizing.tokens import MutableDocument, MutableEntity
+from medcat.vocab import Vocab
 
-from .base import AbstractLLMEntityComponent, LLMConnectionConfig, UnknownSpanException
+from .base import (
+    AbstractLLMEntityComponent,
+    LLMConnectionConfig,
+    MisconfiguredComponentException,
+    UnknownSpanException,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -115,3 +123,25 @@ class LLMNER(AbstractLLMEntityComponent):
                 "for the ents-provided (linking) step.")
         raw_spans = self._call_api_raw(doc.base.text)
         return self._process_spans_into_ents(doc, raw_spans)
+
+    @classmethod
+    def create_new_component(
+        cls,
+        cnf: ComponentConfig,
+        tokenizer: BaseTokenizer,
+        cdb: CDB,
+        vocab: Vocab,
+        model_load_path: str | None,
+    ) -> LLMNER:
+        if not isinstance(cnf, Ner):
+            raise MisconfiguredComponentException(
+                "Wrong type of config on config.ner - "
+                f"Expected Ner, got {type(cnf).__name__}"
+            )
+        llm_cnf = cnf.custom_cnf
+        if not isinstance(llm_cnf, LLMNERConfig):
+            raise MisconfiguredComponentException(
+                "Wrong type of config on config.ner.custom_cnf - "
+                f"Expected LLMNERConfig, got {type(llm_cnf).__name__}"
+            )
+        return cls(tokenizer, llm_cnf)
