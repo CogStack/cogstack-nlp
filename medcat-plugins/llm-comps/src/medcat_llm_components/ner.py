@@ -11,6 +11,7 @@ from medcat.config.config import ComponentConfig, Ner
 from medcat.tokenizing.tokenizers import BaseTokenizer
 from medcat.tokenizing.tokens import MutableDocument, MutableEntity
 from medcat.vocab import Vocab
+from medcat.config import Config
 
 from .base import (
     AbstractLLMEntityComponent,
@@ -42,8 +43,12 @@ class LLMNERConfig(LLMConnectionConfig):
 
 
 class LLMNER(AbstractLLMEntityComponent):
-    def __init__(self, tokenizer: BaseTokenizer, cnf: LLMNERConfig) -> None:
+    def __init__(
+        self, base_config: Config,
+        tokenizer: BaseTokenizer, cnf: LLMNERConfig
+    ) -> None:
         super().__init__(cnf)
+        self.base_config = base_config
         self.tokenizer = tokenizer
         self.cnf: LLMNERConfig = cnf  # narrow the type for the rest of this class
 
@@ -114,6 +119,8 @@ class LLMNER(AbstractLLMEntityComponent):
                     "Unable to tokenize span [%d:%d] (%r)", start, end, name)
                 continue
             entity = self.tokenizer.entity_from_tokens_in_doc(tkns, doc)
+            entity.detected_name = self.base_config.general.separator.join(
+                [tkn.base.text for tkn in tkns])
             all_ents.append(entity)
             seen.add((start, end))
         return all_ents
@@ -148,4 +155,4 @@ class LLMNER(AbstractLLMEntityComponent):
                 "Wrong type of config on config.ner.custom_cnf - "
                 f"Expected LLMNERConfig, got {type(llm_cnf).__name__}"
             )
-        return cls(tokenizer, llm_cnf)
+        return cls(cdb.config, tokenizer, llm_cnf)
