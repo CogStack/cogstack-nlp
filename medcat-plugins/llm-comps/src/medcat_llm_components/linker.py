@@ -90,7 +90,7 @@ class LLMLinker(AbstractLLMEntityComponent):
         cdb: CDB,
         vocab: Vocab,
         model_load_path: str | None,
-    ) -> 'LLMLinker':
+    ) -> LLMLinker:
 
         def get_candidates(name: str) -> list[tuple[str, str]]:
             if name not in cdb.name2info:
