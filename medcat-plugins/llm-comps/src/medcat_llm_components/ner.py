@@ -48,7 +48,7 @@ class LLMNER(AbstractLLMEntityComponent):
         self.cnf: LLMNERConfig = cnf  # narrow the type for the rest of this class
 
     def get_type(self) -> CoreComponentType:
-        return CoreComponentType.linking
+        return CoreComponentType.ner
 
     def _parse_csv(self, raw: str) -> list[tuple[str, int, int]]:
         text = self._clean_response(raw)
