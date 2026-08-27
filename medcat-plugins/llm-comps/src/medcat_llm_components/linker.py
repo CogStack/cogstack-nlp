@@ -6,23 +6,16 @@ from collections.abc import Callable
 from typing import Any
 
 from medcat.tokenizing.tokens import MutableDocument, MutableEntity
+from medcat.config.config import ComponentConfig, Linking
+from medcat.tokenizing.tokenizers import BaseTokenizer
+from medcat.cdb import CDB
+from medcat.vocab import Vocab
 
-from .base import AbstractLLMEntityComponent, LLMConnectionConfig
+from .base import AbstractLLMEntityComponent, LLMConnectionConfig, MisconfiguredComponentException
+
 
 logger = logging.getLogger(__name__)
 
-
-# ---------------------------------------------------------------------------
-# Linking step
-#
-# An LLM asked to freely produce a CUI will hallucinate one - it has no
-# access to your CDB. So this only ever asks it to pick from a
-# candidate list you supply (`candidate_fn`: name -> [(cui, pretty
-# name), ...], e.g. via CDB name lookup / fuzzy match), and this is
-# where structured output actually earns its keep: constraining the
-# response to an enum of the candidate CUIs (+ "NONE") is a much
-# stronger guarantee than "please reply with just the CUI".
-# ---------------------------------------------------------------------------
 
 CandidateFn = Callable[[str], list[tuple[str, str]]]
 
@@ -79,7 +72,7 @@ class LLMLinker(AbstractLLMEntityComponent):
                 "required); use MyLLMNER for the NER step.")
         text = doc.base.text
         for ent in ents:
-            candidates = self.candidate_fn(ent.base.text)
+            candidates = self.candidate_fn(ent.detected_name)
             if not candidates:
                 continue
             start = max(0, ent.base.start_char_index - self.cnf.context_window)
@@ -88,3 +81,31 @@ class LLMLinker(AbstractLLMEntityComponent):
             if cui is not None:
                 ent.cui = cui  # NOTE: attribute name is a guess - adjust to MutableEntity's real API
         return ents
+
+    @classmethod
+    def create_new_component(
+        cls,
+        cnf: ComponentConfig,
+        tokenizer: BaseTokenizer,
+        cdb: CDB,
+        vocab: Vocab,
+        model_load_path: str | None,
+    ) -> 'LLMLinker':
+
+        def get_candidates(name: str) -> list[tuple[str, str]]:
+            if name not in cdb.name2info:
+                return []
+            return [(cui, cdb.get_name(cui)) for
+                    cui in cdb.name2info[name]['per_cui_status']]
+        if not isinstance(cnf, Linking):
+            raise MisconfiguredComponentException(
+                "Wrong type of config on config.linking - "
+                f"Expected Linking, got {type(cnf).__name__}"
+            )
+        llm_cnf = cnf.additional
+        if not isinstance(llm_cnf, LLMLinkConfig):
+            raise MisconfiguredComponentException(
+                "Wrong type of config on config.linking.additional - "
+                f"Expected LLMLinkConfig, got {type(llm_cnf).__name__}"
+            )
+        return cls(llm_cnf, get_candidates)

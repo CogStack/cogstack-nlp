@@ -146,3 +146,6 @@ class AbstractLLMEntityComponent(AbstractEntityProvidingComponent, ABC):
         # models wrap output in ```csv/```json fences despite instructions not to
         text = self._FENCE_RE.sub("", text).strip()
         return text
+
+class MisconfiguredComponentException(ValueError):
+    pass
