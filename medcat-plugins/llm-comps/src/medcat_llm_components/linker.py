@@ -5,14 +5,17 @@ import logging
 from collections.abc import Callable
 from typing import Any
 
-from medcat.tokenizing.tokens import MutableDocument, MutableEntity
+from medcat.cdb import CDB
 from medcat.config.config import ComponentConfig, Linking
 from medcat.tokenizing.tokenizers import BaseTokenizer
-from medcat.cdb import CDB
+from medcat.tokenizing.tokens import MutableDocument, MutableEntity
 from medcat.vocab import Vocab
 
-from .base import AbstractLLMEntityComponent, LLMConnectionConfig, MisconfiguredComponentException
-
+from .base import (
+    AbstractLLMEntityComponent,
+    LLMConnectionConfig,
+    MisconfiguredComponentException,
+)
 
 logger = logging.getLogger(__name__)
 
