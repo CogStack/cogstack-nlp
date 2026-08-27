@@ -6,12 +6,12 @@ import logging
 import re
 
 from medcat.cdb import CDB
+from medcat.config import Config
 from medcat.components.types import CoreComponentType
 from medcat.config.config import ComponentConfig, Ner
 from medcat.tokenizing.tokenizers import BaseTokenizer
 from medcat.tokenizing.tokens import MutableDocument, MutableEntity
 from medcat.vocab import Vocab
-from medcat.config import Config
 
 from .base import (
     AbstractLLMEntityComponent,
