@@ -37,6 +37,7 @@ dependencies = [
 dev = [
     "ruff",
     "mypy",
+    "pytest",
 ]
 
 # entry-points to add onto medcat
