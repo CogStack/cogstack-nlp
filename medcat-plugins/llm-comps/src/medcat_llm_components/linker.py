@@ -73,6 +73,7 @@ class LLMLinker(AbstractLLMEntityComponent):
     def predict_entities(
         self, doc: MutableDocument, ents: list[MutableEntity] | None = None
     ) -> list[MutableEntity]:
+        linked_ents: list[MutableEntity] = []
         if ents is None:
             raise NotImplementedError(
                 "MyLLMLinker only implements the linking step (ents "
@@ -87,7 +88,8 @@ class LLMLinker(AbstractLLMEntityComponent):
             cui = self._pick_cui(text[start:end], ent.base.text, candidates)
             if cui is not None:
                 ent.cui = cui  # NOTE: attribute name is a guess - adjust to MutableEntity's real API
-        return ents
+                linked_ents.append(ent)
+        return linked_ents
 
     @classmethod
     def create_new_component(
