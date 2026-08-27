@@ -6,6 +6,7 @@ import logging
 import re
 
 from medcat.cdb import CDB
+from medcat.components.types import CoreComponentType
 from medcat.config.config import ComponentConfig, Ner
 from medcat.tokenizing.tokenizers import BaseTokenizer
 from medcat.tokenizing.tokens import MutableDocument, MutableEntity
@@ -45,6 +46,9 @@ class LLMNER(AbstractLLMEntityComponent):
         super().__init__(cnf)
         self.tokenizer = tokenizer
         self.cnf: LLMNERConfig = cnf  # narrow the type for the rest of this class
+
+    def get_type(self) -> CoreComponentType:
+        return CoreComponentType.linking
 
     def _parse_csv(self, raw: str) -> list[tuple[str, int, int]]:
         text = self._clean_response(raw)

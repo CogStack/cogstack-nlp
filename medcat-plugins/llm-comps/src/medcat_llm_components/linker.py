@@ -6,6 +6,7 @@ from collections.abc import Callable
 from typing import Any
 
 from medcat.cdb import CDB
+from medcat.components.types import CoreComponentType
 from medcat.config.config import ComponentConfig, Linking
 from medcat.tokenizing.tokenizers import BaseTokenizer
 from medcat.tokenizing.tokens import MutableDocument, MutableEntity
@@ -39,6 +40,9 @@ class LLMLinker(AbstractLLMEntityComponent):
         super().__init__(cnf)
         self.cnf: LLMLinkConfig = cnf
         self.candidate_fn = candidate_fn
+
+    def get_type(self) -> CoreComponentType:
+        return CoreComponentType.linking
 
     def _candidate_schema(self, candidates: list[tuple[str, str]]) -> dict[str, Any]:
         return {
