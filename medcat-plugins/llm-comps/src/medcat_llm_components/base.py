@@ -140,12 +140,42 @@ class AbstractLLMEntityComponent(AbstractEntityProvidingComponent, ABC):
         return resp.choices[0].message.content or ""
 
     _FENCE_RE = re.compile(r"^```[a-zA-Z]*\n|\n```$")
+    _TABLE_ROW_RE = re.compile(r"^\|.*\|$")
+    _TABLE_SEP_RE = re.compile(r"^[\s|:-]+$")
 
     def _clean_response(self, raw: str) -> str:
         text = raw.strip()
         # models wrap output in ```csv/```json fences despite instructions not to
         text = self._FENCE_RE.sub("", text).strip()
-        return text
+        return self._strip_markdown_table(text)
+
+    def _strip_markdown_table(self, text: str) -> str:
+        """Small/instruction-weak models sometimes wrap the requested
+        CSV/plain output in a markdown table instead - either one field
+        per cell (`| entity | start | end |`) or, just as often, the
+        whole line squished into a single cell (`| entity,start,end |`).
+        Detected structurally (every non-empty line is pipe-wrapped) so
+        it doesn't depend on the exact header text; both variants above
+        collapse to the same comma-joined output.
+
+        Only triggers when the *entire* response looks like a table.
+        Prose mixed with a table (e.g. "Here are the entities:\n| ... |")
+        isn't handled - that needs pulling the table out of surrounding
+        text, a step up in complexity from a plain cleanup pass.
+        """
+        non_empty = [ln.strip() for ln in text.splitlines() if ln.strip()]
+        if not non_empty or not all(
+                self._TABLE_ROW_RE.match(ln) for ln in non_empty):
+            return text
+
+        out_lines = []
+        for ln in non_empty:
+            if self._TABLE_SEP_RE.match(ln):
+                continue  # header-separator row
+            cells = [c.strip() for c in ln.strip("|").split("|")]
+            out_lines.append(",".join(cells) if len(cells) > 1 else cells[0])
+        return "\n".join(out_lines)
+
 
 class MisconfiguredComponentException(ValueError):
     pass
