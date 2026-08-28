@@ -4,7 +4,7 @@ import csv
 import io
 import logging
 import re
-from typing import Callable
+from collections.abc import Callable
 
 from medcat.cdb import CDB
 from medcat.components.types import CoreComponentType
