@@ -123,7 +123,9 @@ class CATWrapper(CAT):
             CAT: The loaded model pack.
         """
         _cat = super().load_model_pack(
-            model_pack_path, config_dict, addon_config_dict)
+            model_pack_path, config_dict, addon_config_dict,
+            keep_addons_of_types=keep_addons_of_types,
+        )
         cat = cls(_cat)
         if model_info is None:
             raise CannotWrapModel("Model info must be provided")
