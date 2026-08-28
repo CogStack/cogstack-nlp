@@ -44,6 +44,7 @@ class LLMNERConfig(LLMConnectionConfig):
 
 
 class LLMNER(AbstractLLMEntityComponent):
+    name = "llm_ner"
     def __init__(
         self, base_config: Config,
         tokenizer: BaseTokenizer, cnf: LLMNERConfig,
