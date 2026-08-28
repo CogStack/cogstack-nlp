@@ -150,7 +150,7 @@ class AbstractLLMEntityComponent(AbstractEntityProvidingComponent, ABC):
         return self._strip_markdown_table(text)
 
     def _strip_markdown_table(self, text: str) -> str:
-        """Small/instruction-weak models sometimes wrap the requested
+        r"""Small/instruction-weak models sometimes wrap the requested
         CSV/plain output in a markdown table instead - either one field
         per cell (`| entity | start | end |`) or, just as often, the
         whole line squished into a single cell (`| entity,start,end |`).
