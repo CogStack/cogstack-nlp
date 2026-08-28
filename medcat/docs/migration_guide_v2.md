@@ -121,7 +121,7 @@ We recommend re-saving v1 models using `cat.save_model_pack` in v2 format to mit
 All v2 tutorials have been completely redone.
 They do not go as far into detail in everything as the v1 tutorials did.
 But they should hopefully cover most of the use cases
-The v2 tutorials are available [here](https://github.com/CogStack/cogstack-nlp/tree/main/medcat-v2-tutorials).
+The v2 tutorials are available [here](https://github.com/CogStack/cogstack-nlp/tree/main/medcat-tutorials).
 
 ## Updated `working_with_cogstack` scripts
 

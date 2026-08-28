@@ -5,7 +5,7 @@ from functools import partial
 import argparse
 
 
-rel_install_path = "../medcat-v2/"
+rel_install_path = "../medcat/"
 abs_install_path = str(pathlib.Path(rel_install_path).resolve())
 
 # Matches either:

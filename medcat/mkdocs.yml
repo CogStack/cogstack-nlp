@@ -1,4 +1,4 @@
-w# yaml-language-server: $schema=https://squidfunk.github.io/mkdocs-material/schema.json
+# yaml-language-server: $schema=https://squidfunk.github.io/mkdocs-material/schema.json
 site_name: MedCAT Documentation
 site_url: https://docs.cogstack.org/
 
@@ -34,11 +34,13 @@ docs_dir: docs
 nav:
   - Home: index.md
   - Architecture: architecture.md
-  - Tutorials: '!include ../medcat-v2-tutorials/mkdocs.yml'
+  - Tutorials: '!include ../medcat-tutorials/mkdocs.yml'
   - Upgrading:
+    - Information for users coming from MedCAT v1: v1_info.md
     - Migration guide (v2): migration_guide_v2.md
+    - Model conversion: v1_conversion.md
     - Breaking changes: breaking_changes.md
-  
+
 plugins:
   - search
   - termynal
@@ -80,4 +82,4 @@ markdown_extensions:
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
   - pymdownx.snippets:
       # NOTE: looks like this starts from project root rather than mkdocs location
-      base_path: ['medcat-v2']  # so "README.md" resolves to ../README.md
+      base_path: ['medcat']  # so "README.md" resolves to ../README.md
