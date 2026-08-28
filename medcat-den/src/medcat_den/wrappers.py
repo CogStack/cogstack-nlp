@@ -91,9 +91,9 @@ class CATWrapper(CAT):
     def load_model_pack(cls, model_pack_path: str,
                         config_dict: Optional[dict] = None,
                         addon_config_dict: Optional[dict[str, dict]] = None,
+                        keep_addons_of_types: Optional[list[Type[AddonComponent]]] = None,
                         model_info: Optional[ModelInfo] = None,
                         den_cnf: Optional[DenConfig] = None,
-                        keep_addons_of_types: Optional[list[Type[AddonComponent]]] = None,
                         ) -> 'CAT':
         """Load the model pack from file.
 
