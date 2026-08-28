@@ -28,7 +28,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "medcat>=2.5",
+    "medcat[spacy,meta-cat]>=2.5",
     "pydantic",
     "openai~=3.3.1",
 ]
