@@ -4,6 +4,7 @@ import csv
 import io
 import logging
 import re
+from typing import Callable
 
 from medcat.cdb import CDB
 from medcat.components.types import CoreComponentType
@@ -45,12 +46,14 @@ class LLMNERConfig(LLMConnectionConfig):
 class LLMNER(AbstractLLMEntityComponent):
     def __init__(
         self, base_config: Config,
-        tokenizer: BaseTokenizer, cnf: LLMNERConfig
+        tokenizer: BaseTokenizer, cnf: LLMNERConfig,
+        name2cuis: Callable[[str], list[str]],
     ) -> None:
         super().__init__(cnf)
         self.base_config = base_config
         self.tokenizer = tokenizer
         self.cnf: LLMNERConfig = cnf  # narrow the type for the rest of this class
+        self.name2cuis = name2cuis
 
     def get_type(self) -> CoreComponentType:
         return CoreComponentType.ner
@@ -120,7 +123,12 @@ class LLMNER(AbstractLLMEntityComponent):
                 continue
             entity = self.tokenizer.entity_from_tokens_in_doc(tkns, doc)
             entity.detected_name = self.base_config.general.separator.join(
-                [tkn.base.text for tkn in tkns])
+                [tkn.base.text.lower() for tkn in tkns])
+            # NOTE: not strictly an NER task, but the default
+            #       linker expects this to be done
+            entity.link_candidates = [
+                cui for cui in self.name2cuis(entity.detected_name)
+            ]
             all_ents.append(entity)
             seen.add((start, end))
         return all_ents
@@ -155,4 +163,9 @@ class LLMNER(AbstractLLMEntityComponent):
                 "Wrong type of config on config.ner.custom_cnf - "
                 f"Expected LLMNERConfig, got {type(llm_cnf).__name__}"
             )
-        return cls(cdb.config, tokenizer, llm_cnf)
+
+        def name2cuis(name: str) -> list[str]:
+            if name not in cdb.name2info:
+                return []
+            return list(cdb.name2info[name]['per_cui_status'])
+        return cls(cdb.config, tokenizer, llm_cnf, name2cuis)
