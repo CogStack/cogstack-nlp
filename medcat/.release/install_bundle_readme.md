@@ -64,7 +64,7 @@ Users who need gpu-enabled `torch` will need to install it separately.
 
 Once you've downloaded the install bundle on a computer with internet / PyPI access you need to
 - Move the archive (a `.tar.gz` file) to the target machine
-- Unarchive using `tar -xvzf medcat-v2.*-cpu.tar.gz`
+- Unarchive using `tar -xvzf medcat-*-cpu.tar.gz`
   - Probably best to specify your exact file path
   - This will extract the contents (both the `.whl` files and this README) in the current folder
 - Activate your virtual environment (`venv`, `conda`, etc).

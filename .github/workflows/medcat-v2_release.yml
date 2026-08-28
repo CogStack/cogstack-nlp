@@ -1,4 +1,4 @@
-name: medcat-v2 - Build Python Package
+name: medcat - Build Python Package
 
 on:
   push:
@@ -13,11 +13,11 @@ permissions:
 
 defaults:
   run:
-    working-directory: ./medcat-v2
+    working-directory: ./medcat
 
 jobs:
   build:
-    name: Build medcat-v2 wheel
+    name: Build medcat wheel
     runs-on: ubuntu-latest
     outputs:
       version_tag: ${{ steps.extract.outputs.version_tag }}
@@ -71,10 +71,10 @@ jobs:
       - name: Upload wheel artifact
         uses: actions/upload-artifact@v7
         with:
-          name: medcat-v2-wheel
+          name: medcat-wheel
           path: |
-            medcat-v2/dist/*.whl
-            medcat-v2/dist/*.tar.gz
+            medcat/dist/*.whl
+            medcat/dist/*.tar.gz
 
   bundle:
     name: Build install bundles
@@ -131,8 +131,8 @@ jobs:
       - name: Download built medcat wheel for inclusion in bundles
         uses: actions/download-artifact@v8
         with:
-          name: medcat-v2-wheel
-          path: medcat-v2/built-wheel
+          name: medcat-wheel
+          path: medcat/built-wheel
 
       - name: List downloaded artifacts
         run: ls -lh built-wheel
@@ -152,8 +152,8 @@ jobs:
         with:
           name: bundles-${{ matrix.python-version }}
           path: |
-            medcat-v2/medcat-v${{ needs.build.outputs.version_only }}-${{ matrix.python-version }}-cpu.tar.gz
-#            medcat-v2/medcat-v${{ needs.build.outputs.version_only }}-${{ matrix.python-version }}-gpu.tar.gz
+            medca2/medcat-v${{ needs.build.outputs.version_only }}-${{ matrix.python-version }}-cpu.tar.gz
+#            medcat/medcat-v${{ needs.build.outputs.version_only }}-${{ matrix.python-version }}-gpu.tar.gz
 
   release:
     name: Create GitHub Release
@@ -163,7 +163,7 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v8
         with:
-          path: medcat-v2/artifacts
+          path: medcat/artifacts
 
       - name: Move all bundles to dist/
         run: |
@@ -175,8 +175,8 @@ jobs:
       - name: Download built wheel
         uses: actions/download-artifact@v8
         with:
-          name: medcat-v2-wheel
-          path: medcat-v2/dist-wheel
+          name: medcat-wheel
+          path: medcat/dist-wheel
 
       - name: Move wheels to dist/
         run: |
@@ -194,7 +194,7 @@ jobs:
           draft: true
           # softprops/action-gh-release v2 doesnt support the working-directory field, so put the path in files
           files: |
-            medcat-v2/dist/*
+            medcat/dist/*
 
       - name: Remove install bundles in preparations for PyPI push
         run: |
@@ -204,7 +204,7 @@ jobs:
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          packages-dir: medcat-v2/dist
+          packages-dir: medcat/dist
 
   # test-time models for download
   upload-test-models:
