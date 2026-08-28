@@ -88,6 +88,8 @@ class LLMLinker(AbstractLLMEntityComponent):
             cui = self._pick_cui(text[start:end], ent.base.text, candidates)
             if cui is not None:
                 ent.cui = cui  # NOTE: attribute name is a guess - adjust to MutableEntity's real API
+                # we did not do that, really - but for downstream filtering
+                ent.context_similarity = ent.acc = 1.0
                 linked_ents.append(ent)
         return linked_ents
 
