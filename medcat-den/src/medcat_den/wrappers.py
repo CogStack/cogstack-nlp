@@ -1,10 +1,11 @@
-from typing import Union, Optional
+from typing import Union, Optional, Type
 
 from medcat.cat import CAT
 from medcat.utils.defaults import DEFAULT_PACK_NAME
 from medcat.storage.serialisers import AvailableSerialisers
 from medcat.trainer import Trainer
 from medcat.data.mctexport import MedCATTrainerExport
+from medcat.components.addons.addons import AddonComponent
 
 from medcat_den.base import ModelInfo
 from medcat_den.config import DenConfig, RemoteDenConfig
@@ -92,6 +93,7 @@ class CATWrapper(CAT):
                         addon_config_dict: Optional[dict[str, dict]] = None,
                         model_info: Optional[ModelInfo] = None,
                         den_cnf: Optional[DenConfig] = None,
+                        keep_addons_of_types: Optional[list[Type[AddonComponent]]] = None,
                         ) -> 'CAT':
         """Load the model pack from file.
 
