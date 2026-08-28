@@ -1,4 +1,4 @@
-# MedCAT Tutorials (version 2)
+# MedCAT Tutorials
 
 The MedCAT Tutorials provide an interactive learning path for using MedCAT.
 
@@ -9,13 +9,13 @@ The following readmes are around the setup of the tutorials themselves aimed at 
 
 ### Documentation Build
 
-The `medcat-v2` documentation site imports this project’s MkDocs navigation file directly. The relevant plugins are the mkdocs-monorepo-plugin and the mkdocs-jupyter plugin.
+The `medcat` documentation site imports this project’s MkDocs navigation file directly. The relevant plugins are the mkdocs-monorepo-plugin and the mkdocs-jupyter plugin.
 
-In `medcat-v2/mkdocs.yml` the `Tutorials` section is wired in via an include:
+In `medcat/mkdocs.yml` the `Tutorials` section is wired in via an include:
 
 ```yaml
 nav:
-  - Tutorials: '!include ../medcat-v2-tutorials/mkdocs.yml'
+  - Tutorials: '!include ../medcat-tutorials/mkdocs.yml'
 ```
 
 #### Run the docs locally (rendered site)
@@ -23,6 +23,6 @@ nav:
 To preview the rendered docs site locally:
 
 ```bash
-cd cogstack-nlp/medcat-v2-tutorials
+cd cogstack-nlp/medcat-tutorials
 uv run mkdocs serve
 ```

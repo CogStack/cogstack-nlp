@@ -1,5 +1,5 @@
 # NOTE: this file is designed to be copied across the following sub-folders
-#         1. medcat-v2/tests/resource_fetch.py
+#         1. medcat/tests/resource_fetch.py
 #         2. medcat-den/tests/resource_fetch.py
 #       So if you make changes here, copy them over to the others as well.
 #

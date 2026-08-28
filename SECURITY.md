@@ -7,7 +7,7 @@ There are multiple projects in this repo. Versions are released as tags with a p
 We actively support security updates for the following versions:
 
 ### MedCAT NLP Library
-- [Medical Concept Annotation Tool](medcat-v2/README.md)
+- [Medical Concept Annotation Tool](medcat/README.md)
 
 | Version         | Supported          |
 | -------         | ------------------ |
