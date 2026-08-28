@@ -37,6 +37,7 @@ class LLMLinkConfig(LLMConnectionConfig):
 
 class LLMLinker(AbstractLLMEntityComponent):
     name = "llm_linker"
+
     def __init__(self, cnf: LLMLinkConfig, candidate_fn: CandidateFn) -> None:
         super().__init__(cnf)
         self.cnf: LLMLinkConfig = cnf
