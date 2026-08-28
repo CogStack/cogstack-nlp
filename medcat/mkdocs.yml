@@ -38,6 +38,7 @@ nav:
   - Upgrading:
     - Information for users coming from MedCAT v1: v1_info.md
     - Migration guide (v2): migration_guide_v2.md
+    - Model conversion: v1_conversion.md
     - Breaking changes: breaking_changes.md
 
 plugins:
