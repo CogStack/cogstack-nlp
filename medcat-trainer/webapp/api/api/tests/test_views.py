@@ -381,3 +381,64 @@ class DownloadAnnosTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         # Response is a streaming JSON document
         self.assertIn('Content-Disposition', resp)
+
+
+@override_settings(MEDIA_ROOT='/tmp/mct-tests-views')
+class ProjectGroupCreateTests(TestCase):
+    def setUp(self):
+        self.creator = create_user(username='pg-api-creator')
+        self.annotator = create_user(username='pg-api-ann')
+        self.client = _auth_client(self.creator)
+        cdb = ConceptDB(name='pg-api-cdb', cdb_file='pg-api-cdb.dat')
+        cdb.save(skip_load=True)
+        vocab = Vocabulary(name='pg-api-vocab', vocab_file='pg-api-vocab.dat')
+        vocab.save(skip_load=True)
+        self.dataset = create_dataset(name='pg-api-ds', file_name='pg-api-ds.csv')
+        self.cdb = cdb
+        self.vocab = vocab
+
+    def test_post_creates_group_and_associated_projects(self):
+        resp = self.client.post(
+            '/api/project-groups/',
+            {
+                'name': 'api-group',
+                'description': 'from api',
+                'dataset': self.dataset.id,
+                'concept_db': self.cdb.id,
+                'vocab': self.vocab.id,
+                'cuis': '',
+                'annotators': [self.annotator.id],
+                'create_associated_projects': True,
+            },
+            format='json',
+        )
+        self.assertEqual(resp.status_code, 201, msg=resp.content)
+        self.assertEqual(resp.json()['name'], 'api-group')
+        projects = ProjectAnnotateEntities.objects.filter(group_id=resp.json()['id'])
+        self.assertEqual(projects.count(), 1)
+        project = projects.get()
+        self.assertEqual(project.name, 'api-group - pg-api-ann')
+        self.assertIn(self.annotator, project.members.all())
+        self.assertIn(self.creator, project.members.all())
+
+    def test_post_without_annotators_returns_400(self):
+        resp = self.client.post(
+            '/api/project-groups/',
+            {
+                'name': 'api-group-empty',
+                'dataset': self.dataset.id,
+                'concept_db': self.cdb.id,
+                'vocab': self.vocab.id,
+                'cuis': '',
+                'create_associated_projects': True,
+            },
+            format='json',
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn('annotators', resp.json())
+
+    def test_anonymous_cannot_create_group(self):
+        client = APIClient()
+        resp = client.post('/api/project-groups/', {'name': 'nope'}, format='json')
+        self.assertIn(resp.status_code, (401, 403))
+

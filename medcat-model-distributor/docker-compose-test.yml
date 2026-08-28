@@ -3,7 +3,7 @@ services:
     build:
       context: ./webapp
     volumes:
-      - ../medcat-v2/tests/resources:/webapp/models
+      - ../medcat/tests/resources:/webapp/models
     ports:
       - "8000:8000"
     env_file:

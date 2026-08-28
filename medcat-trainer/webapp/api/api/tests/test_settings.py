@@ -2,6 +2,8 @@
 
 from unittest import TestCase
 
+from django.conf import settings
+
 from core.settings import NON_PROD_DEFAULT_SECRET_KEY, resolve_secret_key
 
 
@@ -30,3 +32,11 @@ class ResolveSecretKeyTests(TestCase):
             resolve_secret_key('non-prod', 'non-prod-env-secret'),
             'non-prod-env-secret',
         )
+
+
+class CookieNameTests(TestCase):
+    def test_session_and_csrf_cookies_are_namespaced(self):
+        self.assertTrue(settings.SESSION_COOKIE_NAME.startswith('mct_'))
+        self.assertTrue(settings.CSRF_COOKIE_NAME.startswith('mct_'))
+        self.assertNotEqual(settings.SESSION_COOKIE_NAME, 'sessionid')
+        self.assertNotEqual(settings.CSRF_COOKIE_NAME, 'csrftoken')

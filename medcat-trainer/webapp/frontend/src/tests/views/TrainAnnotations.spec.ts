@@ -2,6 +2,9 @@ import { describe, it, expect, vi } from 'vitest'
 import { shallowMount, flushPromises } from '@vue/test-utils'
 import { createRouter, createWebHistory } from 'vue-router'
 import TrainAnnotations from '@/views/TrainAnnotations.vue'
+import { authCookieNames } from '@/authCookies'
+import { UNAUTHORIZED_EVENT } from '@/httpAuth'
+import EventBus from '@/event-bus'
 
 const routes = [
   { path: '/train-annotations/:projectId/:docId?', name: 'train-annotations', component: TrainAnnotations }
@@ -24,9 +27,12 @@ const project = {
   relations: []
 }
 
+const names = authCookieNames()
+const sessionCookies = { [names.token]: 'test-token', [names.username]: 'alice' }
+
 // Mount the view without triggering the created() data-fetch cascade: the default
 // $http.get returns a promise that never settles so we can drive fetchEntities directly.
-const mountView = (getImpl: (url: string) => Promise<unknown>, cookies: Record<string, string> = { 'api-token': 'test-token' }) => {
+const mountView = (getImpl: (url: string) => Promise<unknown>, cookies: Record<string, string> = sessionCookies) => {
   const mockGet = vi.fn(getImpl)
   const wrapper = shallowMount(TrainAnnotations, {
     props: { projectId: 1 },
@@ -212,5 +218,21 @@ describe('TrainAnnotations.vue fetchEntities', () => {
     expect(mockGet).not.toHaveBeenCalled()
     expect(wrapper.vm.currentDoc).toBeNull()
 
+  })
+
+  it('clears loaded document state when the session is rejected', async () => {
+    const { wrapper } = mountView(() => new Promise(() => { }))
+    wrapper.vm.project = project
+    wrapper.vm.docs = [{ id: 123, text: 'clinical note' }]
+    wrapper.vm.currentDoc = { id: 123, text: 'clinical note' }
+    wrapper.vm.ents = [{ id: 1 }]
+
+    EventBus.$emit(UNAUTHORIZED_EVENT)
+    await flushPromises()
+
+    expect(wrapper.vm.project).toBeNull()
+    expect(wrapper.vm.currentDoc).toBeNull()
+    expect(wrapper.vm.docs).toEqual([])
+    expect(wrapper.vm.ents).toEqual([])
   })
 })

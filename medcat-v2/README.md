@@ -1,5 +1,6 @@
-# Medical  <img src="https://github.com/CogStack/cogstack-nlp/blob/main/media/cat-logo.png?raw=true" width=45> oncept Annotation Tool (version 2)
+# MedCAT v2
 
+<<<<<<< HEAD
 MedCAT can be used to extract information from Electronic Health Records (EHRs) and link it to biomedical ontologies like SNOMED-CT, UMLS, or HPO (and potentially other ontologies).
 Original paper for v1 on [arXiv](https://arxiv.org/abs/2010.01165). 
 
@@ -212,3 +213,6 @@ MedCAT v2 citation:
 }
 </details>
 ```
+=======
+MedCAT v2 is now simply in at (../medcat)[./medcat].
+>>>>>>> main
