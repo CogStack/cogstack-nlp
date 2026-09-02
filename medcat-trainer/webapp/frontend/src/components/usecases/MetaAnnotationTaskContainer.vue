@@ -90,8 +90,26 @@ export default {
 </script>
 
 <style scoped lang="scss">
+.meta-task-container {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  max-height: 50%;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+  margin-top: auto;
+  overflow: hidden;
+
+  .title {
+    flex-shrink: 0;
+  }
+}
+
 .meta-task-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
   overflow-y: auto;
-  min-height: 250px;
 }
 </style>
