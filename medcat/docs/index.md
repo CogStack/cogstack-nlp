@@ -114,6 +114,28 @@ See [Architecture Documentation](docs/architecture.md) for detailed information.
 ## Tutorials
 A guide on how to use MedCAT v2 is available at on the medcat documentation page on [docs.cogstack.org](https://docs.cogstack.org)
 
+## Contributing
+
+Please follow the [Contribution Guidelines](../CONTRIBUTING.md).
+
+When writing your own component (NER or linker), it is recommended making sure they follow the contracts for these components.
+<details>
+<summary>Example test for custom components in model pack</summary>
+
+```python
+from unittest import TestCase
+from medcat.components.contracting_testing import assert_component_contracts
+# implement create_model_with_my_component
+class MyComponentTest(TestCase):
+    def test_my_model_contract(self):
+        # create or load a model with your custom component(s)
+        # NOTE: This would (generally) need to be able to NER / link 1 entity in the example text
+        #       The test time models in medcat would be sufficient
+        cat = create_model_with_my_component()
+        assert_component_contracts(cat)
+```
+</details>
+
 ## Acknowledgements
 Entity extraction was trained on [MedMentions](https://github.com/chanzuckerberg/MedMentions) In total it has ~ 35K entites from UMLS
 
