@@ -55,7 +55,7 @@
           <div class="sidebar-container">
             <plugin-slot name="train-annotations:sidebar" :project="project" />
             <transition name="slide-left">
-              <div>
+              <div class="sidebar-top">
                 <concept-summary v-if="!conceptSynonymSelection && !hasRelations" :selectedEnt="currentEnt"
                                  :altSearch="altSearch"
                                  :project="project" :searchFilterDBIndex="searchFilterDBIndex"
@@ -1025,11 +1025,20 @@ $app-header-height: 60px;
   display: flex;
   justify-content: space-between;
   flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
   padding: 5px;
+
+  .sidebar-top {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+  }
 
   .add-annotation {
     width: 100%;
     flex: 1 1 auto;
+    min-height: 0;
   }
 }
 
