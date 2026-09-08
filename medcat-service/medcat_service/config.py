@@ -21,7 +21,7 @@ def _coerce_loglevel(v: Any) -> int:
 
 
 def parse_enabled_components(v: str | Iterable[str] | None) -> tuple[str, ...]:
-    if v is None:
+    if v is None or not v:
         return ()
     if isinstance(v, str):
         return tuple(x.strip() for x in v.split(",") if x.strip())
@@ -61,7 +61,7 @@ class Settings(BaseSettings):
         description="Enable DEID redaction. Returns text like [***] instead of [ANNOTATION]",
     )
 
-    enabled_components: tuple[str, ...] = Field(default=(), alias="APP_ENABLED_COMPONENTS")
+    enabled_components: str | tuple[str, ...] = Field(default=(), alias="APP_ENABLED_COMPONENTS")
 
     enable_demo_ui: bool = Field(default=False, description="Enable the demo app", alias="APP_ENABLE_DEMO_UI")
     demo_ui_path: str = Field(default="", description="Path to the demo app", alias="APP_DEMO_UI_PATH")
