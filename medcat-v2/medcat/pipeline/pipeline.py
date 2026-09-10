@@ -347,7 +347,11 @@ class Pipeline:
                         comp.full_name, len(text), id(text))
             doc = comp(doc)
         for addon in self._addons:
-            doc = addon(doc)
+            try:
+                doc = addon(doc)
+            except Exception:
+                logger.exception("Addon error %s", addon.full_name)
+
         return doc
 
     def entity_from_tokens(self, tokens: list[MutableToken]) -> MutableEntity:
