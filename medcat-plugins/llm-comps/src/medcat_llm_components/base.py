@@ -74,6 +74,10 @@ class LLMConnectionConfig(ComponentConfig):
     temperature: float = 0.0
     use_structured_output: bool = True
 
+    @classmethod
+    def get_init_attrs(cls) -> list[str]:
+        return ['base_url', 'model']
+
 
 class AbstractLLMEntityComponent(AbstractEntityProvidingComponent, ABC):
     """Shared connection / chat / cleanup plumbing for LLM-based components.
