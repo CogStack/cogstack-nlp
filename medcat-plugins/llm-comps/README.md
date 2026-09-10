@@ -132,6 +132,8 @@ MODEL_PATH = "my_model_path"
 LLM_URL = "api_endpoint_url:80/v1"
 LLM_MODEL = "gemma:2b"
 
+# NOTE: this is only necessary if the URL or other
+#       info has changed between save and load
 config_dict = {
     "components": {
         # for NER
