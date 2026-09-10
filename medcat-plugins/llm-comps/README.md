@@ -99,7 +99,7 @@ linking_cnf = LLMLinkConfig(
     # refer to code or IDE inspection
 )
 
-config = Config()# update model pack
+config = Config()
 config.components.ner.comp_name = "llm_ner"
 config.components.ner.custom_cnf = ner_cnf
 config.components.linking.comp_name = "llm_linker"
