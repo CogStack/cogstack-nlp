@@ -12,27 +12,31 @@ from medcat_llm_components.linker import LLMLinkConfig
 import pytest
 
 
+DEFAULT_BASE_URL = "my_ollama_ip:port/whatever"
+DEFAULT_MODEL = "gemma:2b"
+DEFAULT_PROMPT_NER = "Never gonna give you up"
+DEFAULT_PROMPT_LINKER = "Never gonna let you go"
+
+
 def create_new_llm_model():
 
     # the URL to the (e.g) ollama instance
-    base_url = "my_ollama_ip:port/whatever"
+    base_url = DEFAULT_BASE_URL
     # the model to use
-    llm_model = "gemma:2b"
+    llm_model = DEFAULT_MODEL
 
     # create configs
     # ner
     ner_cnf = LLMNERConfig(
         base_url=base_url,
         model=llm_model,
-        # for other optional arguments such as prompt
-        # refer to code or IDE inspection
+        prompt=DEFAULT_PROMPT_NER,
     )
     # linker
     linking_cnf = LLMLinkConfig(
         base_url=base_url,
         model=llm_model,
-        # for other optional arguments such as prompt
-        # refer to code or IDE inspection
+        prompt=DEFAULT_PROMPT_LINKER,
     )
 
     config = Config()
@@ -67,6 +71,7 @@ def test_can_save_and_load(llm_cat, tmpdir):
     assert cat
     assert isinstance(cat, CAT)
     assert_has_correct_components(cat)
+    assert_has_correct_config_opts(cat)
 
 
 def assert_has_correct_components(cat: CAT):
@@ -78,3 +83,16 @@ def assert_has_correct_components(cat: CAT):
     linker = cat.pipe.get_component(CoreComponentType.linking)
     assert "LLM" in str(type(ner))
     assert "LLM" in str(type(linker))
+
+
+def assert_has_correct_config_opts(cat: CAT):
+    ner_cnf = cat.config.components.ner.custom_cnf
+    linking_cnf = cat.config.components.linking.additional
+    assert isinstance(ner_cnf, LLMNERConfig)
+    assert isinstance(linking_cnf, LLMLinkConfig)
+    assert ner_cnf.base_url == DEFAULT_BASE_URL
+    assert linking_cnf.base_url == DEFAULT_BASE_URL
+    assert ner_cnf.model == DEFAULT_MODEL
+    assert linking_cnf.model == DEFAULT_MODEL
+    assert ner_cnf.prompt == DEFAULT_PROMPT_NER
+    assert linking_cnf.prompt == DEFAULT_PROMPT_LINKER
