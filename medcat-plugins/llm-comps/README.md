@@ -72,6 +72,7 @@ This will almost certainly be more involved.
 ```python
 from medcat.cat import CAT
 from medcat.cdb import CDB
+from medcat.vocab import Vocab
 from medcat.config import Config
 
 from medcat_llm_components.ner import LLMNERConfig
