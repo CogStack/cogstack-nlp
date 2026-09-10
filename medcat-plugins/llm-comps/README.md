@@ -113,3 +113,49 @@ cat = CAT(cdb, vocab)
 print(cat.describe_pipeline())
 # ready to use!
 ```
+
+### Instruct an existing LLM-component-saved model:
+
+If you've already got a model that's saved with the config specific to your
+use case (e.g URL and model and the like) then you can just load it up and use
+it like any other model.
+
+However, if you've got a model saved with the right components, but the wrong
+URL or model (or you just wish to change it) you can load and change these in
+one go as follows:
+
+```python
+from medcat.cat import CAT
+
+MODEL_PATH = "my_model_path"
+
+LLM_URL = "api_endpoint_url:80/v1"
+LLM_MODEL = "gemma:2b"
+
+config_dict = {
+    "components": {
+        # for NER
+        "ner": {
+            "custom_cnf": {
+                "base_url": LLM_URL,
+                "model": LLM_MODEL,
+            }
+        },
+        # for linking
+        "linking": {
+            "additional": {
+                "base_url": LLM_URL,
+                "model": LLM_MODEL,
+            }
+        }
+    }
+}
+
+cat = CAT.load_model_pack(
+    MODEL_PATH, config_dict=config_dict,
+)
+print(
+    "CAT.get_entities",
+    cat.get_entities("Patient had kidney disease")['entities']
+)
+```
