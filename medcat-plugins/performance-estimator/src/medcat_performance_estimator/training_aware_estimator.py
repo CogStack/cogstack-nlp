@@ -12,6 +12,7 @@ from .utils import combine_context_vector, count_confidence, relative_mass
 
 # --- vector similarity, corrected for embedding-space anisotropy -------
 
+
 class VectorSimilarityBaseline:
     """Estimates the "typical" pairwise cosine similarity between unrelated
     concept vectors, so a raw cosine can be judged relative to what's normal
@@ -29,7 +30,7 @@ class VectorSimilarityBaseline:
         sample_size: int = 2000,
         seed: int = 0,
     ) -> None:
-        cuis = [c for c, v in cui2combined_vector.items() if v is not None]
+        cuis = [c for c, v in cui2combined_vector.items() if np.linalg.norm(v) > 0]
         rng = random.Random(seed)
         n_pairs = min(sample_size, len(cuis) * (len(cuis) - 1) // 2)
         sims: list[float] = []
@@ -78,6 +79,7 @@ class VectorSimilarityBaseline:
 
 @dataclass(frozen=True)
 class TrainingAwareConfig:
+    min_train_count: int = 10
     count_confidence_k: float = 20.0
     """Training count at which vector-similarity confidence reaches 0.5."""
     use_log_damping: bool = True
@@ -141,6 +143,7 @@ class TrainingAwareDifficultyEstimator:
             combined = {
                 cui: combine_context_vector(vecs, self.context_vector_weights)
                 for cui, vecs in all_vectors.items()
+                if self.training.get_cui_train_count(cui) >= self.config.min_train_count
             }
             self._baseline = VectorSimilarityBaseline(
                 combined, sample_size=self.config.vector_baseline_sample_size
