@@ -126,7 +126,7 @@ class TestTrainingAwareDifficultyEstimator(unittest.TestCase):
         # Patch/mock predict_accuracy method on the instance to return fixed values
         self.estimator.predict_accuracy = MagicMock(side_effect=[0.5, 0.7])
 
-        difficulty = self.estimator.compute_concept_training_difficulty("C1")
+        difficulty = self.estimator.compute_concept_training_difficulty("C1")['predicted_accuracy']
         self.assertEqual(difficulty, 0.6)
 
 
