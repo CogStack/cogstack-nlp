@@ -7,6 +7,7 @@ import {
   ensureTraditionalAuth,
   clearClientAuth
 } from '@/httpAuth'
+import { authCookieNames } from '@/authCookies'
 import EventBus from '@/event-bus'
 
 // Minimal axios-like stub capturing the registered response interceptor handlers.
@@ -31,12 +32,16 @@ const makeHttpStub = () => {
 }
 
 describe('httpAuth unauthorized handling', () => {
+  const names = authCookieNames()
+
   beforeEach(() => {
     resetUnauthorizedGuard()
-    // Seed auth cookies as if the user were logged in.
-    for (const c of ['api-token', 'username', 'admin', 'user-id']) {
+    // Seed namespaced auth cookies as if the user were logged in.
+    for (const c of [names.token, names.username, names.admin, names.userId]) {
       document.cookie = `${c}=value; path=/`
     }
+    // A legacy cookie from another MCT version must not be cleared.
+    document.cookie = 'api-token=legacy; path=/'
   })
 
   afterEach(() => {
@@ -51,8 +56,9 @@ describe('httpAuth unauthorized handling', () => {
     handleUnauthorized(http as never)
 
     expect(http.defaults.headers.common['Authorization']).toBeUndefined()
-    expect(document.cookie).not.toContain('api-token=value')
-    expect(document.cookie).not.toContain('username=value')
+    expect(document.cookie).not.toContain(`${names.token}=value`)
+    expect(document.cookie).not.toContain(`${names.username}=value`)
+    expect(document.cookie).toContain('api-token=legacy')
     expect(onEvent).toHaveBeenCalledTimes(1)
   })
 
@@ -64,7 +70,8 @@ describe('httpAuth unauthorized handling', () => {
     clearClientAuth(http as never)
 
     expect(http.defaults.headers.common['Authorization']).toBeUndefined()
-    expect(document.cookie).not.toContain('api-token=value')
+    expect(document.cookie).not.toContain(`${names.token}=value`)
+    expect(document.cookie).toContain('api-token=legacy')
     expect(onEvent).not.toHaveBeenCalled()
   })
 

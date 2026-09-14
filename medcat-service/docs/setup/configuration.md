@@ -75,7 +75,7 @@ The main settings that can be used to improve the performance when querying larg
 
 MedCAT parameters are defined in selected `envs/medcat*`  file.
 
-For details on available MedCAT parameters please refer to [the official GitHub repository](https://github.com/CogStack/cogstack-nlp/blob/main/medcat-v2/).
+For details on available MedCAT parameters please refer to [the official GitHub repository](https://github.com/CogStack/cogstack-nlp/blob/main/medcat/).
 
 ## Custom footer markdown
 

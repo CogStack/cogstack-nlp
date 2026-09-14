@@ -1,10 +1,11 @@
-from typing import Union, Optional
+from typing import Union, Optional, Type
 
 from medcat.cat import CAT
 from medcat.utils.defaults import DEFAULT_PACK_NAME
 from medcat.storage.serialisers import AvailableSerialisers
 from medcat.trainer import Trainer
 from medcat.data.mctexport import MedCATTrainerExport
+from medcat.components.addons.addons import AddonComponent
 
 from medcat_den.base import ModelInfo
 from medcat_den.config import DenConfig, RemoteDenConfig
@@ -90,6 +91,7 @@ class CATWrapper(CAT):
     def load_model_pack(cls, model_pack_path: str,
                         config_dict: Optional[dict] = None,
                         addon_config_dict: Optional[dict[str, dict]] = None,
+                        keep_addons_of_types: Optional[list[Type[AddonComponent]]] = None,
                         model_info: Optional[ModelInfo] = None,
                         den_cnf: Optional[DenConfig] = None,
                         ) -> 'CAT':
@@ -121,7 +123,9 @@ class CATWrapper(CAT):
             CAT: The loaded model pack.
         """
         _cat = super().load_model_pack(
-            model_pack_path, config_dict, addon_config_dict)
+            model_pack_path, config_dict, addon_config_dict,
+            keep_addons_of_types=keep_addons_of_types,
+        )
         cat = cls(_cat)
         if model_info is None:
             raise CannotWrapModel("Model info must be provided")

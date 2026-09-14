@@ -7,7 +7,7 @@ on:
       - 'medcat-service/v*.*.*'  # e.g., medcat-serice/v0.1.1
   pull_request:
     paths:
-      - 'medcat-v2/**'
+      - 'medcat/**'
       - 'medcat-service/**'
       - '.github/workflows/medcat-service**'
 
@@ -66,7 +66,7 @@ jobs:
           flavor: latest=false
 
       - name: Make medact-v2 available within build
-        run: cp -r ../medcat-v2 medcat-v2
+        run: cp -r ../medcat medcat
 
       - name: Build Docker MedCATservice image for testing
         id: docker_build

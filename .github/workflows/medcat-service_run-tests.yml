@@ -5,7 +5,7 @@ on:
     branches: [ main ]
   pull_request:
     paths:
-      - 'medcat-v2/**'
+      - 'medcat/**'
       - 'medcat-service/**'
       - '.github/workflows/medcat-service**'
 
@@ -40,7 +40,7 @@ jobs:
           python -m pip install virtualenv setuptools
           python -m pip install isort flake8 mypy stubs types-Flask types-simplejson types-setuptools types-requests
           python -m pip install -r ./requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu/;
-          python -m pip install "../medcat-v2[meta-cat,spacy,deid]"
+          python -m pip install "../medcat[meta-cat,spacy,deid]"
 
       - name: Check linting and types
         run: |

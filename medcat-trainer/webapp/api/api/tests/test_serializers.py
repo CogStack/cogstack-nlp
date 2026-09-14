@@ -186,6 +186,56 @@ class ProjectGroupSerializerTests(TestCase):
         data = ProjectGroupSerializer(group).data
         self.assertIsNotNone(data['last_modified'])
 
+    def _group_payload(self, **overrides):
+        data = {
+            'name': 'new-group',
+            'description': 'group desc',
+            'dataset': self.dataset.id,
+            'concept_db': self.cdb.id,
+            'vocab': self.vocab.id,
+            'cuis': '',
+            'create_associated_projects': True,
+            'annotators': [],
+            'administrators': [],
+        }
+        data.update(overrides)
+        return data
+
+    def test_create_requires_annotators_when_creating_associated_projects(self):
+        serializer = ProjectGroupSerializer(data=self._group_payload())
+        self.assertFalse(serializer.is_valid())
+        self.assertIn('annotators', serializer.errors)
+
+    def test_create_spawns_one_project_per_annotator(self):
+        creator = User.objects.create_user(username='pg-creator', password='pw')
+        a1 = User.objects.create_user(username='ann-one', password='pw')
+        a2 = User.objects.create_user(username='ann-two', password='pw')
+
+        serializer = ProjectGroupSerializer(
+            data=self._group_payload(annotators=[a1.id, a2.id]),
+            context={'request': type('Req', (), {'user': creator})()},
+        )
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        group = serializer.save()
+
+        projects = list(ProjectAnnotateEntities.objects.filter(group=group).order_by('name'))
+        self.assertEqual(len(projects), 2)
+        self.assertEqual(projects[0].name, 'new-group - ann-one')
+        self.assertEqual(projects[1].name, 'new-group - ann-two')
+        self.assertEqual(projects[0].description, 'group desc')
+        self.assertEqual(projects[0].dataset_id, self.dataset.id)
+        self.assertIn(a1, projects[0].members.all())
+        self.assertIn(creator, projects[0].members.all())
+        self.assertIn(creator, group.administrators.all())
+
+    def test_create_skips_associated_projects_when_disabled(self):
+        serializer = ProjectGroupSerializer(
+            data=self._group_payload(create_associated_projects=False),
+        )
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        group = serializer.save()
+        self.assertEqual(ProjectAnnotateEntities.objects.filter(group=group).count(), 0)
+
 
 @override_settings(MEDIA_ROOT='/tmp/mct-tests-serializers')
 class DatasetSerializerTests(TestCase):

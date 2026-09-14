@@ -3,7 +3,7 @@
 This project contains the relevant tools and notebooks to help users work with MedCAT models.
 This includes instructions on finetuning models in an unsupervised or supervised manner as well as evaluating MedCATtrainer exports and run models on data.
 
-Some tutorials in [medcat-v2-tutorials](../medcat-v2-tutorials/) may also be of help.
+Some tutorials in [medcat-tutorials](../medcat-tutorials/) may also be of help.
 
 # Setup
 

@@ -1,45 +1,52 @@
 <template>
-  <div class="full-height">
-    <login v-if="!loginSuccessful" @login:success="loggedIn()"></login>
+  <div class="full-height home-page">
     <transition name="alert"><div class="alert alert-danger" v-if="routeAlert" role="alert">{{routeAlert}}</div></transition>
-    <div class="view-bar" v-if="isAdmin || loginSuccessful">
-      <div class="view-bar-left">
-        <button v-if="isAdmin" class="btn btn-outline-primary" @click="projectGroupView = !projectGroupView">
-          <span v-if="projectGroupView">Single Projects</span>
-          <span v-if="!projectGroupView">Project Groups</span>
-        </button>
-      </div>
-      <div class="view-bar-right">
-      </div>
+    <div v-if="isAdmin && loginSuccessful" class="home-tabs">
+      <button
+        type="button"
+        class="tab-button"
+        :class="{ active: !projectGroupView }"
+        @click="projectGroupView = false">
+        <font-awesome-icon icon="folder"></font-awesome-icon>
+        Projects
+      </button>
+      <button
+        type="button"
+        class="tab-button"
+        :class="{ active: projectGroupView }"
+        @click="projectGroupView = true">
+        <font-awesome-icon icon="layer-group"></font-awesome-icon>
+        Project Groups
+      </button>
     </div>
-    <div v-if="projectGroupView" class="full-height project-group-table">
-      <v-data-table id="projectGroupTable" :items="projectGroups.items"
-                    :headers="projectGroups.headers"
-                    :hover="true"
-                    v-if="!loadingProjects"
-                    color="primary"
-                    @click:row="selectProjectGroup"
-                    hide-default-footer
-                    :items-per-page="-1">
-        <template v-slot:item.last_modified="{ item }">
-          {{new Date(item.last_modified).toLocaleString()}}
-        </template>
-      </v-data-table>
-      <modal v-if="selectedProjectGroup" :closable="true" @modal:close="selectedProjectGroup = null" class="summary-modal">
-        <template #header>
-          <h3>Project Group: {{selectedProjectGroup.name}}</h3>
-          <br>
-          <p>{{selectedProjectGroup.description}}</p>
-        </template>
-        <template #body>
-          <project-list :project-items="selectedProjectGroup.items" :is-admin="isAdmin"
-                        :cdb-search-index-status="cdbSearchIndexStatus"></project-list>
-        </template>
-      </modal>
+    <div v-if="loginSuccessful" class="home-content">
+      <div v-if="projectGroupView" class="full-height project-group-table">
+        <v-data-table id="projectGroupTable" :items="projectGroups.items"
+                      :headers="projectGroups.headers"
+                      :hover="true"
+                      v-if="!loadingProjects"
+                      color="primary"
+                      @click:row="selectProjectGroup"
+                      hide-default-footer
+                      :items-per-page="-1">
+          <template v-slot:item.last_modified="{ item }">
+            {{new Date(item.last_modified).toLocaleString()}}
+          </template>
+        </v-data-table>
+        <modal v-if="selectedProjectGroup" :closable="true" @modal:close="selectedProjectGroup = null" class="summary-modal">
+          <template #header>
+            <h3>Project Group: {{selectedProjectGroup.name}}</h3>
+          </template>
+          <template #body>
+            <project-list :project-items="selectedProjectGroup.items" :is-admin="isAdmin"
+                          :cdb-search-index-status="cdbSearchIndexStatus"></project-list>
+          </template>
+        </modal>
+      </div>
+      <project-list v-if="!projectGroupView" :project-items="projects.items" :is-admin="isAdmin"
+                    :cdb-search-index-status="cdbSearchIndexStatus"></project-list>
+      <plugin-slot name="home:after-projects" />
     </div>
-    <project-list v-if="!projectGroupView" :project-items="projects.items" :is-admin="isAdmin"
-                  :cdb-search-index-status="cdbSearchIndexStatus"></project-list>
-    <plugin-slot name="home:after-projects" />
   </div>
 
 </template>
@@ -47,16 +54,16 @@
 import _ from 'lodash'
 
 import Modal from '@/components/common/Modal.vue'
-import Login from '@/components/common/Login.vue'
 import EventBus from '@/event-bus'
 import ProjectList from "@/components/common/ProjectList.vue"
+import { readTraditionalSession } from '../authCookies'
 import { isOidcEnabled } from '../runtimeConfig';
+import { UNAUTHORIZED_EVENT } from '../httpAuth'
 
 export default {
   name: 'Home',
   components: {
     ProjectList,
-    Login,
     Modal
   },
   data () {
@@ -90,9 +97,11 @@ export default {
   },
   mounted () {
     EventBus.$on('login:success', this.loggedIn)
+    EventBus.$on(UNAUTHORIZED_EVENT, this.onUnauthorized)
   },
   beforeDestroy () {
-    EventBus.$off('login:success')
+    EventBus.$off('login:success', this.loggedIn)
+    EventBus.$off(UNAUTHORIZED_EVENT, this.onUnauthorized)
   },
   methods: {
     loggedIn () {
@@ -105,17 +114,29 @@ export default {
           }, 5000)
         }
       })
-      // assume if there's an api-token we've logged in before and will try get projects
-      // fallback to logging in otherwise
-      if (!this.useOidc && this.$cookies.get('api-token')) {
+      if (!this.useOidc) {
+        const session = readTraditionalSession(name => this.$cookies.get(name))
+        if (session) {
           this.loginSuccessful = true
-          this.isAdmin = this.$cookies.get('admin') === 'true'
+          this.isAdmin = session.isAdmin
           this.fetchProjects()
+        }
       } else if (this.useOidc && this.$keycloak && this.$keycloak.authenticated) {
           this.loginSuccessful = true
           this.isAdmin = (this.$keycloak.tokenParsed?.realm_access?.roles ?? []).includes('medcattrainer_superuser')
           this.fetchProjects()
         }
+    },
+    onUnauthorized () {
+      this.loginSuccessful = false
+      this.isAdmin = false
+      this.clearLoadedProjects()
+    },
+    clearLoadedProjects () {
+      this.projects.items = []
+      this.projectGroups.items = []
+      this.selectedProjectGroup = null
+      this.cdbSearchIndexStatus = {}
     },
     fetchProjectGroups () {
       const projectGroupIds = new Set(this.projects.items.filter(p => p.group !== null).map(p => p.group))
@@ -136,11 +157,10 @@ export default {
         }).catch((err) => {
           this.loadingProjects = false
           // 401: httpAuth interceptor already clears cookie + Authorization together
-          // and opens the re-login prompt. Do not wipe cookies on other failures —
-          // that left Authorization in memory while removing the cookie, so the tab
-          // still sent a token until refresh forced an unexplained re-login.
+          // and opens the re-login prompt. Drop in-memory rows so the login overlay
+          // cannot sit on top of previously fetched project names.
           if (err.response?.status === 401) {
-            this.loginSuccessful = false
+            this.onUnauthorized()
           }
         })
       }
@@ -192,39 +212,77 @@ export default {
 }
 </script>
 
-<style lang="scss">
-h3 {
-  margin: 10%
+<style scoped lang="scss">
+@import '@/styles/variables.scss';
+
+.home-page {
+  display: flex;
+  flex-direction: column;
 }
 
-.view-bar {
-  height: 30px;
-  padding: 5px 0;
-  width: 95%;
-  margin: auto;
+.home-tabs {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  gap: 8px;
+  width: 96%;
+  margin: 8px auto 0;
+  border-bottom: 2px solid var(--color-border);
+  padding-bottom: 0;
+  flex-shrink: 0;
+}
 
-  .view-bar-left, .view-bar-right {
-    display: flex;
-    gap: 10px;
+.tab-button {
+  padding: 10px 20px;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: -2px;
+
+  &:hover {
+    color: var(--color-primary, $primary);
+    background: rgba(0, 0, 0, 0.02);
+  }
+
+  &.active {
+    color: var(--color-primary, $primary);
+    border-bottom-color: var(--color-primary, $primary);
+    font-weight: 600;
+  }
+
+  &.active {
+    color: var(--color-primary, $primary);
+    border-bottom-color: var(--color-primary, $primary);
+    font-weight: 600;
   }
 }
 
-.project-group-table {
-  height: calc(100% - 30px);
-  padding: 10px 0;
-  width: 95%;
-  margin: auto;
+.home-content {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
+.home-content {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.project-group-table {
+  height: 100%;
+  padding: 10px 0;
+  width: 96%;
+  margin: 0 auto;
+}
 
 .home-title {
   font-size: 23px;
   padding: 30px 0;
 }
-
-
-
 </style>

@@ -55,7 +55,7 @@
           <div class="sidebar-container">
             <plugin-slot name="train-annotations:sidebar" :project="project" />
             <transition name="slide-left">
-              <div>
+              <div class="sidebar-top">
                 <concept-summary v-if="!conceptSynonymSelection && !hasRelations" :selectedEnt="currentEnt"
                                  :altSearch="altSearch"
                                  :project="project" :searchFilterDBIndex="searchFilterDBIndex"
@@ -315,8 +315,10 @@ import RelationAnnotationTaskContainer from '@/components/usecases/RelationAnnot
 import AnnotationSummary from '@/components/common/AnnotationSummary.vue'
 import ConceptFilter from "@/components/common/ConceptFilter.vue"
 import {Splitpanes, Pane} from 'splitpanes'
-import { ensureTraditionalAuth } from '@/httpAuth'
+import { ensureTraditionalAuth, UNAUTHORIZED_EVENT } from '@/httpAuth'
+import { readTraditionalSession } from '@/authCookies'
 import { isOidcEnabled } from '@/runtimeConfig'
+import EventBus from '@/event-bus'
 
 const TASK_NAME = 'Concept Annotation'
 const CONCEPT_CORRECT = 'Correct'
@@ -404,6 +406,9 @@ export default {
   created() {
     this.fetchAnnoConf()
   },
+  mounted() {
+    EventBus.$on(UNAUTHORIZED_EVENT, this.onUnauthorized)
+  },
   methods: {
     ensureProjectAuth() {
       if (isOidcEnabled()) {
@@ -413,8 +418,19 @@ export default {
         }
         return true
       }
-      // Sync cookie ↔ Authorization header (or force re-login if the cookie is gone).
-      return ensureTraditionalAuth(this.$http, this.$cookies.get('api-token'))
+      const session = readTraditionalSession(name => this.$cookies.get(name))
+      return ensureTraditionalAuth(this.$http, session?.token)
+    },
+    onUnauthorized () {
+      this.project = null
+      this.docs = []
+      this.docIds = []
+      this.docIdsToDocs = {}
+      this.ents = []
+      this.currentDoc = null
+      this.currentEnt = null
+      this.currentRel = null
+      this.loadingMsg = null
     },
     fetchAnnoConf() {
       if (!this.ensureProjectAuth()) {
@@ -886,6 +902,7 @@ export default {
     }
   },
   beforeDestroy() {
+    EventBus.$off(UNAUTHORIZED_EVENT, this.onUnauthorized)
     this.confirmSubmitListenerRemove()
   }
 }
@@ -1008,11 +1025,20 @@ $app-header-height: 60px;
   display: flex;
   justify-content: space-between;
   flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
   padding: 5px;
+
+  .sidebar-top {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+  }
 
   .add-annotation {
     width: 100%;
     flex: 1 1 auto;
+    min-height: 0;
   }
 }
 

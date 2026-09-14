@@ -152,7 +152,7 @@ jobs:
       matrix:
         medcat-source:
           - released   # current behaviour, pins to lockfile
-          - local      # tests against ../medcat-v2
+          - local      # tests against ../medcat
     steps:
       - name: Checkout main
         uses: actions/checkout@v7
@@ -197,7 +197,7 @@ jobs:
         if: matrix.medcat-source == 'local'
         run: |
           cd webapp
-          uv pip install --editable "../../medcat-v2[meta-cat,spacy,rel-cat,deid,dict-ner]"
+          uv pip install --editable "../../medcat[meta-cat,spacy,rel-cat,deid,dict-ner]"
 
       - name: Run Django tests with coverage
         env:

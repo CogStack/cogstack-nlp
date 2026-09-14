@@ -25,6 +25,12 @@ trusted_origins = [origin.strip() for origin in environ_origins.split(',') if or
 
 CSRF_TRUSTED_ORIGINS = ['http://127.0.0.1:8001', 'http://localhost:8001'] + trusted_origins
 
+# Cookies are not port-scoped. Default Django names collide with other apps
+# (and older MCT versions) on the same host. Override via env if two instances
+# still share a host and need distinct names.
+SESSION_COOKIE_NAME = os.environ.get('SESSION_COOKIE_NAME', 'mct_sessionid')
+CSRF_COOKIE_NAME = os.environ.get('CSRF_COOKIE_NAME', 'mct_csrftoken')
+
 SECURE_CROSS_ORIGIN_OPENER_POLICY = None
 
 # SECURITY WARNING: keep the secret key used in production secret!

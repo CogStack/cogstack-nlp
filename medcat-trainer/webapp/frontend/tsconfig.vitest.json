@@ -5,7 +5,9 @@
     "src/tests/**/*.ts",
     "src/event-bus.ts",
     "src/plugins/registry.ts",
-    "src/runtimeConfig.ts"
+    "src/runtimeConfig.ts",
+    "src/authCookies.ts",
+    "src/httpAuth.ts"
   ],
   "exclude": [],
   "compilerOptions": {

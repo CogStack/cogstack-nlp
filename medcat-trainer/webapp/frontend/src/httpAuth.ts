@@ -1,4 +1,5 @@
 import type { AxiosInstance } from 'axios'
+import { clearAuthCookies } from './authCookies'
 import EventBus from './event-bus'
 
 /**
@@ -9,18 +10,16 @@ import EventBus from './event-bus'
  */
 export const UNAUTHORIZED_EVENT = 'auth:unauthorized'
 
-const AUTH_COOKIES = ['api-token', 'username', 'admin', 'user-id']
-
 // Guard so that a burst of parallel requests all returning 401 only triggers a
 // single re-login prompt. Reset via resetUnauthorizedGuard() on login success.
 let handlingUnauthorized = false
 
 /** Clear axios Authorization and auth cookies together so they cannot diverge. */
 export function clearClientAuth(http: AxiosInstance): void {
-  delete http.defaults.headers.common['Authorization']
-  for (const name of AUTH_COOKIES) {
-    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`
+  if (http?.defaults?.headers?.common) {
+    delete http.defaults.headers.common['Authorization']
   }
+  clearAuthCookies()
 }
 
 /** Clear stale auth state and notify the app that re-login is required. */

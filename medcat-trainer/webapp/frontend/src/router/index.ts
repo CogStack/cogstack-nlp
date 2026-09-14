@@ -7,6 +7,7 @@ import MetricsHome from '../views/MetricsHome.vue'
 import ConceptDatabase from '../views/ConceptDatabase.vue'
 import ProjectAdmin from '../views/ProjectAdmin.vue'
 import { isOidcEnabled } from '../runtimeConfig'
+import { isAdminFromDocumentCookie } from '../authCookies'
 import { getPluginVueRoutes } from '../plugins/registry'
 
 
@@ -46,24 +47,11 @@ const initialiseRouter = () => {
           component: ProjectAdmin,
           beforeEnter: (to, from, next) => {
             // Check if user is admin/staff
-            // For non-OIDC: check cookie
+            // For non-OIDC: check this-app cookie (namespaced so other MCT
+            // versions / deploys on the same host cannot mask admin status)
             // For OIDC: backend will handle permission check
             const useOidc = isOidcEnabled()
-            let isAdmin = false
-
-            if (!useOidc) {
-              // Check cookie for admin status
-              const cookies = document.cookie.split(';').reduce((acc, cookie) => {
-                const [key, value] = cookie.trim().split('=')
-                acc[key] = value
-                return acc
-              }, {} as Record<string, string>)
-              isAdmin = cookies['admin'] === 'true'
-            } else {
-              // For OIDC, allow access - backend will verify permissions
-              // The backend API endpoint already checks permissions
-              isAdmin = true
-            }
+            const isAdmin = useOidc ? true : isAdminFromDocumentCookie()
 
             if (isAdmin) {
               next()
