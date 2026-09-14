@@ -46,8 +46,12 @@ class OntologyDifficultyEstimator:
     def intrinsic_ic_seco(self, concept_id: str) -> float:
         """
         Intrinsic IC according to Seco et al. (2004).
-        Normalized IC = 1 - (log(leaves(c)) / log(max_leaves))
+        Normalized IC = 1 - (log(hypo(c) + 1) / log(total_concepts))
         Ranges from 0.0 (root/broad) to 1.0 (leaf/specific).
+
+        Uses log1p(descendants) rather than log(descendants) so that leaves
+        (hypo(c) == 0, no descendants) correctly get the maximum IC of 1.0
+        instead of needing (and mishandling) a special zero-descendants case.
         """
         descendants = self.ontology.get_subtree_node_count(concept_id)
         total_concepts = self.ontology.get_total_concepts_count()
@@ -179,10 +183,10 @@ class OntologyDifficultyEstimator:
     ) -> ConceptDifficulty:
         synonyms = self.ontology.get_synonyms_for_concept(concept_id)
         if not synonyms:
-            return ConceptDifficulty(
-                predicted_accuracy=1.0,
-                min_predicted_accuracy=1.0,
-                intrinsic_ic=self.get_intrinsic_ic(concept_id),
+            raise NoSynonymsForConcept(
+                f"Concept {concept_id!r} has no synonyms in the CDB; concepts "
+                "should always have at least one name, so this indicates an "
+                "unexpected CDB state that can't be trusted for estimation"
             )
 
         per_name_accuracy = [
@@ -216,4 +220,8 @@ class MisconfiguredSimMetric(ValueError):
 
 
 class MisconfiguredConcept(ValueError):
+    pass
+
+
+class NoSynonymsForConcept(ValueError):
     pass
