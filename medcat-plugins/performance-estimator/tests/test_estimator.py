@@ -4,7 +4,7 @@ import unittest
 from medcat_performance_estimator.graphing import AbstractOntologyGraph
 from medcat_performance_estimator.estimator import (
     MisconfiguredConcept, MisconfiguredSimMetric, OntologyDifficultyEstimator,
-    EstimationConfig, UnknownSimilarityMetric
+    EstimationConfig, UnknownSimilarityMetric, NoSynonymsForConcept
 )
 
 
@@ -108,16 +108,14 @@ class TestEdgeCases(unittest.TestCase):
 
         self.assertEqual(accuracy, 1.0)
 
-    def test_concept_without_synonyms_returns_default_difficulty(self):
+    def test_concept_without_synonyms_raises(self):
         graph = InMemoryOntologyGraph()
         # C1 registered in ontology structure, but no name mapping
         graph.total_concepts = 10
 
         estimator = OntologyDifficultyEstimator(graph)
-        result = estimator.compute_concept_ontology_difficulty("C1")
-
-        self.assertEqual(result["predicted_accuracy"], 1.0)
-        self.assertEqual(result["min_predicted_accuracy"], 1.0)
+        with self.assertRaises(NoSynonymsForConcept):
+            estimator.compute_concept_ontology_difficulty("C1")
 
     def test_missing_target_concept_in_name_lookup_raises_value_error(self):
         graph = InMemoryOntologyGraph()
