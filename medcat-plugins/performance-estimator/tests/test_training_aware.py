@@ -36,12 +36,12 @@ class TestCDBTrainingFetcher(unittest.TestCase):
         mock_cdb = MagicMock()
         mock_cdb.cui2info = {
             "C001": {
-                "train_count": 10,
-                "context_vector": {"vec1": np.array([1.0, 2.0])}
+                "count_train": 10,
+                "context_vectors": {"vec1": np.array([1.0, 2.0])}
             }
         }
         mock_cdb.name2info = {
-            "diabetes": {"train_count": 5}
+            "diabetes": {"count_train": 5}
         }
         mock_cdb.get_cui2count_train.return_value = {"C001": 10}
         mock_cdb.get_name2count_train.return_value = {"diabetes": 5}
@@ -107,6 +107,7 @@ class TestTrainingAwareDifficultyEstimator(unittest.TestCase):
         # Mock ontology estimator similarity metric behavior
         ontology_sim = 0.8
         self.mock_ontology_estimator.sim_metric.return_value = ontology_sim
+        self.mock_ontology_estimator.get_sim_metric.return_value = ontology_sim
 
         # Calculate expected result using the standard base formula:
         #   1.0 / (1.0 + (ontology_sim ** power) * mass)
