@@ -428,7 +428,9 @@ class Trainer:
         self, doc: MutableDocument, ann_doc: MedCATTrainerExportDocument,
         anns: list[MedCATTrainerExportAnnotation]
     ) -> list[MedCATTrainerExportAnnotation]:
-        out_anns: list[MedCATTrainerExportAnnotation] = [] ents = [] out_anns: list[MedCATTrainerExportAnnotation] = [] for ann in anns:
+        out_anns: list[MedCATTrainerExportAnnotation] = []
+        ents = []
+        for ann in anns:
             tkns = doc.get_tokens(ann['start'], ann['end'])
             try:
                 ent = self._pipeline.entity_from_tokens_in_doc(tkns, doc)
