@@ -5,7 +5,7 @@ from typing import Protocol
 
 import numpy as np
 
-from .estimator import EstimationConfig
+from .estimator import ConceptDifficulty, EstimationConfig, MisconfiguredConcept, NoSynonymsForConcept
 from .graphing import AbstractOntologyGraph
 from .training_fetcher import TrainingFetcher
 from .utils import combine_context_vector, count_confidence, relative_mass
@@ -30,7 +30,9 @@ class VectorSimilarityBaseline:
         sample_size: int = 2000,
         seed: int = 0,
     ) -> None:
-        cuis = [c for c, v in cui2combined_vector.items() if np.linalg.norm(v) > 0]
+        cuis = [
+            c for c, v in cui2combined_vector.items()
+            if np.linalg.norm(v) > 0]
         rng = random.Random(seed)
         n_pairs = min(sample_size, len(cuis) * (len(cuis) - 1) // 2)
         sims: list[float] = []
@@ -102,6 +104,9 @@ class OntologyEstimatorLike(Protocol):
     def sim_metric(self, concept_a: str, concept_b: str) -> float:
         pass
 
+    def get_intrinsic_ic(self, concept_id: str) -> float:
+        pass
+
 
 class TrainingAwareDifficultyEstimator:
     """Stage 2: combines the stage-1 ontology-only estimate with training
@@ -169,9 +174,6 @@ class TrainingAwareDifficultyEstimator:
         similarity = self._get_baseline().normalized_similarity(
             vec_a, vec_b, temperature=self.config.vector_similarity_temperature
         )
-        similarity = max(
-            min(similarity, 1.0),
-            self.ontology_estimator.config.similarity_floor)
         return similarity, confidence
 
     def blended_pairwise_similarity(self, concept_a: str, concept_b: str) -> float:
@@ -189,6 +191,11 @@ class TrainingAwareDifficultyEstimator:
         competing_concepts = ontology.get_concepts_for_name(name)
         if len(competing_concepts) <= 1:
             return 1.0
+        if target_concept not in competing_concepts:
+            raise MisconfiguredConcept(
+                f"{target_concept!r} not found among concepts for name {name!r}; "
+                "ontology's name/concept lookups may be inconsistent"
+            )
 
         other_concepts = competing_concepts - {target_concept}
         cfg = self.ontology_estimator.config
@@ -199,7 +206,7 @@ class TrainingAwareDifficultyEstimator:
         effective_N = 1.0
         for other in other_concepts:
             similarity = self.blended_pairwise_similarity(target_concept, other)
-            similarity = max(similarity, floor)
+            similarity = max(min(similarity, 1.0), floor)
             other_count = self.training.get_cui_train_count(other)
             mass = relative_mass(
                 target_count, other_count,
@@ -209,17 +216,21 @@ class TrainingAwareDifficultyEstimator:
 
         return 1.0 / effective_N
 
-    def compute_concept_training_difficulty(self, concept_id: str) -> float:
+    def compute_concept_training_difficulty(self, concept_id: str) -> ConceptDifficulty:
         synonyms = self.ontology_estimator.ontology.get_synonyms_for_concept(concept_id)
         if not synonyms:
             raise NoSynonymsForConcept(
                 f"Concept {concept_id!r} has no synonyms in the CDB; concepts "
                 "should always have at least one name, so this indicates an "
-                "unexpected CDB state"
+                "unexpected CDB state that can't be trusted for estimation"
             )
-        per_name = [self.predict_accuracy(concept_id, name) for name in synonyms]
-        return sum(per_name) / len(per_name)
 
+        per_name_accuracy = [self.predict_accuracy(concept_id, name) for name in synonyms]
+        overall_accuracy = sum(per_name_accuracy) / len(per_name_accuracy)
+        worst_case_accuracy = min(per_name_accuracy)
 
-class NoSynonymsForConcept(ValueError):
-    pass
+        return ConceptDifficulty(
+            predicted_accuracy=overall_accuracy,
+            min_predicted_accuracy=worst_case_accuracy,
+            intrinsic_ic=self.ontology_estimator.get_intrinsic_ic(concept_id),
+        )
