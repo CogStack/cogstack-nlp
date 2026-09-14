@@ -128,7 +128,7 @@ class TestEdgeCases(unittest.TestCase):
         estimator = OntologyDifficultyEstimator(graph)
 
         with self.assertRaises(MisconfiguredConcept):
-            estimator.compute_name_confusability("C3", "shared_term")
+            estimator.predict_accuracy("C3", "shared_term")
 
     def test_invalid_similarity_metric_raises_value_error(self):
         graph = InMemoryOntologyGraph()
