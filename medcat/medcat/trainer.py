@@ -425,19 +425,10 @@ class Trainer:
         return processed_names[0]
 
     def _prepare_doc_with_anns(
-<<<<<<< HEAD:medcat-v2/medcat/trainer.py
-            self, doc: MutableDocument, ann_doc: MedCATTrainerExportDocument,
-            anns: list[MedCATTrainerExportAnnotation]
-        ) -> list[MedCATTrainerExportAnnotation]:
-=======
         self, doc: MutableDocument, ann_doc: MedCATTrainerExportDocument,
         anns: list[MedCATTrainerExportAnnotation]
     ) -> list[MedCATTrainerExportAnnotation]:
-        out_anns: list[MedCATTrainerExportAnnotation] = []
->>>>>>> main:medcat/medcat/trainer.py
-        ents = []
-        out_anns: list[MedCATTrainerExportAnnotation] = []
-        for ann in anns:
+        out_anns: list[MedCATTrainerExportAnnotation] = [] ents = [] out_anns: list[MedCATTrainerExportAnnotation] = [] for ann in anns:
             tkns = doc.get_tokens(ann['start'], ann['end'])
             try:
                 ent = self._pipeline.entity_from_tokens_in_doc(tkns, doc)
@@ -482,14 +473,6 @@ class Trainer:
                                      'train', False):
                 # NOTE: only need tokenization here
                 mut_doc = self._pipeline.tokenizer_with_tag(doc['text'])
-<<<<<<< HEAD:medcat-v2/medcat/trainer.py
-            anns = self._prepare_doc_with_anns(mut_doc, doc, doc['annotations'])
-
-            # Compatibility with old output where annotations are a list
-            for ann, mut_entity in zip(anns, mut_doc.linked_ents):
-                if ann.get('killed', False):
-                    continue
-=======
             current_anns = self._prepare_doc_with_anns(
                 mut_doc, doc, doc['annotations'])
             logger.debug(
@@ -521,7 +504,6 @@ class Trainer:
             # NOTE: this was previosuly behind a flag that defaulted to True
             #       and was done on a per entity basis:
             for example, ann in zip(cur_examples, current_anns):
->>>>>>> main:medcat/medcat/trainer.py
                 logger.info("    Annotation %s (%s) [%d:%d]",
                             ann['value'], ann['cui'], ann['start'], ann['end'])
                 names = prepare_name(
