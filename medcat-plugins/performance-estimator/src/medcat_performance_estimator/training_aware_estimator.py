@@ -209,6 +209,14 @@ class TrainingAwareDifficultyEstimator:
     def compute_concept_training_difficulty(self, concept_id: str) -> float:
         synonyms = self.ontology_estimator.ontology.get_synonyms_for_concept(concept_id)
         if not synonyms:
-            return 1.0
+            raise NoSynonymsForConcept(
+                f"Concept {concept_id!r} has no synonyms in the CDB; concepts "
+                "should always have at least one name, so this indicates an "
+                "unexpected CDB state"
+            )
         per_name = [self.predict_accuracy(concept_id, name) for name in synonyms]
         return sum(per_name) / len(per_name)
+
+
+class NoSynonymsForConcept(ValueError):
+    pass
