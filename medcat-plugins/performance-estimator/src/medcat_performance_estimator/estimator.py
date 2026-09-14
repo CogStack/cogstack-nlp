@@ -51,11 +51,9 @@ class OntologyDifficultyEstimator:
         """
         descendants = self.ontology.get_subtree_node_count(concept_id)
         total_concepts = self.ontology.get_total_concepts_count()
-
-        if total_concepts <= 1 or descendants <= 0:
+        if total_concepts <= 1:
             return 0.0
-
-        return 1.0 - (math.log(descendants) / math.log(total_concepts))
+        return 1.0 - (math.log1p(descendants) / math.log(total_concepts))
 
     def intrinsic_ic_sanchez(self, concept_id: str) -> float:
         """
