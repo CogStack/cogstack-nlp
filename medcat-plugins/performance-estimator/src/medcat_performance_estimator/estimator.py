@@ -149,46 +149,16 @@ class OntologyDifficultyEstimator:
     # 3. Overall Concept Difficulty Calculations
     # =========================================================================
 
-    def compute_name_confusability(
-        self,
-        target_concept: str,
-        name: str,
-    ) -> float:
-        """
-        Calculates how ambiguous/confusable a single name is for the target concept.
-        Higher score = More ambiguous / harder to disambiguate.
-        """
-        competing_concepts = self.ontology.get_concepts_for_name(name)
-        if len(competing_concepts) <= 1:
-            return 0.0  # Name is completely unambiguous
-
-        if target_concept not in competing_concepts:
-            raise MisconfiguredConcept(
-                f"{target_concept!r} not found among concepts for name {name!r}; "
-                "ontology's name/concept lookups may be inconsistent"
-            )
-
-        other_concepts = competing_concepts - {target_concept}
-
-        sim_scores = []
-
-        for other in other_concepts:
-            sim = self.get_sim_metric(target_concept, other)
-            sim_scores.append(sim)
-
-        # Average similarity of competing concepts + structural penalty for degree of ambiguity
-        avg_similarity = sum(sim_scores) / len(sim_scores)
-
-        # Logarithmic penalty multiplier for the number of competing concepts (N)
-        ambiguity_multiplier = math.log2(len(competing_concepts))
-
-        return avg_similarity * ambiguity_multiplier
-
     def predict_accuracy(self, target_concept: str, name: str) -> float:
         competing_concepts = self.ontology.get_concepts_for_name(name)
         if len(competing_concepts) <= 1:
             # Name is completely unambiguous
             return 1.0
+        if target_concept not in competing_concepts:
+            raise MisconfiguredConcept(
+                f"{target_concept!r} not found among concepts for name {name!r}; "
+                "ontology's name/concept lookups may be inconsistent"
+            )
         other_concepts = competing_concepts - {target_concept}
         power = self.config.power
         # based on the power, the below calculates the "effective number of"
