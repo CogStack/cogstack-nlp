@@ -169,6 +169,9 @@ class TrainingAwareDifficultyEstimator:
         similarity = self._get_baseline().normalized_similarity(
             vec_a, vec_b, temperature=self.config.vector_similarity_temperature
         )
+        similarity = max(
+            min(similarity, 1.0),
+            self.ontology_estimator.config.similarity_floor)
         return similarity, confidence
 
     def blended_pairwise_similarity(self, concept_a: str, concept_b: str) -> float:
