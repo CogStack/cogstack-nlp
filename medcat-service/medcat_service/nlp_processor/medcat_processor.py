@@ -233,6 +233,9 @@ class MedCatProcessor:
                 entities = []
 
         elapsed_time = (time.time_ns() - start_time_ns) / 10e8  # nanoseconds to seconds
+
+        relations = (entities.get("relations", []) if isinstance(entities, dict) else [])
+
         meta_anns_filters = kwargs.get("meta_anns_filters")
         if meta_anns_filters and isinstance(entities, dict):
             entities = [
@@ -251,6 +254,7 @@ class MedCatProcessor:
         nlp_result = ProcessResult(
             text=str(text),
             annotations=entities,
+            relations=relations,
             success=True,
             timestamp=self._get_timestamp(),
             elapsed_time=elapsed_time,
@@ -287,12 +291,12 @@ class MedCatProcessor:
                     redact=self.service_settings.deid_redact,
                     n_process=self.service_settings.bulk_nproc,
                 )
-            elif isinstance(self.cat, CAT):
+            elif isinstance(self.cat, CAT): 
                 ann_res = {
-                    ann_id: res for ann_id, res in
-                    self.cat.get_entities_multi_texts(
-                        text_input, n_process=self.service_settings.bulk_nproc)
-                }
+                            ann_id: res for ann_id, res in
+                            self.cat.get_entities_multi_texts(
+                            text_input, n_process=self.service_settings.bulk_nproc)
+                         }
         except Exception as e:
             self.log.error("Unable to process data", exc_info=e)
 
@@ -462,9 +466,12 @@ class MedCatProcessor:
 
                 entities = list(self.process_entities(annotations.get(i)))
 
+                relations = annotations[i].get("relations", []) 
+
                 out_res = ProcessResult(
                     text=str(in_ct["text"]),
                     annotations=entities,
+                    relations=relations,
                     success=True,
                     timestamp=self._get_timestamp(),
                     elapsed_time=elapsed_time,
