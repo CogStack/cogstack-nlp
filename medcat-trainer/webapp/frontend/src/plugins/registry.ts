@@ -95,6 +95,13 @@ export function hasFeature(feature: string): boolean {
   return serverFeatures.includes(feature)
 }
 
+/** Drop server bootstrap state; keep build-time plugin registrations. */
+export function clearBootstrap(): void {
+  serverMenuExtensions = []
+  serverRoutes = []
+  serverFeatures = []
+}
+
 /** Load server bootstrap payload (requires authentication). */
 export async function loadBootstrap(http: AxiosInstance): Promise<BootstrapPayload | null> {
   try {
@@ -115,7 +122,5 @@ export function clearPluginRegistry(): void {
   }
   buildTimeMenuItems.length = 0
   buildTimeVueRoutes.length = 0
-  serverMenuExtensions = []
-  serverRoutes = []
-  serverFeatures = []
+  clearBootstrap()
 }

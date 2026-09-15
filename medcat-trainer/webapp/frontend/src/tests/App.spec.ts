@@ -2,6 +2,15 @@ import { describe, it, expect, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createRouter, createWebHistory } from 'vue-router'
 import App from '../App.vue'
+import { authCookieNames } from '@/authCookies'
+
+const names = authCookieNames()
+const cookieGet = (overrides: Record<string, string> = {}) =>
+  vi.fn((key: string) => {
+    if (key in overrides) return overrides[key]
+    if (key === names.username) return 'testUser'
+    return null
+  })
 
 // Mock routes for router
 const routes = [
@@ -34,7 +43,7 @@ describe('App.vue', () => {
         mocks: {
           $http: { get: mockGet },
           $cookies: {
-            get: vi.fn((key) => key === 'username' ? 'testUser' : null),
+            get: cookieGet(),
             remove: vi.fn()
           }
         },
@@ -65,7 +74,7 @@ describe('App.vue', () => {
         mocks: {
           $http: { get: mockGet },
           $cookies: {
-            get: vi.fn((key) => key === 'username' ? 'testUser' : null),
+            get: cookieGet(),
             remove: vi.fn()
           }
         },
@@ -81,20 +90,13 @@ describe('App.vue', () => {
       global: {
         plugins: [router],
         mocks: {
-          $http: { get: mockGet },
+          $http: { get: mockGet, defaults: { headers: { common: {} } } },
           $cookies: {
-            get: vi.fn((key) => key === 'username' ? 'testUser' : null),
+            get: cookieGet({ [names.token]: 'token' }),
             remove: vi.fn()
           }
         },
         stubs: ['login', 'font-awesome-icon', 'router-link', 'router-view']
-      },
-      data() {
-        return {
-          uname: 'testUser',
-          loginModal: false,
-          version: 'v1.2.3'
-        }
       }
     })
     await router.isReady()
@@ -102,5 +104,104 @@ describe('App.vue', () => {
 
     expect(wrapper.text()).toContain('testUser');
     expect(wrapper.find('.logout-link').exists()).toBe(true);
+    expect(wrapper.vm.loginModal).toBe(false);
   });
+
+  it('shows the project-admin link from this app admin cookie', async () => {
+    const wrapper = mount(App, {
+      global: {
+        plugins: [router],
+        mocks: {
+          $http: { get: mockGet },
+          $cookies: {
+            get: cookieGet({ [names.admin]: 'true', [names.token]: 'token' }),
+            remove: vi.fn()
+          }
+        },
+        stubs: ['login', 'font-awesome-icon', 'router-view']
+      }
+    })
+    await router.isReady()
+    await flushPromises()
+
+    const adminLink = wrapper.findAllComponents({ name: 'RouterLink' })
+      .find(link => link.props('to') === '/project-admin')
+    expect(adminLink).toBeTruthy()
+  })
+
+  it('does not treat a generic admin cookie from another app as this app admin', async () => {
+    const wrapper = mount(App, {
+      global: {
+        plugins: [router],
+        mocks: {
+          $http: { get: mockGet },
+          $cookies: {
+            get: vi.fn((key: string) => {
+              if (key === 'admin') return 'true'
+              if (key === names.username) return 'testUser'
+              return null
+            }),
+            remove: vi.fn()
+          }
+        },
+        stubs: ['login', 'font-awesome-icon', 'router-view']
+      }
+    })
+    await router.isReady()
+    await flushPromises()
+
+    const adminLink = wrapper.findAllComponents({ name: 'RouterLink' })
+      .find(link => link.props('to') === '/project-admin')
+    expect(adminLink).toBeUndefined()
+  })
+
+  it('does not show a logged-in header from a username cookie without a token', async () => {
+    const wrapper = mount(App, {
+      global: {
+        plugins: [router],
+        mocks: {
+          $http: { get: mockGet, defaults: { headers: { common: {} } } },
+          $cookies: {
+            get: cookieGet(),
+            remove: vi.fn()
+          }
+        },
+        stubs: ['login', 'font-awesome-icon', 'router-view']
+      }
+    })
+    await router.isReady()
+    await flushPromises()
+
+    expect(wrapper.find('.logout-link').exists()).toBe(false)
+    expect(wrapper.vm.loginModal).toBe(true)
+    const login = wrapper.findComponent({ name: 'login' })
+    expect(login.exists()).toBe(true)
+    expect(login.props('closable')).toBe(false)
+  })
+
+  it('keeps the login modal open until the user authenticates', async () => {
+    const wrapper = mount(App, {
+      global: {
+        plugins: [router],
+        mocks: {
+          $http: { get: mockGet, defaults: { headers: { common: {} } } },
+          $cookies: {
+            get: vi.fn(() => null),
+            remove: vi.fn()
+          }
+        },
+        stubs: ['login', 'font-awesome-icon', 'router-view']
+      }
+    })
+    await router.isReady()
+    await flushPromises()
+
+    expect(wrapper.vm.loginModal).toBe(true)
+    expect(wrapper.findComponent({ name: 'login' }).props('closable')).toBe(false)
+
+    wrapper.vm.onUnauthorized()
+    await flushPromises()
+    expect(wrapper.vm.sessionExpired).toBe(true)
+    expect(wrapper.vm.loginModal).toBe(true)
+  })
 });

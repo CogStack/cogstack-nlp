@@ -387,5 +387,54 @@ describe('ClinicalText.vue', () => {
         const formattedText = vm.formattedText
         expect(formattedText).toContain('@contextmenu.prevent.stop')
     })
+
+    it('escapes HTML-like clinical markup when there are no annotations', async () => {
+        const { compile } = await import('@vue/compiler-dom')
+        const text = '18 >[ No Service Recorded ] [ LLAMS MDT ] status <unknown> a & b'
+        const wrapper = mount(ClinicalText, {
+            props: {
+                ...defaultProps,
+                text,
+                ents: []
+            },
+            global: {
+                stubs: ['v-overlay', 'v-progress-circular', 'v-runtime-template', 'vue-simple-context-menu']
+            }
+        })
+
+        const formattedText = (wrapper.vm as any).formattedText
+        expect(formattedText).toContain('&gt;')
+        expect(formattedText).toContain('&lt;unknown&gt;')
+        expect(formattedText).toContain('&amp;')
+        expect(formattedText).not.toContain('<unknown>')
+        expect(() => compile(formattedText)).not.toThrow()
+    })
+
+    it('escapes HTML-like markup in unannotated segments when annotations exist', async () => {
+        const { compile } = await import('@vue/compiler-dom')
+        const text = 'before <tag> Sample after >[ note ]'
+        const ents = [{
+            id: 1,
+            start_ind: 13,
+            end_ind: 19,
+            assignedValues: { 'Concept Anno': 'Correct' },
+            manually_created: false
+        }]
+        const wrapper = mount(ClinicalText, {
+            props: {
+                ...defaultProps,
+                text,
+                ents
+            },
+            global: {
+                stubs: ['v-overlay', 'v-progress-circular', 'v-runtime-template', 'vue-simple-context-menu']
+            }
+        })
+
+        const formattedText = (wrapper.vm as any).formattedText
+        expect(formattedText).toContain('&lt;tag&gt;')
+        expect(formattedText).toContain('&gt;')
+        expect(() => compile(formattedText)).not.toThrow()
+    })
 })
 

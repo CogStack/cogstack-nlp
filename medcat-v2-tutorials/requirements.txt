@@ -1,6 +1,0 @@
-medcat~=2.8.6
-ipykernel
-pytest-xdist~=3.6.0
-nbmake<1.6
-nbconvert<8
-pandas

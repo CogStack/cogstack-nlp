@@ -6,6 +6,7 @@ from rest_framework.fields import FileField
 from rest_framework.serializers import Serializer
 
 from .models import *
+from .project_groups import create_projects_for_group
 from rest_framework import serializers
 
 
@@ -107,9 +108,35 @@ class ProjectAnnotateEntitiesSerializer(serializers.ModelSerializer):
 
 
 class ProjectGroupSerializer(serializers.ModelSerializer):
+    administrators = serializers.PrimaryKeyRelatedField(
+        many=True, queryset=User.objects.all(), required=False, allow_empty=True
+    )
+    annotators = serializers.PrimaryKeyRelatedField(
+        many=True, queryset=User.objects.all(), required=False, allow_empty=True
+    )
+
     class Meta:
         model = ProjectGroup
         fields = '__all__'
+
+    def validate(self, attrs):
+        if self.instance is None:
+            create_associated = attrs.get('create_associated_projects', True)
+            annotators = attrs.get('annotators') or []
+            if create_associated and not annotators:
+                raise serializers.ValidationError({
+                    'annotators': 'Select at least one annotator to create associated projects.'
+                })
+        return attrs
+
+    def create(self, validated_data):
+        group = super().create(validated_data)
+        request = self.context.get('request')
+        if request is not None and getattr(request.user, 'is_authenticated', False):
+            group.administrators.add(request.user)
+        if group.create_associated_projects:
+            create_projects_for_group(group)
+        return group
 
     def to_representation(self, instance):
         # enrich with other fields? last_modified etc.?

@@ -792,7 +792,7 @@ export default {
 }
 
 .project-table {
-  height: calc(100% - 30px);
+  height: 100%;
   padding: 10px 0;
   width: 96%;
   max-width: 96%;

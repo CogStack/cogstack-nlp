@@ -11,7 +11,7 @@ on:
   pull_request:
     paths:
       - 'medcat-model-distributor/**'
-      - 'medcat-v2/**'
+      - 'medcat/**'
       - '.github/workflows/medcat-model-distributor**'
 defaults:
   run:

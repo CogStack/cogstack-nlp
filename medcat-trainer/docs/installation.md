@@ -130,6 +130,8 @@ Host-level Compose variables (for example port overrides) can be set by copying
 | `MCTRAINER_BOOTSTRAP_ADMIN_USERNAME` | Bootstrap admin username (default `admin`). |
 | `MCTRAINER_BOOTSTRAP_ADMIN_EMAIL` | Bootstrap admin email. |
 | `MCTRAINER_BOOTSTRAP_ADMIN_PASSWORD` | Bootstrap admin password (change in real deployments). |
+| `ENV` | Deployment realm: `non-prod` (default) or `prod`. Controls DEBUG and SECRET_KEY env vars |
+| `SECRET_KEY` | Django signing key to set for production deployments. Required when `ENV=prod`. |
 
 ### SMTP (optional, for password reset emails)
 

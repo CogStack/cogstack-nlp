@@ -25,7 +25,7 @@
           {{doc.text === 'nan' ? '' : (limitText(doc.text) || '')}}
         </div>
         <v-tooltip activator="parent"
-                   v-if="preparedDocIds.includes(doc.id) || completeBgTasks                                   .includes(doc.id)">
+                   v-if="preparedDocIds.includes(doc.id) || completeBgTasks.includes(doc.id)">
           Predictions ready for Doc: {{doc.id}}
         </v-tooltip>
         <v-tooltip activator="parent"

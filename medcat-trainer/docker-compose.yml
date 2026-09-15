@@ -4,7 +4,7 @@
 services:
   # medattrainer services
   medcattrainer:
-    image: cogstacksystems/medcat-trainer:v3.4.1
+    image: cogstacksystems/medcat-trainer:v3.8.0
     restart: always
     volumes:
       - api-media:/home/api/media

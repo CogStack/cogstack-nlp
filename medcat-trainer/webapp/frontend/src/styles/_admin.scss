@@ -464,6 +464,11 @@ input[type="file"].form-control,
 // ============================================
 
 .list-section {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+
   .section-header {
     margin-bottom: 20px;
 
@@ -485,7 +490,10 @@ input[type="file"].form-control,
     background: white;
     border-radius: 8px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    overflow: hidden;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
   }
 
   .action-buttons {

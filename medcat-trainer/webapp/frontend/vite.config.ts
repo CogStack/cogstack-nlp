@@ -1,7 +1,18 @@
 import { fileURLToPath, URL } from 'node:url'
+import path from 'node:path'
 
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
+
+// Resolve env at module load so this stays a plain object. vitest.config.ts
+// uses mergeConfig(), which cannot merge callback-style Vite configs.
+const env = {
+  ...loadEnv(process.env.MODE || process.env.NODE_ENV || 'development', process.cwd(), ''),
+  ...process.env,
+}
+const mctEeRoot = env.MCT_EE_ROOT || path.resolve(
+  fileURLToPath(new URL('../../../../cogstack-private/medcat-trainer-ee/frontend/src', import.meta.url))
+)
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -11,7 +22,13 @@ export default defineConfig({
   resolve: {
     alias: {
       vue: 'vue/dist/vue.esm-bundler.js',
-      '@': fileURLToPath(new URL('./src', import.meta.url))
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+      // Always resolve so Vite/Rollup can analyse the dynamic import in
+      // enterprise.ts. OSS builds get a local noop stub; EE builds point at
+      // the private package when VITE_MCT_EE=1.
+      '@mctee/enterprise': env.VITE_MCT_EE === '1'
+        ? path.join(mctEeRoot, 'index.ts')
+        : fileURLToPath(new URL('./src/plugins/enterprise-stub.ts', import.meta.url)),
     }
   },
   build: {

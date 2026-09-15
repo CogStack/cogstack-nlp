@@ -1,15 +1,15 @@
-name: medcat-v2 - Test
+name: medcat - Test
 
 on:
   push:
     branches: [ main ]
   pull_request:
     paths:
-      - 'medcat-v2/**'
+      - 'medcat/**'
       - '.github/workflows/medcat-v2**'
 defaults:
   run:
-    working-directory: ./medcat-v2
+    working-directory: ./medcat
 jobs:
   test-resource-utils:
    runs-on: ubuntu-latest
@@ -28,7 +28,7 @@ jobs:
         with:
           python-version: "3.10"
           enable-cache: true
-          cache-dependency-glob: "medcat-v2/uv.lock"
+          cache-dependency-glob: "medcat/uv.lock"
       - name: Install the project
         run: |
           uv sync # NO extras
@@ -49,7 +49,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           enable-cache: true
-          cache-dependency-glob: "medcat-v2/uv.lock"
+          cache-dependency-glob: "medcat/uv.lock"
       - name: Install the project
         run: |
           uv sync --all-extras --dev

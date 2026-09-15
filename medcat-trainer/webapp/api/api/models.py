@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 
 class ModelPack(models.Model):
     name = models.TextField(help_text='', unique=True)
-    model_pack = models.FileField(help_text='Model pack zip')
+    model_pack = models.FileField(max_length=255, help_text='Model pack zip')
     concept_db = models.ForeignKey('ConceptDB', on_delete=models.CASCADE, blank=True, null=True)
     vocab = models.ForeignKey('Vocabulary', on_delete=models.CASCADE, blank=True, null=True)
     meta_cats = models.ManyToManyField('MetaCATModel', blank=True, default=None)
@@ -120,9 +120,11 @@ class ModelPack(models.Model):
             meta_cat_addons = load_meta_cat_info_from_model_folder(unpacked_model_pack_path)
             metaCATmodels = []
             for meta_cat_dir, meta_cat_cnf in meta_cat_addons:
+                meta_model_name = f'{meta_cat_cnf.general.category_name} - {meta_cat_cnf.model.model_name}'
+                meta_model_name = f'{meta_model_name} - from {self.id}'
                 mc_model = MetaCATModel()
                 mc_model.meta_cat_dir = meta_cat_dir.replace(f'{MEDIA_ROOT}/', '')
-                mc_model.name = f'{meta_cat_cnf.general.category_name} - {meta_cat_cnf.model.model_name}'
+                mc_model.name = meta_model_name
                 mc_model.save(unpack_load_meta_cat_dir=False)
                 mc_model.get_or_create_meta_tasks_and_values(meta_cat_cnf)
                 metaCATmodels.append(mc_model)
@@ -147,7 +149,7 @@ class ModelPack(models.Model):
 
 class ConceptDB(models.Model):
     name = models.CharField(max_length=100, default='', blank=True, validators=[cdb_name_validator], unique=True)
-    cdb_file = models.FileField()
+    cdb_file = models.FileField(max_length=255)
     use_for_training = models.BooleanField(default=True)
     create_time = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
@@ -183,7 +185,7 @@ class ConceptDB(models.Model):
 
 class Vocabulary(models.Model):
     name = models.CharField(max_length=100, default='', blank=True)
-    vocab_file = models.FileField()
+    vocab_file = models.FileField(max_length=255)
     create_time = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
     last_modified_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, default=None, null=True)
@@ -205,7 +207,7 @@ class Vocabulary(models.Model):
 
 class MetaCATModel(models.Model):
     name = models.CharField(max_length=100, help_text="The task name followed by the underlying model impl", unique=True)
-    meta_cat_dir = models.FilePathField(help_text='The zip or dir for a MetaCAT model, not editable, '
+    meta_cat_dir = models.FilePathField(max_length=255, help_text='The zip or dir for a MetaCAT model, not editable, '
                                                   'is set via a model pack .zip upload',
                                         allow_folders=True, editable=False)
 
@@ -354,6 +356,14 @@ class Relation(models.Model):
         return str(self.label)
 
 
+def update_project_last_modified(project: 'ProjectAnnotateEntities', last_modified):
+    # so that the local project last_modified is updated
+    project.last_modified = last_modified
+    # so that the project last_modified is updated in the database
+    ProjectAnnotateEntities.objects.filter(pk=project.id).update(
+        last_modified=last_modified
+    )
+
 class EntityRelation(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     project = models.ForeignKey('Project', on_delete=models.CASCADE)
@@ -370,8 +380,7 @@ class EntityRelation(models.Model):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
-        self.project.last_modified = self.last_modified
-        self.project.save()
+        update_project_last_modified(self.project, self.last_modified)
 
     def __str__(self):
         return f'{self.start_entity} - {self.relation} - {self.end_entity}'
@@ -402,8 +411,7 @@ class AnnotatedEntity(models.Model):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
-        self.project.last_modified = self.last_modified
-        self.project.save()
+        update_project_last_modified(self.project, self.last_modified)
 
     def __str__(self):
         return str(self.entity)
@@ -491,7 +499,16 @@ class ProjectAnnotateEntitiesFields(models.Model):
     model_service_url = models.CharField(max_length=500, blank=True, null=True,
                                          help_text='URL of the remote MedCAT service API (e.g., http://medcat-service:8000)')
 
+    def _normalize_model_config(self):
+        """ModelPack and CDB/Vocab are mutually exclusive configuration options."""
+        if self.model_pack_id:
+            self.concept_db = None
+            self.vocab = None
+        elif self.concept_db_id and self.vocab_id:
+            self.model_pack = None
+
     def save(self, *args, **kwargs):
+        self._normalize_model_config()
         # If using remote model service, skip local model validation
         if not self.use_model_service:
             if self.model_pack is None and (self.concept_db is None or self.vocab is None):
@@ -551,8 +568,7 @@ class MetaAnnotation(models.Model):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
-        self.annotated_entity.last_modified = self.last_modified
-        self.annotated_entity.save()
+        update_project_last_modified(self.annotated_entity.project, self.last_modified)
 
     def __str__(self):
         return str(self.annotated_entity)

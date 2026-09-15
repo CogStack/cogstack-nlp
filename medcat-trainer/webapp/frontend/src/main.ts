@@ -25,7 +25,9 @@ import * as directives from 'vuetify/directives'
 import {authPlugin} from "./auth";
 import { loadRuntimeConfig, isOidcEnabled } from './runtimeConfig';
 import { registerUnauthorizedInterceptor } from './httpAuth'
+import { authCookieNames, readRawCookie } from './authCookies'
 import { initPluginBootstrap } from './plugins/bootstrap'
+import { loadEnterprisePlugin } from './plugins/enterprise'
 import PluginSlot from '@/components/plugins/PluginSlot.vue'
 
 const theme ={
@@ -52,6 +54,7 @@ const vuetify = createVuetify({
 
 async function bootstrap() {
   await loadRuntimeConfig();
+  await loadEnterprisePlugin()
 
   const app = createApp(App)
   app.config.globalProperties.$http = axios
@@ -71,13 +74,10 @@ async function bootstrap() {
     await authPlugin.install(app)
   } else {
     console.log('[Bootstrap] Traditional auth mode')
-    const apiToken = document.cookie
-      .split(';')
-      .map(s => s.trim().split('='))
-      .filter(s => s[0] === 'api-token')
+    const token = readRawCookie(authCookieNames().token)
 
-    if (apiToken.length) {
-      axios.defaults.headers.common['Authorization'] = `Token ${apiToken[0][1]}`
+    if (token) {
+      axios.defaults.headers.common['Authorization'] = `Token ${token}`
       axios.defaults.timeout = 6000000000
     }
 

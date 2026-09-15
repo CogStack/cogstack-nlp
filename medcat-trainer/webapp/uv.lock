@@ -1218,7 +1218,7 @@ wheels = [
 
 [[package]]
 name = "medcat"
-version = "2.8.3"
+version = "2.8.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -1235,9 +1235,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "xxhash" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2b/43/35100059197afbf8d6e508629de754b3a41723698e0c8391578bb93dd8dd/medcat-2.8.3.tar.gz", hash = "sha256:f6041afbbaa648e0bbff314cf991b833af5712168567ccdcd0d53ba6253b7be6", size = 959464, upload-time = "2026-06-17T11:56:48.146Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/9b/b4/74f88348bbe1eeaddb0c86c45d8f7e9be81409644faf5b59a98b4979805a/medcat-2.8.6.tar.gz", hash = "sha256:241d85ed546711ed0bb427b49e1fc02824f9310bca0ca3ad8f0e4527d4697b31", size = 960026, upload-time = "2026-06-23T15:58:34.681Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c3/05/84cd3ef73ba0e6a73973a492c8c71d6e5d3962f913b8f93a7d4222f7949f/medcat-2.8.3-py3-none-any.whl", hash = "sha256:8f482a3b6190fe84fad1dce905d4c965ad2fe6996f8dd453079731e33fe83b1e", size = 317225, upload-time = "2026-06-17T11:56:46.448Z" },
+    { url = "https://files.pythonhosted.org/packages/06/b0/3411e675d004f5823ef50fa6804cd73e6185f1445c82ac578a4cd7dc2582/medcat-2.8.6-py3-none-any.whl", hash = "sha256:726dfdd9fc1afafbce5ace3cef58412d0de40d6ef89767bb162ad77cb1386e74", size = 317522, upload-time = "2026-06-23T15:58:32.487Z" },
 ]
 
 [package.optional-dependencies]
@@ -1319,7 +1319,7 @@ requires-dist = [
     { name = "django-polymorphic", specifier = ">=4.0,<5" },
     { name = "djangorestframework", specifier = ">=3.16,<4" },
     { name = "drf-oidc-auth", specifier = ">=3.0" },
-    { name = "medcat", extras = ["meta-cat", "spacy", "rel-cat", "deid", "dict-ner"], specifier = ">=2.8.3" },
+    { name = "medcat", extras = ["meta-cat", "spacy", "rel-cat", "deid", "dict-ner"], specifier = ">=2.8.6" },
     { name = "openpyxl", specifier = ">=3.1" },
     { name = "opentelemetry-api", specifier = ">=1.0.0,<2" },
     { name = "opentelemetry-distro", extras = ["otlp"], marker = "extra == 'observability'", specifier = ">=0.61b0" },

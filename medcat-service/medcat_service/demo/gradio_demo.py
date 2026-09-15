@@ -132,7 +132,7 @@ def anoncat_demo_interface() -> gr.Blocks:
             lambda: ("", None, None, annotation_details_placeholder_text),
             outputs=[input_text, highlighted, dataframe, annotation_details],
         )
-        gr.Markdown(demo_content.anoncat_help_content)
+        gr.Markdown(demo_content.resolve_demo_markdown(settings))
     return io
 
 
@@ -171,7 +171,7 @@ def medcat_demo_interface() -> gr.Blocks:
             lambda: ("", None, None, annotation_details_placeholder_text),
             outputs=[input_text, highlighted, dataframe, annotation_details],
         )
-        gr.Markdown(demo_content.article_footer)
+        gr.Markdown(demo_content.resolve_demo_markdown(settings))
     return io
 
 

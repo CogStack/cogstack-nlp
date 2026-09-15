@@ -25,18 +25,36 @@ trusted_origins = [origin.strip() for origin in environ_origins.split(',') if or
 
 CSRF_TRUSTED_ORIGINS = ['http://127.0.0.1:8001', 'http://localhost:8001'] + trusted_origins
 
+# Cookies are not port-scoped. Default Django names collide with other apps
+# (and older MCT versions) on the same host. Override via env if two instances
+# still share a host and need distinct names.
+SESSION_COOKIE_NAME = os.environ.get('SESSION_COOKIE_NAME', 'mct_sessionid')
+CSRF_COOKIE_NAME = os.environ.get('CSRF_COOKIE_NAME', 'mct_csrftoken')
+
 SECURE_CROSS_ORIGIN_OPENER_POLICY = None
 
 # SECURITY WARNING: keep the secret key used in production secret!
-realm = os.environ.get('ENV', 'non-prod')
-secret_key = os.environ.get('SECRET_KEY')
-if realm == 'prod' and secret_key is None:
-    msg = 'No SECRET_KEY environment variable found for prod environment. Please add a secret key and re-run'
-    log.error(msg)
-    sys.exit(msg)
-else:
+NON_PROD_DEFAULT_SECRET_KEY = 'q$&esydgbn2=#-k5s5i(+^dtxs1@$50_(ln0wuw@zig4m&^m7='
+
+
+def resolve_secret_key(realm, secret_key):
+    """Resolve Django SECRET_KEY from ENV realm and SECRET_KEY env values.
+
+    Prod requires an explicit secret. Non-prod may fall back to a default.
+    When a secret is provided via the environment, it is always preferred.
+    """
+    if secret_key:
+        return secret_key
+    if realm == 'prod':
+        msg = 'No SECRET_KEY environment variable found for prod environment. Please add a secret key and re-run'
+        log.error(msg)
+        sys.exit(msg)
     log.info('Running non-prod environment, defaulting django SECRET_KEY')
-    SECRET_KEY = 'q$&esydgbn2=#-k5s5i(+^dtxs1@$50_(ln0wuw@zig4m&^m7='
+    return NON_PROD_DEFAULT_SECRET_KEY
+
+
+realm = os.environ.get('ENV', 'non-prod')
+SECRET_KEY = resolve_secret_key(realm, os.environ.get('SECRET_KEY'))
 
 # SECURITY WARNING: don't run with debug turned on in production!
 try:

@@ -1,6 +1,6 @@
 # Medcat service documentation
 
-Medcat service is a REST API for serving [MedCAT](https://github.com/CogStack/cogstack-nlp/blob/main/medcat-v2/) models, allowing you to perform named entity resolution and deidentification of medical text over an API.
+Medcat service is a REST API for serving [MedCAT](https://github.com/CogStack/cogstack-nlp/blob/main/medcat/) models, allowing you to perform named entity resolution and deidentification of medical text over an API.
 
 Feel free to ask questions on the github issue tracker or on our [discourse website](https://discourse.cogstack.org) which is frequently used by our development team!
 

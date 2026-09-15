@@ -38,7 +38,7 @@ jobs:
 
       - name: Set up Python
         if: steps.release_type.outputs.is_minor == 'true'
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: '3.11'
 
@@ -50,4 +50,4 @@ jobs:
           python .github/scripts/bump_dependants.py \
             --version "${{ steps.version.outputs.version }}" \
             --package "medcat" \
-            --dependants "medcat-scripts" "medcat-v2-tutorials" "medcat-service"
+            --dependants "medcat-scripts" "medcat-tutorials" "medcat-service"

@@ -117,4 +117,12 @@ describe('ProjectsList.vue', () => {
     await wrapper.find('.btn-create-empty').trigger('click')
     expect(wrapper.emitted('create-project')).toBeTruthy()
   })
+
+  it('emits create-project-group from empty-state button', async () => {
+    const wrapper = mountList({ projects: [] })
+    const buttons = wrapper.findAll('.btn-create-empty')
+    expect(buttons).toHaveLength(2)
+    await buttons[1].trigger('click')
+    expect(wrapper.emitted('create-project-group')).toBeTruthy()
+  })
 })

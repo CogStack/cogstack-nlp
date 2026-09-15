@@ -19,6 +19,7 @@
 <script>
 import _ from 'lodash'
 import RelationAnnotation from '@/components/usecases/RelationAnnotation.vue'
+import { authCookieNames } from '@/authCookies'
 
 export default {
   name: 'RelationAnnotationTaskContainer',
@@ -79,7 +80,7 @@ export default {
     },
     addNewRelation () {
       this.entityRelations.push({
-        user: Number(this.$cookies.get('user-id')),
+        user: Number(this.$cookies.get(authCookieNames().userId)),
         project: Number(this.projectId),
         document: Number(this.documentId),
         relation: this.relations[0],
