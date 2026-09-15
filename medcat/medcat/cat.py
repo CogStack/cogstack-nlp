@@ -640,7 +640,8 @@ class CAT(AbstractSerialisable):
                     out_with_text: bool = False
                     ) -> Union[Entities, OnlyCUIEntities]:
         out: Union[Entities, OnlyCUIEntities] = {'entities': {},
-                                                 'tokens': []}  # type: ignore
+                                                 'tokens': [],
+                                                 'relations': []}  # type: ignore
         cnf_annotation_output = self.config.annotation_output
         _ents = doc.linked_ents
 
@@ -652,8 +653,13 @@ class CAT(AbstractSerialisable):
         for _, ent in enumerate(_ents):
             ent_id, ent_dict = self._doc_to_out_entity(ent, doc_tokens,
                                                        only_cui)
+
             # NOTE: the types match - not sure why mypy is having issues
             out['entities'][ent_id] = ent_dict  # type: ignore
+       
+        out["relations"] = []
+        if "relations" in doc.get_available_addon_paths():
+            out['relations'] = doc.get_addon_data("relations") # type: ignore
 
         if cnf_annotation_output.include_text_in_output or out_with_text:
             out['text'] = doc.base.text
