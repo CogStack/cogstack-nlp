@@ -377,7 +377,8 @@ class RelData(Dataset):
             return [window_tokenizer_data["input_ids"], ent1_ent2_new_start,
                     ent1_token, ent2_token, "UNK",
                     self.config.model.padding_idx,
-                    ent1_type, ent2_type, ent1_id, ent2_id, ent1_cui, ent2_cui, doc_id, "",
+                    ent1_type, ent2_type, ent1_id, ent2_id,
+                    ent1_cui, ent2_cui, doc_id, "",
                     s1_start, e1_end, s2_start, e2_end,
                     ent1_start_char_pos, ent1_end_char_pos,
                     ent2_start_char_pos, ent2_end_char_pos]
@@ -577,7 +578,7 @@ class RelData(Dataset):
             doc_text = doc.base.text
 
         tokenized_text_data = cast(dict[str, Any],
-                                   self.tokenizer(doc_text, truncation=False))
+                                self.tokenizer(doc_text, truncation=False))
 
         doc_length_tokens = len(tokenized_text_data["tokens"])
 

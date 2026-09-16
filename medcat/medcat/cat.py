@@ -659,7 +659,7 @@ class CAT(AbstractSerialisable):
        
         out["relations"] = []
         if "relations" in doc.get_available_addon_paths():
-            out['relations'] = doc.get_addon_data("relations") # type: ignore
+            out['relations'] = doc.get_addon_data("relations")  # type: ignore
 
         if cnf_annotation_output.include_text_in_output or out_with_text:
             out['text'] = doc.base.text
