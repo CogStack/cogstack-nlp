@@ -216,6 +216,26 @@ class TrainingAwareDifficultyEstimator:
 
         return 1.0 / effective_N
 
+    def _estimate_cui_name_mass(self, cui: str, name: str) -> float:
+        name_count = self.training.get_name_train_count(name)
+        if name_count == 0:
+            return 1.0  # Base unobserved weight
+
+        competing_cuis = (
+            self.ontology_estimator.ontology.get_concepts_for_name(name))
+
+        # Laplace-smoothed mass allocation
+        cui_count = self.training.get_cui_train_count(cui) + 1.0
+        total_competing_count = sum(
+            self.training.get_cui_train_count(other) + 1.0
+            for other in competing_cuis
+        )
+
+        allocated_count = name_count * (cui_count / total_competing_count)
+
+        # Log-damp to prevent dominant mentions from completely zeroing out other synonyms
+        return math.log1p(allocated_count) + 1.0
+
     def compute_concept_training_difficulty(self, concept_id: str) -> ConceptDifficulty:
         synonyms = self.ontology_estimator.ontology.get_synonyms_for_concept(concept_id)
         if not synonyms:
@@ -226,7 +246,9 @@ class TrainingAwareDifficultyEstimator:
             )
 
         per_name_accuracy = [self.predict_accuracy(concept_id, name) for name in synonyms]
-        overall_accuracy = sum(per_name_accuracy) / len(per_name_accuracy)
+        # use name counts to better distribute (in a weighted waty) between synonyms
+        weights = [self._estimate_cui_name_mass(concept_id, name) for name in synonyms]
+        overall_accuracy = sum(w * acc for w, acc in zip(weights, per_name_accuracy)) / sum(weights)
         worst_case_accuracy = min(per_name_accuracy)
 
         return ConceptDifficulty(
