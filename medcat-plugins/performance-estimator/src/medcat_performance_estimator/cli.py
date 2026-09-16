@@ -74,7 +74,7 @@ def get_difficulty_function(
 
         # Duck-typed wrapper applies over stage-1 ontology difficulty
         calibrated_estimator = CalibratedDifficultyEstimator(
-            difficulty_fn=stage1.compute_concept_ontology_difficulty,
+            difficulty_fn=stage2.compute_concept_training_difficulty,
             curve=curve,
         )
         return calibrated_estimator.compute_concept_difficulty
