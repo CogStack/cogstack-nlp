@@ -21,7 +21,7 @@ def _coerce_loglevel(v: Any) -> int:
     return logging.INFO
 
 
-def parse_enabled_components(v: str | Iterable[str] | None) -> tuple[str, ...]:
+def parse_disabled_components(v: str | Iterable[str] | None) -> tuple[str, ...]:
     if v is None or not v:
         return ()
     if isinstance(v, str):
@@ -62,7 +62,7 @@ class Settings(BaseSettings):
         description="Enable DEID redaction. Returns text like [***] instead of [ANNOTATION]",
     )
 
-    enabled_components: str | tuple[str, ...] = Field(default=(), alias="APP_ENABLED_COMPONENTS")
+    disabled_components: str | tuple[str, ...] = Field(default=(), alias="APP_DISABLED_COMPONENTS")
 
     enable_demo_ui: bool = Field(default=False, description="Enable the demo app", alias="APP_ENABLE_DEMO_UI")
     demo_ui_path: str = Field(default="", description="Path to the demo app", alias="APP_DEMO_UI_PATH")
@@ -145,10 +145,10 @@ class Settings(BaseSettings):
     def _lower_mode(cls, v: str) -> str:
         return v.lower().strip()
 
-    @field_validator("enabled_components", mode="before")
+    @field_validator("disabled_components", mode="before")
     @classmethod
-    def _parse_enabled_components(cls, v: str | Iterable[str] | None) -> tuple[str, ...]:
-        return parse_enabled_components(v)
+    def _parse_disabled_components(cls, v: str | Iterable[str] | None) -> tuple[str, ...]:
+        return parse_disabled_components(v)
 
     @field_validator("model_meta_path_list", "model_rel_path_list", mode="before")
     @classmethod

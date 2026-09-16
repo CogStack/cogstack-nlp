@@ -154,28 +154,29 @@ class MedCatProcessor:
 
         return names
 
-    def _filter_pipeline_components(self, components, enabled_names: set[str], matched_names: set[str]):
+    def _filter_pipeline_components(self, components, disabled_names: set[str], matched_names: set[str]):
         for component in components:
             component_names = self._component_names(component)
-            if component_names & enabled_names:
-                matched_names.update(component_names & enabled_names)
-                yield component
+            if component_names & disabled_names:
+                matched_names.update(component_names & disabled_names)
+                continue
+            yield component
 
-    def _get_entities(self, text: str, enabled_components: tuple[str, ...]):
-        if not enabled_components:
+    def _get_entities(self, text: str, disabled_components: tuple[str, ...]):
+        if not disabled_components:
             return self.cat.get_entities(text)
 
         pipeline = self.cat.pipe
-        enabled_names = {self._normalise_component_name(name) for name in enabled_components}
+        disabled_names = {self._normalise_component_name(name) for name in disabled_components}
         matched_names = set()
         doc = pipeline.tokenizer(text)
         # MedCAT does not currently expose this as a public get_entities option.
-        for component in self._filter_pipeline_components(pipeline._components, enabled_names, matched_names):
+        for component in self._filter_pipeline_components(pipeline._components, disabled_names, matched_names):
             doc = component(doc)
-        for addon in self._filter_pipeline_components(pipeline._addons, enabled_names, matched_names):
+        for addon in self._filter_pipeline_components(pipeline._addons, disabled_names, matched_names):
             doc = addon(doc)
 
-        unknown_names = enabled_names - matched_names
+        unknown_names = disabled_names - matched_names
         if unknown_names:
             self.log.warning("Requested MedCAT components were not found: %s", sorted(unknown_names))
 
@@ -226,9 +227,11 @@ class MedCatProcessor:
                 text, entities = self.cat.deid_text_with_entities(text, redact=redact_value)
         else:
             if text is not None and len(text.strip()) > 0:
-                enabled_components = kwargs.get("enabled_components") or self.service_settings.enabled_components
+                disabled_components = kwargs.get("disabled_components")
+                if disabled_components is None:
+                    disabled_components = self.service_settings.disabled_components
                 with tracer.start_as_current_span("cat.get_entities"):
-                    entities = self._get_entities(text, enabled_components=enabled_components)
+                    entities = self._get_entities(text, disabled_components=disabled_components)
             else:
                 entities = []
 
@@ -405,8 +408,6 @@ class MedCatProcessor:
 
         cat = CAT(cdb=cdb, config=cdb.config, vocab=vocab)
         cat.config.general.log_level = self.service_settings.medcat_log_level
-
-        # cat.config.general.enabled_components = self.service_settings.enabled_components
 
         # ---- CAT add-ons ----
         for meta_model_path in self.service_settings.model_meta_path_list:

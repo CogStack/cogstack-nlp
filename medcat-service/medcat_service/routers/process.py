@@ -6,7 +6,7 @@ from fastapi.exceptions import RequestValidationError
 from opentelemetry import trace
 from pydantic import ValidationError
 
-from medcat_service.config import parse_enabled_components
+from medcat_service.config import parse_disabled_components
 from medcat_service.dependencies import MedCatProcessorDep
 from medcat_service.types import BulkProcessAPIInput, BulkProcessAPIResponse, ProcessAPIInput, ProcessAPIResponse
 
@@ -48,9 +48,12 @@ async def process(
         ),
     ],
     medcat_processor: MedCatProcessorDep,
-    enabled_components: Annotated[
+    disabled_components: Annotated[
         str | None,
-        Query(description="Comma-separated MedCAT component names to run for this request."),
+        Query(description=(
+            "Comma-separated MedCAT component names to skip for this request. "
+            "Omit to use APP_DISABLED_COMPONENTS; pass an empty value to run all components."
+        )),
     ] = None,
 ) -> ProcessAPIResponse:
     """
@@ -69,12 +72,14 @@ async def process(
                 log.error("Invalid payload", exc_info=ve)
                 raise RequestValidationError(errors=ve.errors()) from ve
 
-        parsed_enabled_components = parse_enabled_components(enabled_components)
+        parsed_disabled_components = (
+            parse_disabled_components(disabled_components) if disabled_components is not None else None
+        )
 
         process_result = medcat_processor.process_content(
             content,
             meta_anns_filters=meta_filters,
-            enabled_components=parsed_enabled_components,
+            disabled_components=parsed_disabled_components,
         )
 
         app_info = medcat_processor.get_app_info()
