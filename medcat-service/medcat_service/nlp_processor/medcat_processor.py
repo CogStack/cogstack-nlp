@@ -3,6 +3,7 @@
 import logging
 import time
 from datetime import datetime, timezone
+from typing import cast
 
 import numpy as np
 import torch
@@ -166,9 +167,10 @@ class MedCatProcessor:
         if not disabled_components:
             return self.cat.get_entities(text)
 
-        pipeline = self.cat.pipe
+        cat = cast(CAT, self.cat)
+        pipeline = cat.pipe
         disabled_names = {self._normalise_component_name(name) for name in disabled_components}
-        matched_names = set()
+        matched_names: set[str] = set()
         doc = pipeline.tokenizer(text)
         # MedCAT does not currently expose this as a public get_entities option.
         for component in self._filter_pipeline_components(pipeline._components, disabled_names, matched_names):
@@ -180,10 +182,10 @@ class MedCatProcessor:
         if unknown_names:
             self.log.warning("Requested MedCAT components were not found: %s", sorted(unknown_names))
 
-        if self.cat.usage_monitor.should_monitor:
-            self.cat.usage_monitor.log_inference(len(text), len(doc.linked_ents))
+        if cat.usage_monitor.should_monitor:
+            cat.usage_monitor.log_inference(len(text), len(doc.linked_ents))
 
-        return self.cat._doc_to_out(doc, only_cui=False)
+        return cat._doc_to_out(doc, only_cui=False)
 
     @tracer.start_as_current_span("process_content")
     def process_content(self, content, *args, redact=None, **kwargs):
@@ -294,12 +296,12 @@ class MedCatProcessor:
                     redact=self.service_settings.deid_redact,
                     n_process=self.service_settings.bulk_nproc,
                 )
-            elif isinstance(self.cat, CAT): 
+            elif isinstance(self.cat, CAT):
                 ann_res = {
-                            ann_id: res for ann_id, res in
-                            self.cat.get_entities_multi_texts(
-                            text_input, n_process=self.service_settings.bulk_nproc)
-                         }
+                    ann_id: res for ann_id, res in self.cat.get_entities_multi_texts(
+                        text_input, n_process=self.service_settings.bulk_nproc
+                    )
+                }
         except Exception as e:
             self.log.error("Unable to process data", exc_info=e)
 
@@ -366,7 +368,7 @@ class MedCatProcessor:
 
             self._populate_model_card_info(cat.config)
 
-            self.log.info(f"Loaded model pack: %s", self.service_settings.medcat_model_pack)
+            self.log.info("Loaded model pack: %s", self.service_settings.medcat_model_pack)
             return cat
 
         self.log.info(f"{Settings.env_name('medcat_model_pack')} not set, skipping...")
@@ -467,7 +469,7 @@ class MedCatProcessor:
 
                 entities = list(self.process_entities(annotations.get(i)))
 
-                relations = annotations[i].get("relations", []) 
+                relations = annotations[i].get("relations", [])
 
                 out_res = ProcessResult(
                     text=str(in_ct["text"]),
