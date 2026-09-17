@@ -8,7 +8,9 @@ from medcat.components.types import (
     CoreComponentType, AbstractEntityProvidingComponent)
 from medcat.config.config import ComponentConfig
 from medcat.tokenizing.tokenizers import BaseTokenizer
-from medcat.tokenizing.tokens import MutableDocument, MutableEntity, MutableToken
+from medcat.tokenizing.tokens import (
+    MutableDocument, MutableEntity, MutableToken, UNTOKENIZABLE_ENTITY_ID,
+)
 from medcat.data.mctexport import (
     MedCATTrainerExport, MedCATTrainerExportDocument, count_all_docs, iter_docs)
 from medcat.vocab import Vocab
@@ -88,9 +90,20 @@ def _create_general_predictor(
         anns = _identify_document(doc, dataset)["annotations"]
         ents: list[MutableEntity] = []
         for ann in anns:
-            tkns = doc.get_tokens(ann["start"], ann["end"])
-            # TODO: catch possible exception?
-            ent = tokens2entity(tkns, doc)
+            start = ann["start"]
+            end = ann["end"]
+            tkns = doc.get_tokens(start, end)
+            try:
+                ent = tokens2entity(tkns, doc)
+            except ValueError:
+                while not tkns:
+                    # If no tokens found, try expanding the 
+                    # range by 1 character on each side
+                    start = max(0, start - 1)
+                    end = end + 1
+                    tkns = doc.get_tokens(start, end)
+                ent = tokens2entity(tkns, doc)
+                ent.id = UNTOKENIZABLE_ENTITY_ID
             if set_cui:
                 ent.cui = ann["cui"]
             ents.append(ent)
