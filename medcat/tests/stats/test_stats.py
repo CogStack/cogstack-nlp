@@ -1,15 +1,12 @@
 from __future__ import annotations
 
 import os
-import json
 import re
 from dataclasses import dataclass, field
 from types import SimpleNamespace
-from typing import Union
 from medcat.stats.stats import MetricMode
 from medcat.components.types import CoreComponentType
 from medcat.stats import stats
-from medcat.data.mctexport import MedCATTrainerExport
 
 from ..test_cat import TrainedModelTests
 

@@ -207,10 +207,6 @@ class StatsCollection(BaseModel):
 class StatsCalculator:
     """Calculates statistics for entity linking."""
 
-    BUCKET_FULL = MetricMode.FULL
-    BUCKET_NER = MetricMode.NER
-    BUCKET_LINKING = MetricMode.LINKING
-
     def __init__(self,
                  filters: LinkingFilters,
                  cui2info: dict[str, CUIInfo],
@@ -308,12 +304,13 @@ class StatsCalculator:
         """Count gold annotations for a project and all-projects aggregate."""
         project_stats = self.stats.get_project_stats(project_index)
         aggregate_stats = self.stats.get_aggregate_stats()
-        for project_stats in (project_stats, aggregate_stats):
-            mode_stats = project_stats.get_mode(mode)
+        
+        for stats in (project_stats, aggregate_stats):
+            mode_stats = stats.get_mode(mode)
             if mode_stats is None:
                 continue
             state = mode_stats.stats
-            if mode == self.BUCKET_NER:
+            if mode == MetricMode.NER:
                 key = "__NER__"
                 state.cui_gold_counts[key] = (
                     state.cui_gold_counts.get(key, 0)
@@ -427,57 +424,56 @@ class StatsCalculator:
                            project_index: int, 
                            mode: MetricMode, 
                            filter_fp_by_cui: bool = True) -> None:
-        # Track which predictions have been matched
-        matched_preds: set[int] = set()
         aggregate_stats = self.stats.get_aggregate_stats()
         project_stats = self.stats.get_project_stats(project_index)
         all_projects_state = aggregate_stats.get_mode(mode)
         project_state = project_stats.get_mode(mode)
         
-        if all_projects_state is None or project_state is None:
-            return
+        project_and_aggregate = (all_projects_state, project_state)
 
-        # this is a bit counter intuitive.
-        # essentially if you're looking at the linking performance,
-        # then there maybe entities with no tokens (due to spacy i.e
-        # [m'RNA'] not being representated) So you have to check the
-        # ner'd spans for linking performance.
-        if mode == self.BUCKET_LINKING:
-            for pred in pred_anns:
-                if pred['no_tokens'] == 1:
-                    self._record_no_tokens(all_projects_state.stats, pred)
-                    self._record_no_tokens(project_state.stats, pred)
-
-        # NOTE: All predictions where ID are -1000 are false positives.
-        # this should only really happen on the linker testing, as it's a perfect
-        # NER step which is trying to create tokenless entities.
-        # Phase 1: Match gold annotations to predictions (find TPs and FNs)
-        for gold in gold_anns:
-            if not gold['cuis']:
-                # No valid CUIs for this gold annotation, skip it
+        for state in project_and_aggregate:
+            if state is None:
                 continue
-            match_idx = self._find_matching_prediction(
-                gold, pred_anns, matched_preds)
+            # Track which predictions have been matched
+            matched_preds: set[int] = set()
 
-            if match_idx is not None:
-                # True Positive
-                matched_preds.add(match_idx)
-                pred = pred_anns[match_idx]
-                self._record_tp(all_projects_state.stats, gold, pred)
-                self._record_tp(project_state.stats, gold, pred)
-            else:
-                # False Negative
-                self._record_fn(all_projects_state.stats, gold)
-                self._record_fn(project_state.stats, gold)
+            # this is a bit counter intuitive.
+            # essentially if you're looking at the linking performance,
+            # then there maybe entities with no tokens (due to spacy i.e
+            # [m'RNA'] not being representated) So you have to check the
+            # ner'd spans for linking performance.
+            if mode == MetricMode.LINKING:
+                for pred in pred_anns:
+                    if pred['no_tokens'] == 1:
+                        self._record_no_tokens(state.stats, pred)
 
-        # Phase 2: Remaining predictions are False Positives
-        for idx, pred in enumerate(pred_anns):
-            if idx in matched_preds: 
-                continue
-            if filter_fp_by_cui and not self.filters.check_filters(pred['cui']): 
-                continue
-            self._record_fp(all_projects_state.stats, pred)
-            self._record_fp(project_state.stats, pred)
+            # NOTE: All predictions where ID are -1000 are false positives.
+            # this should only really happen on the linker testing, as it's a perfect
+            # NER step which is trying to create tokenless entities.
+            # Phase 1: Match gold annotations to predictions (find TPs and FNs)
+            for gold in gold_anns:
+                if not gold['cuis']:
+                    # No valid CUIs for this gold annotation, skip it
+                    continue
+                match_idx = self._find_matching_prediction(
+                    gold, pred_anns, matched_preds)
+
+                if match_idx is not None:
+                    # True Positive
+                    matched_preds.add(match_idx)
+                    pred = pred_anns[match_idx]
+                    self._record_tp(state.stats, gold, pred)
+                else:
+                    # False Negative
+                    self._record_fn(state.stats, gold)
+
+            # Phase 2: Remaining predictions are False Positives
+            for idx, pred in enumerate(pred_anns):
+                if idx in matched_preds:
+                    continue
+                if filter_fp_by_cui and not self.filters.check_filters(pred['cui']):
+                    continue
+                self._record_fp(state.stats, pred)
 
     def _to_ner_views(self, 
                       gold_anns: list[GoldAnnotation], 
@@ -609,24 +605,20 @@ class StatsCalculator:
 
     def _update_project_stats(
         self,
-        project_state: ModeStats,
-        all_project_state: ModeStats,
+        state: ModeStats,
         per_cui_ious: dict[str, float],
         per_cui_gious: dict[str, float],
         per_cui_kappas: dict[str, float],
     ) -> None:
         """Apply a document's character metric values to the project state."""
         for cui, iou in per_cui_ious.items():
-            project_state.stats.cui_iou[cui].append(iou)
-            all_project_state.stats.cui_iou[cui].append(iou)
+            state.stats.cui_iou[cui].append(iou)
 
         for cui, giou in per_cui_gious.items():
-            project_state.stats.cui_giou[cui].append(giou)
-            all_project_state.stats.cui_giou[cui].append(giou)
+            state.stats.cui_giou[cui].append(giou)
 
         for cui, kappa in per_cui_kappas.items():
-            project_state.stats.cui_cohen_k[cui].append(kappa)
-            all_project_state.stats.cui_cohen_k[cui].append(kappa)
+            state.stats.cui_cohen_k[cui].append(kappa)
 
         # Average the per-CUI IoUs rather than merging character sets.
         # This preserves CUI identity.
@@ -647,17 +639,10 @@ class StatsCalculator:
             if per_cui_kappas else 1.0
         )
 
-        project_state.stats.iou_sum += doc_iou
-        all_project_state.stats.iou_sum += doc_iou
-
-        project_state.stats.giou_sum += doc_giou
-        all_project_state.stats.giou_sum += doc_giou
-
-        project_state.stats.cohen_k_sum += doc_cohen_k
-        all_project_state.stats.cohen_k_sum += doc_cohen_k
-
-        project_state.stats.char_docs += 1
-        all_project_state.stats.char_docs += 1
+        state.stats.iou_sum += doc_iou
+        state.stats.giou_sum += doc_giou
+        state.stats.cohen_k_sum += doc_cohen_k
+        state.stats.char_docs += 1
 
     def _score_character_annotations(self, 
                                      gold_anns: list[GoldAnnotation], 
@@ -702,13 +687,14 @@ class StatsCalculator:
             )
         )
 
-        self._update_project_stats(
-            project_state,
-            all_project_state,
-            per_cui_ious,
-            per_cui_gious,
-            per_cui_kappas,
-        )
+        project_and_aggregate = (all_project_state, project_state)
+        for state in project_and_aggregate:
+            self._update_project_stats(
+                state,
+                per_cui_ious,
+                per_cui_gious,
+                per_cui_kappas,
+            )
 
     def process_document(
         self,
@@ -748,15 +734,15 @@ class StatsCalculator:
             ner_gold_anns, ner_pred_anns = self._to_ner_views(
                 full_pipe_gold_anns, full_pipe_pred_anns)
             self._count_gold_annotations(ner_gold_anns, project_index,
-                                        mode=self.BUCKET_NER)
+                                        mode=MetricMode.NER)
             self._score_annotations(ner_gold_anns, ner_pred_anns,
-                                    project_index, mode=self.BUCKET_NER,
+                                    project_index, mode=MetricMode.NER,
                                     filter_fp_by_cui=False)
             self._score_character_annotations(
                 ner_gold_anns, 
                 ner_pred_anns,
                 project_index, 
-                mode=self.BUCKET_NER, 
+                mode=MetricMode.NER,
                 doc_length=len(doc['text'])
             )
         
@@ -959,23 +945,23 @@ class StatsCalculator:
                             linking_performance: bool = True) -> None:
         """Compute metrics for all projects and the aggregate."""
         stats = self.stats.get_aggregate_stats()
-        self.compute_metrics(stats, StatsCalculator.BUCKET_FULL)
+        self.compute_metrics(stats, MetricMode.FULL)
         if ner_performance:
-            self.compute_metrics(stats, StatsCalculator.BUCKET_NER)
+            self.compute_metrics(stats, MetricMode.NER)
         if linking_performance:
-            self.compute_metrics(stats, StatsCalculator.BUCKET_LINKING)
+            self.compute_metrics(stats, MetricMode.LINKING)
         
         if self.num_projects > 1:
             for i in range(self.num_projects):
                 stats = self.stats.get_project_stats(i)
                 self.compute_metrics(stats, 
-                                     StatsCalculator.BUCKET_FULL)
+                                     MetricMode.FULL)
                 if ner_performance:
                     self.compute_metrics(stats, 
-                                         StatsCalculator.BUCKET_NER)
+                                         MetricMode.NER)
                 if linking_performance:
                     self.compute_metrics(stats, 
-                                         StatsCalculator.BUCKET_LINKING)
+                                         MetricMode.LINKING)
             
     # these 3 functions are just copied from previous, 
     # they get nice names for concepts
@@ -1088,6 +1074,29 @@ def get_stats_calculator(cat: CAT,
                          linking_performance: bool = False,
                          extra_cui_filter: Optional[set[str]] = None,
                          do_print: bool = True,) -> StatsCalculator:
+    """Return a stats calculator for the given data and parameters.
+
+    This doesn't just return the per project stats for the full pipeline, 
+    but all stats for each project and the aggregate, for all modes 
+    (full, ner, linking) if required.
+
+    This should be called without calling "get_stats", as that is just a 
+    legacy wrapper.
+    
+    Args:
+        cat: The MedCAT CAT instance for entity linking.
+        data: The MedCAT trainer export data.
+        epoch: The number of the current epoch.
+        use_project_filters: Whether to apply project-specific filters.
+        use_overlaps: Whether to consider overlapping annotations.
+        ner_performance: Whether to calculate NER performance.
+        linking_performance: Whether to calculate linking performance.
+        extra_cui_filter: Additional CUI filter to apply.
+        do_print: Whether to print the statistics.
+
+    Returns:
+        StatsCalculator: An instance of StatsCalculator with computed statistics.
+    """
     calculator = StatsCalculator(
             filters=cat.config.components.linking.filters,
             cui2info=cat.cdb.cui2info,
@@ -1100,7 +1109,7 @@ def get_stats_calculator(cat: CAT,
     calculator.process_export(
         cat,
         data,
-        mode=StatsCalculator.BUCKET_FULL,
+        mode=MetricMode.FULL,
         calculate_ner_performance=ner_performance,
         use_project_filters=use_project_filters,
         extra_cui_filter=extra_cui_filter,
@@ -1111,7 +1120,7 @@ def get_stats_calculator(cat: CAT,
             calculator.process_export(
                 cat,
                 data,
-                mode=StatsCalculator.BUCKET_LINKING,
+                mode=MetricMode.LINKING,
                 use_project_filters=use_project_filters,
                 extra_cui_filter=extra_cui_filter,
             )
@@ -1119,7 +1128,7 @@ def get_stats_calculator(cat: CAT,
     calculator.compute_all_metrics(ner_performance, linking_performance)
     
     if do_print:
-        to_print = calculator.stats.all_projects.get_mode(StatsCalculator.BUCKET_FULL)
+        to_print = calculator.stats.all_projects.get_mode(MetricMode.FULL)
         if to_print is None:
             raise ValueError("No statistics available for the full pipeline mode.")
         calculator.print_stats(epoch, to_print)
@@ -1130,22 +1139,43 @@ def get_stats(cat: CAT,
               epoch: int = 0,
               use_project_filters: bool = False,
               use_overlaps: bool = False,
-              ner_performance: bool = False,
-              linking_performance: bool = False,
               extra_cui_filter: Optional[set[str]] = None,
               do_print: bool = True,) -> tuple[
         dict[str, int], dict[str, int], dict[str, int],
         dict[str, float], dict[str, float], dict[str, float],
         dict[str, int], dict
     ]:
+    """Return stats for the entire project and full pipeline.
+
+    This should be called without calling "get_stats", as that is just a 
+    legacy wrapper.
+    
+    Args:
+        cat: The MedCAT CAT instance for entity linking.
+        data: The MedCAT trainer export data.
+        epoch: The number of the current epoch.
+        use_project_filters: Whether to apply project-specific filters.
+        use_overlaps: Whether to consider overlapping annotations.
+        extra_cui_filter: Additional CUI filter to apply.
+        do_print: Whether to print the statistics.
+
+    Returns:
+        tuple: A tuple containing the following:
+            - dict[str, int]: CUI false positives.
+            - dict[str, int]: CUI false negatives.
+            - dict[str, int]: CUI true positives.
+            - dict[str, float]: CUI precision values.
+            - dict[str, float]: CUI recall values.
+            - dict[str, float]: CUI F1 scores.
+            - dict[str, int]: CUI gold counts.
+            - dict: Examples of false positives and false negatives.
+    """
     calculator = get_stats_calculator(
         cat=cat,
         data=data,
         epoch=epoch,
         use_project_filters=use_project_filters,
         use_overlaps=use_overlaps,
-        ner_performance=ner_performance,
-        linking_performance=linking_performance,
         extra_cui_filter=extra_cui_filter
     )
     full_stats = calculator.stats.all_projects.full_pipeline
