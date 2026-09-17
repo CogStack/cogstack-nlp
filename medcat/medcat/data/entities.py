@@ -1,4 +1,4 @@
-from typing import TypedDict, Optional
+from typing import TypedDict, Optional, Any
 
 
 class MetaAnnotation(TypedDict):
@@ -34,10 +34,12 @@ class Entities(TypedDict):
     # is defined because the keys in entities are dynamic and can change.
     entities: dict[int, Entity]
     tokens: list[str]  # TODO - do we need this
+    relations: list[dict[str, Any]]
     text: Optional[str]
 
 
 class OnlyCUIEntities(TypedDict):
     entities: dict[int, str]
     tokens: list[str]  # TODO - do we need this
+    relations: list[dict[str, Any]]
     text: Optional[str]

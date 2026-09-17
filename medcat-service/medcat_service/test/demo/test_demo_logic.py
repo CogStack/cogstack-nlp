@@ -7,18 +7,11 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from medcat_service.config import Settings
-from medcat_service.demo.demo_logic import (
-    EntityResponse,
-    anoncat_demo_perform_deidentification,
-    medcat_demo_perform_named_entity_resolution,
-    perform_named_entity_resolution,
-)
+from medcat_service.demo.demo_logic import (EntityResponse, anoncat_demo_perform_deidentification,
+                                            medcat_demo_perform_named_entity_resolution,
+                                            perform_named_entity_resolution)
 from medcat_service.nlp_processor import MedCatProcessor
-from medcat_service.test.common import (
-    get_example_long_document,
-    get_example_short_document,
-    setup_medcat_processor,
-)
+from medcat_service.test.common import get_example_long_document, get_example_short_document, setup_medcat_processor
 
 
 class TestDemoLogic(unittest.TestCase):

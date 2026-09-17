@@ -3,6 +3,7 @@
 import logging
 import time
 from datetime import datetime, timezone
+from typing import cast
 
 import numpy as np
 import torch
@@ -125,7 +126,7 @@ class MedCatProcessor:
         """Process entities for repsonse and serialisation
         """
         if type(entities) is dict:
-            if "entities" in entities.keys():
+            if "entities" in entities:
                 entities = entities["entities"]
 
             self._fix_floats(entities)
@@ -134,6 +135,57 @@ class MedCatProcessor:
                 entities = list(entities.values())
 
         yield entities
+
+    @staticmethod
+    def _normalise_component_name(component_name: str) -> str:
+        return component_name.strip().lower()
+
+    @classmethod
+    def _component_names(cls, component) -> set[str]:
+        names = {
+            cls._normalise_component_name(name)
+            for name in (getattr(component, "full_name", None), getattr(component, "name", None))
+            if name
+        }
+
+        if component.is_core():
+            names.add(cls._normalise_component_name(component.get_type().name))
+        elif getattr(component, "addon_type", None):
+            names.add(cls._normalise_component_name(component.addon_type))
+
+        return names
+
+    def _filter_pipeline_components(self, components, disabled_names: set[str], matched_names: set[str]):
+        for component in components:
+            component_names = self._component_names(component)
+            if component_names & disabled_names:
+                matched_names.update(component_names & disabled_names)
+                continue
+            yield component
+
+    def _get_entities(self, text: str, disabled_components: tuple[str, ...]):
+        if not disabled_components:
+            return self.cat.get_entities(text)
+
+        cat = cast(CAT, self.cat)
+        pipeline = cat.pipe
+        disabled_names = {self._normalise_component_name(name) for name in disabled_components}
+        matched_names: set[str] = set()
+        doc = pipeline.tokenizer(text)
+        # MedCAT does not currently expose this as a public get_entities option.
+        for component in self._filter_pipeline_components(pipeline._components, disabled_names, matched_names):
+            doc = component(doc)
+        for addon in self._filter_pipeline_components(pipeline._addons, disabled_names, matched_names):
+            doc = addon(doc)
+
+        unknown_names = disabled_names - matched_names
+        if unknown_names:
+            self.log.warning("Requested MedCAT components were not found: %s", sorted(unknown_names))
+
+        if cat.usage_monitor.should_monitor:
+            cat.usage_monitor.log_inference(len(text), len(doc.linked_ents))
+
+        return cat._doc_to_out(doc, only_cui=False)
 
     @tracer.start_as_current_span("process_content")
     def process_content(self, content, *args, redact=None, **kwargs):
@@ -177,31 +229,37 @@ class MedCatProcessor:
                 text, entities = self.cat.deid_text_with_entities(text, redact=redact_value)
         else:
             if text is not None and len(text.strip()) > 0:
+                disabled_components = kwargs.get("disabled_components")
+                if disabled_components is None:
+                    disabled_components = self.service_settings.disabled_components
                 with tracer.start_as_current_span("cat.get_entities"):
-                    entities = self.cat.get_entities(text)
+                    entities = self._get_entities(text, disabled_components=disabled_components)
             else:
                 entities = []
 
         elapsed_time = (time.time_ns() - start_time_ns) / 10e8  # nanoseconds to seconds
+
+        relations = (entities.get("relations", []) if isinstance(entities, dict) else [])
+
         meta_anns_filters = kwargs.get("meta_anns_filters")
-        if meta_anns_filters:
-            if isinstance(entities, dict):
-                entities = [
-                    e
-                    for e in entities["entities"].values()
-                    if isinstance(e, dict)
-                    and all(
-                        task in e.get("meta_anns", {})
-                        and e["meta_anns"][task]["value"] in filter_values
-                        for task, filter_values in meta_anns_filters
-                    )
-                ]
+        if meta_anns_filters and isinstance(entities, dict):
+            entities = [
+                e
+                for e in entities["entities"].values()
+                if isinstance(e, dict)
+                and all(
+                    task in e.get("meta_anns", {})
+                    and e["meta_anns"][task]["value"] in filter_values
+                    for task, filter_values in meta_anns_filters
+                )
+            ]
 
         entities = list(self.process_entities(entities, **kwargs))
 
         nlp_result = ProcessResult(
             text=str(text),
             annotations=entities,
+            relations=relations,
             success=True,
             timestamp=self._get_timestamp(),
             elapsed_time=elapsed_time,
@@ -240,9 +298,9 @@ class MedCatProcessor:
                 )
             elif isinstance(self.cat, CAT):
                 ann_res = {
-                    ann_id: res for ann_id, res in
-                    self.cat.get_entities_multi_texts(
-                        text_input, n_process=self.service_settings.bulk_nproc)
+                    ann_id: res for ann_id, res in self.cat.get_entities_multi_texts(
+                        text_input, n_process=self.service_settings.bulk_nproc
+                    )
                 }
         except Exception as e:
             self.log.error("Unable to process data", exc_info=e)
@@ -309,6 +367,8 @@ class MedCatProcessor:
                 )
 
             self._populate_model_card_info(cat.config)
+
+            self.log.info("Loaded model pack: %s", self.service_settings.medcat_model_pack)
             return cat
 
         self.log.info(f"{Settings.env_name('medcat_model_pack')} not set, skipping...")
@@ -404,14 +464,17 @@ class MedCatProcessor:
 
         for i in range(len(in_documents)):
             in_ct = in_documents[i]
-            if not self.service_settings.deid_mode and i in annotations.keys():
+            if not self.service_settings.deid_mode and i in annotations:
                 # generate output for valid annotations
 
                 entities = list(self.process_entities(annotations.get(i)))
 
+                relations = annotations[i].get("relations", [])
+
                 out_res = ProcessResult(
                     text=str(in_ct["text"]),
                     annotations=entities,
+                    relations=relations,
                     success=True,
                     timestamp=self._get_timestamp(),
                     elapsed_time=elapsed_time,
@@ -458,8 +521,8 @@ class MedCatProcessor:
             import pkg_resources
             version = pkg_resources.require("medcat")[0].version
             return str(version)
-        except Exception:
-            raise Exception("Cannot read the MedCAT library version")
+        except Exception as e:
+            raise Exception("Cannot read the MedCAT library version") from e
 
     # NOTE: numpy uses np.float32 and those are not json serialisable
     #       so we need to fix that
