@@ -20,7 +20,7 @@ class EstimationConfig(BaseModel):
     ic_type: str = "sanchez"
     power: float = 1.0
     # similarities below this are treated as exactly 0
-    similarity_floor: float = 0.0
+    similarity_floor: float = 0.30
     # only sensible with sim_metric="wu_palmer";
     # double-counts IC if combined with resnik
     apply_extrinsic_ic_prior: bool = False

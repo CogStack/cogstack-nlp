@@ -82,7 +82,7 @@ class VectorSimilarityBaseline:
 @dataclass(frozen=True)
 class TrainingAwareConfig:
     min_train_count: int = 10
-    count_confidence_k: float = 20.0
+    count_confidence_k: float = 10.0
     """Training count at which vector-similarity confidence reaches 0.5."""
     use_log_damping: bool = True
     max_relative_mass: float = 5.0
