@@ -994,10 +994,10 @@ class StatsCalculator:
                 to instead of stdout.
         """
         if mode_stats.metrics is None:
-                    raise ValueError(
-                        "Metrics have not been computed yet. "
-                        "Call compute_metrics() first."
-                    )
+            raise ValueError(
+                "Metrics have not been computed yet. "
+                "Call compute_metrics() first."
+            )
 
         if legacy:
             print("Epoch: {}, Prec: {}, Rec: {}, F1: {}".format(
