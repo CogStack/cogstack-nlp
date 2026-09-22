@@ -173,7 +173,7 @@ class MedCatProcessor:
         matched_names: set[str] = set()
         doc = pipeline.tokenizer(text)
         # MedCAT does not currently expose this as a public get_entities option.
-        for component in self._filter_pipeline_components(pipeline._components, disabled_names, matched_names):
+        for component in self._filter_pipeline_components(pipeline.iter_all_components(), disabled_names, matched_names):
             doc = component(doc)
         for addon in self._filter_pipeline_components(pipeline._addons, disabled_names, matched_names):
             doc = addon(doc)
