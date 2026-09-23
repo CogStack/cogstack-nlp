@@ -21,12 +21,15 @@ from typing import cast, Callable
 
 from medcat.cat import CAT
 
-from .common import ConceptDifficulty, DifficultyEstimator, EstimationBaseConfig
+from .common import (
+    ConceptDifficulty, DifficultyEstimator, EstimationBaseConfig)
 from .stage1_ontology import EstimationConfig, OntologyDifficultyEstimator
 from .ontology_graph import SnomedGraph
-from .stage2_training_aware import TrainingAwareConfig, TrainingAwareDifficultyEstimator
+from .stage2_training_aware import (
+    TrainingAwareConfig, TrainingAwareDifficultyEstimator)
 from .training_fetcher import CDBTrainingFetcher
-from .stage3_calibration import CalibratedDifficultyEstimator, CalibratedEstimationConfig
+from .stage3_calibration import (
+    CalibratedDifficultyEstimator, CalibratedEstimationConfig)
 
 
 class EstimationType(str, Enum):
@@ -46,8 +49,8 @@ def _config_for(
     config = (per_stage_configs or {}).get(estim_type)
     if config is not None and not isinstance(config, expected_type):
         raise TypeError(
-            f"per_stage_configs[{estim_type!r}] must be a {expected_type.__name__}, "
-            f"got {type(config).__name__}"
+            f"per_stage_configs[{estim_type!r}] must be a "
+            f"{expected_type.__name__}, got {type(config).__name__}"
         )
     return config
 
@@ -101,7 +104,8 @@ def build_calibrated_estimator(
     return CalibratedDifficultyEstimator(wrapped=stage2, curve=curve)
 
 
-_BUILDERS: dict[str, Callable[[CAT, PerStageConfigs | None], DifficultyEstimator]] = {
+_BUILDERS: dict[str, Callable[[CAT, PerStageConfigs | None],
+                              DifficultyEstimator]] = {
     EstimationType.STAGE1: build_stage1_estimator,
     EstimationType.STAGE2: build_stage2_estimator,
     EstimationType.CALIBRATED: build_calibrated_estimator,
@@ -159,4 +163,7 @@ def get_estimate_scores(
     `intrinsic_ic`.
     """
     full = get_estimate(cat, cuis, estim_type, per_stage_configs)
-    return {cui: diff[score] for cui, diff in full.items()}  # type: ignore[literal-required]
+    return {
+        cui: diff[score]  # type: ignore[literal-required]
+        for cui, diff in full.items()
+    }
