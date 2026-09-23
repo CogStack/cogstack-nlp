@@ -302,7 +302,10 @@ class TrainingAwareDifficultyEstimator:
         worst_entry = min(diagnostics, key=lambda d: d[1])
         worst_synonym = worst_entry[0]
         worst_comp_cui = worst_entry[2]
-        worst_comp_name = raw_ont.get_concept_preferred_name(worst_comp_cui)
+        worst_comp_name = (
+            raw_ont.get_concept_preferred_name(worst_comp_cui)
+            if worst_comp_cui else "N/A"
+        )
         worst_competitor = f"{worst_comp_cui} | {worst_comp_name}"
         worst_mass = worst_entry[4]
 
