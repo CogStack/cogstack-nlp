@@ -1,7 +1,8 @@
 import math
 
 from .ontology_graph import AbstractOntologyGraph
-from .common import ConceptDifficulty, EstimationBaseConfig, ConceptExplanation
+from .common import (
+    ConceptDifficulty, EstimationBaseConfig, ConceptExplanation, ConceptInfo)
 from .utils import method_lru_cache as lru_cache
 
 
@@ -230,7 +231,14 @@ class OntologyDifficultyEstimator:
             "feature_breakdown": {},  # Can be populated if quantiles are wired
         }
 
+        ci = ConceptInfo(
+            cui=concept_id,
+            preferred_name=self.ontology.get_concept_preferred_name(concept_id),
+            synonyms=sorted(synonyms),
+        )
+
         return ConceptDifficulty(
+            concept_info=ci,
             predicted_accuracy=overall_accuracy,
             min_predicted_accuracy=worst_case_accuracy,
             intrinsic_ic=intrinsic_ic,

@@ -147,6 +147,7 @@ class CalibratedDifficultyEstimator:
     def compute_concept_difficulty(self, concept_id: str) -> ConceptDifficulty:
         raw = self._wrapped.compute_concept_difficulty(concept_id)
         return ConceptDifficulty(
+            concept_info=raw["concept_info"],
             predicted_accuracy=self._curve.apply(raw["predicted_accuracy"]),
             min_predicted_accuracy=self._curve.apply(
                 raw["min_predicted_accuracy"]),

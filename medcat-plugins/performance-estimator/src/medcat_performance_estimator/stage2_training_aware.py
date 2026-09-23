@@ -5,7 +5,8 @@ from typing import Protocol
 import numpy as np
 from pydantic import ConfigDict, Field
 
-from .common import ConceptDifficulty, EstimationBaseConfig, ConceptExplanation
+from .common import (
+    ConceptDifficulty, EstimationBaseConfig, ConceptExplanation, ConceptInfo)
 from .stage1_ontology import (
     EstimationConfig, MisconfiguredConcept, NoSynonymsForConcept)
 from .ontology_graph import AbstractOntologyGraph
@@ -336,7 +337,16 @@ class TrainingAwareDifficultyEstimator:
             "feature_breakdown": {},
         }
 
+        raw_ont = self.ontology_estimator.ontology
+
+        ci = ConceptInfo(
+            cui=concept_id,
+            preferred_name=raw_ont.get_concept_preferred_name(concept_id),
+            synonyms=sorted(synonyms),
+        )
+
         return ConceptDifficulty(
+            concept_info=ci,
             predicted_accuracy=overall_accuracy,
             min_predicted_accuracy=worst_case_accuracy,
             intrinsic_ic=intrinsic_ic,

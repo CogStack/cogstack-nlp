@@ -31,7 +31,14 @@ class ConceptExplanation(TypedDict):
     feature_breakdown: dict[str, FeatureExplanation]
 
 
+class ConceptInfo(TypedDict):
+    cui: str
+    preferred_name: str
+    synonyms: list[str]
+
+
 class ConceptDifficulty(TypedDict):
+    concept_info: ConceptInfo
     predicted_accuracy: float
     min_predicted_accuracy: float
     intrinsic_ic: float

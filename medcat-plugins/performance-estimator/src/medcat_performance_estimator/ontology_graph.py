@@ -14,6 +14,10 @@ class AbstractOntologyGraph(ABC):
     """
 
     @abstractmethod
+    def get_concept_preferred_name(self, concept_id: str) -> str:
+        """Returns the concept's preferred name."""
+
+    @abstractmethod
     def get_concepts_for_name(self, name: str) -> set[str]:
         """Returns all concept IDs that share this specific name/synonym."""
 
@@ -90,6 +94,9 @@ class SnomedGraph(AbstractOntologyGraph):
                 if candidate > depth.get(child, -1):
                     depth[child] = candidate
         return depth
+
+    def get_concept_preferred_name(self, concept_id: str) -> str:
+        return self.cdb.get_name(concept_id)
 
     def get_concepts_for_name(self, name: str) -> set[str]:
         ni = self.cdb.name2info.get(name)
