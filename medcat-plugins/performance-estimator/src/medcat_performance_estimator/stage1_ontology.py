@@ -20,7 +20,7 @@ class EstimationConfig(EstimationBaseConfig):
 
 class OntologyDifficultyEstimator:
     """
-    Calculates difficulty metrics for a concept based strictly on ontology properties.
+    Calculates difficulty metrics for a concept based strictly on ontology.
     """
 
     def __init__(
@@ -54,8 +54,10 @@ class OntologyDifficultyEstimator:
     def intrinsic_ic_sanchez(self, concept_id: str) -> float:
         """
         Intrinsic IC adapted for biomedical DAGs by Sánchez et al. (2011).
-        Takes into account ancestors and leaves to better deal with polyhierarchies.
-        IC(c) = -log( (|leaves(c)| / |ancestors(c)| + 1) / (|total_leaves| + 1) )
+        Takes into account ancestors and leaves to better deal with
+        polyhierarchies.
+        IC(c) = -log( (|leaves(c)| / |ancestors(c)| + 1) / (
+                      |total_leaves| + 1) )
         """
         leaves_c = self.ontology.get_subtree_leaves_count(concept_id)
         ancestors_c = self.ontology.get_ancestors_count(concept_id)
@@ -122,7 +124,8 @@ class OntologyDifficultyEstimator:
 
         ic_a = self.get_intrinsic_ic(concept_a)
         ic_b = self.get_intrinsic_ic(concept_b)
-        ic_lcs = self.get_intrinsic_ic(self.ontology.get_lcs(concept_a, concept_b))
+        ic_lcs = self.get_intrinsic_ic(self.ontology.get_lcs(
+            concept_a, concept_b))
 
         denom = ic_a + ic_b
         return (2.0 * ic_lcs) / denom if denom > 0 else 0.0
@@ -152,8 +155,9 @@ class OntologyDifficultyEstimator:
             return 1.0
         if target_concept not in competing_concepts:
             raise MisconfiguredConcept(
-                f"{target_concept!r} not found among concepts for name {name!r}; "
-                "ontology's name/concept lookups may be inconsistent"
+                f"{target_concept!r} not found among concepts for name "
+                f"{name!r}; ontology's name/concept lookups may be "
+                "inconsistent"
             )
         other_concepts = competing_concepts - {target_concept}
         power = self.config.power
