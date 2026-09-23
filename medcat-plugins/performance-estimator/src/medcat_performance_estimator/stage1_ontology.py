@@ -1,7 +1,7 @@
 import math
 
 from .ontology_graph import AbstractOntologyGraph
-from .common import ConceptDifficulty, EstimationBaseConfig
+from .common import ConceptDifficulty, EstimationBaseConfig, ConceptExplanation
 from .utils import method_lru_cache as lru_cache
 
 
@@ -148,35 +148,40 @@ class OntologyDifficultyEstimator:
     # 3. Overall Concept Difficulty Calculations
     # =========================================================================
 
-    def predict_accuracy(self, target_concept: str, name: str) -> float:
+    def predict_accuracy_with_diagnostics(
+        self, target_concept: str, name: str
+    ) -> tuple[float, str | None, float]:
+        """Returns (accuracy, worst_competitor_cui, max_competitor_sim)."""
         competing_concepts = self.ontology.get_concepts_for_name(name)
         if len(competing_concepts) <= 1:
-            # Name is completely unambiguous
-            return 1.0
+            return 1.0, None, 0.0
+
         if target_concept not in competing_concepts:
             raise MisconfiguredConcept(
                 f"{target_concept!r} not found among concepts for name "
                 f"{name!r}; ontology's name/concept lookups may be "
                 "inconsistent"
             )
+
         other_concepts = competing_concepts - {target_concept}
         power = self.config.power
-        # based on the power, the below calculates the "effective number of"
-        # competitors that are weighed by their similarity; if power is 0
-        # then every competitor is as likely, if power is 1, then every
-        # competitor's likelyhood is its similarity, and if power >> 1 then
-        # only near-identical competitors matter
-        effective_N = 1 + sum(
-            max(min(self.get_sim_metric(target_concept, other), 1.0),
-                self.config.similarity_floor) ** power
-            for other in other_concepts
-        )
-        return 1 / effective_N
+        floor = self.config.similarity_floor
 
-    def compute_concept_difficulty(
-        self,
-        concept_id: str,
-    ) -> ConceptDifficulty:
+        worst_competitor = None
+        max_sim = -1.0
+        effective_N = 1.0
+
+        for other in other_concepts:
+            sim = max(min(
+                self.get_sim_metric(target_concept, other), 1.0), floor)
+            if sim > max_sim:
+                max_sim = sim
+                worst_competitor = other
+            effective_N += sim ** power
+
+        return 1.0 / effective_N, worst_competitor, max_sim
+
+    def compute_concept_difficulty(self, concept_id: str) -> ConceptDifficulty:
         synonyms = self.ontology.get_synonyms_for_concept(concept_id)
         if not synonyms:
             raise NoSynonymsForConcept(
@@ -185,25 +190,52 @@ class OntologyDifficultyEstimator:
                 "unexpected CDB state that can't be trusted for estimation"
             )
 
-        per_name_accuracy = [
-            self.predict_accuracy(concept_id, name)
+        diagnostics = [
+            (name, *self.predict_accuracy_with_diagnostics(concept_id, name))
             for name in synonyms
         ]
+
+        per_name_accuracy = [d[1] for d in diagnostics]
         overall_accuracy = sum(per_name_accuracy) / len(per_name_accuracy)
         worst_case_accuracy = min(per_name_accuracy)
 
-        if self.config.apply_extrinsic_ic_prior:
-            if self.config.sim_metric in ("resnik", "lin"):
-                raise MisconfiguredSimMetric(
-                    "apply_extrinsic_ic_prior double-counts IC when combined "
-                    f"with sim_metric={self.config.sim_metric!r}")
-            # NOTE: multiplying accuracy, not difficulty now
-            overall_accuracy *= self.get_intrinsic_ic(concept_id)
+        # Identify the worst performing synonym and top competing CUI
+        worst_entry = min(diagnostics, key=lambda d: d[1])
+        worst_synonym = worst_entry[0]
+        worst_competitor = worst_entry[2]
+
+        # Calculate max competitors sharing any single synonym
+        max_competitors = max(
+            len(self.ontology.get_concepts_for_name(name)) for name in synonyms
+        )
+
+        intrinsic_ic = self.get_intrinsic_ic(concept_id)
+
+        features: dict[str, float | int] = {
+            "num_synonyms": len(synonyms),
+            "max_competitors_per_synonym": max_competitors,
+            "intrinsic_ic": intrinsic_ic,
+        }
+
+        primary_driver = (
+            "semantic_overlap" if worst_entry[3] > 0.7
+            else "name_ambiguity" if max_competitors > 1
+            else "unknown"
+        )
+
+        explanation: ConceptExplanation = {
+            "primary_penalty_driver": primary_driver,
+            "worst_synonym": worst_synonym,
+            "worst_competitor_cui": worst_competitor,
+            "feature_breakdown": {},  # Can be populated if quantiles are wired
+        }
 
         return ConceptDifficulty(
             predicted_accuracy=overall_accuracy,
             min_predicted_accuracy=worst_case_accuracy,
-            intrinsic_ic=self.get_intrinsic_ic(concept_id),
+            intrinsic_ic=intrinsic_ic,
+            features=features,
+            explanation=explanation,
         )
 
 

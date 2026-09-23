@@ -5,7 +5,7 @@ from typing import Protocol
 import numpy as np
 from pydantic import ConfigDict, Field
 
-from .common import ConceptDifficulty, EstimationBaseConfig
+from .common import ConceptDifficulty, EstimationBaseConfig, ConceptExplanation
 from .stage1_ontology import (
     EstimationConfig, MisconfiguredConcept, NoSynonymsForConcept)
 from .ontology_graph import AbstractOntologyGraph
@@ -205,15 +205,19 @@ class TrainingAwareDifficultyEstimator:
         return (ontology_sim + vector_confidence * vector_sim) / (
             1.0 + vector_confidence)
 
-    def predict_accuracy(self, target_concept: str, name: str) -> float:
+    def predict_accuracy_with_diagnostics(
+        self, target_concept: str, name: str
+    ) -> tuple[float, str | None, float, float]:
+        """Returns (accuracy, worst_competitor, max_adversary, max_mass)."""
         ontology = self.ontology_estimator.ontology
         competing_concepts = ontology.get_concepts_for_name(name)
         if len(competing_concepts) <= 1:
-            return 1.0
+            return 1.0, None, 0.0, 1.0
         if target_concept not in competing_concepts:
             raise MisconfiguredConcept(
-                f"{target_concept!r} not found among concepts for name {name!r}; "
-                "ontology's name/concept lookups may be inconsistent"
+                f"{target_concept!r} not found among concepts for "
+                f"name {name!r}; ontology's name/concept lookups "
+                "may be inconsistent"
             )
 
         other_concepts = competing_concepts - {target_concept}
@@ -223,18 +227,30 @@ class TrainingAwareDifficultyEstimator:
         target_count = self.training.get_cui_train_count(target_concept)
 
         effective_N = 1.0
+        worst_competitor = None
+        max_adversary_term = -1.0
+        max_mass = 1.0
+
         for other in other_concepts:
-            similarity = self.blended_pairwise_similarity(
-                target_concept, other)
-            similarity = max(min(similarity, 1.0), floor)
+            sim = max(min(self.blended_pairwise_similarity(
+                target_concept, other), 1.0), floor)
             other_count = self.training.get_cui_train_count(other)
             mass = relative_mass(
                 target_count, other_count,
-                self.config.use_log_damping, self.config.max_relative_mass,
+                self.config.use_log_damping, self.config.max_relative_mass
             )
-            effective_N += (similarity ** power) * mass
+            term = (sim ** power) * mass
+            if term > max_adversary_term:
+                max_adversary_term = term
+                worst_competitor = other
+                max_mass = mass
 
-        return 1.0 / effective_N
+            effective_N += term
+
+        return (
+            1.0 / effective_N,
+            worst_competitor, max_adversary_term, max_mass
+        )
 
     def _estimate_cui_name_mass(self, cui: str, name: str) -> float:
         name_count = self.training.get_name_train_count(name)
@@ -267,20 +283,63 @@ class TrainingAwareDifficultyEstimator:
                 "unexpected CDB state that can't be trusted for estimation"
             )
 
-        per_name_accuracy = [self.predict_accuracy(
-            concept_id, name) for name in synonyms]
-        # use name counts to better distribute (in a weighted way)
-        # between synonyms
-        weights = [
-            self._estimate_cui_name_mass(concept_id, name)
+        diagnostics = [
+            (name, *self.predict_accuracy_with_diagnostics(concept_id, name))
             for name in synonyms
         ]
+
+        per_name_accuracy = [d[1] for d in diagnostics]
+        weights = [self._estimate_cui_name_mass(
+            concept_id, name) for name in synonyms]
         overall_accuracy = sum(w * acc for w, acc in zip(
             weights, per_name_accuracy)) / sum(weights)
         worst_case_accuracy = min(per_name_accuracy)
 
+        # Extract worst case diagnostics
+        worst_entry = min(diagnostics, key=lambda d: d[1])
+        worst_synonym = worst_entry[0]
+        worst_competitor = worst_entry[2]
+        worst_mass = worst_entry[4]
+
+        target_train_count = self.training.get_cui_train_count(concept_id)
+        max_competitors = max(
+            len(self.ontology_estimator.ontology.get_concepts_for_name(name))
+            for name in synonyms
+        )
+
+        # Determine primary penalty driver
+        if worst_mass >= 2.0:
+            primary_driver = "training_imbalance"
+        elif worst_entry[3] > 0.5:
+            primary_driver = "semantic_overlap"
+        elif max_competitors > 1:
+            primary_driver = "name_ambiguity"
+        elif target_train_count == 0:
+            primary_driver = "zero_training_exposure"
+        else:
+            primary_driver = "unknown"
+
+        intrinsic_ic = self.ontology_estimator.get_intrinsic_ic(concept_id)
+
+        features: dict[str, float | int] = {
+            "cui_train_count": target_train_count,
+            "num_synonyms": len(synonyms),
+            "max_competitors_per_synonym": max_competitors,
+            "max_competitor_mass_ratio": worst_mass,
+            "intrinsic_ic": intrinsic_ic,
+        }
+
+        explanation: ConceptExplanation = {
+            "primary_penalty_driver": primary_driver,
+            "worst_synonym": worst_synonym,
+            "worst_competitor_cui": worst_competitor,
+            "feature_breakdown": {},
+        }
+
         return ConceptDifficulty(
             predicted_accuracy=overall_accuracy,
             min_predicted_accuracy=worst_case_accuracy,
-            intrinsic_ic=self.ontology_estimator.get_intrinsic_ic(concept_id),
+            intrinsic_ic=intrinsic_ic,
+            features=features,
+            explanation=explanation,
         )

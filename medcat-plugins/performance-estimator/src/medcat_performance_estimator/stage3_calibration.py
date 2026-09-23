@@ -151,4 +151,6 @@ class CalibratedDifficultyEstimator:
             min_predicted_accuracy=self._curve.apply(
                 raw["min_predicted_accuracy"]),
             intrinsic_ic=raw["intrinsic_ic"],
+            features=raw.get("features", {}),
+            explanation=raw.get("explanation", {}),
         )

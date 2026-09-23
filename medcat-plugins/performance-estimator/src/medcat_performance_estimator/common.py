@@ -11,10 +11,32 @@ from typing import Protocol, TypedDict, runtime_checkable
 from pydantic import BaseModel, ConfigDict
 
 
+class FeatureExplanation(TypedDict):
+    value: float | int
+    # 0.0 to 1.0 against corpus distribution
+    percentile: float
+    # "low", "moderate", "high", "critical" (or Q1-Q4)
+    impact_level: str
+    # "increases_difficulty" | "decreases_difficulty"
+    direction: str
+
+
+class ConceptExplanation(TypedDict):
+    # e.g., "training_imbalance", "semantic_overlap", "name_ambiguity"
+    primary_penalty_driver: str
+    # The name causing the worst accuracy drop
+    worst_synonym: str
+    # CUI producing the largest competitor mass
+    worst_competitor_cui: str | None
+    feature_breakdown: dict[str, FeatureExplanation]
+
+
 class ConceptDifficulty(TypedDict):
     predicted_accuracy: float
     min_predicted_accuracy: float
     intrinsic_ic: float
+    features: dict[str, float | int]
+    explanation: ConceptExplanation
 
 
 class EstimationBaseConfig(BaseModel):
