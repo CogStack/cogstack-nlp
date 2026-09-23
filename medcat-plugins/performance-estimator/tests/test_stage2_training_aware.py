@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 import numpy as np
 
 from medcat_performance_estimator.training_fetcher import CDBTrainingFetcher
-from medcat_performance_estimator.training_aware_estimator import (
+from medcat_performance_estimator.stage2_training_aware import (
     VectorSimilarityBaseline,
     TrainingAwareDifficultyEstimator,
 )

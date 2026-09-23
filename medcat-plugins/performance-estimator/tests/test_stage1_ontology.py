@@ -1,8 +1,8 @@
 from typing import Dict, Set, Tuple
 import unittest
 
-from medcat_performance_estimator.graphing import AbstractOntologyGraph
-from medcat_performance_estimator.estimator import (
+from medcat_performance_estimator.ontology_graph import AbstractOntologyGraph
+from medcat_performance_estimator.stage1_ontology import (
     MisconfiguredConcept, MisconfiguredSimMetric, OntologyDifficultyEstimator,
     EstimationConfig, UnknownSimilarityMetric, NoSynonymsForConcept
 )
