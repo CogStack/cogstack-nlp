@@ -20,12 +20,12 @@ from enum import Enum
 
 from medcat.cat import CAT
 
-from .calibration import CalibratedDifficultyEstimator, CalibratedEstimationConfig
 from .common import ConceptDifficulty, DifficultyEstimator, EstimationBaseConfig
 from .stage1_ontology import EstimationConfig, OntologyDifficultyEstimator
-from .graphing import SnomedGraph
+from .ontology_graph import SnomedGraph
 from .stage2_training_aware import TrainingAwareConfig, TrainingAwareDifficultyEstimator
 from .training_fetcher import CDBTrainingFetcher
+from .stage3_calibration import CalibratedDifficultyEstimator, CalibratedEstimationConfig
 
 
 class EstimationType(str, Enum):

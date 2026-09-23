@@ -1,6 +1,6 @@
 import math
 
-from .graphing import AbstractOntologyGraph
+from .ontology_graph import AbstractOntologyGraph
 from .common import ConceptDifficulty, EstimationBaseConfig
 from .utils import method_lru_cache as lru_cache
 
