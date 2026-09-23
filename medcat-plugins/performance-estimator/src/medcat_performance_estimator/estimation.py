@@ -17,6 +17,7 @@ estimator, which in turn wraps a stage-1 estimator -- so e.g. requesting
 looks itself up in `per_stage_configs`, not just the top-level `estim_type`.
 """
 from enum import Enum
+from typing import cast, Callable
 
 from medcat.cat import CAT
 
@@ -55,7 +56,10 @@ def build_stage1_estimator(
     cat: CAT,
     per_stage_configs: PerStageConfigs | None = None,
 ) -> OntologyDifficultyEstimator:
-    config = _config_for(EstimationType.STAGE1, per_stage_configs, EstimationConfig)
+    config = cast(
+        EstimationConfig,
+        _config_for(EstimationType.STAGE1, per_stage_configs, EstimationConfig)
+    )
     graph = SnomedGraph(cat.cdb)
     return OntologyDifficultyEstimator(graph, config=config)
 
@@ -65,7 +69,11 @@ def build_stage2_estimator(
     per_stage_configs: PerStageConfigs | None = None,
     stage1: OntologyDifficultyEstimator | None = None,
 ) -> TrainingAwareDifficultyEstimator:
-    config = _config_for(EstimationType.STAGE2, per_stage_configs, TrainingAwareConfig)
+    config = cast(
+        TrainingAwareConfig,
+        _config_for(
+            EstimationType.STAGE2, per_stage_configs, TrainingAwareConfig)
+    )
     stage1 = stage1 or build_stage1_estimator(cat, per_stage_configs)
     context_weights = cat.config.components.linking.context_vector_weights
     fetcher = CDBTrainingFetcher(cat.cdb)
@@ -81,13 +89,19 @@ def build_calibrated_estimator(
     cat: CAT,
     per_stage_configs: PerStageConfigs | None = None,
 ) -> CalibratedDifficultyEstimator:
-    config = _config_for(EstimationType.CALIBRATED, per_stage_configs, CalibratedEstimationConfig)
+    config = cast(
+        CalibratedEstimationConfig,
+        _config_for(
+            EstimationType.CALIBRATED, per_stage_configs,
+            CalibratedEstimationConfig
+        )
+    )
     stage2 = build_stage2_estimator(cat, per_stage_configs)
     curve = config.resolve_curve() if config is not None else None
     return CalibratedDifficultyEstimator(wrapped=stage2, curve=curve)
 
 
-_BUILDERS = {
+_BUILDERS: dict[str, Callable[[CAT, PerStageConfigs | None], DifficultyEstimator]] = {
     EstimationType.STAGE1: build_stage1_estimator,
     EstimationType.STAGE2: build_stage2_estimator,
     EstimationType.CALIBRATED: build_calibrated_estimator,
