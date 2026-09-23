@@ -339,11 +339,7 @@ class TrainingAwareDifficultyEstimator:
 
         raw_ont = self.ontology_estimator.ontology
 
-        ci = ConceptInfo(
-            cui=concept_id,
-            preferred_name=raw_ont.get_concept_preferred_name(concept_id),
-            synonyms=sorted(synonyms),
-        )
+        ci = raw_ont.get_concept_info(concept_id)
 
         return ConceptDifficulty(
             concept_info=ci,

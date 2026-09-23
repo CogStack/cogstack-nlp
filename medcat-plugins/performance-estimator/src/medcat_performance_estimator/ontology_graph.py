@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 
 import networkx as nx
 from medcat.cdb import CDB
+from .common import ConceptInfo
 
 from .utils import method_lru_cache as lru_cache
 
@@ -12,6 +13,10 @@ class AbstractOntologyGraph(ABC):
     Override these methods to hook into your graph representation (e.g.,
     NetworkX, custom DAG).
     """
+
+    @abstractmethod
+    def get_concept_info(self, concept_id: str) -> ConceptInfo:
+        """Return the concept's overall information."""
 
     @abstractmethod
     def get_concept_preferred_name(self, concept_id: str) -> str:
@@ -94,6 +99,14 @@ class SnomedGraph(AbstractOntologyGraph):
                 if candidate > depth.get(child, -1):
                     depth[child] = candidate
         return depth
+
+    def get_concept_info(self, concept_id: str) -> ConceptInfo:
+        synonyms = self.get_synonyms_for_concept(concept_id)
+        return ConceptInfo(
+            cui=concept_id,
+            preferred_name=self.get_concept_preferred_name(concept_id),
+            synonyms=sorted(synonyms),
+        )
 
     def get_concept_preferred_name(self, concept_id: str) -> str:
         return self.cdb.get_name(concept_id)
