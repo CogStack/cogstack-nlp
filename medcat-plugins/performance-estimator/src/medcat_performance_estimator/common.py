@@ -7,8 +7,33 @@ class, and estimator protocol without any of them depending on each other.
 It should stay a leaf module (no imports from elsewhere in this package).
 """
 from typing import Protocol, TypedDict, runtime_checkable
+from enum import Enum
 
 from pydantic import BaseModel, ConfigDict
+
+
+class ActionTier(str, Enum):
+    A = "A"  # High performance / Minimal tuning needed
+    B = "B"  # Moderate performance / Needs targeted coverage
+    C = "C"  # Poor performance / High-priority for annotation & tuning
+
+
+class TierThresholds(TypedDict):
+    a_min: float
+    b_min: float
+
+
+DEFAULT_TIER_THRESHOLDS: TierThresholds = {
+    "a_min": 0.80,
+    "b_min": 0.50,
+}
+
+
+class TierSummary(TypedDict):
+    tier: ActionTier
+    count: int
+    concept_ids: list[str]
+    descriptions: str
 
 
 class FeatureExplanation(TypedDict):

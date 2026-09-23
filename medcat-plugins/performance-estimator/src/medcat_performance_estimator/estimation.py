@@ -22,7 +22,8 @@ from typing import cast, Callable
 from medcat.cat import CAT
 
 from .common import (
-    ConceptDifficulty, DifficultyEstimator, EstimationBaseConfig)
+    ConceptDifficulty, DifficultyEstimator, EstimationBaseConfig,
+    ActionTier, DEFAULT_TIER_THRESHOLDS, TierThresholds)
 from .stage1_ontology import EstimationConfig, OntologyDifficultyEstimator
 from .ontology_graph import SnomedGraph
 from .stage2_training_aware import (
@@ -112,6 +113,38 @@ _BUILDERS: dict[str, Callable[[CAT, PerStageConfigs | None],
 }
 
 
+def assign_tier(
+    score: float,
+    thresholds: TierThresholds = DEFAULT_TIER_THRESHOLDS,
+) -> ActionTier:
+    """Classifies a score into Tier A, B, or C based on score boundaries."""
+    if score >= thresholds["a_min"]:
+        return ActionTier.A
+    elif score >= thresholds["b_min"]:
+        return ActionTier.B
+    return ActionTier.C
+
+
+def group_estimates_by_tier(
+    estimates: dict[str, ConceptDifficulty],
+    thresholds: TierThresholds = DEFAULT_TIER_THRESHOLDS,
+    score_key: str = "predicted_accuracy",
+) -> dict[ActionTier, dict[str, ConceptDifficulty]]:
+    """Groups a dict of into buckets A, B, and C."""
+    grouped: dict[ActionTier, dict[str, ConceptDifficulty]] = {
+        ActionTier.A: {},
+        ActionTier.B: {},
+        ActionTier.C: {},
+    }
+
+    for cui, diff in estimates.items():
+        score = diff[score_key]  # type: ignore[literal-required]
+        tier = assign_tier(score, thresholds)
+        grouped[tier][cui] = diff
+
+    return grouped
+
+
 def build_estimator(
     cat: CAT,
     estim_type: EstimationType = EstimationType.CALIBRATED,
@@ -167,3 +200,17 @@ def get_estimate_scores(
         cui: diff[score]  # type: ignore[literal-required]
         for cui, diff in full.items()
     }
+
+
+def get_tiered_estimate(
+    cat: CAT,
+    cuis: set[str],
+    estim_type: EstimationType = EstimationType.CALIBRATED,
+    per_stage_configs: PerStageConfigs | None = None,
+    thresholds: TierThresholds = DEFAULT_TIER_THRESHOLDS,
+    score_key: str = "predicted_accuracy",
+) -> dict[ActionTier, dict[str, ConceptDifficulty]]:
+    """Computes difficulty estimates and groups them by action tier."""
+    estimates = get_estimate(cat, cuis, estim_type, per_stage_configs)
+    return group_estimates_by_tier(
+        estimates, thresholds=thresholds, score_key=score_key)
