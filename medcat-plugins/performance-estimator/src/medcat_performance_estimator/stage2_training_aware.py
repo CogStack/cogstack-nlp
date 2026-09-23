@@ -50,7 +50,8 @@ class VectorSimilarityBaseline:
                 continue
             seen_pairs.add(pair)
             sims.append(
-                self._raw_cosine(cui2combined_vector[a], cui2combined_vector[b])
+                self._raw_cosine(
+                    cui2combined_vector[a], cui2combined_vector[b])
             )
 
         if not sims:
@@ -58,7 +59,8 @@ class VectorSimilarityBaseline:
         else:
             arr = np.array(sims)
             self.mean = float(arr.mean())
-            self.std = float(arr.std()) or 1.0  # guard against a degenerate all-equal sample
+            # guard against a degenerate all-equal sample
+            self.std = float(arr.std()) or 1.0
 
     @staticmethod
     def _raw_cosine(a: np.ndarray, b: np.ndarray) -> float:
@@ -70,10 +72,11 @@ class VectorSimilarityBaseline:
     def normalized_similarity(
         self, a: np.ndarray, b: np.ndarray, temperature: float = 1.0
     ) -> float:
-        """Cosine similarity re-expressed relative to the baseline distribution,
-        squashed to (0, 1) via a sigmoid so it can be used directly wherever
-        stage 1's similarity values are used. 0.5 means "about as similar as
-        two typical, unrelated concepts"; higher means unusually close."""
+        """Cosine similarity re-expressed relative to the baseline
+        distribution, squashed to (0, 1) via a sigmoid so it can be used
+        directly wherever stage 1's similarity values are used. 0.5 means
+        "about as similar as two typical, unrelated concepts"; higher means
+        unusually close."""
         raw = self._raw_cosine(a, b)
         z = (raw - self.mean) / self.std
         return 1.0 / (1.0 + math.exp(-z / temperature))
@@ -87,12 +90,14 @@ class TrainingAwareConfig(EstimationBaseConfig):
     min_train_count: int = 10
     count_confidence_k: float = Field(
         default=10.0,
-        description="Training count at which vector-similarity confidence reaches 0.5.",
+        description="Training count at which vector-similarity confidence "
+                    "reaches 0.5.",
     )
     use_log_damping: bool = True
     max_relative_mass: float = Field(
         default=5.0,
-        description="Caps how much a single overrepresented competitor can inflate difficulty.",
+        description="Caps how much a single overrepresented competitor can "
+                    "inflate difficulty.",
     )
     vector_baseline_sample_size: int = 2000
     vector_similarity_temperature: float = 1.0
@@ -156,7 +161,8 @@ class TrainingAwareDifficultyEstimator:
             combined = {
                 cui: combine_context_vector(vecs, self.context_vector_weights)
                 for cui, vecs in all_vectors.items()
-                if self.training.get_cui_train_count(cui) >= self.config.min_train_count
+                if self.training.get_cui_train_count(
+                    cui) >= self.config.min_train_count
             }
             self._baseline = VectorSimilarityBaseline(
                 combined, sample_size=self.config.vector_baseline_sample_size
@@ -177,22 +183,27 @@ class TrainingAwareDifficultyEstimator:
         count_a = self.training.get_cui_train_count(concept_a)
         count_b = self.training.get_cui_train_count(concept_b)
         # Trust the pairwise comparison only as much as its noisier side.
-        confidence = count_confidence(min(count_a, count_b), self.config.count_confidence_k)
+        confidence = count_confidence(
+            min(count_a, count_b), self.config.count_confidence_k)
 
         similarity = self._get_baseline().normalized_similarity(
             vec_a, vec_b, temperature=self.config.vector_similarity_temperature
         )
         return similarity, confidence
 
-    def blended_pairwise_similarity(self, concept_a: str, concept_b: str) -> float:
+    def blended_pairwise_similarity(
+        self, concept_a: str, concept_b: str,
+    ) -> float:
         """Ontology similarity, shrunk toward vector similarity in proportion
         to how much we trust the vectors. Reduces to pure ontology similarity
         when confidence is 0 (untrained concepts)."""
-        ontology_sim = self.ontology_estimator.get_sim_metric(concept_a, concept_b)
+        ontology_sim = self.ontology_estimator.get_sim_metric(
+            concept_a, concept_b)
         vector_sim, vector_confidence = self._vector_similarity_and_confidence(
             concept_a, concept_b
         )
-        return (ontology_sim + vector_confidence * vector_sim) / (1.0 + vector_confidence)
+        return (ontology_sim + vector_confidence * vector_sim) / (
+            1.0 + vector_confidence)
 
     def predict_accuracy(self, target_concept: str, name: str) -> float:
         ontology = self.ontology_estimator.ontology
@@ -213,7 +224,8 @@ class TrainingAwareDifficultyEstimator:
 
         effective_N = 1.0
         for other in other_concepts:
-            similarity = self.blended_pairwise_similarity(target_concept, other)
+            similarity = self.blended_pairwise_similarity(
+                target_concept, other)
             similarity = max(min(similarity, 1.0), floor)
             other_count = self.training.get_cui_train_count(other)
             mass = relative_mass(
@@ -241,11 +253,13 @@ class TrainingAwareDifficultyEstimator:
 
         allocated_count = name_count * (cui_count / total_competing_count)
 
-        # Log-damp to prevent dominant mentions from completely zeroing out other synonyms
+        # Log-damp to prevent dominant mentions from completely zeroing
+        # out other synonyms
         return math.log1p(allocated_count) + 1.0
 
     def compute_concept_difficulty(self, concept_id: str) -> ConceptDifficulty:
-        synonyms = self.ontology_estimator.ontology.get_synonyms_for_concept(concept_id)
+        synonyms = self.ontology_estimator.ontology.get_synonyms_for_concept(
+            concept_id)
         if not synonyms:
             raise NoSynonymsForConcept(
                 f"Concept {concept_id!r} has no synonyms in the CDB; concepts "
@@ -253,10 +267,16 @@ class TrainingAwareDifficultyEstimator:
                 "unexpected CDB state that can't be trusted for estimation"
             )
 
-        per_name_accuracy = [self.predict_accuracy(concept_id, name) for name in synonyms]
-        # use name counts to better distribute (in a weighted waty) between synonyms
-        weights = [self._estimate_cui_name_mass(concept_id, name) for name in synonyms]
-        overall_accuracy = sum(w * acc for w, acc in zip(weights, per_name_accuracy)) / sum(weights)
+        per_name_accuracy = [self.predict_accuracy(
+            concept_id, name) for name in synonyms]
+        # use name counts to better distribute (in a weighted way)
+        # between synonyms
+        weights = [
+            self._estimate_cui_name_mass(concept_id, name)
+            for name in synonyms
+        ]
+        overall_accuracy = sum(w * acc for w, acc in zip(
+            weights, per_name_accuracy)) / sum(weights)
         worst_case_accuracy = min(per_name_accuracy)
 
         return ConceptDifficulty(
