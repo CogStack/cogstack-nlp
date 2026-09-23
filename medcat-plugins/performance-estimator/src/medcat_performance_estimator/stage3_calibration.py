@@ -36,11 +36,15 @@ class CalibrationCurve:
     you'd want from sklearn's IsotonicRegression).
     """
 
-    def __init__(self, raw_scores: list[float], calibrated_scores: list[float]) -> None:
+    def __init__(
+        self, raw_scores: list[float], calibrated_scores: list[float],
+    ) -> None:
         if len(raw_scores) != len(calibrated_scores):
-            raise ValueError("raw_scores and calibrated_scores must be the same length")
+            raise ValueError(
+                "raw_scores and calibrated_scores must be the same length")
         if len(raw_scores) < 2:
-            raise ValueError("a calibration curve needs at least two breakpoints")
+            raise ValueError(
+                "a calibration curve needs at least two breakpoints")
 
         order = np.argsort(raw_scores)
         self._x = np.asarray(raw_scores, dtype=float)[order]
@@ -49,8 +53,8 @@ class CalibrationCurve:
         if np.any(np.diff(self._y) < 0):
             raise ValueError(
                 "calibrated_scores must be non-decreasing in raw_score order; "
-                "got a curve that isn't monotonic, which shouldn't be possible "
-                "from a correctly fitted isotonic regression"
+                "got a curve that isn't monotonic, which shouldn't be "
+                "possible from a correctly fitted isotonic regression"
             )
 
     @classmethod
@@ -64,11 +68,17 @@ class CalibrationCurve:
         return float(np.interp(raw_score, self._x, self._y))
 
     def to_dict(self) -> dict[str, Any]:
-        return {"raw_scores": self._x.tolist(), "calibrated_scores": self._y.tolist()}
+        return {
+            "raw_scores": self._x.tolist(),
+            "calibrated_scores": self._y.tolist()
+        }
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "CalibrationCurve":
-        return cls(raw_scores=data["raw_scores"], calibrated_scores=data["calibrated_scores"])
+        return cls(
+            raw_scores=data["raw_scores"],
+            calibrated_scores=data["calibrated_scores"]
+        )
 
     def save(self, path: str | Path) -> None:
         Path(path).write_text(json.dumps(self.to_dict(), indent=2))
@@ -138,6 +148,7 @@ class CalibratedDifficultyEstimator:
         raw = self._wrapped.compute_concept_difficulty(concept_id)
         return ConceptDifficulty(
             predicted_accuracy=self._curve.apply(raw["predicted_accuracy"]),
-            min_predicted_accuracy=self._curve.apply(raw["min_predicted_accuracy"]),
+            min_predicted_accuracy=self._curve.apply(
+                raw["min_predicted_accuracy"]),
             intrinsic_ic=raw["intrinsic_ic"],
         )
