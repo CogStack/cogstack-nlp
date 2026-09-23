@@ -18,13 +18,13 @@ object) with it. The curve itself is stored as plain JSON, so it's cheap to
 version, diff, and swap out ("bring your own calibration curve").
 """
 import json
-from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
-from .estimator import ConceptDifficulty
+from .common import (
+    ConceptDifficulty, DifficultyEstimator, EstimationBaseConfig)
 
 
 class CalibrationCurve:
@@ -83,38 +83,59 @@ class CalibrationCurve:
         return cls.from_dict(JSON)
 
 
-class CalibratedDifficultyEstimator:
-    """Wraps any stage-1 or stage-2 difficulty computation and rescales its
-    `predicted_accuracy` / `min_predicted_accuracy` outputs through a fitted
-    `CalibrationCurve`. `intrinsic_ic` is passed through untouched -- it's
-    an ontology property, not a performance prediction, so there's nothing
-    to calibrate against real-world accuracy.
+class CalibratedEstimationConfig(EstimationBaseConfig):
+    """Config for the calibrated stage.
 
-    Deliberately duck-typed against a plain callable rather than a specific
-    estimator class, so the same wrapper works over
-    `OntologyDifficultyEstimator.compute_concept_ontology_difficulty` and
-    `TrainingAwareDifficultyEstimator.compute_concept_training_difficulty`
-    without needing a shared base class between them.
+    Exactly one of `calibration_curve` / `calibration_curve_path` is
+    normally set; if neither is, `resolve_curve()` falls back to the
+    bundled default curve (see `CalibrationCurve.default()`). An explicit
+    `calibration_curve` object takes precedence over `calibration_curve_path`
+    if somehow both are given.
+    """
+
+    calibration_curve: CalibrationCurve | None = None
+    calibration_curve_path: Path | None = None
+
+    def resolve_curve(self) -> CalibrationCurve:
+        if self.calibration_curve is not None:
+            return self.calibration_curve
+        if self.calibration_curve_path is not None:
+            return CalibrationCurve.load(self.calibration_curve_path)
+        return CalibrationCurve.default()
+
+
+class CalibratedDifficultyEstimator:
+    """Wraps any other `DifficultyEstimator` (stage 1 or stage 2) and
+    rescales its `predicted_accuracy` / `min_predicted_accuracy` outputs
+    through a fitted `CalibrationCurve`. `intrinsic_ic` is passed through
+    untouched -- it's an ontology property, not a performance prediction,
+    so there's nothing to calibrate against real-world accuracy.
+
+    Itself implements `DifficultyEstimator` (`.common`), so it can be
+    nested (calibrating a calibrated estimator is a no-op in practice, but
+    nothing stops it structurally) or swapped in anywhere a plain estimator
+    is expected.
 
     Example:
         stage1 = OntologyDifficultyEstimator(ontology)
         curve = CalibrationCurve.load("stage1_calibration.json")
-        calibrated = CalibratedDifficultyEstimator(
-            stage1.compute_concept_ontology_difficulty, curve,
-        )
+        calibrated = CalibratedDifficultyEstimator(stage1, curve)
         calibrated.compute_concept_difficulty(concept_id)
     """
 
     def __init__(
         self,
-        difficulty_fn: Callable[[str], ConceptDifficulty],
-        curve: CalibrationCurve = CalibrationCurve.default(),
+        wrapped: DifficultyEstimator,
+        curve: CalibrationCurve | None = None,
     ) -> None:
-        self._difficulty_fn = difficulty_fn
-        self._curve = curve
+        self._wrapped = wrapped
+        # Resolved lazily via `or` rather than a `CalibrationCurve.default()`
+        # default argument, so the (JSON-parsing) default curve is only ever
+        # loaded for instances that actually need it.
+        self._curve = curve or CalibrationCurve.default()
 
     def compute_concept_difficulty(self, concept_id: str) -> ConceptDifficulty:
-        raw = self._difficulty_fn(concept_id)
+        raw = self._wrapped.compute_concept_difficulty(concept_id)
         return ConceptDifficulty(
             predicted_accuracy=self._curve.apply(raw["predicted_accuracy"]),
             min_predicted_accuracy=self._curve.apply(raw["min_predicted_accuracy"]),

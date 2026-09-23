@@ -1,11 +1,13 @@
 import math
 import random
-from dataclasses import dataclass
 from typing import Protocol
 
 import numpy as np
+from pydantic import ConfigDict, Field
 
-from .estimator import ConceptDifficulty, EstimationConfig, MisconfiguredConcept, NoSynonymsForConcept
+from .common import ConceptDifficulty, EstimationBaseConfig
+from .estimator import (
+    EstimationConfig, MisconfiguredConcept, NoSynonymsForConcept)
 from .graphing import AbstractOntologyGraph
 from .training_fetcher import TrainingFetcher
 from .utils import combine_context_vector, count_confidence, relative_mass
@@ -79,14 +81,19 @@ class VectorSimilarityBaseline:
 
 # --- config --------------------------------------------------------------
 
-@dataclass(frozen=True)
-class TrainingAwareConfig:
+class TrainingAwareConfig(EstimationBaseConfig):
+    model_config = ConfigDict(frozen=True)
+
     min_train_count: int = 10
-    count_confidence_k: float = 10.0
-    """Training count at which vector-similarity confidence reaches 0.5."""
+    count_confidence_k: float = Field(
+        default=10.0,
+        description="Training count at which vector-similarity confidence reaches 0.5.",
+    )
     use_log_damping: bool = True
-    max_relative_mass: float = 5.0
-    """Caps how much a single overrepresented competitor can inflate difficulty."""
+    max_relative_mass: float = Field(
+        default=5.0,
+        description="Caps how much a single overrepresented competitor can inflate difficulty.",
+    )
     vector_baseline_sample_size: int = 2000
     vector_similarity_temperature: float = 1.0
 
@@ -111,6 +118,10 @@ class OntologyEstimatorLike(Protocol):
 class TrainingAwareDifficultyEstimator:
     """Stage 2: combines the stage-1 ontology-only estimate with training
     exposure (counts) and learned representations (context vectors).
+
+    Implements the same `DifficultyEstimator` protocol (`.common`) as
+    `OntologyDifficultyEstimator` and `CalibratedDifficultyEstimator` --
+    just `compute_concept_difficulty(concept_id) -> ConceptDifficulty`.
 
     Guaranteed to reduce EXACTLY to the wrapped ontology estimator's own
     `predict_accuracy` when a concept and all its competitors have zero
@@ -236,7 +247,7 @@ class TrainingAwareDifficultyEstimator:
         # Log-damp to prevent dominant mentions from completely zeroing out other synonyms
         return math.log1p(allocated_count) + 1.0
 
-    def compute_concept_training_difficulty(self, concept_id: str) -> ConceptDifficulty:
+    def compute_concept_difficulty(self, concept_id: str) -> ConceptDifficulty:
         synonyms = self.ontology_estimator.ontology.get_synonyms_for_concept(concept_id)
         if not synonyms:
             raise NoSynonymsForConcept(

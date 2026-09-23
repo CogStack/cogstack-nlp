@@ -1,19 +1,11 @@
 import math
-from typing import TypedDict
-
-from pydantic import BaseModel
 
 from .graphing import AbstractOntologyGraph
+from .common import ConceptDifficulty, EstimationBaseConfig
 from .utils import method_lru_cache as lru_cache
 
 
-class ConceptDifficulty(TypedDict):
-    predicted_accuracy: float
-    min_predicted_accuracy: float
-    intrinsic_ic: float
-
-
-class EstimationConfig(BaseModel):
+class EstimationConfig(EstimationBaseConfig):
     # options: lin, or resnik, or wu_palmer
     sim_metric: str = "lin"
     # options: # sanchez, or seco
@@ -177,7 +169,7 @@ class OntologyDifficultyEstimator:
         )
         return 1 / effective_N
 
-    def compute_concept_ontology_difficulty(
+    def compute_concept_difficulty(
         self,
         concept_id: str,
     ) -> ConceptDifficulty:

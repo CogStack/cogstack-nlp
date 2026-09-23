@@ -4,17 +4,13 @@ CLI entry point for computing concept difficulty estimates using MedCAT model pa
 import argparse
 import json
 import sys
-from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 from medcat.cat import CAT
 
-from .calibration import CalibratedDifficultyEstimator, CalibrationCurve
-from .estimator import ConceptDifficulty, OntologyDifficultyEstimator
-from .graphing import SnomedGraph
-from .training_aware_estimator import TrainingAwareDifficultyEstimator
-from .training_fetcher import CDBTrainingFetcher
+from .calibration import CalibratedEstimationConfig
+from .estimation import EstimationType, PerStageConfigs, build_estimator
 
 
 def parse_cuis(cui_arg: str | None, cui_file: Path | None) -> list[str]:
@@ -40,46 +36,6 @@ def parse_cuis(cui_arg: str | None, cui_file: Path | None) -> list[str]:
             seen.add(cui)
             deduped.append(cui)
     return deduped
-
-
-def get_difficulty_function(
-    stage: str,
-    cat: CAT,
-    calibration_curve_path: Path | None = None,
-) -> Callable[[str], ConceptDifficulty]:
-    """Initializes graph, components, and returns the difficulty computation function."""
-    graph = SnomedGraph(cat.cdb)
-    stage1 = OntologyDifficultyEstimator(graph)
-
-    if stage == "stage1":
-        return stage1.compute_concept_ontology_difficulty
-
-    # Determine base estimation callable for stage2 or calibrated
-    if stage == "stage2":
-        context_weights = cat.config.components.linking.context_vector_weights
-        fetcher = CDBTrainingFetcher(cat.cdb)
-        stage2 = TrainingAwareDifficultyEstimator(
-            ontology_estimator=stage1,
-            training=fetcher,
-            context_vector_weights=context_weights,
-        )
-        return stage2.compute_concept_training_difficulty
-
-    if stage == "calibrated":
-        # Resolve calibration curve: custom or fallback to default
-        if calibration_curve_path:
-            curve = CalibrationCurve.load(calibration_curve_path)
-        else:
-            curve = CalibrationCurve.default()
-
-        # Duck-typed wrapper applies over stage-1 ontology difficulty
-        calibrated_estimator = CalibratedDifficultyEstimator(
-            difficulty_fn=stage2.compute_concept_training_difficulty,
-            curve=curve,
-        )
-        return calibrated_estimator.compute_concept_difficulty
-
-    raise ValueError(f"Unknown estimation stage: {stage}")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -115,8 +71,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--stage",
         "-s",
-        choices=["stage1", "stage2", "calibrated"],
-        default="calibrated",
+        choices=[t.value for t in EstimationType],
+        default=EstimationType.CALIBRATED.value,
         help="Estimation pipeline stage.",
     )
 
@@ -125,7 +81,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--calibration-curve",
         type=Path,
         default=None,
-        help="Path to custom CalibrationCurve JSON file. Defaults to bundled curve if omitted.",
+        help="Path to custom CalibrationCurve JSON file. Defaults to bundled curve if omitted. "
+             "Only used when --stage=calibrated.",
     )
 
     # 5. Output JSON path
@@ -159,23 +116,27 @@ def main() -> None:
     print(f"Loading MedCAT model pack from {args.model_pack}...", file=sys.stderr)
     cat = CAT.load_model_pack(str(args.model_pack))
 
-    # Resolve stage estimator
-    try:
-        difficulty_fn = get_difficulty_function(
-            stage=args.stage,
-            cat=cat,
+    estim_type = EstimationType(args.stage)
+    per_stage_configs: PerStageConfigs = {}
+    if args.calibration_curve:
+        per_stage_configs[EstimationType.CALIBRATED] = CalibratedEstimationConfig(
             calibration_curve_path=args.calibration_curve,
         )
+
+    # Resolve stage estimator
+    try:
+        estimator = build_estimator(cat, estim_type, per_stage_configs or None)
     except Exception as e:
         sys.exit(f"Error configuring estimator: {e}")
 
-    # Compute difficulties
+    # Compute difficulties. Looping (rather than using estimation.get_estimate,
+    # which computes the whole batch eagerly) so one bad CUI doesn't abort
+    # the rest -- it's reported inline as {"error": ...} instead, as before.
     print(f"Estimating difficulty for {len(cuis)} concept(s) using stage '{args.stage}'...", file=sys.stderr)
     results: dict[str, Any] = {}
     for cui in cuis:
         try:
-            diff = difficulty_fn(cui)
-            results[cui] = dict(diff)
+            results[cui] = dict(estimator.compute_concept_difficulty(cui))
         except Exception as e:
             results[cui] = {"error": str(e)}
 
