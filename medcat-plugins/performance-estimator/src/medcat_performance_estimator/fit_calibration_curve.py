@@ -37,7 +37,7 @@ from sklearn.isotonic import IsotonicRegression
 from sklearn.model_selection import train_test_split
 
 
-from .calibration import CalibrationCurve
+from .stage3_calibration import CalibrationCurve
 
 
 def _mean_abs_calibration_error(

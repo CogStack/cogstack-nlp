@@ -22,9 +22,9 @@ from medcat.cat import CAT
 
 from .calibration import CalibratedDifficultyEstimator, CalibratedEstimationConfig
 from .common import ConceptDifficulty, DifficultyEstimator, EstimationBaseConfig
-from .estimator import EstimationConfig, OntologyDifficultyEstimator
+from .stage1_ontology import EstimationConfig, OntologyDifficultyEstimator
 from .graphing import SnomedGraph
-from .training_aware_estimator import TrainingAwareConfig, TrainingAwareDifficultyEstimator
+from .stage2_training_aware import TrainingAwareConfig, TrainingAwareDifficultyEstimator
 from .training_fetcher import CDBTrainingFetcher
 
 

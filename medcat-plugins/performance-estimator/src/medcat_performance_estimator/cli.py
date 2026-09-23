@@ -9,7 +9,7 @@ from typing import Any
 
 from medcat.cat import CAT
 
-from .calibration import CalibratedEstimationConfig
+from .stage3_calibration import CalibratedEstimationConfig
 from .estimation import EstimationType, PerStageConfigs, build_estimator
 
 

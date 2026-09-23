@@ -6,7 +6,7 @@ import numpy as np
 from pydantic import ConfigDict, Field
 
 from .common import ConceptDifficulty, EstimationBaseConfig
-from .estimator import (
+from .stage1_ontology import (
     EstimationConfig, MisconfiguredConcept, NoSynonymsForConcept)
 from .graphing import AbstractOntologyGraph
 from .training_fetcher import TrainingFetcher
@@ -103,12 +103,12 @@ class TrainingAwareConfig(EstimationBaseConfig):
 class OntologyEstimatorLike(Protocol):
     """Minimal surface this module needs from your stage-1 estimator --
     swap in whatever your resolved dispatch method is actually called if it
-    doesn't match `sim_metric` exactly."""
+    doesn't match `get_sim_metric` exactly."""
 
     ontology: AbstractOntologyGraph
     config: EstimationConfig
 
-    def sim_metric(self, concept_a: str, concept_b: str) -> float:
+    def get_sim_metric(self, concept_a: str, concept_b: str) -> float:
         pass
 
     def get_intrinsic_ic(self, concept_id: str) -> float:
