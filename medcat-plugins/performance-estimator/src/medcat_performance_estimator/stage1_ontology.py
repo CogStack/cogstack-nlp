@@ -199,6 +199,13 @@ class OntologyDifficultyEstimator:
         per_name_accuracy = [d[1] for d in diagnostics]
         overall_accuracy = sum(per_name_accuracy) / len(per_name_accuracy)
         worst_case_accuracy = min(per_name_accuracy)
+        if self.config.apply_extrinsic_ic_prior:
+            if self.config.sim_metric in ("resnik", "lin"):
+                raise MisconfiguredSimMetric(
+                    "apply_extrinsic_ic_prior double-counts IC when combined "
+                    f"with sim_metric={self.config.sim_metric!r}")
+            # NOTE: multiplying accuracy, not difficulty now
+            overall_accuracy *= self.get_intrinsic_ic(concept_id)
 
         # Identify the worst performing synonym and top competing CUI
         worst_entry = min(diagnostics, key=lambda d: d[1])
