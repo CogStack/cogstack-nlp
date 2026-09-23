@@ -1,5 +1,6 @@
 """
-CLI entry point for computing concept difficulty estimates using MedCAT model packs.
+CLI entry point for computing concept difficulty estimates using
+MedCAT model packs.
 """
 import argparse
 import json
@@ -14,7 +15,7 @@ from .estimation import EstimationType, PerStageConfigs, build_estimator
 
 
 def parse_cuis(cui_arg: str | None, cui_file: Path | None) -> list[str]:
-    """Resolves CUIs from either comma-separated command line string or a JSON file."""
+    """Resolves CUIs from either comma-separated string or a JSON file."""
     cuis: list[str] = []
     if cui_arg:
         cuis.extend([cui.strip() for cui in cui_arg.split(",") if cui.strip()])
@@ -25,7 +26,10 @@ def parse_cuis(cui_arg: str | None, cui_file: Path | None) -> list[str]:
         with open(cui_file, "r", encoding="utf-8") as f:
             data = json.load(f)
         if not isinstance(data, list):
-            raise ValueError(f"Expected a JSON list in {cui_file}, got {type(data).__name__}")
+            raise ValueError(
+                f"Expected a JSON list in {cui_file}, "
+                f"got {type(data).__name__}"
+            )
         cuis.extend([str(item).strip() for item in data if str(item).strip()])
 
     # Deduplicate while preserving order
@@ -81,8 +85,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--calibration-curve",
         type=Path,
         default=None,
-        help="Path to custom CalibrationCurve JSON file. Defaults to bundled curve if omitted. "
-             "Only used when --stage=calibrated.",
+        help="Path to custom CalibrationCurve JSON file. Defaults to bundled"
+             "curve if omitted. Only used when --stage=calibrated.",
     )
 
     # 5. Output JSON path
@@ -91,7 +95,8 @@ def build_parser() -> argparse.ArgumentParser:
         "-o",
         type=Path,
         default=None,
-        help="Optional path to write JSON results to. If omitted, results are printed to stdout.",
+        help="Optional path to write JSON results to. If omitted, results "
+             "are printed to stdout.",
     )
 
     return parser
@@ -113,15 +118,17 @@ def main() -> None:
     # Load Model Pack
     if not args.model_pack.exists():
         sys.exit(f"Error: Model pack not found at {args.model_pack}")
-    print(f"Loading MedCAT model pack from {args.model_pack}...", file=sys.stderr)
+    print(f"Loading MedCAT model pack from {args.model_pack}...",
+          file=sys.stderr)
     cat = CAT.load_model_pack(str(args.model_pack))
 
     estim_type = EstimationType(args.stage)
     per_stage_configs: PerStageConfigs = {}
     if args.calibration_curve:
-        per_stage_configs[EstimationType.CALIBRATED] = CalibratedEstimationConfig(
-            calibration_curve_path=args.calibration_curve,
-        )
+        per_stage_configs[
+            EstimationType.CALIBRATED] = CalibratedEstimationConfig(
+                calibration_curve_path=args.calibration_curve,
+            )
 
     # Resolve stage estimator
     try:
@@ -132,7 +139,10 @@ def main() -> None:
     # Compute difficulties. Looping (rather than using estimation.get_estimate,
     # which computes the whole batch eagerly) so one bad CUI doesn't abort
     # the rest -- it's reported inline as {"error": ...} instead, as before.
-    print(f"Estimating difficulty for {len(cuis)} concept(s) using stage '{args.stage}'...", file=sys.stderr)
+    print(
+        f"Estimating difficulty for {len(cuis)} concept(s) using stage "
+        f"'{args.stage}'...", file=sys.stderr
+    )
     results: dict[str, Any] = {}
     for cui in cuis:
         try:
