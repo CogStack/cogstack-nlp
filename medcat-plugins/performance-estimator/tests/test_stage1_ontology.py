@@ -1,6 +1,7 @@
 from typing import Dict, Set, Tuple
 import unittest
 
+from medcat_performance_estimator.common import ConceptInfo
 from medcat_performance_estimator.ontology_graph import AbstractOntologyGraph
 from medcat_performance_estimator.stage1_ontology import (
     MisconfiguredConcept, MisconfiguredSimMetric, OntologyDifficultyEstimator,
@@ -28,6 +29,14 @@ class InMemoryOntologyGraph(AbstractOntologyGraph):
         self.subtree_nodes_count: Dict[str, int] = {}
         self.total_leaves: int = 1
         self.total_concepts: int = 1
+
+    def get_concept_preferred_name(self, concept_id: str) -> str:
+        return concept_id
+
+    def get_concept_info(self, concept_id: str) -> ConceptInfo:
+        ConceptInfo(
+            cui=concept_id, preferred_name=concept_id, synonyms=[concept_id]
+        )
 
     def add_concept(
         self,
@@ -104,7 +113,7 @@ class TestEdgeCases(unittest.TestCase):
         graph.add_concept("C1", ["unique_term"])
 
         estimator = OntologyDifficultyEstimator(graph)
-        accuracy = estimator.predict_accuracy("C1", "unique_term")
+        accuracy, *_ = estimator.predict_accuracy_with_diagnostics("C1", "unique_term")
 
         self.assertEqual(accuracy, 1.0)
 
@@ -115,7 +124,7 @@ class TestEdgeCases(unittest.TestCase):
 
         estimator = OntologyDifficultyEstimator(graph)
         with self.assertRaises(NoSynonymsForConcept):
-            estimator.compute_concept_ontology_difficulty("C1")
+            estimator.compute_concept_difficulty("C1")
 
     def test_missing_target_concept_in_name_lookup_raises_value_error(self):
         graph = InMemoryOntologyGraph()
@@ -126,7 +135,7 @@ class TestEdgeCases(unittest.TestCase):
         estimator = OntologyDifficultyEstimator(graph)
 
         with self.assertRaises(MisconfiguredConcept):
-            estimator.predict_accuracy("C3", "shared_term")
+            estimator.predict_accuracy_with_diagnostics("C3", "shared_term")
 
     def test_invalid_similarity_metric_raises_value_error(self):
         graph = InMemoryOntologyGraph()
@@ -144,7 +153,7 @@ class TestEdgeCases(unittest.TestCase):
         estimator = OntologyDifficultyEstimator(graph, config=config)
 
         with self.assertRaises(MisconfiguredSimMetric):
-            estimator.compute_concept_ontology_difficulty("C1")
+            estimator.compute_concept_difficulty("C1")
 
     def test_identity_similarity_equals_one(self):
         graph = InMemoryOntologyGraph()
@@ -177,7 +186,7 @@ class TestDummyOntologies(unittest.TestCase):
         config = EstimationConfig(power=0.0)
         estimator = OntologyDifficultyEstimator(graph, config=config)
 
-        acc = estimator.predict_accuracy("C1", "ambiguous_name")
+        acc, *_ = estimator.predict_accuracy_with_diagnostics("C1", "ambiguous_name")
         self.assertAlmostEqual(acc, 0.25, places=4)
 
     def test_power_scaling_behavior(self):
@@ -200,11 +209,11 @@ class TestDummyOntologies(unittest.TestCase):
 
         # Power = 1.0 baseline
         est_low_power = OntologyDifficultyEstimator(graph, EstimationConfig(power=1.0))
-        acc_low = est_low_power.predict_accuracy("C1", "term")
+        acc_low, *_ = est_low_power.predict_accuracy_with_diagnostics("C1", "term")
 
         # Power = 5.0 (heavy penalization of lower similarity items)
         est_high_power = OntologyDifficultyEstimator(graph, EstimationConfig(power=5.0))
-        acc_high = est_high_power.predict_accuracy("C1", "term")
+        acc_high, *_ = est_high_power.predict_accuracy_with_diagnostics("C1", "term")
 
         # Higher power filters out C_far, making effective_N smaller and predicted accuracy HIGHER
         self.assertGreater(acc_high, acc_low)
@@ -250,7 +259,7 @@ class TestDummyOntologies(unittest.TestCase):
         config = EstimationConfig(power=0.0) # Power=0 simplifies math to exact fractions
         estimator = OntologyDifficultyEstimator(graph, config=config)
 
-        res = estimator.compute_concept_ontology_difficulty("C1")
+        res = estimator.compute_concept_difficulty("C1")
 
         # 'easy_name' acc = 1.0; 'hard_name' acc = 0.5 (shared 2 ways)
         expected_avg = (1.0 + 0.5) / 2.0  # 0.75

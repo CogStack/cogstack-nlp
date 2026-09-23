@@ -114,20 +114,22 @@ class TestTrainingAwareDifficultyEstimator(unittest.TestCase):
         # With zero counts, mass evaluates to 1.0.
         expected_accuracy = 1.0 / (1.0 + (ontology_sim ** 2.0) * 1.0)
 
-        predicted_accuracy = self.estimator.predict_accuracy(target_concept, name)
+        predicted_accuracy, *_ = self.estimator.predict_accuracy_with_diagnostics(
+            target_concept, name)
 
         # Assert that the training-aware estimator matches the base ontology math precisely when counts are 0
         self.assertAlmostEqual(predicted_accuracy, expected_accuracy, places=7)
 
-    def test_compute_concept_training_difficulty(self):
+    def test_compute_concept_difficulty(self):
         # Mock predict_accuracy behavior indirectly via synonyms
         self.mock_ontology.get_synonyms_for_concept.return_value = ["name1", "name2"]
 
         # Patch/mock predict_accuracy method on the instance to return fixed values
-        self.estimator.predict_accuracy = MagicMock(side_effect=[0.5, 0.7])
+        self.estimator.predict_accuracy_with_diagnostics = MagicMock(
+            side_effect=[(0.5, None, 0.5, 1.0), (0.7, None, 0.5, 1.0)])
 
-        difficulty = self.estimator.compute_concept_training_difficulty("C1")['predicted_accuracy']
-        self.assertEqual(difficulty, 0.6)
+        difficulty = self.estimator.compute_concept_difficulty("C1")['predicted_accuracy']
+        self.assertAlmostEqual(difficulty, 0.6)
 
 
 if __name__ == "__main__":
