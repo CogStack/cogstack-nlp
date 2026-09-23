@@ -296,10 +296,14 @@ class TrainingAwareDifficultyEstimator:
             weights, per_name_accuracy)) / sum(weights)
         worst_case_accuracy = min(per_name_accuracy)
 
+        raw_ont = self.ontology_estimator.ontology
+
         # Extract worst case diagnostics
         worst_entry = min(diagnostics, key=lambda d: d[1])
         worst_synonym = worst_entry[0]
-        worst_competitor = worst_entry[2]
+        worst_comp_cui = worst_entry[2]
+        worst_comp_name = raw_ont.get_concept_preferred_name(worst_comp_cui)
+        worst_competitor = f"{worst_comp_cui} | {worst_comp_name}"
         worst_mass = worst_entry[4]
 
         target_train_count = self.training.get_cui_train_count(concept_id)
@@ -336,8 +340,6 @@ class TrainingAwareDifficultyEstimator:
             "worst_competitor_cui": worst_competitor,
             "feature_breakdown": {},
         }
-
-        raw_ont = self.ontology_estimator.ontology
 
         ci = raw_ont.get_concept_info(concept_id)
 
