@@ -9,7 +9,8 @@ from .utils import method_lru_cache as lru_cache
 class AbstractOntologyGraph(ABC):
     """
     Interface for wrapping MedCAT's underlying SNOMED-CT/UMLS graph structure.
-    Override these methods to hook into your graph representation (e.g., NetworkX, custom DAG).
+    Override these methods to hook into your graph representation (e.g.,
+    NetworkX, custom DAG).
     """
 
     @abstractmethod
@@ -21,16 +22,20 @@ class AbstractOntologyGraph(ABC):
         """Returns all names/synonyms associated with a given concept ID."""
 
     @abstractmethod
-    def get_shortest_path_distance(self, concept_a: str, concept_b: str) -> int:
+    def get_shortest_path_distance(
+        self, concept_a: str, concept_b: str
+    ) -> int:
         """Returns the shortest path edge distance between two concepts."""
 
     @abstractmethod
     def get_lcs(self, concept_a: str, concept_b: str) -> str:
-        """Returns the Least Common Subsumer (LCS) for two concepts in the DAG."""
+        """Returns the Least Common Subsumer for two concepts in the DAG."""
 
     @abstractmethod
     def get_concept_depth(self, concept_id: str) -> int:
-        """Returns the depth of a concept from the root (or max depth if multiple paths)."""
+        """Returns the depth of a concept from the root.
+
+        Max depth is used if multiple paths exist."""
 
     @abstractmethod
     def get_max_ontology_depth(self) -> int:
@@ -42,7 +47,7 @@ class AbstractOntologyGraph(ABC):
 
     @abstractmethod
     def get_subtree_leaves_count(self, concept_id: str) -> int:
-        """Returns the count of leaf nodes subsumed by this concept (subgraph leaves)."""
+        """Returns the count of leaf nodes subsumed by this concept."""
 
     @abstractmethod
     def get_ancestors_count(self, concept_id: str) -> int:
@@ -87,21 +92,20 @@ class SnomedGraph(AbstractOntologyGraph):
         return depth
 
     def get_concepts_for_name(self, name: str) -> set[str]:
-        """Returns all concept IDs that share this specific name/synonym."""
         ni = self.cdb.name2info.get(name)
         if not ni:
             return set()
         return set(ni["per_cui_status"])
 
     def get_synonyms_for_concept(self, concept_id: str) -> set[str]:
-        """Returns all names/synonyms associated with a given concept ID."""
         ci = self.cdb.cui2info.get(concept_id)
         if not ci:
             return set()
         return set(ci['names'])
 
-    def get_shortest_path_distance(self, concept_a: str, concept_b: str) -> int:
-        """Returns the shortest path edge distance between two concepts."""
+    def get_shortest_path_distance(
+        self, concept_a: str, concept_b: str
+    ) -> int:
         common = self.get_lcs(concept_a, concept_b)
         if common in (concept_a, concept_b):
             # ensure correct direction
@@ -113,7 +117,6 @@ class SnomedGraph(AbstractOntologyGraph):
         )
 
     def get_lcs(self, concept_a: str, concept_b: str) -> str:
-        """Returns the Least Common Subsumer (LCS) for two concepts in the DAG."""
         ancestors_a = nx.ancestors(self.G, concept_a) | {concept_a}
         ancestors_b = nx.ancestors(self.G, concept_b) | {concept_b}
 
@@ -124,12 +127,10 @@ class SnomedGraph(AbstractOntologyGraph):
         return max(common, key=self.get_concept_depth)
 
     def get_concept_depth(self, concept_id: str) -> int:
-        """Returns the depth of a concept from the root (or max depth if multiple paths)."""
         return self._depths.get(concept_id, -1)
 
     @lru_cache(maxsize=1)
     def get_max_ontology_depth(self) -> int:
-        """Returns the maximum depth ($D$) of the ontology hierarchy."""
         return max(
             self.get_concept_depth(cui) for cui in self.G
         )
@@ -154,20 +155,16 @@ class SnomedGraph(AbstractOntologyGraph):
 
     @lru_cache(maxsize=10_000)
     def get_subtree_leaves_count(self, concept_id: str) -> int:
-        """Returns the count of leaf nodes subsumed by this concept (subgraph leaves)."""
         return len(self._get_subtree_leaves(concept_id))
 
     @lru_cache(maxsize=10_000)
     def get_ancestors_count(self, concept_id: str) -> int:
-        """Returns the total number of ancestor concepts for this concept."""
         return len(nx.ancestors(self.G, concept_id))
 
     @lru_cache(maxsize=1)
     def get_total_leaves_count(self) -> int:
-        """Returns the total number of leaf nodes in the whole ontology."""
         # just take away the root concept
         return sum(1 for n in self.G if self.G.out_degree(n) == 0)
 
     def get_total_concepts_count(self) -> int:
-        """Returns the total number of concepts in the whole ontology."""
         return len(self.cdb.cui2info)
