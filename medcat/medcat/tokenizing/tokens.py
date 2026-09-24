@@ -1,6 +1,10 @@
 from typing import Protocol, Optional, Iterator, overload, Any, Type
 
 
+UNTOKENIZABLE_ENTITY_ID = -1000
+"""Sentinel for entities that could not be mapped to any valid token span."""
+
+
 class BaseToken(Protocol):
     """Base token protocol.
 

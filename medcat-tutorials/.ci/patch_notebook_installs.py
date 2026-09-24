@@ -5,9 +5,6 @@ from functools import partial
 import argparse
 
 
-rel_install_path = "../medcat/"
-abs_install_path = str(pathlib.Path(rel_install_path).resolve())
-
 # Matches either:
 # 1. `! pip install medcat[extras]~=version`
 # 2. `! pip install medcat[extras] @ git+...`
@@ -30,8 +27,9 @@ req_txt_pattern = re.compile(
 
 
 def repl_nb(m, file_path: pathlib.Path):
-    extras = m[3] or ""
-    to_write = f'! pip install \\"{abs_install_path}{extras}\\"'
+    # CI installs the checkout and all tutorial extras before running nbmake.
+    # Reinstalling from parallel notebooks races on their shared site-packages.
+    to_write = '# MedCAT is already installed by the CI workflow.'
     print(f"[PATCHED] {file_path}\n with: '{to_write}'")
     return to_write
 
