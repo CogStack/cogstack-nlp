@@ -311,7 +311,7 @@ class StatsCalculator:
                 continue
             state = mode_stats.stats
             if mode == MetricMode.NER:
-                key = "__NER__"
+                key = "DETECTED_ENTITY"
                 state.cui_gold_counts[key] = (
                     state.cui_gold_counts.get(key, 0)
                     + len(gold_anns)
@@ -479,7 +479,7 @@ class StatsCalculator:
                       gold_anns: list[GoldAnnotation], 
                       pred_anns: list[PredictedAnnotation]
                       ) -> tuple[list[GoldAnnotation], list[PredictedAnnotation]]:
-        ner_cui = '__NER__'
+        ner_cui = 'DETECTED_ENTITY'
         eval_pred_anns: list[PredictedAnnotation] = [
             {**pred, "cui": ner_cui}
             for pred in pred_anns
@@ -980,8 +980,9 @@ class StatsCalculator:
                     epoch: int,
                     mode_stats: ModeStats,
                     n_samples: int = 10,
-                    stream: TextIO | None = None) -> None:
-        """Finalise the report / metrics.
+                    stream: TextIO | None = None,
+                    legacy: bool = False) -> None:
+        """Print / report key metrics.
 
         This prints out the overall metrics and calculates per CUI metrics.
 
@@ -997,13 +998,27 @@ class StatsCalculator:
                 "Metrics have not been computed yet. "
                 "Call compute_metrics() first."
             )
-        print("Epoch: {}, Prec: {}, Rec: {}, F1: {}\n".format(
-                epoch,
-                mode_stats.metrics.overall.precision,
-                mode_stats.metrics.overall.recall,
-                mode_stats.metrics.overall.f1
-            ), file=stream
-        )
+
+        if legacy:
+            print("Epoch: {}, Prec: {}, Rec: {}, F1: {}".format(
+                    epoch,
+                    mode_stats.metrics.overall.precision,
+                    mode_stats.metrics.overall.recall,
+                    mode_stats.metrics.overall.f1
+                ), file=stream
+            )
+        else:
+            print("Epoch: {}, \nPrec: {}, \nRec: {}, \nF1: {}, \nChar IOU: {}, " \
+            "\nChar GIOU: {}, \nChar Cohen's K: {}\n".format(
+                                epoch,
+                                mode_stats.metrics.overall.precision,
+                                mode_stats.metrics.overall.recall,
+                                mode_stats.metrics.overall.f1,
+                                mode_stats.metrics.overall.char_iou,
+                                mode_stats.metrics.overall.char_giou,
+                                mode_stats.metrics.overall.char_cohen_k
+                ), file=stream
+            )
 
         # Sort fns & prec
         fps = {k: v for k, v in sorted(mode_stats.metrics.per_cui.items(),
@@ -1013,7 +1028,7 @@ class StatsCalculator:
         tps = {k: v for k, v in sorted(mode_stats.metrics.per_cui.items(),
                 key=lambda item: item[1].tp, reverse=True)}
 
-        # Get top 5
+        # Get top n
         pr_fps = [(self._get_pref_name(cui),
                     cui, fps[cui]) for cui in list(fps.keys())[0:n_samples]]
         pr_fns = [(self._get_pref_name(cui),
@@ -1021,7 +1036,7 @@ class StatsCalculator:
         pr_tps = [(self._get_pref_name(cui),
                     cui, tps[cui]) for cui in list(tps.keys())[0:n_samples]]
 
-        print("\n\nFalse Positives\n", file=stream)
+        print("\nFalse Positives\n", file=stream)
         for one in pr_fps:
             print("{:70} - {:20} - {:10}".format(
                 str(one[0])[0:69],
@@ -1029,7 +1044,7 @@ class StatsCalculator:
                 one[2].fp),
                 file=stream
             )
-        print("\n\nFalse Negatives\n", file=stream)
+        print("\nFalse Negatives\n", file=stream)
         for one in pr_fns:
             print("{:70} - {:20} - {:10}".format(
                 str(one[0])[0:69],
@@ -1037,7 +1052,7 @@ class StatsCalculator:
                 one[2].fn),
                 file=stream
             )
-        print("\n\nTrue Positives\n", file=stream)
+        print("\nTrue Positives\n", file=stream)
         for one in pr_tps:
             print("{:70} - {:20} - {:10}".format(
                 str(one[0])[0:69],
@@ -1074,7 +1089,7 @@ def get_stats_calculator(cat: CAT,
                          linking_performance: bool = False,
                          extra_cui_filter: Optional[set[str]] = None,
                          do_print: bool = True,) -> StatsCalculator:
-    """Return a stats calculator for the given data and parameters.
+    """Return the stats calculator.
 
     This doesn't just return the per project stats for the full pipeline, 
     but all stats for each project and the aggregate, for all modes 
@@ -1098,12 +1113,12 @@ def get_stats_calculator(cat: CAT,
         StatsCalculator: An instance of StatsCalculator with computed statistics.
     """
     calculator = StatsCalculator(
-            filters=cat.config.components.linking.filters,
-            cui2info=cat.cdb.cui2info,
-            num_projects=len(data['projects']),
-            ner_performance=ner_performance,
-            linking_performance=linking_performance
-    )
+                    filters=cat.config.components.linking.filters,
+                    cui2info=cat.cdb.cui2info,
+                    num_projects=len(data['projects']),
+                    ner_performance=ner_performance,
+                    linking_performance=linking_performance
+            )
     # Always compute full pipeline metrics.
     # If ner is of interest then also compute NER metrics from the same pass.
     calculator.process_export(
@@ -1126,12 +1141,11 @@ def get_stats_calculator(cat: CAT,
             )
 
     calculator.compute_all_metrics(ner_performance, linking_performance)
-    
     if do_print:
-        to_print = calculator.stats.all_projects.get_mode(MetricMode.FULL)
-        if to_print is None:
+        full_stats = calculator.stats.all_projects.get_mode(MetricMode.FULL)
+        if full_stats is None:
             raise ValueError("No statistics available for the full pipeline mode.")
-        calculator.print_stats(epoch, to_print)
+        calculator.print_stats(epoch, full_stats)
     return calculator
 
 def get_stats(cat: CAT, 
@@ -1173,10 +1187,16 @@ def get_stats(cat: CAT,
     calculator = get_stats_calculator(
         cat=cat,
         data=data,
-        epoch=epoch,
         use_project_filters=use_project_filters,
         use_overlaps=use_overlaps,
-        extra_cui_filter=extra_cui_filter
+        ner_performance=False,
+        linking_performance=False,
+        extra_cui_filter=extra_cui_filter,
+        do_print=False
     )
     full_stats = calculator.stats.all_projects.full_pipeline
+    if do_print:
+        if full_stats is None:
+            raise ValueError("No statistics available for the full pipeline mode.")
+        calculator.print_stats(epoch, full_stats, legacy=True)
     return calculator.legacy_stats(full_stats)
