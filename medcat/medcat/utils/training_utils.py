@@ -98,9 +98,13 @@ def _parse_raw_name(
     for opt in opts:
         if checker(opt):
             return opt
+    # NOTE: redoing this for the sake of the exception,
+    #       otherwise the iteration would be empty
+    opts = tokens_to_raw_name_opts(
+        tkns, separator, try_reverse_word_order)
     raise UnknownTokensException(
         f"Unable to turn tokens {tkns} into a name that exists in the CDB. "
-        f"The options tried were: {opts}."
+        f"The options tried were: {list(opts)}."
     )
 
 
