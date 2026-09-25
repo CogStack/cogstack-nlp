@@ -36,6 +36,8 @@ class _FakeToken:
     def __init__(self, start: int, end: int):
         self.start_char_index = start
         self.end_char_index = end
+        self.base = self
+        self.text_versions = []
 
 
 class _FakeDocBase:
