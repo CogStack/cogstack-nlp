@@ -291,6 +291,7 @@ class TrainingUtilsTests(unittest.TestCase):
         self.assertEqual(linker.sup_train_calls, 0)
 
 
+
 class RealTestsWithData(unittest.TestCase):
     DATA_PATH = os.path.join(
         *"tests/resources/mct_export_for_test_exp_perfect.json".split("/")
@@ -301,6 +302,11 @@ class RealTestsWithData(unittest.TestCase):
         cls.cat = CAT.load_model_pack(EXAMPLE_MODEL_PACK_ZIP)
         with open(cls.DATA_PATH) as f:
             cls.data = json.load(f)
+
+    def extract_text_from_data(self):
+        for proj in self.data['projects']:
+            for doc in proj['documents']:
+                yield doc['text']
 
     def assert_perfect_stats(self):
         _, _, _, _, _, cui_f1, _, _ = get_stats(
@@ -324,3 +330,27 @@ class RealTestsWithData(unittest.TestCase):
             self.cat, CoreComponentType.ner, self.data
         ):
             self.assert_perfect_stats()
+
+    def test_cheating_ner_creates_detected_name(self):
+
+        with dataset_aware_component(
+            self.cat, CoreComponentType.ner, self.data
+        ):
+            for num, text in enumerate(self.extract_text_from_data()):
+                with self.subTest(f"Text-{num}: {text!r}"):
+                    linked_ents = self.cat(text).linked_ents
+                    self.assertTrue(linked_ents)
+                    self.assertTrue(
+                        all(ent.detected_name for ent in linked_ents))
+
+    def test_cheating_ner_creates_link_candidates(self):
+
+        with dataset_aware_component(
+            self.cat, CoreComponentType.ner, self.data
+        ):
+            for num, text in enumerate(self.extract_text_from_data()):
+                with self.subTest(f"Text-{num}: {text!r}"):
+                    linked_ents = self.cat(text).linked_ents
+                    self.assertTrue(linked_ents)
+                    self.assertTrue(
+                        all(ent.link_candidates for ent in linked_ents))
