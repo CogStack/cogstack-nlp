@@ -37,7 +37,7 @@ class _FakeToken:
         self.start_char_index = start
         self.end_char_index = end
         self.base = self
-        self.text_versions = []
+        self.text_versions = ["A",]
 
 
 class _FakeDocBase:
@@ -176,6 +176,7 @@ class _FakeCDB:
         self.config = config
         self.addl_info = {}
         self.cui2info = {}
+        self.name2info = {"A": {'per_cui_status': ["C01", "C02"]}}
 
     def reset_training(self):
         return
