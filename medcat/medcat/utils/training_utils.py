@@ -231,6 +231,9 @@ def dataset_aware_component(
         )
 
     def name2candidates(name: str) -> list[str]:
+        # NOTE: the name should always be in there since we check
+        #       for that within the candidates with `tokens2name`
+        #       with the lambda
         return list(cat.cdb.name2info[name]['per_cui_status'])
 
     predictor = _create_predictor(
