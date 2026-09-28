@@ -98,14 +98,7 @@ def _parse_raw_name(
     for opt in opts:
         if checker(opt):
             return opt
-    # NOTE: redoing this for the sake of the exception,
-    #       otherwise the iteration would be empty
-    opts = tokens_to_raw_name_opts(
-        tkns, separator, try_reverse_word_order)
-    raise UnknownTokensException(
-        f"Unable to turn tokens {tkns} into a name that exists in the CDB. "
-        f"The options tried were: {list(opts)}."
-    )
+    return opt
 
 
 class UnknownTokensException(ValueError):
@@ -238,10 +231,10 @@ def dataset_aware_component(
         )
 
     def name2candidates(name: str) -> list[str]:
-        # NOTE: the name should always be in there since we check
-        #       for that within the candidates with `tokens2name`
-        #       with the lambda
-        return list(cat.cdb.name2info[name]['per_cui_status'])
+        # NOTE: not all names are in the CBD
+        if name in cat.cdb.name2info:
+            return list(cat.cdb.name2info[name]['per_cui_status'])
+        return []
 
     predictor = _create_predictor(
         comp_type, dataset, tokens2entity, tokens2name, name2candidates)
