@@ -1,12 +1,17 @@
+import json
+import os
 import unittest
 import unittest.mock
 
+from medcat.cat import CAT
 from medcat.config import Config
 from medcat.components.types import CoreComponentType, AbstractEntityProvidingComponent
 from medcat.stats.stats import get_stats
 from medcat.tokenizing.tokens import MutableDocument
 from medcat.trainer import Trainer
 from medcat.utils.training_utils import dataset_aware_component
+
+from .. import EXAMPLE_MODEL_PACK_ZIP
 
 
 class _FakeEntityBase:
@@ -31,6 +36,8 @@ class _FakeToken:
     def __init__(self, start: int, end: int):
         self.start_char_index = start
         self.end_char_index = end
+        self.base = self
+        self.text_versions = ["A",]
 
 
 class _FakeDocBase:
@@ -169,6 +176,7 @@ class _FakeCDB:
         self.config = config
         self.addl_info = {}
         self.cui2info = {}
+        self.name2info = {"A": {'per_cui_status': ["C01", "C02"]}}
 
     def reset_training(self):
         return
@@ -284,3 +292,68 @@ class TrainingUtilsTests(unittest.TestCase):
 
         self.assertEqual(ner.sup_train_calls, 1)
         self.assertEqual(linker.sup_train_calls, 0)
+
+
+
+class RealTestsWithData(unittest.TestCase):
+    DATA_PATH = os.path.join(
+        *"tests/resources/mct_export_for_test_exp_perfect.json".split("/")
+    )
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.cat = CAT.load_model_pack(EXAMPLE_MODEL_PACK_ZIP)
+        with open(cls.DATA_PATH) as f:
+            cls.data = json.load(f)
+
+    def extract_text_from_data(self):
+        for proj in self.data['projects']:
+            for doc in proj['documents']:
+                yield doc['text']
+
+    def assert_perfect_stats(self):
+        _, _, _, _, _, cui_f1, _, _ = get_stats(
+                    self.cat, self.data, do_print=False)
+        self.assertTrue(cui_f1)
+        for cui, v in cui_f1.items():
+            with self.subTest(cui):
+                self.assertEqual(v, 1.0)
+
+    def test_has_perfect_stats_default(self):
+        self.assert_perfect_stats()
+
+    def test_has_perfect_stats_with_perfect_linker(self):
+        with dataset_aware_component(
+            self.cat, CoreComponentType.linking, self.data
+        ):
+            self.assert_perfect_stats()
+
+    def test_has_perfect_stats_with_perfect_ner(self):
+        with dataset_aware_component(
+            self.cat, CoreComponentType.ner, self.data
+        ):
+            self.assert_perfect_stats()
+
+    def test_cheating_ner_creates_detected_name(self):
+
+        with dataset_aware_component(
+            self.cat, CoreComponentType.ner, self.data
+        ):
+            for num, text in enumerate(self.extract_text_from_data()):
+                with self.subTest(f"Text-{num}: {text!r}"):
+                    linked_ents = self.cat(text).linked_ents
+                    self.assertTrue(linked_ents)
+                    self.assertTrue(
+                        all(ent.detected_name for ent in linked_ents))
+
+    def test_cheating_ner_creates_link_candidates(self):
+
+        with dataset_aware_component(
+            self.cat, CoreComponentType.ner, self.data
+        ):
+            for num, text in enumerate(self.extract_text_from_data()):
+                with self.subTest(f"Text-{num}: {text!r}"):
+                    linked_ents = self.cat(text).linked_ents
+                    self.assertTrue(linked_ents)
+                    self.assertTrue(
+                        all(ent.link_candidates for ent in linked_ents))
