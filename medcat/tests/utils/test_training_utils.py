@@ -38,6 +38,7 @@ class _FakeToken:
         self.end_char_index = end
         self.base = self
         self.text_versions = ["A",]
+        self.to_skip = False
 
 
 class _FakeDocBase:
