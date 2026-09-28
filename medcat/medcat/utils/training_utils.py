@@ -125,7 +125,10 @@ def _create_general_predictor(
         for ann in anns:
             start = ann["start"]
             end = ann["end"]
-            tkns = doc.get_tokens(start, end)
+            tkns = [
+                tkn for tkn in doc.get_tokens(start, end)
+                if not tkn.to_skip
+            ]
             try:
                 ent = tokens2entity(tkns, doc)
             except ValueError as e:
