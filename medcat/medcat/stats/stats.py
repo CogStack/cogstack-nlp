@@ -344,6 +344,10 @@ class StatsCalculator:
                            ann: PredictedAnnotation | GoldAnnotation) -> dict:
         """Create a standardized example payload for true positive, false positive, and 
         false negative examples."""
+        acc = 1.0
+        if ann is type(PredictedAnnotation):
+            acc = ann['confidence']
+
         return {"cui": cui,
                 "project_id": project_id,
                 "project_name": project_name,
@@ -351,7 +355,7 @@ class StatsCalculator:
                 "document_name": ann['document_name'],
                 "start": ann['start'],
                 "end": ann['end'],
-                "acc": ann['confidence'] if 'confidence' in ann else 1.0,
+                "acc": acc,
                 "source_value": ann['text'],
                 "text": ann['context'],
                 }
@@ -431,6 +435,9 @@ class StatsCalculator:
             'cui': pred['cui'],
             'text': pred['text'],
             'raw': pred['raw'],
+            'document_id': pred['document_id'],
+            'document_name': pred['document_name'],
+            'context': pred['context'],
         }
         cui = gold['cui']
         state.no_tokens += 1
