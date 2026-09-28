@@ -142,5 +142,147 @@ The config options used for this stage (`CalibratedEstimationConfig`):
 - `calibration_curve_path` (path to a curve JSON file)
 - If neither is set, `resolve_curve()` falls back to the bundled default curve
 
+## Usage
+
+There are two ways to run the estimation: the command line (for a quick look at a set of concepts) and the Python API (for building something on top, e.g. a UI that shows which concepts to train on). Both need a MedCAT model pack, since the ontology, synonyms and training counts all come from the model's CDB.
+
+### Command line
+
+```
+python -m medcat_performance_estimator.cli \
+    --model-pack path/to/model_pack.zip \
+    --cuis 195967001,22298006 \
+    --output estimates.json
+```
+
+The options are:
+- `--model-pack` / `-m` (required): path to the MedCAT model pack (`.zip` or folder)
+- The concepts to estimate (required; exactly one of):
+	- `--cuis` / `-c`: comma-separated list of CUIs
+	- `--cui-file` / `-f`: path to a JSON file containing a list of CUIs (e.g. `["195967001", "22298006"]`)
+- `--stage` / `-s`: which stage to use: `stage1`, `stage2` or `calibrated` (default)
+- `--calibration-curve`: path to your own calibration curve JSON (see Stage 3). Only used with `--stage calibrated`; the bundled default curve is used if omitted
+- `--output` / `-o`: where to write the JSON results. If omitted, the JSON is printed to stdout (progress messages go to stderr, so stdout stays clean JSON)
+
+The output is a JSON object keyed by CUI. Each value is that concept's full estimate:
+
+```json
+{
+  "195967001": {
+    "concept_info": { "...": "..." },
+    "predicted_accuracy": 0.62,
+    "min_predicted_accuracy": 0.41,
+    "intrinsic_ic": 0.78,
+    "features": {
+      "cui_train_count": 120,
+      "num_synonyms": 5,
+      "max_competitors_per_synonym": 3,
+      "max_competitor_mass_ratio": 1.4,
+      "intrinsic_ic": 0.78
+    },
+    "explanation": {
+      "primary_penalty_driver": "name_ambiguity",
+      "worst_synonym": "...",
+      "worst_competitor_cui": "...",
+      "feature_breakdown": {}
+    }
+  },
+  "not_a_real_cui": { "error": "..." }
+}
+```
+
+- `predicted_accuracy` is the headline number (the mean over the concept's names) and `min_predicted_accuracy` is the worst-case name
+- Lower means harder, i.e. more likely to need training data
+- A CUI that fails (e.g. it isn't in the CDB) is reported inline as `{"error": "..."}` and doesn't stop the rest of the batch
+- The numbers shown above are illustrative only
+
+### Python API
+
+Everything lives in `medcat_performance_estimator.estimation`. Load a model pack, pick a stage with `EstimationType` (`STAGE1`, `STAGE2` or `CALIBRATED`, the default), and call one of:
+
+- `get_estimate(cat, cuis)`: a full `ConceptDifficulty` per CUI (the same structure as the CLI output)
+- `get_estimate_scores(cat, cuis)`: just one number per CUI. `score` is `predicted_accuracy` (default), `min_predicted_accuracy` or `intrinsic_ic`
+- `get_tiered_estimate(cat, cuis)`: the estimates grouped into action tiers (see below)
+- `build_estimator(cat, estim_type)`: the underlying estimator, for when you want to call `compute_concept_difficulty(cui)` yourself
+
+```python
+from medcat.cat import CAT
+from medcat_performance_estimator.estimation import (
+    EstimationType, get_estimate, get_tiered_estimate)
+
+cat = CAT.load_model_pack("path/to/model_pack.zip")
+cuis = {"195967001", "22298006"}
+
+estimates = get_estimate(cat, cuis)  # calibrated by default
+tiers = get_tiered_estimate(cat, cuis)
+```
+
+#### Choosing which concepts to train on
+
+`get_tiered_estimate` sorts the concepts into three tiers by comparing a score against two thresholds. `ActionTier.A` is for scores at or above `a_min`, `ActionTier.B` for scores at or above `b_min`, and `ActionTier.C` for everything else. It returns `dict[ActionTier, dict[str, ConceptDifficulty]]`, so each tier holds its concepts along with their full estimates.
+
+- By default the tier is decided by `predicted_accuracy`. Pass `score_key="min_predicted_accuracy"` to tier on the worst-case name instead
+- Custom boundaries can be passed as `thresholds={"a_min": ..., "b_min": ...}`. The defaults are `DEFAULT_TIER_THRESHOLDS` in `common`
+- If you already have estimates, `group_estimates_by_tier(estimates, thresholds, score_key)` does the grouping without recomputing, and `assign_tier(score)` classifies a single score
+
+For something like a UI (buckets, the concepts in each bucket, and per-concept details), this is the intended shape:
+
+```python
+from medcat_performance_estimator.estimation import (
+    EstimationType, build_estimator, group_estimates_by_tier)
+
+# Build once and reuse: this constructs the ontology graph, which is the
+# expensive part.
+estimator = build_estimator(cat, EstimationType.CALIBRATED)
+
+estimates, errors = {}, {}
+for cui in cuis:
+    try:
+        estimates[cui] = estimator.compute_concept_difficulty(cui)
+    except Exception as e:
+        errors[cui] = str(e)
+
+tiers = group_estimates_by_tier(estimates)
+payload = {
+    tier.name: {
+        cui: dict(diff) for cui, diff in concepts.items()
+    }
+    for tier, concepts in tiers.items()
+}
+```
+
+Each concept in a bucket then carries what a UI needs to show:
+- The scores: `predicted_accuracy`, `min_predicted_accuracy` and `intrinsic_ic`
+- A short reason, in `explanation["primary_penalty_driver"]`, together with the `worst_synonym` and `worst_competitor_cui` behind it
+	- Stage 1 drivers: `semantic_overlap`, `name_ambiguity`, `unknown`
+	- Stage 2 (and calibrated) also has `training_imbalance` and `zero_training_exposure`
+- The documented features, in `features` (e.g. `cui_train_count`, `num_synonyms`, `max_competitors_per_synonym`)
+
+#### Configuring the stages
+
+Any stage's config can be overridden through `per_stage_configs`, a dict from `EstimationType` to that stage's config object. Stages you don't mention keep their defaults.
+
+```python
+from medcat_performance_estimator.estimation import EstimationType, get_estimate
+from medcat_performance_estimator.stage1_ontology import EstimationConfig
+from medcat_performance_estimator.stage2_training_aware import TrainingAwareConfig
+from medcat_performance_estimator.stage3_calibration import (
+    CalibratedEstimationConfig)
+
+estimates = get_estimate(
+    cat, cuis, EstimationType.CALIBRATED,
+    per_stage_configs={
+        EstimationType.STAGE1: EstimationConfig(sim_metric="wu_palmer"),
+        EstimationType.STAGE2: TrainingAwareConfig(min_train_count=20),
+        EstimationType.CALIBRATED: CalibratedEstimationConfig(
+            calibration_curve_path="my_curve.json"),
+    },
+)
+```
+
+- Requesting a later stage builds the earlier ones underneath it (`CALIBRATED` wraps `STAGE2`, which wraps `STAGE1`), and each of them picks up its own entry from `per_stage_configs`
+- A config of the wrong type for its stage raises a `TypeError`
+
+
 # Limitations
 b
