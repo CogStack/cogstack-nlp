@@ -145,6 +145,18 @@ The config options used for this stage (`CalibratedEstimationConfig`):
 - `calibration_curve_path` (path to a curve JSON file)
 - If neither is set, `resolve_curve()` falls back to the bundled default curve
 
+## Tiers
+
+The estimates are most useful in aggregate, and a single accuracy number per concept invites more precision than it can deliver (see [Limitations](#limitations)). So, to make the estimates actionable, concepts are grouped into three tiers, each answering the practical question "how much fine-tuning is this concept likely to need?":
+
+- **Tier A**: concepts that might not need any fine-tuning
+- **Tier B**: concepts that will probably benefit from some fine-tuning
+- **Tier C**: concepts that will probably need a lot of (or more) fine-tuning
+
+The tiers are ordered by predicted accuracy: Tier A has the highest scores and Tier C the lowest. A concept's tier is decided by comparing its score against two thresholds, `a_min` and `b_min`. Anything at or above `a_min` is Tier A, anything else at or above `b_min` is Tier B, and everything below that is Tier C.
+
+The tiers are meant to help decide where training effort is best spent on average. They are not a per-concept verdict: a concept in a lower tier can still perform better than one in a higher tier. See the [Usage](#usage) section for how to get the tiers, and how to change the thresholds.
+
 ## Usage
 
 There are two ways to run the estimation: the command line (for a quick look at a set of concepts) and the Python API (for building something on top, e.g. a UI that shows which concepts to train on). Both need a MedCAT model pack, since the ontology, synonyms and training counts all come from the model's CDB.
