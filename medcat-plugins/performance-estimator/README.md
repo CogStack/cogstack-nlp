@@ -52,8 +52,51 @@ The config options used for this stage:
 - `similarity_floor` (the similarity floor to use, defualts to `0.3`)
 
 ## Stage2: Training aware estimation
-a
 
+This stage has access to the per concept (and per name) training counts on top of what was available for the previous stage. This allows the estimation to take advantage of the train counts where applicable. The idea being that - all else being equal - a concept that has more training will perform better than one that's had less training.
+
+Stage 2 wraps the Stage 1 estimator and reuses its ontology similarity, its `power` and its `similarity_floor`. On top of that it uses the trained context vectors and the training counts. The features it adds are:
+- Vector similarity between concepts, corrected for anisotropy
+	- Context vectors are first combined into a single vector per concept using the configured `context_vector_weights`
+	- The raw cosine similarity of two such vectors is only meaningful relative to what's normal for the embedding space (contextual embeddings tend to sit in a narrow band)
+	- So we sample random pairs of trained concepts (up to `vector_baseline_sample_size` pairs, only from concepts with at least `min_train_count` training examples) to get the mean and standard deviation of the "typical" cosine
+	- The similarity is then `sigmoid(((cosine - mean) / std) / vector_similarity_temperature)`
+	- This gives a value in `(0, 1)` where `0.5` is "about as similar as two typical, unrelated concepts" and higher is unusually close
+- Confidence in the vector similarity
+	- A function of the *smaller* of the two concepts' training counts (the pairwise comparison is only as trustworthy as its noisier side)
+	- Grows with the count, reaching `0.5` at `count_confidence_k`
+- Blended pairwise similarity
+	- `(ontology_sim + confidence * vector_sim) / (1 + confidence)`
+	- Since confidence is below 1, the ontology similarity always keeps at least half of the weight
+	- With zero confidence (untrained concepts) this is exactly the Stage 1 similarity
+- Relative training mass of a competitor
+	- How much more (or less) training a competing concept has compared to the target concept
+	- Optionally log-damped (`use_log_damping`) and capped at `max_relative_mass`, so that one heavily trained competitor can't inflate the difficulty without limit
+- Per name-concept mass (used to weight names)
+	- If the name was never seen in training, the weight is `1.0`
+	- Otherwise the name's training count is allocated between the concepts sharing it, in proportion to their (Laplace smoothed, i.e. `+1`) training counts
+	- The weight is then `log1p(allocated_count) + 1`, so names the concept has actually been trained on matter more, without completely drowning out the rest
+
+The concept's difficulty is finally calculated as follows:
+- Each concept's predicted accuracy is found for each of its names (same idea as Stage 1)
+	- If the name is unique to the concept, the predicted accuracy for that name is `1.0`
+	- Otherwise, for each competing concept, the blended similarity is clamped to `[similarity_floor, 1.0]`
+	- Each competitor then contributes `sim ** power * relative_mass` to the denominator
+	- The name's accuracy is `1 / (1 + sum(sim ** power * relative_mass))` over the competitors
+	- With all masses at `1` (e.g. no training) this is identical to the Stage 1 per-name accuracy
+- The concept's predicted accuracy is the *weighted* mean of the per-name accuracies, using the per name-concept mass above (Stage 1 uses a plain mean)
+	- The lowest per-name accuracy is again kept as the worst-case (minimum) predicted accuracy
+- Unlike Stage 1, no intrinsic IC prior is applied at this stage (`apply_extrinsic_ic_prior` is not used here)
+
+The config options used for this stage (`TrainingAwareConfig`):
+- `min_train_count` (the minimum training count for a concept to be included in the vector similarity baseline, defaults to `10`)
+- `count_confidence_k` (the training count at which the vector similarity confidence reaches `0.5`, defaults to `10.0`)
+- `use_log_damping` (whether to log-damp the relative training mass of competitors, defaults to `True`)
+- `max_relative_mass` (the cap on a single competitor's relative mass, defaults to `5.0`)
+- `vector_baseline_sample_size` (the number of random concept pairs used to estimate the baseline cosine, defaults to `2000`)
+- `vector_similarity_temperature` (the sigmoid temperature for the normalised vector similarity, defaults to `1.0`)
+
+The `power` and `similarity_floor` options come from the wrapped Stage 1 `EstimationConfig` rather than from this stage's own config.
 
 # Limitations
 b
