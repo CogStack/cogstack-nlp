@@ -98,5 +98,49 @@ The config options used for this stage (`TrainingAwareConfig`):
 
 The `power` and `similarity_floor` options come from the wrapped Stage 1 `EstimationConfig` rather than from this stage's own config.
 
+## Stage3: Calibrated estimate
+
+We find that often the estimate from stage2 (and stage1 to be fair) is higher than the real world performance. Because of that we've developed a calibration curve (and you can provide your own if you wish) that's used to mitigate that somewhat.
+
+Stage 3 doesn't compute anything new about the concepts. It wraps either the Stage 1 or the Stage 2 estimator and rescales their output through a fitted calibration curve. The curve is a monotone mapping from the raw predicted accuracy closer to the accuracy we actually observe in practice. It fixes the *scale* of the estimate rather than the *ranking* (a concept with a higher raw estimate never gets a lower calibrated one).
+
+More specifically, these are the pieces involved:
+- The calibration curve (`CalibrationCurve`)
+	- A sorted list of `(raw_score, calibrated_score)` breakpoints, where the calibrated scores must be non-decreasing
+	- Applied by linear interpolation between the breakpoints; raw scores outside the fitted range are clamped to the nearest endpoint
+	- Stored as plain JSON (`raw_scores` and `calibrated_scores` lists), so it's easy to version, diff and swap out
+	- Applying a curve needs no scikit-learn; only fitting does
+	- There is a bundled default curve (`CalibrationCurve.default()`) and a no-op `identity()` curve (calibrated == raw)
+- The fitter (`fit_calibration_curve`)
+	- An offline script that fits an isotonic regression of the observed accuracy on the raw estimate (clipped to `[0, 1]`)
+	- The fitted function is sampled on an evenly spaced 200-point grid across the raw score range seen in the fit data, and that grid is what's saved as the curve
+	- Takes a CSV with a `raw_estimate` column (the `predicted_accuracy` from the stage being calibrated) and an `observed_accuracy` column (the measured real-world accuracy per concept, e.g. recall on an entity linking evaluation set)
+	- The data is randomly split, and the curve is fit on the fit split only. The rest (`--holdout-fraction`, default `0.2`) is held out for evaluation
+	- Prints holdout diagnostics only, since a curve scored on the data it was fit on looks better than it really is:
+		- The correlation between raw estimate and observed accuracy
+		- The mean absolute error (MAE) against observed accuracy, before and after calibration
+		- A binned reliability error (mean absolute gap between average score and average observed accuracy per 0.1-wide bin), before and after calibration
+	- Warns if calibration did not reduce the holdout MAE, which usually means the raw estimate isn't correlated enough with the observed accuracy for the curve to be useful
+
+The calibrated difficulty is finally calculated as follows:
+- The wrapped estimator (Stage 1 or Stage 2) computes its `ConceptDifficulty` as normal
+- `predicted_accuracy` is passed through the curve
+- `min_predicted_accuracy` (the worst-case per-name accuracy) is passed through the same curve
+- Everything else (`concept_info`, `intrinsic_ic`, `features` and `explanation`) is passed through untouched
+	- `intrinsic_ic` is an ontology property rather than a performance prediction, so there is nothing to calibrate it against
+
+Usage:
+- Fit a curve, once per estimator you want to calibrate:
+	- `python -m medcat_performance_estimator.fit_calibration_curve --input eval_results.csv --output stage1_calibration.json --holdout-fraction 0.2`
+	- Other options: `--raw-column`, `--observed-column` and `--seed` (defaults to `0`)
+- Wrap the estimator:
+	- `CalibratedDifficultyEstimator(stage1, CalibrationCurve.load("stage1_calibration.json"))`
+	- If no curve is given, the bundled default curve is used
+
+The config options used for this stage (`CalibratedEstimationConfig`):
+- `calibration_curve` (a `CalibrationCurve` object; takes precedence over the path if both are given)
+- `calibration_curve_path` (path to a curve JSON file)
+- If neither is set, `resolve_curve()` falls back to the bundled default curve
+
 # Limitations
 b
