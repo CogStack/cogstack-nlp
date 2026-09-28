@@ -341,24 +341,22 @@ class StatsCalculator:
                 )
 
     def _create_example(self, project_name: str, project_id: str, cui: str,
-                           ann: PredictedAnnotation | GoldAnnotation) -> dict:
+                           ann: PredictedAnnotation | GoldAnnotation,
+                           confidence: float = 1.0) -> dict:
         """Create a standardized example payload for true positive, false positive, and 
         false negative examples."""
-        acc = 1.0
-        if ann is type(PredictedAnnotation):
-            acc = ann['confidence']
-
-        return {"cui": cui,
-                "project_id": project_id,
-                "project_name": project_name,
-                "document_id": ann['document_id'],
-                "document_name": ann['document_name'],
-                "start": ann['start'],
-                "end": ann['end'],
-                "acc": acc,
-                "source_value": ann['text'],
-                "text": ann['context'],
-                }
+        return {
+            'cui': cui,
+            'project_id': project_id,
+            'project_name': project_name,
+            'document_id': ann['document_id'],
+            'document_name': ann['document_name'],
+            'start': ann['start'],
+            'end': ann['end'],
+            'acc': confidence,
+            'source_value': ann['text'],
+            'text': ann['context'],
+        }
         
     def _record_tp(self, 
                    state: RawStats, 
@@ -376,7 +374,8 @@ class StatsCalculator:
             project_name=project_name,
             project_id=project_id,
             cui=cui,
-            ann=pred
+            ann=pred,
+            confidence=pred['confidence']
         ))
 
     def _record_fn(self, 
@@ -414,7 +413,8 @@ class StatsCalculator:
             project_name=project_name,
             project_id=project_id,
             cui=cui,
-            ann=pred
+            ann=pred,
+            confidence=pred['confidence']
         ))
             
     def _record_no_tokens(self, 
