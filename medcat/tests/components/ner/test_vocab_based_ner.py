@@ -1,6 +1,9 @@
 from medcat.components.ner import vocab_based_ner
 from medcat.components import types
 from medcat.config import Config
+from medcat.cat import CAT
+from medcat.cdb import CDB
+from medcat.vocab import Vocab
 
 import unittest
 
@@ -38,3 +41,33 @@ class NerInitTests(ComponentInitTests, unittest.TestCase):
         cls.cdb_vocab = dict()
         cls.cdb = FakeCDB(Config())
         return super().setUpClass()
+
+
+class TokensToRawNameTests(unittest.TestCase):
+    AVOID_TARGETS = [
+        "~~", "~\n~", "~\n",
+    ]
+    EMPTY_TOKEN_TEXTS = [
+        "my string  double space",
+        "my string \n with newline",
+        "my string ends newline\n",
+    ]
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        config = Config()
+        config.general.nlp.provider = 'spacy'
+        vocab = Vocab()
+        cdb = CDB(config)
+        cls.cat = CAT(cdb, vocab, config)
+
+    def test_ignores_empty_tokens(self):
+        for text in self.EMPTY_TOKEN_TEXTS:
+            tkns = list(self.cat(text))
+            with self.subTest(f"{text}"):
+                opts = vocab_based_ner.tokens_to_raw_name_opts(
+                    tkns, "~", False
+                )
+                for opt in opts:
+                    for target in self.AVOID_TARGETS:
+                        self.assertNotIn(target, opt)
