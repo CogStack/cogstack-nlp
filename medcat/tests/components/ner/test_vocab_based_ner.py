@@ -63,7 +63,10 @@ class TokensToRawNameTests(unittest.TestCase):
 
     def test_ignores_empty_tokens(self):
         for text in self.EMPTY_TOKEN_TEXTS:
-            tkns = list(self.cat(text))
+            tkns = [
+                tkn for tkn in self.cat(text)
+                if not tkn.to_skip
+            ]
             with self.subTest(f"{text}"):
                 opts = vocab_based_ner.tokens_to_raw_name_opts(
                     tkns, "~", False
