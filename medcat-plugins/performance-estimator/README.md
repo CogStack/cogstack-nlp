@@ -3,6 +3,9 @@
   
 This project aims to estimate MedCAT model performance for a certain set of concepts.
 
+> [!WARNING]
+> The estimates produced here are rough, aggregate-level guidance for prioritising where to add training data. They are **not** a measurement or guarantee of how your model will perform on any particular concept or on your data. Please read the [Limitations](#limitations) section before using or presenting any of the numbers.
+
 The process is separated into 3 stages:
 1. Ontology based estimation
 2. Training aware estimation
@@ -284,5 +287,24 @@ estimates = get_estimate(
 - A config of the wrong type for its stage raises a `TypeError`
 
 
-# Limitations
-b
+## Limitations
+
+Please keep the following in mind when interpreting the estimates.
+
+### 1. The estimate does not correspond to a specific, measured metric
+
+The predicted accuracy is not an estimate of any specific metric of the full MedCAT pipeline. The closest thing to a well-defined target is the recall of a linker-only setup (i.e. with a perfect NER step), and that is what the calibration is meant to approximate. Even then, the estimates will not be exact. They are a heuristic built from ontology structure, name ambiguity and training exposure, not a model of the real pipeline. End-to-end performance also depends on things not modelled here, such as NER quality, the text being processed, and other config choices. Treat the numbers as a relative signal, not as literal accuracy or recall values.
+
+### 2. The estimates are meaningful in aggregate, not per concept
+
+The estimates say something useful about groups of concepts, but much less about any individual concept. This is the reason for the tiering. On average, concepts in Tier A will perform better than those in Tier B, and those in Tier B will perform better than those in Tier C. However, for a sufficiently large set of concepts there will almost certainly be concepts in a lower tier that perform better than most concepts in a higher tier. The tiers should be used to decide where training effort is best spent on average, not to make claims about a specific concept.
+
+### 3. We do not know what we do not know
+
+One of the main limitations is missing synonyms. The estimate can only reason about the names and concepts that are known to the model. If the text you are about to use MedCAT on is likely to contain synonyms that the model isn't aware of, this cannot be estimated, and the real performance will likely be considerably worse than predicted. Missing names can also hide ambiguity: a name we don't know about can't show up as a competitor for the concepts it would clash with.
+
+The effect on the estimates can also be hard to predict. If some concepts (e.g. those in particular tiers) are missing more synonyms than others, the estimates can end up biased in ways that are not visible from the numbers themselves.
+
+### 4. Per-concept details are best-effort
+
+The output includes per-concept numbers, some feature values and a limited explanation of the estimate (e.g. the primary penalty driver and the worst synonym / competitor). These are provided on a best-effort basis. In isolation they are not very useful, and they should not be read as a reliable account of why a specific concept will perform well or badly. In particular, no specific guarantees are made about any individual concept's estimate or explanation. The point from 2 applies here as well: the value lies in the aggregate picture.
