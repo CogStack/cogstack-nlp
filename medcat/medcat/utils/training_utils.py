@@ -93,12 +93,23 @@ def _parse_raw_name(
     try_reverse_word_order: bool,
     checker: Callable[[str], bool],
 ) -> str:
+    if not tkns:
+        logger.info("No tokens for cheating component to create raw name")
+        return ""
     opts = tokens_to_raw_name_opts(
         tkns, separator, try_reverse_word_order)
     for opt in opts:
         if checker(opt):
             return opt
-    return opt
+    name = next(tokens_to_raw_name_opts(
+        tkns, separator, try_reverse_word_order))
+    logger.debug(
+        "Tokens did not appear in the CBD as a name so returning "
+        "first name (%s) but it will not map to link candidates: %s",
+        name, tkns
+    )
+    # NOTE: doing again for the sake of return
+    return name
 
 
 class UnknownTokensException(ValueError):
