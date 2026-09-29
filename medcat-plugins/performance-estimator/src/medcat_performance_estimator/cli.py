@@ -102,6 +102,9 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+# NOTE: this was complaining about `except Exception as e`
+#       which I feel like is fine in this use case
+# ruff: noqa: BLE001
 def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
