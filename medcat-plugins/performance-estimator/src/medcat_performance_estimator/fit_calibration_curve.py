@@ -33,8 +33,8 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from sklearn.isotonic import IsotonicRegression
-from sklearn.model_selection import train_test_split
+from sklearn.isotonic import IsotonicRegression  # type: ignore
+from sklearn.model_selection import train_test_split  # type: ignore
 
 
 from .stage3_calibration import CalibrationCurve
