@@ -41,7 +41,6 @@ dev = [
     "mypy",
     "types-networkx",
     "pandas-stubs",
-    "sklearn-stub",
 ]
 
 # entry-points to add onto medcat
