@@ -10,8 +10,8 @@ from typing import Any
 
 from medcat.cat import CAT
 
-from .stage3_calibration import CalibratedEstimationConfig
 from .estimation import EstimationType, PerStageConfigs, build_estimator
+from .stage3_calibration import CalibratedEstimationConfig
 
 
 def parse_cuis(cui_arg: str | None, cui_file: Path | None) -> list[str]:

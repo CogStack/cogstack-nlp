@@ -2,8 +2,8 @@ from abc import ABC, abstractmethod
 
 import networkx as nx
 from medcat.cdb import CDB
-from .common import ConceptInfo
 
+from .common import ConceptInfo
 from .utils import method_lru_cache as lru_cache
 
 

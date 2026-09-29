@@ -16,21 +16,28 @@ estimator, which in turn wraps a stage-1 estimator -- so e.g. requesting
 `per_stage_configs` is honoured: every stage actually built along the way
 looks itself up in `per_stage_configs`, not just the top-level `estim_type`.
 """
+from collections.abc import Callable
 from enum import Enum
-from typing import cast, Callable
+from typing import cast
 
 from medcat.cat import CAT
 
 from .common import (
-    ConceptDifficulty, DifficultyEstimator, EstimationBaseConfig,
-    ActionTier, DEFAULT_TIER_THRESHOLDS, TierThresholds)
-from .stage1_ontology import EstimationConfig, OntologyDifficultyEstimator
+    DEFAULT_TIER_THRESHOLDS,
+    ActionTier,
+    ConceptDifficulty,
+    DifficultyEstimator,
+    EstimationBaseConfig,
+    TierThresholds,
+)
 from .ontology_graph import SnomedGraph
-from .stage2_training_aware import (
-    TrainingAwareConfig, TrainingAwareDifficultyEstimator)
-from .training_fetcher import CDBTrainingFetcher
+from .stage1_ontology import EstimationConfig, OntologyDifficultyEstimator
+from .stage2_training_aware import TrainingAwareConfig, TrainingAwareDifficultyEstimator
 from .stage3_calibration import (
-    CalibratedDifficultyEstimator, CalibratedEstimationConfig)
+    CalibratedDifficultyEstimator,
+    CalibratedEstimationConfig,
+)
+from .training_fetcher import CDBTrainingFetcher
 
 
 class EstimationType(str, Enum):

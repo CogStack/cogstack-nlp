@@ -6,10 +6,16 @@ import numpy as np
 from pydantic import ConfigDict, Field
 
 from .common import (
-    ConceptDifficulty, EstimationBaseConfig, ConceptExplanation, ConceptInfo)
-from .stage1_ontology import (
-    EstimationConfig, MisconfiguredConcept, NoSynonymsForConcept)
+    ConceptDifficulty,
+    ConceptExplanation,
+    EstimationBaseConfig,
+)
 from .ontology_graph import AbstractOntologyGraph
+from .stage1_ontology import (
+    EstimationConfig,
+    MisconfiguredConcept,
+    NoSynonymsForConcept,
+)
 from .training_fetcher import TrainingFetcher
 from .utils import combine_context_vector, count_confidence, relative_mass
 

@@ -23,8 +23,7 @@ from typing import Any
 
 import numpy as np
 
-from .common import (
-    ConceptDifficulty, DifficultyEstimator, EstimationBaseConfig)
+from .common import ConceptDifficulty, DifficultyEstimator, EstimationBaseConfig
 
 
 class CalibrationCurve:

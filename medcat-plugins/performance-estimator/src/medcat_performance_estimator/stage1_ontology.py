@@ -1,8 +1,11 @@
 import math
 
-from .ontology_graph import AbstractOntologyGraph
 from .common import (
-    ConceptDifficulty, EstimationBaseConfig, ConceptExplanation, ConceptInfo)
+    ConceptDifficulty,
+    ConceptExplanation,
+    EstimationBaseConfig,
+)
+from .ontology_graph import AbstractOntologyGraph
 from .utils import method_lru_cache as lru_cache
 
 
