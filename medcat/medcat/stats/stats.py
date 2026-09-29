@@ -1,4 +1,4 @@
-from typing import Optional, Callable, TextIO, TypedDict
+from typing import Optional, Callable, TextIO, TypedDict, Any
 
 from tqdm import tqdm
 
@@ -122,6 +122,10 @@ class GoldAnnotation(TypedDict):
     cui: str
     text: str
     raw: object
+    document_id: int
+    document_name: str
+    # context is 60 chars before + after the entity
+    context: str
 
 
 class PredictedAnnotation(TypedDict):
@@ -133,7 +137,11 @@ class PredictedAnnotation(TypedDict):
     text: str
     confidence: float
     raw: MutableEntity
-    no_tokens: int
+    no_tokens: int  
+    document_id: int
+    document_name: str
+    # context is 60 chars before + after the entity
+    context: str
 
 
 class ModeStats(BaseModel):
@@ -267,6 +275,9 @@ class StatsCalculator:
                     'cuis': valid_cuis,  # List of acceptable CUIs
                     'cui': valid_cuis[0],  # For counting
                     'text': ann['value'],
+                    'context': doc['text'][max(0, ann['start'] - 60):ann['end'] + 60],
+                    'document_id': doc['id'],
+                    'document_name': doc['name'],
                     'raw': ann
                 })
         return gold_anns
@@ -274,6 +285,7 @@ class StatsCalculator:
     def _extract_predictions(
         self,
         predictions: list[MutableEntity],
+        doc: MedCATTrainerExportDocument,
         apply_filters: bool = True,
     ) -> list[PredictedAnnotation]:
         """Extract relevant info from predicted entities."""
@@ -288,6 +300,10 @@ class StatsCalculator:
                 'end': ent.base.end_char_index,
                 'cui': ent.cui,
                 'text': ent.base.text,
+                'context': doc['text'][max(0, ent.base.start_char_index - 60):
+                                       ent.base.end_char_index + 60],
+                'document_id': doc['id'],
+                'document_name': doc['name'],
                 'confidence': float(ent.context_similarity),
                 'raw': ent,
                 'no_tokens': 1 if ent.id == UNTOKENIZABLE_ENTITY_ID else 0,
@@ -323,27 +339,50 @@ class StatsCalculator:
                     state.cui_gold_counts.get(cui, 0)
                     + 1
                 )
+
+    def _create_example(self, project_name: str, project_id: str, cui: str,
+                           ann: PredictedAnnotation | GoldAnnotation,
+                           confidence: float = 1.0) -> dict:
+        """Create a standardized example payload for true positive, false positive, and 
+        false negative examples."""
+        return {
+            'cui': cui,
+            'project_id': project_id,
+            'project_name': project_name,
+            'document_id': ann['document_id'],
+            'document_name': ann['document_name'],
+            'start': ann['start'],
+            'end': ann['end'],
+            'acc': confidence,
+            'source_value': ann['text'],
+            'text': ann['context'],
+        }
         
     def _record_tp(self, 
                    state: RawStats, 
                    gold: GoldAnnotation, 
-                   pred: PredictedAnnotation) -> None:
+                   pred: PredictedAnnotation,
+                   project_id: str,
+                   project_name: str) -> None:
         """Record a true positive."""
         cui = pred['cui']
         state.tp += 1
         state.cui_tp[cui] = state.cui_tp.get(cui, 0) + 1
-        
         if cui not in state.examples['tp']:
             state.examples['tp'][cui] = []
-        state.examples['tp'][cui].append({
-            'gold_text': gold['text'],
-            'pred_text': pred['text'],
-            'cui': cui,
-            'start': pred['start'],
-            'confidence': pred['confidence']
-        })
+        state.examples['tp'][cui].append(self._create_example(
+            project_name=project_name,
+            project_id=project_id,
+            cui=cui,
+            ann=pred,
+            confidence=pred['confidence']
+        ))
 
-    def _record_fn(self, state: RawStats, gold: GoldAnnotation) -> None:
+    def _record_fn(self, 
+                   state: RawStats, 
+                   gold: GoldAnnotation,
+                   project_id: str,
+                   project_name: str) -> None:
         """Record a false negative."""
         cui = gold['cui']
         state.fn += 1
@@ -351,13 +390,18 @@ class StatsCalculator:
         
         if cui not in state.examples['fn']:
             state.examples['fn'][cui] = []
-        state.examples['fn'][cui].append({
-            'text': gold['text'],
-            'acceptable_cuis': gold['cuis'],
-            'start': gold['start']
-        })
+        state.examples['fn'][cui].append(self._create_example(
+            project_name=project_name,
+            project_id=project_id,
+            cui=cui,
+            ann=gold
+        ))
         
-    def _record_fp(self, state: RawStats, pred: PredictedAnnotation) -> None:
+    def _record_fp(self, 
+                   state: RawStats, 
+                   pred: PredictedAnnotation,
+                   project_id: str,
+                   project_name: str) -> None:
         """Record a false positive."""
         cui = pred['cui']
         state.fp += 1
@@ -365,14 +409,19 @@ class StatsCalculator:
         
         if cui not in state.examples['fp']:
             state.examples['fp'][cui] = []
-        state.examples['fp'][cui].append({
-            'text': pred['text'],
-            'cui': cui,
-            'start': pred['start'],
-            'confidence': pred['confidence']
-        })
+        state.examples['fp'][cui].append(self._create_example(
+            project_name=project_name,
+            project_id=project_id,
+            cui=cui,
+            ann=pred,
+            confidence=pred['confidence']
+        ))
             
-    def _record_no_tokens(self, state: RawStats, pred: PredictedAnnotation) -> None:
+    def _record_no_tokens(self, 
+                          state: RawStats, 
+                          pred: PredictedAnnotation, 
+                          project_id: str, 
+                          project_name: str) -> None:
         """Record a prediction with no tokens (ID -1000)."""
         # When there's an entity with no way for the tokenizer to parse it
         # (commonly, this means that it's a subtoken span i.e. mRBC -> RBC isn't viable)
@@ -386,11 +435,14 @@ class StatsCalculator:
             'cui': pred['cui'],
             'text': pred['text'],
             'raw': pred['raw'],
+            'document_id': pred['document_id'],
+            'document_name': pred['document_name'],
+            'context': pred['context'],
         }
         cui = gold['cui']
         state.no_tokens += 1
         state.cui_no_tokens[cui] = state.cui_no_tokens.get(cui, 0) + 1
-        self._record_fn(state, gold)
+        self._record_fn(state, gold, project_id, project_name)
         
     def _find_matching_prediction(
         self,
@@ -421,7 +473,9 @@ class StatsCalculator:
     def _score_annotations(self, 
                            gold_anns: list[GoldAnnotation], 
                            pred_anns: list[PredictedAnnotation],
-                           project_index: int, 
+                           project_index: int,
+                           project_id: str,
+                           project_name: str,
                            mode: MetricMode, 
                            filter_fp_by_cui: bool = True) -> None:
         aggregate_stats = self.stats.get_aggregate_stats()
@@ -445,7 +499,8 @@ class StatsCalculator:
             if mode == MetricMode.LINKING:
                 for pred in pred_anns:
                     if pred['no_tokens'] == 1:
-                        self._record_no_tokens(state.stats, pred)
+                        self._record_no_tokens(state.stats, pred, project_id, 
+                                               project_name)
 
             # NOTE: All predictions where ID are -1000 are false positives.
             # this should only really happen on the linker testing, as it's a perfect
@@ -462,10 +517,10 @@ class StatsCalculator:
                     # True Positive
                     matched_preds.add(match_idx)
                     pred = pred_anns[match_idx]
-                    self._record_tp(state.stats, gold, pred)
+                    self._record_tp(state.stats, gold, pred, project_id, project_name)
                 else:
                     # False Negative
-                    self._record_fn(state.stats, gold)
+                    self._record_fn(state.stats, gold, project_id, project_name)
 
             # Phase 2: Remaining predictions are False Positives
             for idx, pred in enumerate(pred_anns):
@@ -473,7 +528,7 @@ class StatsCalculator:
                     continue
                 if filter_fp_by_cui and not self.filters.check_filters(pred['cui']):
                     continue
-                self._record_fp(state.stats, pred)
+                self._record_fp(state.stats, pred, project_id, project_name)
 
     def _to_ner_views(self, 
                       gold_anns: list[GoldAnnotation], 
@@ -700,6 +755,8 @@ class StatsCalculator:
         self,
         doc: MedCATTrainerExportDocument,
         project_index: int,
+        project_name: str,
+        project_id: Any,
         predictions: list[MutableEntity],
         mode: MetricMode,
         calculate_ner_performance: bool = False,
@@ -712,13 +769,15 @@ class StatsCalculator:
             predictions: Model's predicted entities
         """
         full_pipe_gold_anns = self._extract_gold_annotations(doc)
-        full_pipe_pred_anns = self._extract_predictions(predictions)
+        full_pipe_pred_anns = self._extract_predictions(predictions, doc)
         
         self._count_gold_annotations(full_pipe_gold_anns, project_index, mode)
         self._score_annotations(
             full_pipe_gold_anns, 
             full_pipe_pred_anns,
-            project_index, 
+            project_index,
+            project_id,
+            project_name,
             mode=mode,
             filter_fp_by_cui=True
         )
@@ -736,7 +795,8 @@ class StatsCalculator:
             self._count_gold_annotations(ner_gold_anns, project_index,
                                         mode=MetricMode.NER)
             self._score_annotations(ner_gold_anns, ner_pred_anns,
-                                    project_index, mode=MetricMode.NER,
+                                    project_index, project_name,
+                                    project_id, mode=MetricMode.NER,
                                     filter_fp_by_cui=False)
             self._score_character_annotations(
                 ner_gold_anns, 
@@ -775,6 +835,8 @@ class StatsCalculator:
                 self.process_document(
                     doc,
                     project_index,
+                    project['name'],
+                    project['id'],
                     predictions,
                     mode=mode,
                     calculate_ner_performance=calculate_ner_performance,
