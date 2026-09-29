@@ -38,7 +38,6 @@ from sklearn.model_selection import train_test_split  # type: ignore
 
 from .stage3_calibration import CalibrationCurve
 
-
 _DEFAULT_EDGES_SPEC = (0, 1, 11)
 _DEFAULT_EDGES = np.linspace(*_DEFAULT_EDGES_SPEC)
 
