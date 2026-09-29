@@ -3,3 +3,4 @@ medcat-den
 ipython
 plotly
 openpyxl
+scipy>=1.13
