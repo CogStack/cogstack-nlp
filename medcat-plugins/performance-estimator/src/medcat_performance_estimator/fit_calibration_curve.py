@@ -39,9 +39,13 @@ from sklearn.model_selection import train_test_split  # type: ignore
 from .stage3_calibration import CalibrationCurve
 
 
+_DEFAULT_EDGES_SPEC = (0, 1, 11)
+_DEFAULT_EDGES = np.linspace(*_DEFAULT_EDGES_SPEC)
+
+
 def _mean_abs_calibration_error(
     raw: np.ndarray, observed: np.ndarray,
-    bin_edges: np.ndarray = np.linspace(0, 1, 11)
+    bin_edges: np.ndarray = _DEFAULT_EDGES,
 ) -> float:
     """Mean absolute difference between average raw score and average
     observed accuracy within each bin of raw scores -- a simple, readable
