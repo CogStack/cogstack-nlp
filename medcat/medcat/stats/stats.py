@@ -50,7 +50,7 @@ class RawStats(BaseModel):
     # gold counts is the number of labels for that CUI
     cui_gold_counts: dict[str, int] = Field(default_factory=dict)
     cui_no_tokens: dict[str, int] = Field(default_factory=dict)
-    
+
     examples: dict[str, dict[str, list]] = {
         'tp': {}, 'fp': {}, 'fn': {}}
 
@@ -71,7 +71,7 @@ class OverallMetrics(BaseModel):
     precision: float = 0.0
     recall: float = 0.0
     f1: float = 0.0
-    
+
     # Number of labels where it is not possible to generate an entity
     no_tokens: int = 0
     # Number of labels in entire project where it is not 
@@ -149,7 +149,8 @@ class ModeStats(BaseModel):
 
     stats: RawStats = Field(default_factory=RawStats)
     metrics: Metrics | None = None
-    
+
+
 class ProjectStats(BaseModel):
     """Accumulated state and calculated metrics for one project 
     or all projects."""
@@ -162,7 +163,7 @@ class ProjectStats(BaseModel):
     def get_mode(self, mode: MetricMode) -> ModeStats | None:
         normalized = MetricMode(mode)
         return getattr(self, normalized.value)
-    
+
     @classmethod
     def create(
         cls,
@@ -173,7 +174,8 @@ class ProjectStats(BaseModel):
             ner=ModeStats() if ner else None,
             linking=ModeStats() if linking else None,
         )
-    
+
+
 class StatsCollection(BaseModel):
     """Accumulated state and calculated metrics for all projects."""
     all_projects: ProjectStats = Field(
@@ -211,7 +213,8 @@ class StatsCollection(BaseModel):
                 for i in range(num_projects)
             },
         )
-    
+
+
 class StatsCalculator:
     """Calculates statistics for entity linking."""
 
@@ -281,7 +284,7 @@ class StatsCalculator:
                     'raw': ann
                 })
         return gold_anns
-    
+
     def _extract_predictions(
         self,
         predictions: list[MutableEntity],
@@ -320,7 +323,7 @@ class StatsCalculator:
         """Count gold annotations for a project and all-projects aggregate."""
         project_stats = self.stats.get_project_stats(project_index)
         aggregate_stats = self.stats.get_aggregate_stats()
-        
+
         for stats in (project_stats, aggregate_stats):
             mode_stats = stats.get_mode(mode)
             if mode_stats is None:
@@ -357,7 +360,7 @@ class StatsCalculator:
             'source_value': ann['text'],
             'text': ann['context'],
         }
-        
+
     def _record_tp(self, 
                    state: RawStats, 
                    gold: GoldAnnotation, 
@@ -368,6 +371,7 @@ class StatsCalculator:
         cui = pred['cui']
         state.tp += 1
         state.cui_tp[cui] = state.cui_tp.get(cui, 0) + 1
+
         if cui not in state.examples['tp']:
             state.examples['tp'][cui] = []
         state.examples['tp'][cui].append(self._create_example(
@@ -387,7 +391,7 @@ class StatsCalculator:
         cui = gold['cui']
         state.fn += 1
         state.cui_fn[cui] = state.cui_fn.get(cui, 0) + 1
-        
+
         if cui not in state.examples['fn']:
             state.examples['fn'][cui] = []
         state.examples['fn'][cui].append(self._create_example(
@@ -396,7 +400,7 @@ class StatsCalculator:
             cui=cui,
             ann=gold
         ))
-        
+
     def _record_fp(self, 
                    state: RawStats, 
                    pred: PredictedAnnotation,
@@ -406,7 +410,7 @@ class StatsCalculator:
         cui = pred['cui']
         state.fp += 1
         state.cui_fp[cui] = state.cui_fp.get(cui, 0) + 1
-        
+
         if cui not in state.examples['fp']:
             state.examples['fp'][cui] = []
         state.examples['fp'][cui].append(self._create_example(
@@ -416,7 +420,7 @@ class StatsCalculator:
             ann=pred,
             confidence=pred['confidence']
         ))
-            
+
     def _record_no_tokens(self, 
                           state: RawStats, 
                           pred: PredictedAnnotation, 
@@ -443,7 +447,7 @@ class StatsCalculator:
         state.no_tokens += 1
         state.cui_no_tokens[cui] = state.cui_no_tokens.get(cui, 0) + 1
         self._record_fn(state, gold, project_id, project_name)
-        
+
     def _find_matching_prediction(
         self,
         gold: GoldAnnotation,
@@ -461,7 +465,6 @@ class StatsCalculator:
         for idx, pred in enumerate(predictions):
             if idx in matched_preds:
                 continue
-
             # Exact span match
             if pred['start'] == gold['start']:
                 # Check if predicted CUI is acceptable
@@ -469,7 +472,7 @@ class StatsCalculator:
                     return idx
 
         return None
-        
+
     def _score_annotations(self, 
                            gold_anns: list[GoldAnnotation], 
                            pred_anns: list[PredictedAnnotation],
@@ -482,7 +485,7 @@ class StatsCalculator:
         project_stats = self.stats.get_project_stats(project_index)
         all_projects_state = aggregate_stats.get_mode(mode)
         project_state = project_stats.get_mode(mode)
-        
+
         project_and_aggregate = (all_projects_state, project_state)
 
         for state in project_and_aggregate:
@@ -545,7 +548,7 @@ class StatsCalculator:
             for gold in gold_anns
         ]
         return eval_gold_anns, eval_pred_anns
-    
+
     def _build_character_sets(
         self,
         anns: list[PredictedAnnotation] | list[GoldAnnotation],
@@ -561,7 +564,7 @@ class StatsCalculator:
 
 
         return dict(chars_by_cui)
-    
+
     def _character_cohen_kappa(
         self,
         gold_chars: set[int],
@@ -571,7 +574,7 @@ class StatsCalculator:
         """
         The voices in my chatbot told me this is faster than the 
         sklearn implementation, and it is also more memory efficient.
-        
+
         Testing shows same metrics, and halving computation speed.
         """
 
@@ -608,7 +611,7 @@ class StatsCalculator:
             return 1.0
 
         return (po - pe) / denominator
-    
+
     def _calculate_document_character_scores(
         self,
         gold_anns: list[GoldAnnotation],
@@ -711,7 +714,7 @@ class StatsCalculator:
         - Gold label Character Intersection over Union (IoU) for gold and 
         predicted annotations.
         - Cohen's Kappa for gold and predicted annotations.
-        
+
         Cheat sheet of what we're generating:
         # iou = sum of document-level macro IoUs
         #     -> divide by number of documents
@@ -770,10 +773,10 @@ class StatsCalculator:
         """
         full_pipe_gold_anns = self._extract_gold_annotations(doc)
         full_pipe_pred_anns = self._extract_predictions(predictions, doc)
-        
+
         self._count_gold_annotations(full_pipe_gold_anns, project_index, mode)
         self._score_annotations(
-            full_pipe_gold_anns, 
+            full_pipe_gold_anns,
             full_pipe_pred_anns,
             project_index,
             project_id,
@@ -784,7 +787,7 @@ class StatsCalculator:
         self._score_character_annotations(
             full_pipe_gold_anns,
             full_pipe_pred_anns,
-            project_index, 
+            project_index,
             mode=mode, doc_length=len(doc['text'])
         )
 
@@ -799,13 +802,13 @@ class StatsCalculator:
                                     project_id, mode=MetricMode.NER,
                                     filter_fp_by_cui=False)
             self._score_character_annotations(
-                ner_gold_anns, 
+                ner_gold_anns,
                 ner_pred_anns,
-                project_index, 
+                project_index,
                 mode=MetricMode.NER,
                 doc_length=len(doc['text'])
             )
-        
+
     def process_project(self, project: MedCATTrainerExportProject,
                         project_index: int,
                         entity_getter: Callable[[str], list[MutableEntity]],
@@ -815,7 +818,7 @@ class StatsCalculator:
                         extra_cui_filter: set[str] | None = None
                         ) -> None:
         """Process all documents in a project.
-        
+
         Args:
             project: The project data containing documents and annotations.
             project_index: Index of the project in the export.
@@ -856,7 +859,7 @@ class StatsCalculator:
                        extra_cui_filter: set[str] | None = None,
                        filter_before_disamb: bool = False) -> None:
         """Process all projects in the export.
-        
+
         Args:
             cat: The MedCAT CAT instance for entity linking.
             export: The MedCAT trainer export data.
@@ -878,7 +881,7 @@ class StatsCalculator:
                 use_project_filters=use_project_filters,
                 extra_cui_filter=extra_cui_filter
             )
-            
+
     @staticmethod
     def _compute_prf(tp: int, fp: int, fn: int, no_tokens: int) -> dict:
         """Compute precision, recall, F1."""
@@ -900,7 +903,7 @@ class StatsCalculator:
         if info:
             return info.get('preferred_name') or list(info['names'])[0]
         return cui
-    
+
     def _safe_mean(self, values):
         return sum(values) / len(values) if values else 0.0
 
@@ -992,7 +995,7 @@ class StatsCalculator:
         if mode_stats is None:
             return
         overall, per_cui = self._prepare_metrics(mode_stats.stats)
-        
+
         # Store computed metrics in the ModeStats object
         mode_stats.metrics = Metrics(
             overall=overall,
@@ -1001,7 +1004,7 @@ class StatsCalculator:
                 for cui, metrics in per_cui.items()
             },
         )
-            
+
     def compute_all_metrics(self,
                             ner_performance: bool = True,
                             linking_performance: bool = True) -> None:
@@ -1012,7 +1015,7 @@ class StatsCalculator:
             self.compute_metrics(stats, MetricMode.NER)
         if linking_performance:
             self.compute_metrics(stats, MetricMode.LINKING)
-        
+
         if self.num_projects > 1:
             for i in range(self.num_projects):
                 stats = self.stats.get_project_stats(i)
@@ -1024,7 +1027,7 @@ class StatsCalculator:
                 if linking_performance:
                     self.compute_metrics(stats, 
                                          MetricMode.LINKING)
-            
+
     # these 3 functions are just copied from previous, 
     # they get nice names for concepts
     def _empty(self, cui: str) -> CUIInfo:
@@ -1037,7 +1040,7 @@ class StatsCalculator:
     def _get_pref_name(self, cui: str) -> str:
         info = self._get_or_empty(cui)
         return info['preferred_name'] or list(info['names'])[0]
-    
+
     def print_stats(self,
                     epoch: int,
                     mode_stats: ModeStats,
@@ -1159,7 +1162,7 @@ def get_stats_calculator(cat: CAT,
 
     This should be called without calling "get_stats", as that is just a 
     legacy wrapper.
-    
+
     Args:
         cat: The MedCAT CAT instance for entity linking.
         data: The MedCAT trainer export data.
@@ -1203,12 +1206,14 @@ def get_stats_calculator(cat: CAT,
             )
 
     calculator.compute_all_metrics(ner_performance, linking_performance)
+
     if do_print:
         full_stats = calculator.stats.all_projects.get_mode(MetricMode.FULL)
         if full_stats is None:
             raise ValueError("No statistics available for the full pipeline mode.")
         calculator.print_stats(epoch, full_stats)
     return calculator
+
 
 def get_stats(cat: CAT, 
               data: MedCATTrainerExport,
@@ -1220,12 +1225,12 @@ def get_stats(cat: CAT,
         dict[str, int], dict[str, int], dict[str, int],
         dict[str, float], dict[str, float], dict[str, float],
         dict[str, int], dict
-    ]:
+]:
     """Return stats for the entire project and full pipeline.
 
     This should be called without calling "get_stats", as that is just a 
     legacy wrapper.
-    
+
     Args:
         cat: The MedCAT CAT instance for entity linking.
         data: The MedCAT trainer export data.
