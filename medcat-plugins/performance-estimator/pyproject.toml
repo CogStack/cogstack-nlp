@@ -1,0 +1,66 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel",  "setuptools_scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "medcat_performance_estimator"
+dynamic = ["version"]
+description = ""
+readme = "README.md"
+license = { text = "Apache-2.0" }
+authors = [
+    { name="Mart Ratas", email="mart.ratas@kcl.ac.uk" }
+]
+requires-python = ">=3.10"
+
+keywords = ["MedCAT"]
+
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "License :: OSI Approved :: Apache Software License"
+]
+
+dependencies = [
+    "medcat>=2.5",
+    "pydantic",
+    "networkx",
+    "scikit-learn",
+    "pandas",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff",
+    "mypy",
+    "types-networkx",
+    "pandas-stubs",
+]
+
+# entry-points to add onto medcat
+[project.entry-points."medcat.plugins"]
+performance_estimator = "medcat_performance_estimator"
+
+[project.urls]
+Homepage = "https://github.com/CogStack/cogstack-nlp/tree/main/medcat-plugins/performance-estimator"
+Repository = "https://github.com/CogStack/cogstack-nlp/tree/main/medcat-plugins/performance-estimator"
+Issues = "https://github.com/CogStack/cogstack-nlp/issues"
+
+[tool.setuptools_scm]
+root = "../.."
+tag_regex = "^medcat-performance-estimator/v(?P<version>\\d+(?:\\.\\d+)*)(?:[ab]\\d+|rc\\d+)?$"
+version_scheme = "post-release"
+local_scheme = "no-local-version"
+git_describe_command = "git describe --dirty --tags --long --match 'medcat-performance-estimator/v*'"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"medcat_performance_estimator" = ["py.typed"]
