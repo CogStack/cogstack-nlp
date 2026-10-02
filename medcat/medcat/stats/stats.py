@@ -40,8 +40,8 @@ class RawStats(BaseModel):
     # i.e. entity at chars 100-103, token is 100-104.
     no_tokens: int = 0
 
-    # per document IoU metrics, summed over all documents and 
-    # averaged later via char_docs, which counts the number of 
+    # per document IoU metrics, summed over all documents and
+    # averaged later via char_docs, which counts the number of
     # documents that have entities that have been processed.
     iou_sum: float = 0.0
     giou_sum: float = 0.0
@@ -79,7 +79,7 @@ class OverallMetrics(BaseModel):
 
     # Number of labels where it is not possible to generate an entity
     no_tokens: int = 0
-    # Number of labels in entire project where it is not 
+    # Number of labels in entire project where it is not
     # possible to generate an entity
     no_tokens_ratio: float = 0.0
 
@@ -142,7 +142,7 @@ class PredictedAnnotation(TypedDict):
     text: str
     confidence: float
     raw: MutableEntity
-    no_tokens: int  
+    no_tokens: int
     document_id: int
     document_name: str
     # context is 60 chars before + after the entity
@@ -157,7 +157,7 @@ class ModeStats(BaseModel):
 
 
 class ProjectStats(BaseModel):
-    """Accumulated state and calculated metrics for one project 
+    """Accumulated state and calculated metrics for one project
     or all projects."""
     full_pipeline: ModeStats = Field(
         default_factory=ModeStats
@@ -232,13 +232,13 @@ class StatsCalculator:
                  ) -> None:
         self.filters = filters
         self.cui2info = cui2info
-        self.reset(num_projects, 
+        self.reset(num_projects,
                    ner_performance,
                    linking_performance)
 
-    def reset(self, 
-              num_projects: int, 
-              ner_performance: bool = False, 
+    def reset(self,
+              num_projects: int,
+              ner_performance: bool = False,
               linking_performance: bool = False) -> None:
         self.ner_performance = ner_performance
         self.linking_performance = linking_performance
@@ -351,7 +351,7 @@ class StatsCalculator:
     def _create_example(self, project_name: str, project_id: str, cui: str,
                            ann: PredictedAnnotation | GoldAnnotation,
                            confidence: float = 1.0) -> dict:
-        """Create a standardized example payload for true positive, false positive, and 
+        """Create a standardized example payload for true positive, false positive, and
         false negative examples."""
         return {
             'cui': cui,
@@ -366,9 +366,9 @@ class StatsCalculator:
             'text': ann['context'],
         }
 
-    def _record_tp(self, 
-                   state: RawStats, 
-                   gold: GoldAnnotation, 
+    def _record_tp(self,
+                   state: RawStats,
+                   gold: GoldAnnotation,
                    pred: PredictedAnnotation,
                    project_id: str,
                    project_name: str) -> None:
@@ -387,8 +387,8 @@ class StatsCalculator:
             confidence=pred['confidence']
         ))
 
-    def _record_fn(self, 
-                   state: RawStats, 
+    def _record_fn(self,
+                   state: RawStats,
                    gold: GoldAnnotation,
                    project_id: str,
                    project_name: str) -> None:
@@ -406,8 +406,8 @@ class StatsCalculator:
             ann=gold
         ))
 
-    def _record_fp(self, 
-                   state: RawStats, 
+    def _record_fp(self,
+                   state: RawStats,
                    pred: PredictedAnnotation,
                    project_id: str,
                    project_name: str) -> None:
@@ -489,13 +489,13 @@ class StatsCalculator:
 
         return None
 
-    def _score_annotations(self, 
-                           gold_anns: list[GoldAnnotation], 
+    def _score_annotations(self,
+                           gold_anns: list[GoldAnnotation],
                            pred_anns: list[PredictedAnnotation],
                            project_index: int,
                            project_id: str,
                            project_name: str,
-                           mode: MetricMode, 
+                           mode: MetricMode,
                            filter_fp_by_cui: bool = True) -> None:
         aggregate_stats = self.stats.get_aggregate_stats()
         project_stats = self.stats.get_project_stats(project_index)
@@ -518,7 +518,7 @@ class StatsCalculator:
             if mode == MetricMode.LINKING:
                 for pred in pred_anns:
                     if pred['no_tokens'] == 1:
-                        self._record_no_tokens(state.stats, pred, project_id, 
+                        self._record_no_tokens(state.stats, pred, project_id,
                                                project_name)
 
             # NOTE: All predictions where ID are -1000 are false positives.
@@ -559,8 +559,8 @@ class StatsCalculator:
                     continue
                 self._record_fp(state.stats, pred, project_id, project_name)
 
-    def _to_ner_views(self, 
-                      gold_anns: list[GoldAnnotation], 
+    def _to_ner_views(self,
+                      gold_anns: list[GoldAnnotation],
                       pred_anns: list[PredictedAnnotation]
                       ) -> tuple[list[GoldAnnotation], list[PredictedAnnotation]]:
         ner_cui = 'DETECTED_ENTITY'
@@ -597,7 +597,7 @@ class StatsCalculator:
         document_length: int,
     ) -> float:
         """
-        The voices in my chatbot told me this is faster than the 
+        The voices in my chatbot told me this is faster than the
         sklearn implementation, and it is also more memory efficient.
 
         Testing shows same metrics, and halving computation speed.
@@ -727,16 +727,16 @@ class StatsCalculator:
         state.stats.cohen_k_sum += doc_cohen_k
         state.stats.char_docs += 1
 
-    def _score_character_annotations(self, 
-                                     gold_anns: list[GoldAnnotation], 
+    def _score_character_annotations(self,
+                                     gold_anns: list[GoldAnnotation],
                                      pred_anns: list[PredictedAnnotation],
-                                     project_index: int, 
-                                     mode: MetricMode, 
+                                     project_index: int,
+                                     mode: MetricMode,
                                      doc_length: int) -> None:
         """
         Calculate:
         - Character Intersection over Union (IoU) for gold and predicted annotations.
-        - Gold label Character Intersection over Union (IoU) for gold and 
+        - Gold label Character Intersection over Union (IoU) for gold and
         predicted annotations.
         - Cohen's Kappa for gold and predicted annotations.
 
@@ -906,7 +906,7 @@ class StatsCalculator:
             cat.config.components.linking.filter_before_disamb = True
         for i, proj in tqdm(enumerate(export['projects']), desc='Projects'):
             self.process_project(
-                proj, 
+                proj,
                 i,
                 lambda text: self._get_linked_ents(cat, text),
                 mode=mode,
@@ -923,10 +923,10 @@ class StatsCalculator:
         f1 = 2 * prec * rec / (prec + rec) if (prec + rec) > 0 else 0.0
         no_tokens_ratio = no_tokens / (tp + fn) if (tp + fn) > 0 else 0.0
         return {
-            'precision': prec, 
-            'recall': rec, 
-            'f1': f1, 
-            'no_tokens': no_tokens, 
+            'precision': prec,
+            'recall': rec,
+            'f1': f1,
+            'no_tokens': no_tokens,
             'no_tokens_ratio': f'{no_tokens_ratio:.4f}'
         }
 
@@ -940,7 +940,7 @@ class StatsCalculator:
     def _safe_mean(self, values):
         return sum(values) / len(values) if values else 0.0
 
-    def _prepare_metrics(self, 
+    def _prepare_metrics(self,
                          raw_stats: RawStats) -> tuple[OverallMetrics, dict[str, dict]]:
         """Prepare overall and per-CUI metrics from raw accumulated state."""
         # project metrics
@@ -1052,16 +1052,16 @@ class StatsCalculator:
         if self.num_projects > 1:
             for i in range(self.num_projects):
                 stats = self.stats.get_project_stats(i)
-                self.compute_metrics(stats, 
+                self.compute_metrics(stats,
                                      MetricMode.FULL)
                 if ner_performance:
-                    self.compute_metrics(stats, 
+                    self.compute_metrics(stats,
                                          MetricMode.NER)
                 if linking_performance:
-                    self.compute_metrics(stats, 
+                    self.compute_metrics(stats,
                                          MetricMode.LINKING)
 
-    # these 3 functions are just copied from previous, 
+    # these 3 functions are just copied from previous,
     # they get nice names for concepts
     def _empty(self, cui: str) -> CUIInfo:
         return get_new_cui_info(
@@ -1179,7 +1179,7 @@ class StatsCalculator:
         return to_return
 
 
-def get_stats_calculator(cat: CAT, 
+def get_stats_calculator(cat: CAT,
                          data: MedCATTrainerExport,
                          epoch: int = 0,
                          use_project_filters: bool = False,
@@ -1190,11 +1190,11 @@ def get_stats_calculator(cat: CAT,
                          do_print: bool = True,) -> StatsCalculator:
     """Return the stats calculator.
 
-    This doesn't just return the per project stats for the full pipeline, 
-    but all stats for each project and the aggregate, for all modes 
+    This doesn't just return the per project stats for the full pipeline,
+    but all stats for each project and the aggregate, for all modes
     (full, ner, linking) if required.
 
-    This should be called without calling "get_stats", as that is just a 
+    This should be called without calling "get_stats", as that is just a
     legacy wrapper.
 
     Args:
@@ -1262,7 +1262,7 @@ def get_stats(cat: CAT,
 ]:
     """Return stats for the entire project and full pipeline.
 
-    This should be called without calling "get_stats", as that is just a 
+    This should be called without calling "get_stats", as that is just a
     legacy wrapper.
 
     Args:
