@@ -1,4 +1,5 @@
 from typing import Optional, Callable, TextIO, TypedDict, Any
+import logging
 
 from tqdm import tqdm
 
@@ -15,6 +16,10 @@ from medcat.utils.training_utils import dataset_aware_component
 from collections import defaultdict
 from pydantic import BaseModel, Field
 from enum import Enum
+
+
+logger = logging.getLogger(__name__)
+
 
 class MetricMode(str, Enum):
     """Supported evaluation modes for statistics collection."""
@@ -462,9 +467,20 @@ class StatsCalculator:
         - Predicted CUI is in gold's acceptable CUIs
         - Not already matched
         """
+        logger.debug(
+            "  Trying to find a match for gold... @ [%d:%d] w %s (%s). "
+            "Already matched %d/%d",
+            gold['start'], gold['end'], gold['cuis'], gold['cui'],
+            len(matched_preds), len(predictions)
+        )
         for idx, pred in enumerate(predictions):
             if idx in matched_preds:
                 continue
+            logger.debug(
+                "    Compare to %04d : %04d w %s (%s)",
+                pred['start'], pred['end'], pred['cui'],
+                pred['cui'] in gold['cuis']
+            )
             # Exact span match
             if pred['start'] == gold['start']:
                 # Check if predicted CUI is acceptable
@@ -509,19 +525,29 @@ class StatsCalculator:
             # this should only really happen on the linker testing, as it's a perfect
             # NER step which is trying to create tokenless entities.
             # Phase 1: Match gold annotations to predictions (find TPs and FNs)
+            logger.debug("%d gold anns", len(gold_anns))
+            num_found = 0
             for gold in gold_anns:
+                logger.debug(
+                    " Scoring for CUI: %s @[%d: %d]: '%s'",
+                    gold['cui'], gold['start'], gold['end'], gold['text']
+                )
                 if not gold['cuis']:
                     # No valid CUIs for this gold annotation, skip it
+                    logger.debug("  NO CUI - ignore")
                     continue
                 match_idx = self._find_matching_prediction(
                     gold, pred_anns, matched_preds)
 
                 if match_idx is not None:
+                    num_found += 1
+                    logger.debug("  GOT match - true positive")
                     # True Positive
                     matched_preds.add(match_idx)
                     pred = pred_anns[match_idx]
                     self._record_tp(state.stats, gold, pred, project_id, project_name)
                 else:
+                    logger.debug("  NO match - false negative")
                     # False Negative
                     self._record_fn(state.stats, gold, project_id, project_name)
 
@@ -561,7 +587,6 @@ class StatsCalculator:
             cui = ann['cui']
             char_idxs = set(range(start, end))
             chars_by_cui[cui].update(char_idxs)
-
 
         return dict(chars_by_cui)
 
@@ -773,6 +798,12 @@ class StatsCalculator:
         """
         full_pipe_gold_anns = self._extract_gold_annotations(doc)
         full_pipe_pred_anns = self._extract_predictions(predictions, doc)
+        logger.debug(
+            "Processing %d gold annotations and %d predictions "
+            "(%d after filtering).",
+            len(full_pipe_gold_anns), len(predictions),
+            len(full_pipe_pred_anns)
+        )
 
         self._count_gold_annotations(full_pipe_gold_anns, project_index, mode)
         self._score_annotations(
@@ -796,7 +827,7 @@ class StatsCalculator:
             ner_gold_anns, ner_pred_anns = self._to_ner_views(
                 full_pipe_gold_anns, full_pipe_pred_anns)
             self._count_gold_annotations(ner_gold_anns, project_index,
-                                        mode=MetricMode.NER)
+                                         mode=MetricMode.NER)
             self._score_annotations(ner_gold_anns, ner_pred_anns,
                                     project_index, project_name,
                                     project_id, mode=MetricMode.NER,
@@ -849,6 +880,8 @@ class StatsCalculator:
         """Required for mypy cleanliness"""
         doc = cat(text)
         if doc is None:
+            logger.warning(
+                "Model returned no document! Returning no predicted enitities")
             return []
         return doc.linked_ents
 
@@ -1145,6 +1178,7 @@ class StatsCalculator:
         )
         return to_return
 
+
 def get_stats_calculator(cat: CAT, 
                          data: MedCATTrainerExport,
                          epoch: int = 0,
@@ -1215,7 +1249,7 @@ def get_stats_calculator(cat: CAT,
     return calculator
 
 
-def get_stats(cat: CAT, 
+def get_stats(cat: CAT,
               data: MedCATTrainerExport,
               epoch: int = 0,
               use_project_filters: bool = False,
