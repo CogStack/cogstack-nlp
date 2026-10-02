@@ -169,6 +169,7 @@ class Linker(AbstractEntityProvidingComponent):
         # Check does it have a detected concepts
         cuis = entity.link_candidates
         if not cuis:
+            logger.debug("No candidates")
             return
         # Check does it have a detected name
         name = entity.detected_name
