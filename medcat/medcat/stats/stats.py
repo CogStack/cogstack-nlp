@@ -426,10 +426,10 @@ class StatsCalculator:
             confidence=pred['confidence']
         ))
 
-    def _record_no_tokens(self, 
-                          state: RawStats, 
-                          pred: PredictedAnnotation, 
-                          project_id: str, 
+    def _record_no_tokens(self,
+                          state: RawStats,
+                          pred: PredictedAnnotation,
+                          project_id: str,
                           project_name: str) -> None:
         """Record a prediction with no tokens (ID -1000)."""
         # When there's an entity with no way for the tokenizer to parse it
