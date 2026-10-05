@@ -5,6 +5,7 @@ from tqdm import tqdm
 
 from medcat.cat import CAT
 from medcat.stats.common import GoldAnnotation, PredictedAnnotation
+from medcat.stats.failuremodes import FailureModeFinder
 from medcat.utils.filters import project_filters
 from medcat.data.mctexport import (
     MedCATTrainerExport, MedCATTrainerExportProject,
@@ -199,12 +200,14 @@ class StatsCalculator:
                  num_projects: int,
                  ner_performance: bool = False,
                  linking_performance: bool = False,
+                 failure_mode_finder: FailureModeFinder | None = None
                  ) -> None:
         self.filters = filters
         self.cui2info = cui2info
         self.reset(num_projects,
                    ner_performance,
                    linking_performance)
+        self.failure_mode_finder = failure_mode_finder
 
     def reset(self,
               num_projects: int,
@@ -361,7 +364,7 @@ class StatsCalculator:
                    state: RawStats,
                    gold: GoldAnnotation,
                    project_id: str,
-                   project_name: str) -> None:
+                   project_name: str) -> dict:
         """Record a false negative."""
         cui = gold['cui']
         state.fn += 1
@@ -369,12 +372,28 @@ class StatsCalculator:
 
         if cui not in state.examples['fn']:
             state.examples['fn'][cui] = []
-        state.examples['fn'][cui].append(self._create_example(
+        example = self._create_example(
             project_name=project_name,
             project_id=project_id,
             cui=cui,
             ann=gold
-        ))
+        )
+        state.examples['fn'][cui].append(example)
+        return example
+
+    def _add_failure_mode(
+        self,
+        example: dict,
+        gold: GoldAnnotation,
+        pred_anns: list[PredictedAnnotation],
+    ) -> None:
+        if self.failure_mode_finder is None:
+            return  # NOTE: already checked before call, really
+        suitable_ids = self._find_all_matching_prediction(gold, pred_anns)
+        suitable = [pred_anns[idx] for idx in suitable_ids]
+        example['failure_mode'] = self.failure_mode_finder.get_failure_mode(
+            example, suitable, pred_anns,
+        )
 
     def _record_fp(self,
                    state: RawStats,
@@ -443,9 +462,22 @@ class StatsCalculator:
             gold['start'], gold['end'], gold['cuis'], gold['cui'],
             len(matched_preds), len(predictions)
         )
-        for idx, pred in enumerate(predictions):
+        all_matches = self._find_all_matching_prediction(
+            gold, predictions)
+        for idx in all_matches:
             if idx in matched_preds:
                 continue
+            return idx
+
+        return None
+
+    def _find_all_matching_prediction(
+        self,
+        gold: GoldAnnotation,
+        predictions: list[PredictedAnnotation],
+    ) -> list[int]:
+        matches: list[int] = []
+        for idx, pred in enumerate(predictions):
             logger.debug(
                 "    Compare to %04d : %04d w %s (%s)",
                 pred['start'], pred['end'], pred['cui'],
@@ -455,9 +487,9 @@ class StatsCalculator:
             if pred['start'] == gold['start']:
                 # Check if predicted CUI is acceptable
                 if pred['cui'] in gold['cuis']:
-                    return idx
+                    matches.append(idx)
 
-        return None
+        return matches
 
     def _score_annotations(self,
                            gold_anns: list[GoldAnnotation],
@@ -519,7 +551,9 @@ class StatsCalculator:
                 else:
                     logger.debug("  NO match - false negative")
                     # False Negative
-                    self._record_fn(state.stats, gold, project_id, project_name)
+                    example = self._record_fn(state.stats, gold, project_id, project_name)
+                    if self.failure_mode_finder:
+                        self._add_failure_mode(example, gold, pred_anns)
 
             # Phase 2: Remaining predictions are False Positives
             for idx, pred in enumerate(pred_anns):
