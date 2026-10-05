@@ -1191,7 +1191,9 @@ def get_stats_calculator(cat: CAT,
                          ner_performance: bool = False,
                          linking_performance: bool = False,
                          extra_cui_filter: Optional[set[str]] = None,
-                         do_print: bool = True,) -> StatsCalculator:
+                         do_print: bool = True,
+                         include_failure_modes: bool = False,
+) -> StatsCalculator:
     """Return the stats calculator.
 
     This doesn't just return the per project stats for the full pipeline,
@@ -1215,12 +1217,15 @@ def get_stats_calculator(cat: CAT,
     Returns:
         StatsCalculator: An instance of StatsCalculator with computed statistics.
     """
+    fm_finder = (
+        FailureModeFinder.from_cat(cat) if include_failure_modes else None)
     calculator = StatsCalculator(
                     filters=cat.config.components.linking.filters,
                     cui2info=cat.cdb.cui2info,
                     num_projects=len(data['projects']),
                     ner_performance=ner_performance,
-                    linking_performance=linking_performance
+                    linking_performance=linking_performance,
+                    failure_mode_finder=fm_finder,
             )
     # Always compute full pipeline metrics.
     # If ner is of interest then also compute NER metrics from the same pass.
@@ -1259,7 +1264,9 @@ def get_stats(cat: CAT,
               use_project_filters: bool = False,
               use_overlaps: bool = False,
               extra_cui_filter: Optional[set[str]] = None,
-              do_print: bool = True,) -> tuple[
+              do_print: bool = True,
+              include_failure_modes: bool = False,
+              ) -> tuple[
         dict[str, int], dict[str, int], dict[str, int],
         dict[str, float], dict[str, float], dict[str, float],
         dict[str, int], dict
@@ -1297,7 +1304,8 @@ def get_stats(cat: CAT,
         ner_performance=False,
         linking_performance=False,
         extra_cui_filter=extra_cui_filter,
-        do_print=False
+        do_print=False,
+        include_failure_modes=include_failure_modes,
     )
     full_stats = calculator.stats.all_projects.full_pipeline
     if do_print:
