@@ -132,17 +132,6 @@ class FailureMode(str, Enum):
 # `make_ner_candidates` for how to build one.
 NERCandidates = Callable[[str], Iterable[tuple[int, int, Collection[str]]]]
 
-# When the predictions for a span map to several different relations to the
-# gold concept, pick the closest relation first.
-_DISAMB_PRIORITY = [
-    FailureMode.WRONG_CONCEPT_DIRECT_PARENT,
-    FailureMode.WRONG_CONCEPT_DIRECT_CHILD,
-    FailureMode.WRONG_CONCEPT_SIBLING,
-    FailureMode.WRONG_CONCEPT_ANCESTOR,
-    FailureMode.WRONG_CONCEPT_DESCENDANT,
-    FailureMode.WRONG_CONCEPT_UNRELATED,
-]
-
 
 def make_ner_candidates(
     pipe: Pipeline,
