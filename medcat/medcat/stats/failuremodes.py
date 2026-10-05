@@ -457,43 +457,16 @@ class FailureModeFinder:
             source_val, window_size
         )
 
-        # 0. gold sanity
-        step0 = self.step_0_gold_sanity(context, start, end, source_val)
-        if step0:
-            return step0
-
-        # 1. concept / name lookup
-        step1 = self.step_1_concept_and_name_lookup(
-            gold_cui, source_val)
-        if step1:
-            return step1
-
-        # 2. NER
-        step2 = self.step_2_ner(context, start, end, gold_cui)
-        if step2:
-            return step2
-
-        # 3. filters
-        step3 = self.step_3_filters(gold_cui)
-        if step3:
-            return step3
-
-        # 4. disambiguation: something else WAS annotated at this span
-        step4 = self.step_4_disambiguation(
-            span_predictions, gold_cui, source_val)
-        if step4:
-            return step4
-
-        # 5. span: nearby / overlapping prediction of the right concept
-        step5 = self.step_5_partial_overlap(example, all_predictions)
-        if step5:
-            return step5
-
-        # 6. thresholding
-        # Everything that reached here had a valid name->cui mapping and was
-        # not annotated as anything else. If NER was checked it did propose
-        # the span, so the linker must have rejected it. If NER was not
-        # checked we cannot tell that apart from an NER miss.
-        # NOTE: no way to verify the score itself, since non-predicted concepts
-        #       are not returned.
-        return FailureMode.BELOW_THRESHOLD
+        return (
+            self.step_0_gold_sanity(context, start, end, source_val)
+            or self.step_1_concept_and_name_lookup(gold_cui, source_val)
+            or self.step_2_ner(context, start, end, gold_cui)
+            or self.step_3_filters(gold_cui)
+            or self.step_4_disambiguation(
+                span_predictions, gold_cui, source_val)
+            or self.step_5_partial_overlap(example, all_predictions)
+            # 6. thresholding: everything that got here had a valid name->cui
+            #    mapping, NER proposed the span, and nothing else was
+            #    annotated, so the linker must have rejected it.
+            or FailureMode.BELOW_THRESHOLD
+        )
