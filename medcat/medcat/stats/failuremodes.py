@@ -228,44 +228,6 @@ def _build_opts(tkns: list[MutableToken], separator: str) -> set[str]:
     return set(map(separator.join, opt_set))
 
 
-def _ancestors(cui: str, ch2pt: dict[str, list[str]]) -> set[str]:
-    """All ancestors of a concept. Safe against cycles."""
-    seen: set[str] = set()
-    stack = list(ch2pt.get(cui, []))
-    while stack:
-        cur = stack.pop()
-        if cur in seen:
-            continue
-        seen.add(cur)
-        stack.extend(ch2pt.get(cur, []))
-    return seen
-
-
-def get_disamb_failure_mode(
-    gold_cui: str,
-    pred_cui: str,
-    ch2pt: dict[str, list[str]],
-) -> FailureMode:
-    """Relation of the predicted concept to the gold one.
-
-    Only needs the child -> parents map. Walks UPWARDS from both concepts
-    (parents are few; descendants of a general concept can be huge).
-    """
-    gold_parents = set(ch2pt.get(gold_cui, []))
-    pred_parents = set(ch2pt.get(pred_cui, []))
-    if pred_cui in gold_parents:
-        return FailureMode.WRONG_CONCEPT_DIRECT_PARENT
-    if gold_cui in pred_parents:
-        return FailureMode.WRONG_CONCEPT_DIRECT_CHILD
-    if gold_parents & pred_parents:
-        return FailureMode.WRONG_CONCEPT_SIBLING
-    if pred_cui in _ancestors(gold_cui, ch2pt):
-        return FailureMode.WRONG_CONCEPT_ANCESTOR
-    if gold_cui in _ancestors(pred_cui, ch2pt):
-        return FailureMode.WRONG_CONCEPT_DESCENDANT
-    return FailureMode.WRONG_CONCEPT_UNRELATED
-
-
 def _get_failure_mode_for_partial_span(
     gold_cui: str, gold_start: int, gold_end: int,
     pred_cui: str, pred_start: int, pred_end: int,
@@ -348,6 +310,42 @@ class FailureModeFinder:
             cat.cdb.addl_info['pt2ch'], cat.config.components.linking.filters,
             cat.config.general.separator, make_ner_candidates(cat.pipe)
         )
+
+    def _ancestors(self, cui: str) -> set[str]:
+        """All ancestors of a concept. Safe against cycles."""
+        seen: set[str] = set()
+        stack = list(self.ch2pt.get(cui, []))
+        while stack:
+            cur = stack.pop()
+            if cur in seen:
+                continue
+            seen.add(cur)
+            stack.extend(self.ch2pt.get(cur, []))
+        return seen
+
+    def get_disamb_failure_mode(
+        self,
+        gold_cui: str,
+        pred_cui: str,
+    ) -> FailureMode:
+        """Relation of the predicted concept to the gold one.
+
+        Only needs the child -> parents map. Walks UPWARDS from both concepts
+        (parents are few; descendants of a general concept can be huge).
+        """
+        gold_parents = set(self.ch2pt.get(gold_cui, []))
+        pred_parents = set(self.ch2pt.get(pred_cui, []))
+        if pred_cui in gold_parents:
+            return FailureMode.WRONG_CONCEPT_DIRECT_PARENT
+        if gold_cui in pred_parents:
+            return FailureMode.WRONG_CONCEPT_DIRECT_CHILD
+        if gold_parents & pred_parents:
+            return FailureMode.WRONG_CONCEPT_SIBLING
+        if pred_cui in self._ancestors(gold_cui):
+            return FailureMode.WRONG_CONCEPT_ANCESTOR
+        if gold_cui in self._ancestors(pred_cui):
+            return FailureMode.WRONG_CONCEPT_DESCENDANT
+        return FailureMode.WRONG_CONCEPT_UNRELATED
 
     def step_0_gold_sanity(
         self, context: str, start: int, end: int,
