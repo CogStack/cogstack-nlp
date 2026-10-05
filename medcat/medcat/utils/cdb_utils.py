@@ -299,3 +299,11 @@ def snomed_ct_concept_path(
         logger.error(f'Cannot find path concept path for CUI: {cui}',
             exc_info=True)
         return {'node_path': {}, 'links': []}
+
+
+def reverse_pt2ch(pt2ch: dict[str, list[str]]) -> dict[str, list[str]]:
+    ch2pt: defaultdict[str, list[str]] = defaultdict(list)
+    for pt, children in pt2ch.items():
+        for ch in children:
+            ch2pt[ch].append(pt)
+    return dict(ch2pt)
