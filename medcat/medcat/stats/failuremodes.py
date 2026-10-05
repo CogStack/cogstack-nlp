@@ -360,9 +360,19 @@ class FailureModeFinder:
     def step_1_concept_and_name_lookup(
         self,
         gold_cui: str,
-        candidates: set[str],
-        suitable_names: list[str],
+        source_val: str,
     ) -> FailureMode | None:
+        tkns = [
+            tkn for tkn in self.tokenizer(source_val)
+            if not tkn.to_skip
+        ]
+        name_versions = _build_opts(tkns, self.token_separator)
+        suitable_names = [
+            name for name in name_versions if name in self.name2info]
+        # any name variant linking to the gold concept is enough
+        candidates: set[str] = set()
+        for name in suitable_names:
+            candidates.update(self.name2info[name]['per_cui_status'])
         if gold_cui not in self.cui2info:
             return FailureMode.CUI_NOT_IN_CDB
         if not suitable_names:
@@ -452,22 +462,9 @@ class FailureModeFinder:
         if step0:
             return step0
 
-        # prep for step 1
-        tkns = [
-            tkn for tkn in self.tokenizer(source_val)
-            if not tkn.to_skip
-        ]
-        name_versions = _build_opts(tkns, self.token_separator)
-        suitable_names = [
-            name for name in name_versions if name in self.name2info]
-        # any name variant linking to the gold concept is enough
-        candidates: set[str] = set()
-        for name in suitable_names:
-            candidates.update(self.name2info[name]['per_cui_status'])
-
         # 1. concept / name lookup
         step1 = self.step_1_concept_and_name_lookup(
-            gold_cui, candidates, suitable_names)
+            gold_cui, source_val)
         if step1:
             return step1
 
