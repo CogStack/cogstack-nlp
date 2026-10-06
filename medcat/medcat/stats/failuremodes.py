@@ -127,6 +127,12 @@ class FailureMode(str, Enum):
     """No mode above explains the miss (includes possible gold-annotation
     errors such as bad offsets or labels)."""
 
+    def __str__(self) -> str:
+        return f"FM.{self.name}"
+
+    def __repr__(self) -> str:
+        return f"<{str(self)}>"
+
 
 # Given some text, return (start, end, link_candidates) for every entity the
 # NER step proposed, with char indices relative to that text. See
@@ -460,10 +466,22 @@ class FailureModeFinder:
         )
 
 
+class ExampleDescription(TypedDict):
+    project_id: str
+    project_name: str
+    document_id: str
+    document_name: str
+    context: str
+    source_val: str
+
+
+FailureCountOrDescription = dict[FailureMode, int | list[ExampleDescription]]
+
+
 class FailureModeSummary(TypedDict):
-    per_type_id_counts: dict[str, dict[FailureMode, int]]
-    per_cui_counts: dict[str, dict[FailureMode, int]]
-    total_counts: dict[FailureMode, int]
+    per_type_id_counts: dict[str, FailureCountOrDescription]
+    per_cui_counts: dict[str, FailureCountOrDescription]
+    total_counts: FailureCountOrDescription
 
 
 def summarise_failure_modes(
@@ -471,6 +489,7 @@ def summarise_failure_modes(
     examples: dict[str, dict[str, list[dict]]],
     print_mode: Literal[
         'none', 'totals', 'per_type_id', 'per_cui', 'all'] = 'none',
+    include_details_for_examples_max: int = 0,
 ):
     def get_cui_type_ids(cui: str) -> set[str]:
         if cui not in cat.cdb.cui2info:
@@ -480,7 +499,36 @@ def summarise_failure_modes(
         examples,
         get_cui_type_ids,
         print_mode=print_mode,
+        include_details_for_examples_max=include_details_for_examples_max,
     )
+
+
+def _to_description(example: dict) -> ExampleDescription:
+    context = example['text']
+    source_val = example['source_value']
+    start, end = example['start'], example['end']
+    start, end = _get_local_span(context, start, end, source_val, 60)
+    context = f"{context[:start]}>>>{context[start:end]}<<<{context[end:]}"
+    return {
+        'project_id': example['project_id'],
+        'project_name': example['project_name'],
+        'document_id': example['document_id'],
+        'document_name': example['document_name'],
+        'context': context,
+        'source_val': source_val,
+    }
+
+
+def _collapse(
+    by_mode: dict[FailureMode, list[dict]],
+    max_details: int,
+) -> FailureCountOrDescription:
+    # with max_details=0 this always yields counts, as before
+    return {
+        mode: ([_to_description(ex) for ex in exs]
+               if len(exs) <= max_details else len(exs))
+        for mode, exs in by_mode.items()
+    }
 
 
 def _summarise_failure_modes(
@@ -488,42 +536,53 @@ def _summarise_failure_modes(
     cui2type_ids: dict[str, set[str]] | Callable[[str], set[str]],
     print_mode: Literal[
         'none', 'totals', 'per_type_id', 'per_cui', 'all'] = 'none',
+    include_details_for_examples_max: int = 0,
 ) -> FailureModeSummary:
     def cui2type_ids_call(cui: str) -> set[str]:
         if not callable(cui2type_ids):
             return cui2type_ids.get(cui, set())
         return cui2type_ids(cui)
     fns = examples['fn']
-    per_cui_counts = {
-        cui: dict(Counter(
-            example['failure_mode']
-            for example in cui_examples
-        ))
-        for cui, cui_examples in fns.items()
-    }
-    total_counts_cntr: Counter[FailureMode] = Counter()
-    for per_cui_counter in per_cui_counts.values():
-        total_counts_cntr.update(per_cui_counter)
-    total_counts = dict(total_counts_cntr)
 
-    per_type_id_counts_dd: defaultdict[
-        str, Counter[FailureMode]] = defaultdict(Counter)
-    for cui, counter in per_cui_counts.items():
-        for type_id in cui2type_ids_call(cui):
-            per_type_id_counts_dd[type_id].update(counter)
-    per_type_id_counts = {
-        tid: dict(cnts) for tid, cnts in per_type_id_counts_dd.items()
+    per_cui_examples: dict[str, dict[FailureMode, list[dict]]] = {}
+    for cui, cui_examples in fns.items():
+        by_mode: defaultdict[FailureMode, list[dict]] = defaultdict(list)
+        for example in cui_examples:
+            by_mode[example['failure_mode']].append(example)
+        per_cui_examples[cui] = by_mode
+
+    total_dd: defaultdict[FailureMode, list[dict]] = defaultdict(list)
+    per_type_id_dd: defaultdict[
+        str, defaultdict[FailureMode, list[dict]]
+    ] = defaultdict(lambda: defaultdict(list))
+    for cui, by_mode in per_cui_examples.items():
+        type_ids = cui2type_ids_call(cui)
+        for mode, exs in by_mode.items():
+            total_dd[mode].extend(exs)
+            for type_id in type_ids:
+                per_type_id_dd[type_id][mode].extend(exs)
+
+    max_d = include_details_for_examples_max
+    per_cui_counts = {
+        cui: _collapse(by_mode, max_d)
+        for cui, by_mode in per_cui_examples.items()
     }
+    per_type_id_counts = {
+        tid: _collapse(by_mode, max_d)
+        for tid, by_mode in per_type_id_dd.items()
+    }
+    total_counts = _collapse(total_dd, max_d)
+
     # do prints if required
     if print_mode in ('per_type_id', 'all'):
         print("Per type ID failure modes")
-        pprint(per_cui_counts)
+        pprint(per_cui_counts, width=120)
     if print_mode in ('per_cui', 'all'):
         print("Per CUI failure modes")
-        pprint(per_cui_counts)
+        pprint(per_cui_counts, width=120)
     if print_mode in ('totals', 'all'):
         print("All failure modes")
-        pprint(total_counts)
+        pprint(total_counts, width=120)
     return {
         "per_type_id_counts": per_type_id_counts,
         "per_cui_counts": per_cui_counts,
