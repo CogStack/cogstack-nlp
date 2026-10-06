@@ -393,7 +393,7 @@ class FailureModeFinder:
     ) -> FailureMode | None:
         if span_predictions:
             modes = {
-                get_disamb_failure_mode(gold_cui, pred["cui"], self.ch2pt)
+                self.get_disamb_failure_mode(gold_cui, pred["cui"])
                 for pred in span_predictions
             }
             picked = min(modes, key=lambda m: m.name)
