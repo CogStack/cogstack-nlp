@@ -1,4 +1,4 @@
-from typing import Optional, Callable, TextIO, TypedDict, Any
+from typing import Optional, Callable, TextIO, Any
 import logging
 
 from tqdm import tqdm
@@ -551,7 +551,8 @@ class StatsCalculator:
                 else:
                     logger.debug("  NO match - false negative")
                     # False Negative
-                    example = self._record_fn(state.stats, gold, project_id, project_name)
+                    example = self._record_fn(
+                        state.stats, gold, project_id, project_name)
                     if self.failure_mode_finder:
                         self._add_failure_mode(example, gold, pred_anns)
 
