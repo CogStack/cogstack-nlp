@@ -441,6 +441,20 @@ class FailureModeFinder:
         all_predictions: list[PredictedAnnotation],
         window_size: int = 60,
     ) -> FailureMode:
+        """Get the failure mode of a specific example.
+
+        Args:
+            example (dict): The example to consider.
+            span_predictions (list[PredictedAnnotation]): Predicted
+                annotations for the same span (i.e disambiguation mistakes)
+            all_predictions (list[PredictedAnnotation]): All predicted
+                annotations for the text.
+            window_size (int, optional): The contex window size.
+                Defaults to 60.
+
+        Returns:
+            FailureMode: The resulting failure mode.
+        """
         gold_cui = example['cui']
         context = example['text']
         source_val = example['source_value']
@@ -476,6 +490,7 @@ class ExampleDescription(TypedDict):
 
 
 FailureCountOrDescription = dict[FailureMode, int | list[ExampleDescription]]
+PrintMode = Literal['none', 'totals', 'per_type_id', 'per_cui', 'all']
 
 
 class FailureModeSummary(TypedDict):
@@ -487,10 +502,24 @@ class FailureModeSummary(TypedDict):
 def summarise_failure_modes(
     cat: CAT,
     examples: dict[str, dict[str, list[dict]]],
-    print_mode: Literal[
-        'none', 'totals', 'per_type_id', 'per_cui', 'all'] = 'none',
+    print_mode: PrintMode = 'none',
     include_details_for_examples_max: int = 0,
 ):
+    """Summarise failure modes for all examples.
+
+    This allows one to get a summary of all the failure modes in examples.
+
+    NOTE: Only false negative examples (`fns`) are used here. Those are the
+    only ones for which the current setup makes sense.
+
+    Args:
+        cat (CAT): The model pack. This is used for getting Type IDs.
+        examples (dict[str, dict[str, list[dict]]]): All examples
+        print_mode (PrintMode): Determines what to print out.
+            Defaults to 'none'.
+        include_details_for_examples_max (int): Whether to include details
+            about each example up to a certain maximum. Defaults to 0.
+    """
     def get_cui_type_ids(cui: str) -> set[str]:
         if cui not in cat.cdb.cui2info:
             return set()
