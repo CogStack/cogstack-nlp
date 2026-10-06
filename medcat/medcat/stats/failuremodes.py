@@ -150,7 +150,7 @@ def make_ner_candidates(
     output: the linker replaces `doc.ner_ents` with the linked entities.
     """
     def run(text: str) -> list[tuple[int, int, Collection[str]]]:
-        doc = pipe.pipe_until(text, CoreComponentType.ner)
+        doc = pipe.pipe_until(text, CoreComponentType.linking)
         return [
             (ent.base.start_char_index, ent.base.end_char_index,
              ent.link_candidates)
