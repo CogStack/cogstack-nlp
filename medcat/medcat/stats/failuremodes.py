@@ -140,15 +140,9 @@ class FailureMode(str, Enum):
 NERCandidates = Callable[[str], Iterable[tuple[int, int, Collection[str]]]]
 
 
-def make_ner_candidates(
+def _make_ner_candidates(
     pipe: Pipeline,
 ) -> NERCandidates:
-    """Build the NER-only callable.
-
-    UNTESTED SKETCH: check the entity attribute names against your version.
-    The point is to run ONLY tokenizer + NER. Do not use full pipeline
-    output: the linker replaces `doc.ner_ents` with the linked entities.
-    """
     def run(text: str) -> list[tuple[int, int, Collection[str]]]:
         doc = pipe.pipe_until(text, CoreComponentType.linking)
         return [
@@ -304,7 +298,7 @@ class FailureModeFinder:
         return cls(
             cat.pipe.tokenizer_with_tag, cat.cdb.cui2info, cat.cdb.name2info,
             cat.cdb.addl_info['pt2ch'], cat.config.components.linking.filters,
-            cat.config.general.separator, make_ner_candidates(cat.pipe)
+            cat.config.general.separator, _make_ner_candidates(cat.pipe)
         )
 
     def _ancestors(self, cui: str) -> set[str]:
@@ -319,7 +313,7 @@ class FailureModeFinder:
             stack.extend(self.ch2pt.get(cur, []))
         return seen
 
-    def get_disamb_failure_mode(
+    def _get_disamb_failure_mode(
         self,
         gold_cui: str,
         pred_cui: str,
@@ -343,7 +337,7 @@ class FailureModeFinder:
             return FailureMode.WRONG_CONCEPT_DESCENDANT
         return FailureMode.WRONG_CONCEPT_UNRELATED
 
-    def step_0_gold_sanity(
+    def _step_0_gold_sanity(
         self, context: str, start: int, end: int,
         source_val: str,
     ) -> FailureMode | None:
@@ -351,7 +345,7 @@ class FailureModeFinder:
             return FailureMode.SPAN_INCORRECT_FOR_VALUE
         return None
 
-    def step_1_concept_and_name_lookup(
+    def _step_1_concept_and_name_lookup(
         self,
         gold_cui: str,
         source_val: str,
@@ -375,7 +369,7 @@ class FailureModeFinder:
             return FailureMode.NAME_NOT_LINKED_TO_CUI
         return None
 
-    def step_2_ner(
+    def _step_2_ner(
         self, context: str, start: int, end: int, gold_cui: str
     ) -> FailureMode | None:
         if not _ner_proposed_span(
@@ -383,7 +377,7 @@ class FailureModeFinder:
             return FailureMode.NER_NO_SPAN
         return None
 
-    def step_3_filters(
+    def _step_3_filters(
         self, gold_cui: str,
     ) -> FailureMode | None:
         allow_filter = self.linking_filters.cuis
@@ -394,13 +388,13 @@ class FailureModeFinder:
             return FailureMode.FILTERED_DISALLOW_LIST
         return None
 
-    def step_4_disambiguation(
+    def _step_4_disambiguation(
         self, span_predictions: list[PredictedAnnotation],
         gold_cui: str, source_val: str,
     ) -> FailureMode | None:
         if span_predictions:
             modes = {
-                self.get_disamb_failure_mode(gold_cui, pred["cui"])
+                self._get_disamb_failure_mode(gold_cui, pred["cui"])
                 for pred in span_predictions
             }
             picked = min(modes, key=lambda m: m.name)
@@ -415,7 +409,7 @@ class FailureModeFinder:
             return picked
         return None
 
-    def step_5_partial_overlap(
+    def _step_5_partial_overlap(
         self, example: dict, all_predictions: list[PredictedAnnotation],
     ) -> FailureMode | None:
         partially_matching_spans = _get_partially_overlapping_spans(
@@ -466,13 +460,13 @@ class FailureModeFinder:
         )
 
         return (
-            self.step_0_gold_sanity(context, start, end, source_val)
-            or self.step_1_concept_and_name_lookup(gold_cui, source_val)
-            or self.step_2_ner(context, start, end, gold_cui)
-            or self.step_3_filters(gold_cui)
-            or self.step_4_disambiguation(
+            self._step_0_gold_sanity(context, start, end, source_val)
+            or self._step_1_concept_and_name_lookup(gold_cui, source_val)
+            or self._step_2_ner(context, start, end, gold_cui)
+            or self._step_3_filters(gold_cui)
+            or self._step_4_disambiguation(
                 span_predictions, gold_cui, source_val)
-            or self.step_5_partial_overlap(example, all_predictions)
+            or self._step_5_partial_overlap(example, all_predictions)
             # 6. thresholding: everything that got here had a valid name->cui
             #    mapping, NER proposed the span, and nothing else was
             #    annotated, so the linker must have rejected it.
