@@ -389,7 +389,8 @@ class StatsCalculator:
     ) -> None:
         if self.failure_mode_finder is None:
             return  # NOTE: already checked before call, really
-        suitable_ids = self._find_all_matching_prediction(gold, pred_anns)
+        suitable_ids = self._find_all_matching_prediction(
+            gold, pred_anns, check_cui=False)
         suitable = [pred_anns[idx] for idx in suitable_ids]
         example['failure_mode'] = self.failure_mode_finder.get_failure_mode(
             example, suitable, pred_anns,
@@ -475,6 +476,7 @@ class StatsCalculator:
         self,
         gold: GoldAnnotation,
         predictions: list[PredictedAnnotation],
+        check_cui: bool = True,
     ) -> list[int]:
         matches: list[int] = []
         for idx, pred in enumerate(predictions):
@@ -486,7 +488,7 @@ class StatsCalculator:
             # Exact span match
             if pred['start'] == gold['start']:
                 # Check if predicted CUI is acceptable
-                if pred['cui'] in gold['cuis']:
+                if not check_cui or pred['cui'] in gold['cuis']:
                     matches.append(idx)
 
         return matches
