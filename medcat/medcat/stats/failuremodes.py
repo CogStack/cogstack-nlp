@@ -1,6 +1,6 @@
 from enum import Enum
 from pprint import pprint
-from typing import Callable, Iterable, Collection, Literal, TypedDict, cast
+from typing import Any, Callable, Iterable, Collection, Literal, TypedDict, cast
 from itertools import product
 import logging
 from collections import Counter, defaultdict
@@ -577,10 +577,11 @@ def _summarise_failure_modes(
     total_dd: defaultdict[FailureMode, list[dict]] = defaultdict(list)
     per_type_id_dd: defaultdict[
         str, defaultdict[FailureMode, list[dict]]
-    ] = defaultdict(lambda: defaultdict(list))
-    for cui, by_mode in per_cui_examples.items():
+    ] = defaultdict[str, defaultdict[FailureMode, list]](
+        lambda: defaultdict(list))
+    for cui, cur_cui_examples in per_cui_examples.items():
         type_ids = cui2type_ids_call(cui)
-        for mode, exs in by_mode.items():
+        for mode, exs in cur_cui_examples.items():
             total_dd[mode].extend(exs)
             for type_id in type_ids:
                 per_type_id_dd[type_id][mode].extend(exs)
