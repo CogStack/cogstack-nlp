@@ -191,16 +191,16 @@ class TestDisambiguationRelation(unittest.TestCase):
 
     def _test_relation(self, gold, predicted, expected):
         finder = make_finder()
-        self.assertIs(finder.get_disamb_failure_mode(gold, predicted), expected)
+        self.assertIs(finder._get_disamb_failure_mode(gold, predicted), expected)
 
     def test_cyclic_hierarchy_terminates(self):
         # P -> [G, Q], Q -> [P]: walking up from G cycles P -> Q -> P
         finder = make_finder(pt2ch={"P": ["G", "Q"], "Q": ["P"]})
         self.assertIs(
-            finder.get_disamb_failure_mode("G", "Z"),
+            finder._get_disamb_failure_mode("G", "Z"),
             FM.WRONG_CONCEPT_UNRELATED
         )
-        self.assertIs(finder.get_disamb_failure_mode("Z", "G"),
+        self.assertIs(finder._get_disamb_failure_mode("Z", "G"),
             FM.WRONG_CONCEPT_UNRELATED
         )
 
@@ -210,12 +210,12 @@ class TestDisambiguationRelation(unittest.TestCase):
 class TestStep0GoldSanity(unittest.TestCase):
 
     def test_matching_value_passes(self):
-        self.assertIsNone(make_finder().step_0_gold_sanity(
+        self.assertIsNone(make_finder()._step_0_gold_sanity(
             GOLD["text"], *GOLD_LOCAL, "stroke"))
 
     def test_mismatching_value_flagged(self):
         self.assertIs(
-            make_finder().step_0_gold_sanity(
+            make_finder()._step_0_gold_sanity(
                 GOLD["text"], *GOLD_LOCAL, "stoke"
             ),
             FM.SPAN_INCORRECT_FOR_VALUE
@@ -226,19 +226,19 @@ class TestStep1NameLookup(unittest.TestCase):
 
     def test_cui_not_in_cdb(self):
         finder = make_finder(cuis=[c for c in ALL_CUIS if c != "B"])
-        self.assertIs(finder.step_1_concept_and_name_lookup(
+        self.assertIs(finder._step_1_concept_and_name_lookup(
             "B", "stroke"), FM.CUI_NOT_IN_CDB)
 
     def test_name_unknown(self):
-        self.assertIs(make_finder().step_1_concept_and_name_lookup(
+        self.assertIs(make_finder()._step_1_concept_and_name_lookup(
             "B", "gibberish"), FM.NAME_UNKNOWN)
 
     def test_name_not_linked_to_cui(self):
-        self.assertIs(make_finder().step_1_concept_and_name_lookup(
+        self.assertIs(make_finder()._step_1_concept_and_name_lookup(
             "B", "fever"), FM.NAME_NOT_LINKED_TO_CUI)
 
     def test_known_name_linked_to_cui(self):
-        self.assertIs(make_finder().step_1_concept_and_name_lookup(
+        self.assertIs(make_finder()._step_1_concept_and_name_lookup(
             "B", "stroke"), None)
 
     def test_any_name_variant_linking_to_gold_is_enough(self):
@@ -248,16 +248,16 @@ class TestStep1NameLookup(unittest.TestCase):
             "Stroke": {"per_cui_status": {"B": "P"}},
             "stroke": {"per_cui_status": {"X": "P"}},
         }
-        self.assertIs(make_finder(names=names).step_1_concept_and_name_lookup(
+        self.assertIs(make_finder(names=names)._step_1_concept_and_name_lookup(
             "B", "Stroke"), None)
 
     def test_multi_token_name_via_casing_variants(self):
-        self.assertIs(make_finder().step_1_concept_and_name_lookup(
+        self.assertIs(make_finder()._step_1_concept_and_name_lookup(
             "B", "Heart Attack"), None)
 
     def test_skipped_tokens_are_ignored(self):
         # "." is marked to_skip by the fake tokenizer
-        self.assertIs(make_finder().step_1_concept_and_name_lookup(
+        self.assertIs(make_finder()._step_1_concept_and_name_lookup(
             "B", "stroke ."), None)
 
 
@@ -277,7 +277,7 @@ class TestStep2Ner(unittest.TestCase):
 
     def _test_ner_miss(self, proposals):
         finder = make_finder(ner=ner_proposing(*proposals))
-        self.assertIs(finder.step_2_ner(
+        self.assertIs(finder._step_2_ner(
             GOLD["text"], *GOLD_LOCAL, "B"), FM.NER_NO_SPAN
         )
 
@@ -296,7 +296,7 @@ class TestStep2Ner(unittest.TestCase):
 
     def _test_any_overlapping_proposal_with_gold_is_not_a_miss(self, proposal):
         finder = make_finder(ner=ner_proposing(proposal))
-        self.assertIsNone(finder.step_2_ner(GOLD["text"], *GOLD_LOCAL, "B"))
+        self.assertIsNone(finder._step_2_ner(GOLD["text"], *GOLD_LOCAL, "B"))
 
     def test_ner_gets_the_context_text(self):
         seen = []
@@ -305,46 +305,46 @@ class TestStep2Ner(unittest.TestCase):
             seen.append(text)
             return []
 
-        make_finder(ner=spy).step_2_ner(GOLD["text"], *GOLD_LOCAL, "B")
+        make_finder(ner=spy)._step_2_ner(GOLD["text"], *GOLD_LOCAL, "B")
         self.assertEqual(seen, [GOLD["text"]])
 
 
 class TestStep3Filters(unittest.TestCase):
 
     def test_no_filters(self):
-        self.assertIsNone(make_finder().step_3_filters("B"))
+        self.assertIsNone(make_finder()._step_3_filters("B"))
 
     def test_not_in_allow_list(self):
         self.assertIs(
-            make_finder(allow=["A"]).step_3_filters("B"),
+            make_finder(allow=["A"])._step_3_filters("B"),
             FM.FILTERED_NOT_IN_ALLOW_LIST
         )
 
     def test_in_allow_list(self):
-        self.assertIsNone(make_finder(allow=["B"]).step_3_filters("B"))
+        self.assertIsNone(make_finder(allow=["B"])._step_3_filters("B"))
 
     def test_in_disallow_list(self):
         self.assertIs(
-            make_finder(disallow=["B"]).step_3_filters("B"),
+            make_finder(disallow=["B"])._step_3_filters("B"),
             FM.FILTERED_DISALLOW_LIST
         )
 
     def test_other_concept_in_disallow_list(self):
-        self.assertIsNone(make_finder(disallow=["A"]).step_3_filters("B"))
+        self.assertIsNone(make_finder(disallow=["A"])._step_3_filters("B"))
 
 
 class TestStep4Disambiguation(unittest.TestCase):
 
     def test_nothing_predicted(self):
-        self.assertIsNone(make_finder().step_4_disambiguation([], "B", "stroke"))
+        self.assertIsNone(make_finder()._step_4_disambiguation([], "B", "stroke"))
 
     def test_relation_of_prediction(self):
-        got = make_finder().step_4_disambiguation(
+        got = make_finder()._step_4_disambiguation(
             [pred("A", GOLD_START, GOLD_END)], "B", "stroke")
         self.assertIs(got, FM.WRONG_CONCEPT_DIRECT_PARENT)
 
     def test_multiple_predictions_pick_one_of_the_relations(self):
-        got = make_finder().step_4_disambiguation(
+        got = make_finder()._step_4_disambiguation(
             [pred("A", GOLD_START, GOLD_END),
              pred("root", GOLD_START, GOLD_END)], "B", "stroke")
         self.assertIn(got, {
@@ -356,19 +356,19 @@ class TestStep4Disambiguation(unittest.TestCase):
 class TestStep5PartialOverlap(unittest.TestCase):
 
     def test_no_predictions(self):
-        self.assertIsNone(make_finder().step_5_partial_overlap(GOLD, []))
+        self.assertIsNone(make_finder()._step_5_partial_overlap(GOLD, []))
 
     def test_other_concepts_are_ignored(self):
-        self.assertIsNone(make_finder().step_5_partial_overlap(
+        self.assertIsNone(make_finder()._step_5_partial_overlap(
             GOLD, [pred("A", GOLD_START - 2, GOLD_END)]))
 
     def test_longer_prediction(self):
-        got = make_finder().step_5_partial_overlap(
+        got = make_finder()._step_5_partial_overlap(
             GOLD, [pred("B", GOLD_START - 2, GOLD_END)])
         self.assertIs(got, FM.SPAN_PRED_CONTAINS_GOLD)
 
     def test_most_common_mode_wins(self):
-        got = make_finder().step_5_partial_overlap(GOLD, [
+        got = make_finder()._step_5_partial_overlap(GOLD, [
             pred("B", GOLD_START - 2, GOLD_END),
             pred("B", GOLD_START - 3, GOLD_END),
             pred("B", GOLD_START + 2, GOLD_END + 4),
