@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+from collections import Counter
+import json
 import os
 import re
 from dataclasses import dataclass, field
 from types import SimpleNamespace
+from medcat.stats.failuremodes import FailureMode
 from medcat.stats.stats import MetricMode
 from medcat.components.types import CoreComponentType
 from medcat.stats import stats
@@ -417,3 +420,63 @@ class StatsTests(TrainedModelTests):
         self.assertEqual(sample[0]['end'], 22)
         self.assertEqual(sample[0]['acc'], 1.0)
         self.assertEqual(sample[0]['source_value'], "asthma")
+
+
+class StatsWithFailureModesTests(TrainedModelTests):
+    DATA_PATH = os.path.join(
+        RESOURCES_PATH, "mct_export_win_some_loose_some.json")
+    EXPECTED_FAILURE_MODES = {
+        FailureMode.NAME_UNKNOWN, FailureMode.NAME_NOT_LINKED_TO_CUI,
+        FailureMode.CUI_NOT_IN_CDB,
+    }
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.model.cdb.addl_info['pt2ch'] = {
+            cui: [] for cui in cls.model.cdb.cui2info
+        }
+        with open(cls.DATA_PATH) as f:
+            cls.data = json.load(f)
+        cls.stats = stats.get_stats(
+            cat=cls.model,
+            data=cls.data,
+            use_project_filters=False,
+            do_print=False,
+            include_failure_modes=True,
+        )
+        cls.examples = cls.stats[-1]
+        cls.all_fms = Counter(
+            ex['failure_mode'] for examples in cls.examples['fn'].values()
+            for ex in examples
+        )
+
+    def test_fns_have_failure_modes(self):
+        fns = self.examples['fn']
+        self.assertTrue(fns)
+        for cui, examples in fns.items():
+            for ex in examples:
+                with self.subTest(f"{cui} w {ex}"):
+                    self.assertIn('failure_mode', ex)
+                    val = ex['failure_mode']
+                    self.assertIsInstance(val, FailureMode)
+
+    def test_others_do_not_have_failure_modes(self):
+        for key, vals in self.examples.items():
+            if key == 'fn':
+                continue
+            for cui, examples in vals.items():
+                for ex in examples:
+                    with self.subTest(f"{key}: {cui} w {ex}"):
+                        self.assertNotIn('failure_mode', ex)
+
+    def test_has_multiple_types_of_failure_modes(self):
+        self.assertTrue(self.all_fms)
+        self.assertGreater(len(self.all_fms), 1)
+        self.assertGreaterEqual(set(self.all_fms), self.EXPECTED_FAILURE_MODES)
+
+    def test_has_failure_mode_per_false_negative(self):
+        self.assertEqual(
+            self.all_fms.total(),
+            sum(self.stats[1].values())
+        )
