@@ -1,8 +1,9 @@
 from enum import Enum
-from typing import Callable, Iterable, Collection
+from pprint import pprint
+from typing import Callable, Iterable, Collection, Literal, TypedDict, cast
 from itertools import product
 import logging
-from collections import Counter
+from collections import Counter, defaultdict
 
 from medcat.cat import CAT
 from medcat.cdb.concepts import CUIInfo, NameInfo
@@ -371,7 +372,7 @@ class FailureModeFinder:
     def step_2_ner(
         self, context: str, start: int, end: int, gold_cui: str
     ) -> FailureMode | None:
-        if self.ner_candidates is not None and not _ner_proposed_span(
+        if not _ner_proposed_span(
                 self.ner_candidates, context, start, end, gold_cui):
             return FailureMode.NER_NO_SPAN
         return None
@@ -457,3 +458,74 @@ class FailureModeFinder:
             #    annotated, so the linker must have rejected it.
             or FailureMode.BELOW_THRESHOLD
         )
+
+
+class FailureModeSummary(TypedDict):
+    per_type_id_counts: dict[str, dict[FailureMode, int]]
+    per_cui_counts: dict[str, dict[FailureMode, int]]
+    total_counts: dict[FailureMode, int]
+
+
+def summarise_failure_modes(
+    cat: CAT,
+    examples: dict[str, dict[str, list[dict]]],
+    print_mode: Literal[
+        'none', 'totals', 'per_type_id', 'per_cui', 'all'] = 'none',
+):
+    def get_cui_type_ids(cui: str) -> set[str]:
+        if cui not in cat.cdb.cui2info:
+            return set()
+        return cat.cdb.cui2info[cui]['type_ids']
+    return _summarise_failure_modes(
+        examples,
+        get_cui_type_ids,
+        print_mode=print_mode,
+    )
+
+
+def _summarise_failure_modes(
+    examples: dict[str, dict[str, list[dict]]],
+    cui2type_ids: dict[str, set[str]] | Callable[[str], set[str]],
+    print_mode: Literal[
+        'none', 'totals', 'per_type_id', 'per_cui', 'all'] = 'none',
+) -> FailureModeSummary:
+    def cui2type_ids_call(cui: str) -> set[str]:
+        if not callable(cui2type_ids):
+            return cui2type_ids.get(cui, set())
+        return cui2type_ids(cui)
+    fns = examples['fn']
+    per_cui_counts = {
+        cui: dict(Counter(
+            example['failure_mode']
+            for example in cui_examples
+        ))
+        for cui, cui_examples in fns.items()
+    }
+    total_counts_cntr: Counter[FailureMode] = Counter()
+    for per_cui_counter in per_cui_counts.values():
+        total_counts_cntr.update(per_cui_counter)
+    total_counts = dict(total_counts_cntr)
+
+    per_type_id_counts_dd: defaultdict[
+        str, Counter[FailureMode]] = defaultdict(Counter)
+    for cui, counter in per_cui_counts.items():
+        for type_id in cui2type_ids_call(cui):
+            per_type_id_counts_dd[type_id].update(counter)
+    per_type_id_counts = {
+        tid: dict(cnts) for tid, cnts in per_type_id_counts_dd.items()
+    }
+    # do prints if required
+    if print_mode in ('per_type_id', 'all'):
+        print("Per type ID failure modes")
+        pprint(per_cui_counts)
+    if print_mode in ('per_cui', 'all'):
+        print("Per CUI failure modes")
+        pprint(per_cui_counts)
+    if print_mode in ('totals', 'all'):
+        print("All failure modes")
+        pprint(total_counts)
+    return {
+        "per_type_id_counts": per_type_id_counts,
+        "per_cui_counts": per_cui_counts,
+        "total_counts": total_counts,
+    }
