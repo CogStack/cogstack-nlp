@@ -65,6 +65,7 @@ class DummyDocument:
     def __init__(self, text: str):
         self.base = SimpleNamespace(text=text)
         self.linked_ents: list[DummyEntity] = []
+        self.ner_ents: list[DummyEntity] = []
 
     def get_tokens(self, start: int, end: int):
         tokens = []
@@ -146,6 +147,14 @@ class DummyCAT:
                 context_similarity=1.0,
             )
             doc.linked_ents.append(ent)
+            ner_ent = DummyEntity(
+                text=mention,
+                start_char_index=idx,
+                end_char_index=end,
+                cui="DETECTED_ENTITY",
+                context_similarity=1.0,
+            )
+            doc.ner_ents.append(ner_ent)
         return doc
     
 class DummyCATLinker:
@@ -183,7 +192,14 @@ class DummyCATLinker:
                 context_similarity=1.0,
             )
             doc.linked_ents.append(ent)
-        doc.linked_ents.append(ent)
+            ner_ent = DummyEntity(
+                text=mention,
+                start_char_index=idx,
+                end_char_index=end,
+                cui="DETECTED_ENTITY",
+                context_similarity=1.0,
+            )
+            doc.ner_ents.append(ner_ent)
         return doc
 
 def make_fake_test_project() -> dict:
@@ -291,7 +307,7 @@ class StatsTests(TrainedModelTests):
         # it's not easily possible to test the linker 
         # as predictions in the dummy set are hard coded
         self.assertEqual(stats.tp, 3)
-        self.assertEqual(stats.fp, 2)
+        self.assertEqual(stats.fp, 1)
         self.assertEqual(stats.fn, 1)
 
     def test_precision_recall_f1(self) -> None:
@@ -309,9 +325,9 @@ class StatsTests(TrainedModelTests):
 
         # Linking only
         linking_pipe = self.linker_result.stats.all_projects.get_mode(MetricMode.LINKING).metrics.overall
-        self.assertAlmostEqual(linking_pipe.precision, 0.6)
+        self.assertAlmostEqual(linking_pipe.precision, 0.75)
         self.assertAlmostEqual(linking_pipe.recall, 3/4)
-        self.assertAlmostEqual(linking_pipe.f1, 0.666, places=2)
+        self.assertAlmostEqual(linking_pipe.f1, 0.75, places=2)
 
     def test_per_cui_precision_recall_f1(self) -> None:
         full_pipe = self.result.stats.all_projects.get_mode(MetricMode.FULL).metrics.per_cui
