@@ -757,7 +757,9 @@ class StatsCalculator:
         project_index: int,
         project_name: str,
         project_id: Any,
-        predictions: list[MutableEntity],
+        predictions: list[MutableEntity] | tuple[
+            list[MutableEntity], list[MutableEntity]
+        ],
         mode: MetricMode,
         calculate_ner_performance: bool = False,
     ) -> None:
@@ -769,14 +771,23 @@ class StatsCalculator:
             predictions: Model's predicted entities
         """
         full_pipe_gold_anns = self._extract_gold_annotations(doc)
+        linked_predictions: list[MutableEntity]
         if calculate_ner_performance:
+            if not isinstance(predictions, tuple):
+                raise TypeError(
+                    "NER performance requires separate NER and linked predictions"
+                )
             linked_predictions = predictions[1]
             full_pipe_pred_linked_anns = self._extract_predictions(linked_predictions, 
                                                                    doc)
-            ner_predictions = predictions[0]
+            ner_predictions: list[MutableEntity] = predictions[0]
             full_pipe_pred_ner_anns = self._extract_predictions(ner_predictions, 
                                                                 doc)
         else:
+            if not isinstance(predictions, list):
+                raise TypeError(
+                    "Predictions must be a list when NER performance is disabled"
+                )
             linked_predictions = predictions
             full_pipe_pred_linked_anns = self._extract_predictions(linked_predictions, 
                                                                    doc)
@@ -819,7 +830,11 @@ class StatsCalculator:
         
     def process_project(self, project: MedCATTrainerExportProject,
                         project_index: int,
-                        entity_getter: Callable[[str], list[MutableEntity]],
+                        entity_getter: Callable[
+                            [str],
+                            list[MutableEntity]
+                            | tuple[list[MutableEntity], list[MutableEntity]],
+                        ],
                         mode: MetricMode,
                         calculate_ner_performance: bool = False,
                         use_project_filters: bool = False,
