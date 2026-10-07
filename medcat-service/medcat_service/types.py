@@ -80,6 +80,8 @@ class ProcessResult(BaseModel):
     """
         # e.g. [{"0": {...}}, {"1": {...}}]
     """
+
+    relations: list[dict[str, Any]] = Field(default_factory=list)
     success: bool
     timestamp: str
     elapsed_time: float

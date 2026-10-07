@@ -205,6 +205,12 @@ class RelData(Dataset):
                                     ent2_token_end_pos: int = -1,
                                     is_spacy_doc: bool = False,
                                     is_mct_export: bool = False,
+                                    ent1_id: int = -1,
+                                    ent2_id: int = -1,
+                                    ent1_type: list[str] = [],
+                                    ent2_type: list[str] = [],
+                                    ent1_cui: Union[str, int] = -1,
+                                    ent2_cui: Union[str, int] = -1
                                     ) -> list:
         """
             This function checks if the relation is actually valid by distance
@@ -345,7 +351,7 @@ class RelData(Dataset):
                     assert _ent1_token_end_pos
                     assert _ent2_token_end_pos
                 except Exception as exception:
-                    logger.error(
+                    logger.info(
                         "document id : %s failed to process relation",
                         str(doc_id), exc_info=exception)
                     return []
@@ -371,7 +377,8 @@ class RelData(Dataset):
             return [window_tokenizer_data["input_ids"], ent1_ent2_new_start,
                     ent1_token, ent2_token, "UNK",
                     self.config.model.padding_idx,
-                    None, None, None, None, None, None, doc_id, "",
+                    ent1_type, ent2_type, ent1_id, ent2_id,
+                    ent1_cui, ent2_cui, doc_id, "",
                     s1_start, e1_end, s2_start, e2_end,
                     ent1_start_char_pos, ent1_end_char_pos,
                     ent2_start_char_pos, ent2_end_char_pos]
@@ -390,7 +397,7 @@ class RelData(Dataset):
 
         start_char_pos = entity.base.start_char_index
         end_char_pos = entity.base.end_char_index
-
+        
         token_start_pos = [
             i for i in range(0, doc_length_tokens)
             if start_char_pos in range(
@@ -409,7 +416,8 @@ class RelData(Dataset):
             self, doc_text: str, doc_id: str,
             ent1_token: MutableEntity, ent2_token: MutableEntity,
             tokenized_text_data: dict[str, Any],
-            chars_to_exclude: str, doc_length_tokens: int
+            chars_to_exclude: str,
+            doc_length_tokens: int
             ) -> Optional[list]:
 
         tmp_ent1 = ent1_token
@@ -431,6 +439,10 @@ class RelData(Dataset):
          (ent2_token_start_pos,
           ent2_token_end_pos)) = self._get_token_type_and_start_end(
              ent2_token, doc_length_tokens, tokenized_text_data)
+
+        ent1_id = ent1_token.id
+        ent2_id = ent2_token.id
+
 
         tkn1_str = str(ent1_token)
         tkn2_str = str(ent2_token)
@@ -457,6 +469,12 @@ class RelData(Dataset):
                             ent2_token_start_pos=ent2_token_start_pos,
                             ent1_token_end_pos=ent1_token_end_pos,
                             ent2_token_end_pos=ent2_token_end_pos,
+                            ent1_id=ent1_id,
+                            ent2_id=ent2_id,
+                            ent1_type=ent1_types,
+                            ent2_type=ent2_types,
+                            ent1_cui=ent1_token.cui,
+                            ent2_cui=ent2_token.cui,
                             is_spacy_doc=True
                         ))
             else:
@@ -473,6 +491,12 @@ class RelData(Dataset):
                         ent2_token_start_pos=ent2_token_start_pos,
                         ent1_token_end_pos=ent1_token_end_pos,
                         ent2_token_end_pos=ent2_token_end_pos,
+                        ent1_id=ent1_id,
+                        ent2_id=ent2_id,
+                        ent1_type=ent1_types,
+                        ent2_type=ent2_types,
+                        ent2_cui=ent2_token.cui,
+                        ent1_cui=ent1_token.cui,
                         is_spacy_doc=True
                     ))
         return None
@@ -499,6 +523,7 @@ class RelData(Dataset):
                         doc_length_tokens)
                     if relation is not None:
                         relation_instances.append(relation)
+
         return relation_instances
 
     def create_base_relations_from_doc(
@@ -553,7 +578,7 @@ class RelData(Dataset):
             doc_text = doc.base.text
 
         tokenized_text_data = cast(dict[str, Any],
-                                   self.tokenizer(doc_text, truncation=False))
+                                self.tokenizer(doc_text, truncation=False))
 
         doc_length_tokens = len(tokenized_text_data["tokens"])
 
@@ -612,7 +637,7 @@ class RelData(Dataset):
             "labels2idx": {}, "idx2label": {}
         }
 
-    def _create_relations_for_doc(
+    def _create_relations_for_mcexport_doc(
             self, document: MedCATTrainerExportDocument,
             data: dict,
             ) -> list[list]:
@@ -842,7 +867,7 @@ class RelData(Dataset):
 
         for project in data["projects"]:
             for _doc_id, document in enumerate(project["documents"]):
-                relation_instances = self._create_relations_for_doc(
+                relation_instances = self._create_relations_for_mcexport_doc(
                     document, data)
                 output_relations.extend(relation_instances)
 
@@ -859,8 +884,7 @@ class RelData(Dataset):
         logger.info("MCT export dataset | nclasses: %d | idx2label: %s",
                     nclasses, str(idx2label))
         logger.info("Samples per class: ")
-
-        logger.error(str(idx2label))
+        logger.info(str(idx2label))
 
         for label_num in list(idx2label.keys()):
             sample_count = 0

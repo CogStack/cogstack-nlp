@@ -3,10 +3,8 @@ import pandas as pd
 from fastapi import FastAPI
 
 import medcat_service.demo.demo_content as demo_content
-from medcat_service.demo.demo_logic import (
-    anoncat_demo_perform_deidentification,
-    medcat_demo_perform_named_entity_resolution,
-)
+from medcat_service.demo.demo_logic import (anoncat_demo_perform_deidentification,
+                                            medcat_demo_perform_named_entity_resolution)
 from medcat_service.dependencies import get_settings
 
 headers = ["Pretty Name", "Identifier", "Confidence Score", "Start Index", "End Index", "ID"]

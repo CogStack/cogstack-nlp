@@ -83,6 +83,11 @@ class RelCATAddon(AddonComponent):
         # set the correct base tokenizer and redo data paths
         rc.base_tokenizer = base_tokenizer
         rc._init_data_paths()
+
+        # make sure not to override cdb from RelCAT with CAT one...
+        if cdb is not None:
+            if rc.cdb is None or not rc.cdb.cui2info:
+                rc.cdb = cdb
         return cls(cnf, rc)
 
     def serialise_to(self, folder_path: str) -> None:
@@ -166,7 +171,7 @@ class RelCATAddon(AddonComponent):
             load_path=folder_path,
             cnf=cnf,
             base_tokenizer=tokenizer,
-            cdb=None)
+            cdb=init_kwargs.get("cdb"))
 
     def get_strategy(self) -> SerialisingStrategy:
         return SerialisingStrategy.MANUAL
@@ -904,6 +909,7 @@ class RelCAT:
                             "relations")
                         out_rels = predict_rel_dataset.dataset[
                             "output_relations"][rel_idx]
+
                         relations.append(
                             {
                                 "relation": rc_cnf.general.idx2labels[
@@ -919,6 +925,10 @@ class RelCAT:
                                 "end_ent2_char_pos": out_rels[21],
                                 "start_entity_id": out_rels[8],
                                 "end_entity_id": out_rels[9],
+                                "ent1_types": out_rels[6],
+                                "ent2_types": out_rels[7],
+                                "ent1_cui": out_rels[10],
+                                "ent2_cui": out_rels[11] 
                             })
                     pbar.update(len(token_ids))
             pbar.close()

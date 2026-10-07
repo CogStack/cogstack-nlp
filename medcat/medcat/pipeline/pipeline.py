@@ -377,7 +377,11 @@ class Pipeline:
                     "instead of the document."
                 )
         for addon in self._addons:
-            doc = addon(doc)
+            try:
+                doc = addon(doc)
+            except Exception:
+                logger.exception("Addon error %s", addon.full_name)
+
             if doc is None:
                 raise IncorrectAddonComponent(
                     f"Addon component {addon.full_name} returned None "
