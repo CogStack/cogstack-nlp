@@ -2,9 +2,9 @@ from collections.abc import Mapping
 import getpass
 import traceback
 from typing import Any, Optional, Iterable, Sequence, Union, Protocol, Type
-from typing import Literal
+from typing import Literal, Iterator
 import warnings
-# from functools import partial
+import itertools
 from importlib.util import find_spec
 
 from IPython.display import display, HTML
@@ -496,6 +496,136 @@ class CogStack:
             index=index, query=query, allow_no_indices=False)
         return f"Number of documents: {format(count, ',')}"
 
+    def iter_data_with_scan(
+        self,
+        index: Union[str, Sequence[str]],
+        query: dict,
+        include_fields: Optional[list[str]] = None,
+        size: int = 1000,
+        request_timeout: int = ES_TIMEOUT,
+        show_progress: bool = True,
+    ) -> Iterator[pd.DataFrame]:
+        """
+        Retrieve documents from an Elasticsearch or OpenSearch index or
+        indices using search query and elasticsearch or OpenSearch scan helper
+        function. The function converts chunks of results to a Pandas DataFrame
+        and does not return current scroll id if the process fails.
+
+        This method should be used when trying to iterate over large amount of
+        data to avoid loading it all into memory.
+
+        Parameters
+        ----------
+            index : str or Sequence[str]
+                    The name(s) of the Elasticsearch or OpenSearch indices or
+                    their aliases to search.
+            query : dict
+                    A dictionary containing the search query parameters.
+                    Query can start with `query` key and contain other
+                    query options which will be used in the search
+
+                        .. code-block:: json
+                            {"query": {"match": {"title": "python"}}}}
+                    or only consist of content of `query` block
+                    (preferred method to avoid clashing with other parameters)
+
+                        .. code-block:: json
+                            {"match": {"title": "python"}}}
+
+            include_fields : list[str], optional
+                    A list of fields to be included in search results
+                    and presented as columns in the DataFrame.
+                    If not provided, only _index, _id and _score fields will
+                    be included. Columns <strong>_index, _id, _score</strong>
+                    are present in all search results
+            size : int, optional, default = 1000
+                    The number of documents to be returned by the query or
+                    scroll API during each iteration.
+                    <strong>MAX: 10,000</strong>.
+            request_timeout : int, optional, default=300
+                    The time in seconds to wait for a response
+                    from Elasticsearch or OpenSearch before timing out.
+            show_progress : bool, optional, default=True
+                    Whether to show the progress in console.
+        Returns
+        ------
+        Iterator[pandas.DataFrame]
+            A DataFrame per chunk containing the retrieved documents.
+
+        Raises
+        ------
+        Exception
+            If the search fails or cancelled by the user.
+        """
+        pr_bar: Optional[tqdm.tqdm] = None
+        try:
+            if len(index) == 0:
+                raise ValueError(
+                    "Provide at least one index or index alias name")
+            self.__validate_size(size=size)
+            if "query" not in query.keys():
+                temp_query = query.copy()
+                query.clear()
+                query["query"] = temp_query
+            pr_bar = tqdm.tqdm(
+                desc="CogStack retrieved...",
+                disable=not show_progress, colour="green"
+            )
+            scan_results = self.provider.scan(
+                include_fields_map=include_fields,
+                source=False,
+                index=index,
+                query=query,
+                size=size,
+                request_timeout=request_timeout,
+                allow_no_indices=False,
+            )
+            pr_bar.iterable = scan_results
+            csr_str = self.count_search_results(index, query)
+            # NOTE: allowing for comma-separated thousands and millions
+            total = int(csr_str.rsplit(" ", 1)[-1].replace(",", ""))
+            pr_bar.total = total
+            rows = self.__map_search_results(hits=pr_bar)
+            while chunk := list(itertools.islice(rows, size)):
+                yield self.__create_dataframe(chunk, include_fields)
+        except KeyboardInterrupt:
+            if pr_bar is not None:
+                pr_bar.bar_format = "%s{l_bar}%s{bar}%s{r_bar}" % (
+                    "\033[0;33m",
+                    "\033[0;33m",
+                    "\033[0;33m",
+                )
+                pr_bar.set_description(
+                    "CogStack read cancelled! Processed", refresh=True
+                )
+            print(
+                "Request cancelled and current "
+                "search_scroll_id deleted...")
+            raise
+        except Exception as err:  # GeneratorExit is not an Exception
+            if self.provider.has_no_indices(err):
+                raise ValueError("Index not found") from err
+            if self.provider.is_bad_request(err):
+                raise ValueError("Bad request") from err
+            if pr_bar is not None:
+                pr_bar.bar_format = "%s{l_bar}%s{bar}%s{r_bar}" % (
+                    "\033[0;31m",
+                    "\033[0;31m",
+                    "\033[0;31m",
+                )
+                pr_bar.set_description(
+                    "CogStack read failed! Processed", refresh=True
+                )
+                print(
+                    Exception(
+                        f"Unexpected {err=},\n {traceback.format_exc()}, "
+                        f"{type(err)=}")
+                )
+            raise
+        finally:
+            if pr_bar is not None:
+                pr_bar.close()
+
     def read_data_with_scan(
         self,
         index: Union[str, Sequence[str]],
@@ -554,71 +684,11 @@ class CogStack:
         Exception
             If the search fails or cancelled by the user.
         """
-        pr_bar: Optional[tqdm.tqdm] = None
-        all_mapped_results = []
-        try:
-            if len(index) == 0:
-                raise ValueError(
-                    "Provide at least one index or index alias name")
-            self.__validate_size(size=size)
-            if "query" not in query.keys():
-                temp_query = query.copy()
-                query.clear()
-                query["query"] = temp_query
-            pr_bar = tqdm.tqdm(
-                desc="CogStack retrieved...",
-                disable=not show_progress, colour="green"
-            )
-            scan_results = self.provider.scan(
-                include_fields_map=include_fields,
-                source=False,
-                index=index,
-                query=query,
-                size=size,
-                request_timeout=request_timeout,
-                allow_no_indices=False,
-            )
-            pr_bar.iterable = scan_results
-            csr_str = self.count_search_results(index, query)
-            total = int(csr_str.rsplit(" ", 1)[-1])
-            pr_bar.total = total
-            all_mapped_results = self.__map_search_results(hits=pr_bar)
-        except BaseException as err:
-            if isinstance(err, KeyboardInterrupt):
-                if pr_bar is not None:
-                    pr_bar.bar_format = "%s{l_bar}%s{bar}%s{r_bar}" % (
-                        "\033[0;33m",
-                        "\033[0;33m",
-                        "\033[0;33m",
-                    )
-                    pr_bar.set_description(
-                        "CogStack read cancelled! Processed", refresh=True
-                    )
-                print("Request cancelled and current "
-                      "search_scroll_id deleted...")
-            elif self.provider.has_no_indices(err):
-                raise ValueError("Index not found") from err
-            elif self.provider.is_bad_request(err):
-                raise ValueError("Bad request") from err
-            elif isinstance(err, ValueError) and err.args == (
-                    'Size must not be greater than 10000',):
-                raise err
-            else:
-                if pr_bar is not None:
-                    pr_bar.bar_format = "%s{l_bar}%s{bar}%s{r_bar}" % (
-                        "\033[0;31m",
-                        "\033[0;31m",
-                        "\033[0;31m",
-                    )
-                    pr_bar.set_description(
-                        "CogStack read failed! Processed", refresh=True
-                    )
-                print(
-                    Exception(
-                        f"Unexpected {err=},\n {traceback.format_exc()}, "
-                        f"{type(err)=}")
-                )
-        return self.__create_dataframe(all_mapped_results, include_fields)
+        chunks = list(self.iter_data_with_scan(
+            index, query, include_fields, size, request_timeout, show_progress,
+        ))
+        return (pd.concat(chunks, ignore_index=True) if chunks
+                else self.__create_dataframe([], include_fields))
 
     def read_data_with_scroll(
         self,

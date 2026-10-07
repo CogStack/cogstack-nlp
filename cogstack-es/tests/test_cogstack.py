@@ -92,3 +92,56 @@ def test_read_data_with_scan(mock_elasticsearch: tuple[MagicMock, Mock]):
         assert isinstance(result, pd.DataFrame)
         assert len(result) == 2
         assert 'title' in result.columns
+
+
+def _counting_source(n_docs, pulled):
+    """Stand-in for provider.scan: a lazy generator that records every doc
+    handed out, so a test can see how much has been fetched at any moment."""
+    for i in range(n_docs):
+        pulled.append(i)
+        yield {'_index': 'test_index', '_id': str(i), '_score': 1.0,
+               'fields': {'title': [f'doc{i}']}}
+
+
+def _cs_with_source(mock_inst, n_docs, pulled):
+    mock_inst.scan.return_value = _counting_source(n_docs, pulled)
+    # >= 1000 so the formatted count contains a thousands separator
+    mock_inst.count_raw.return_value = 10_000
+    cs = CogStack(['http://localhost:9200'])
+    cs.provider = mock_inst
+    return cs
+
+
+def test_read_data_with_scan_materialises_everything(mock_elasticsearch):
+    """One call pulls the whole result set before returning anything."""
+    _, mock_inst = mock_elasticsearch
+    pulled = []
+    cs = _cs_with_source(mock_inst, 10, pulled)
+
+    df = cs.read_data_with_scan(
+        'test_index', {"match": {"title": "test"}}, ['title'],
+        size=3, show_progress=False)
+
+    assert len(pulled) == 10
+    assert len(df) == 10
+
+
+def test_iter_data_with_scan_yields_in_chunks(mock_elasticsearch):
+    """Docs are only pulled from the source as each chunk is requested."""
+    _, mock_inst = mock_elasticsearch
+    pulled = []
+    cs = _cs_with_source(mock_inst, 10, pulled)
+
+    chunks = cs.iter_data_with_scan(
+        'test_index', {"match": {"title": "test"}}, ['title'],
+        size=3, show_progress=False)
+    assert len(pulled) == 0  # nothing fetched until iterated
+
+    assert len(next(chunks)) == 3
+    assert len(pulled) == 3  # only the first chunk has been pulled
+
+    assert len(next(chunks)) == 3
+    assert len(pulled) == 6
+
+    assert [len(c) for c in chunks] == [3, 1]  # remainder
+    assert len(pulled) == 10
