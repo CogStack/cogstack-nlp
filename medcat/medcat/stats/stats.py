@@ -4,7 +4,8 @@ import logging
 from tqdm import tqdm
 
 from medcat.cat import CAT
-from medcat.stats.common import GoldAnnotation, PredictedAnnotation
+from medcat.stats.common import (
+    GoldAnnotation, PredictedAnnotation, NER_DETECTED_ENTITY_TAG)
 from medcat.stats.failuremodes import FailureModeFinder
 from medcat.utils.filters import project_filters
 from medcat.data.mctexport import (
@@ -308,7 +309,7 @@ class StatsCalculator:
                 continue
             state = mode_stats.stats
             if mode == MetricMode.NER:
-                key = "DETECTED_ENTITY"
+                key = NER_DETECTED_ENTITY_TAG
                 state.cui_gold_counts[key] = (
                     state.cui_gold_counts.get(key, 0)
                     + len(gold_anns)
@@ -393,7 +394,7 @@ class StatsCalculator:
             gold, pred_anns, check_cui=False)
         suitable = [pred_anns[idx] for idx in suitable_ids]
         example['failure_mode'] = self.failure_mode_finder.get_failure_mode(
-            example, suitable, pred_anns,
+            gold['cui'], example, suitable, pred_anns,
         )
 
     def _record_fp(self,
@@ -570,7 +571,7 @@ class StatsCalculator:
                       gold_anns: list[GoldAnnotation],
                       pred_anns: list[PredictedAnnotation]
                       ) -> tuple[list[GoldAnnotation], list[PredictedAnnotation]]:
-        ner_cui = 'DETECTED_ENTITY'
+        ner_cui = NER_DETECTED_ENTITY_TAG
         eval_pred_anns: list[PredictedAnnotation] = [
             {**pred, "cui": ner_cui}
             for pred in pred_anns

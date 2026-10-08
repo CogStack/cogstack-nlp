@@ -3,6 +3,9 @@ from typing import TypedDict
 from medcat.tokenizing.tokens import MutableEntity
 
 
+NER_DETECTED_ENTITY_TAG = "DETECTED_ENTITY"
+
+
 class GoldAnnotation(TypedDict):
     """Validated gold annotation payload after CUI filtering."""
 
