@@ -394,7 +394,7 @@ class StatsCalculator:
             gold, pred_anns, check_cui=False)
         suitable = [pred_anns[idx] for idx in suitable_ids]
         example['failure_mode'] = self.failure_mode_finder.get_failure_mode(
-            gold['cui'], example, suitable, pred_anns,
+            example, suitable, pred_anns,
         )
 
     def _record_fp(self,
