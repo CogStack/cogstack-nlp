@@ -1,11 +1,13 @@
 from typing import Callable, Optional
 from typing_extensions import Self
 from contextlib import contextmanager
+import logging
 
 from medcat.cat import CAT
 from medcat.cdb import CDB
 from medcat.components.types import (
     CoreComponentType, AbstractEntityProvidingComponent)
+from medcat.components.ner.vocab_based_ner import tokens_to_raw_name_opts
 from medcat.config.config import ComponentConfig
 from medcat.tokenizing.tokenizers import BaseTokenizer
 from medcat.tokenizing.tokens import (
@@ -14,6 +16,9 @@ from medcat.tokenizing.tokens import (
 from medcat.data.mctexport import (
     MedCATTrainerExport, MedCATTrainerExportDocument, count_all_docs, iter_docs)
 from medcat.vocab import Vocab
+
+
+logger = logging.getLogger(__name__)
 
 
 class _CheatingComponent(AbstractEntityProvidingComponent):
@@ -41,6 +46,7 @@ class _CheatingComponent(AbstractEntityProvidingComponent):
             cls, cnf: ComponentConfig, tokenizer: BaseTokenizer,
             cdb: CDB, vocab: Vocab, model_load_path: Optional[str]) -> Self:
         raise ValueError("Cannot create new component of this type")
+
 
 @contextmanager
 def cheating_component(
@@ -81,21 +87,62 @@ def _identify_document(
     raise ValueError("Unable to identify correct document")
 
 
+def _parse_raw_name(
+    tkns: list[MutableToken],
+    separator: str,
+    try_reverse_word_order: bool,
+    checker: Callable[[str], bool],
+) -> str:
+    if not tkns:
+        logger.info("No tokens for cheating component to create raw name")
+        return ""
+    opts = tokens_to_raw_name_opts(
+        tkns, separator, try_reverse_word_order)
+    for opt in opts:
+        if checker(opt):
+            return opt
+    name = next(tokens_to_raw_name_opts(
+        tkns, separator, try_reverse_word_order))
+    logger.debug(
+        "Tokens did not appear in the CBD as a name so returning "
+        "first name (%s) but it will not map to link candidates: %s",
+        name, tkns
+    )
+    # NOTE: doing again for the sake of return
+    return name
+
+
+class UnknownTokensException(ValueError):
+    pass
+
+
 def _create_general_predictor(
-        dataset: MedCATTrainerExport,
-        tokens2entity: Callable[[list[MutableToken], MutableDocument], MutableEntity],
-        set_cui: bool,
-    ) -> Callable[[MutableDocument], list[MutableEntity]]:
+    dataset: MedCATTrainerExport,
+    tokens2entity: Callable[[list[MutableToken], MutableDocument], MutableEntity],
+    tokens2name: Callable[[list[MutableToken]], str],
+    name2candidates: Callable[[str], list[str]],
+    set_cui: bool,
+) -> Callable[[MutableDocument], list[MutableEntity]]:
     def predict(doc: MutableDocument) -> list[MutableEntity]:
         anns = _identify_document(doc, dataset)["annotations"]
         ents: list[MutableEntity] = []
         for ann in anns:
             start = ann["start"]
             end = ann["end"]
-            tkns = doc.get_tokens(start, end)
+            tkns = [
+                tkn for tkn in doc.get_tokens(start, end)
+                if not tkn.to_skip
+            ]
             try:
                 ent = tokens2entity(tkns, doc)
-            except ValueError:
+            except ValueError as e:
+                logger.debug(
+                    "Issue getting tokens for %s @ %s: %s. Attempt to "
+                    "resolve by using a wider span.",
+                    ann['cui'], str((start, end)),
+                    doc.base.text[start: end],
+                    exc_info=e,
+                )
                 while not tkns:
                     # If no tokens found, try expanding the 
                     # range by 1 character on each side
@@ -106,35 +153,48 @@ def _create_general_predictor(
                 ent.id = UNTOKENIZABLE_ENTITY_ID
             if set_cui:
                 ent.cui = ann["cui"]
+            else:
+                name = tokens2name(tkns)
+                ent.detected_name = name
+                ent.link_candidates = name2candidates(name)
             ents.append(ent)
         return ents
     return predict
 
 
-
 def _create_linker_predictor(
-        dataset: MedCATTrainerExport,
-        tokens2entity: Callable[[list[MutableToken], MutableDocument], MutableEntity],
-    ) -> Callable[[MutableDocument], list[MutableEntity]]:
-    return _create_general_predictor(dataset, tokens2entity, True)
+    dataset: MedCATTrainerExport,
+    tokens2entity: Callable[[list[MutableToken], MutableDocument], MutableEntity],
+    tokens2name: Callable[[list[MutableToken]], str],
+    name2candidates: Callable[[str], list[str]],
+) -> Callable[[MutableDocument], list[MutableEntity]]:
+    return _create_general_predictor(
+        dataset, tokens2entity, tokens2name, name2candidates, True)
 
 
 def _create_ner_predictor(
-        dataset: MedCATTrainerExport,
-        tokens2entity: Callable[[list[MutableToken], MutableDocument], MutableEntity],
-    ) -> Callable[[MutableDocument], list[MutableEntity]]:
-    return _create_general_predictor(dataset, tokens2entity, False)
+    dataset: MedCATTrainerExport,
+    tokens2entity: Callable[[list[MutableToken], MutableDocument], MutableEntity],
+    tokens2name: Callable[[list[MutableToken]], str],
+    name2candidates: Callable[[str], list[str]],
+) -> Callable[[MutableDocument], list[MutableEntity]]:
+    return _create_general_predictor(
+        dataset, tokens2entity, tokens2name, name2candidates, False)
 
 
 def _create_predictor(
-        component_type: CoreComponentType,
-        dataset: MedCATTrainerExport,
-        tokens2entity: Callable[[list[MutableToken], MutableDocument], MutableEntity],
-    ) -> Callable[[MutableDocument], list[MutableEntity]]:
+    component_type: CoreComponentType,
+    dataset: MedCATTrainerExport,
+    tokens2entity: Callable[[list[MutableToken], MutableDocument], MutableEntity],
+    tokens2name: Callable[[list[MutableToken]], str],
+    name2candidates: Callable[[str], list[str]],
+) -> Callable[[MutableDocument], list[MutableEntity]]:
     if component_type == CoreComponentType.linking:
-        return _create_linker_predictor(dataset, tokens2entity)
+        return _create_linker_predictor(
+            dataset, tokens2entity, tokens2name, name2candidates)
     elif component_type == CoreComponentType.ner:
-        return _create_ner_predictor(dataset, tokens2entity)
+        return _create_ner_predictor(
+            dataset, tokens2entity, tokens2name, name2candidates)
     raise ValueError(
         f"Unable to create predictor for component {component_type}")
 
@@ -172,6 +232,22 @@ def dataset_aware_component(
     """
     _check_dataset(dataset)
     tokens2entity = cat.pipe.tokenizer.entity_from_tokens_in_doc
-    predictor = _create_predictor(comp_type, dataset, tokens2entity)
+
+    def tokens2name(tkns: list[MutableToken]) -> str:
+        sep = cat.config.general.separator
+        try_reverse_order = cat.config.components.ner.try_reverse_word_order
+        return _parse_raw_name(
+            tkns, sep, try_reverse_order,
+            lambda name: name in cat.cdb.name2info
+        )
+
+    def name2candidates(name: str) -> list[str]:
+        # NOTE: not all names are in the CBD
+        if name in cat.cdb.name2info:
+            return list(cat.cdb.name2info[name]['per_cui_status'])
+        return []
+
+    predictor = _create_predictor(
+        comp_type, dataset, tokens2entity, tokens2name, name2candidates)
     with cheating_component(cat, comp_type, predictor):
         yield
