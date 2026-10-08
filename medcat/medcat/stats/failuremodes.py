@@ -12,7 +12,7 @@ from medcat.config import LinkingFilters
 from medcat.pipeline import Pipeline
 from medcat.tokenizing.tokenizers import BaseTokenizer
 from medcat.tokenizing.tokens import MutableToken
-from medcat.stats.common import PredictedAnnotation
+from medcat.stats.common import NER_DETECTED_ENTITY_TAG, PredictedAnnotation
 from medcat.utils.cdb_utils import reverse_pt2ch
 
 
@@ -361,11 +361,16 @@ class FailureModeFinder:
         candidates: set[str] = set()
         for name in suitable_names:
             candidates.update(self.name2info[name]['per_cui_status'])
-        if gold_cui not in self.cui2info:
+        # NOTE: for NER-only stats the concept ID is a special one
+        #       since the assumption is that the perfect linker knows
+        #       every concept
+        if gold_cui not in self.cui2info and gold_cui != NER_DETECTED_ENTITY_TAG:
             return FailureMode.CUI_NOT_IN_CDB
         if not suitable_names:
             return FailureMode.NAME_UNKNOWN
-        if gold_cui not in candidates:
+        # NOTE: for NER-only stats the perfect-linker should have all
+        #       names and concepts linked so we ignore this failure mode
+        if gold_cui not in candidates and gold_cui != NER_DETECTED_ENTITY_TAG:
             return FailureMode.NAME_NOT_LINKED_TO_CUI
         return None
 
