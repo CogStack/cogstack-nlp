@@ -728,6 +728,7 @@ class CATSupTrainingTests(CATUnsupTrainingTests):
 
 
 class CATSupTrainingWithMissingConceptsTests(CATSupTrainingTests):
+    # NOTE: should remain consistent unless we change the model or data
     EXPECTED_HASH = "9c299628c9e6c220"
 
     @classmethod
