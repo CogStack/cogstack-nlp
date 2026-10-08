@@ -1,4 +1,4 @@
-from typing import Callable, Optional
+from typing import Callable, Optional, cast
 from typing_extensions import Self
 from contextlib import contextmanager
 import logging
@@ -74,7 +74,8 @@ def cheating_component(
     """
     comps_list = cat.pipe._components
     # find original index
-    original_comp = cat.pipe.get_component(comp_type)
+    original_comp = cast(
+        AbstractEntityProvidingComponent, cat.pipe.get_component(comp_type))
     replace_index = comps_list.index(original_comp)
     # create and replace
     cheater = _CheatingComponent(original_comp, comp_type, predictor)
