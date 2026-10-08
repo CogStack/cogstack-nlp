@@ -166,6 +166,11 @@ There are two ways to run the estimation: the command line (for a quick look at 
 ```
 python -m medcat_performance_estimator.cli \
     --model-pack path/to/model_pack.zip \
+	# NOTE: example uses two concepts but this process
+	#       is unlikely to have super accurate / valuable
+	#       output for such a small number of concepts; we
+	#       use a small number of concepts here for brevity
+	#       of documentation
     --cuis 195967001,22298006 \
     --output estimates.json
 ```
