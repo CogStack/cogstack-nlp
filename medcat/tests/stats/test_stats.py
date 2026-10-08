@@ -265,7 +265,7 @@ class StatsTests(TrainedModelTests):
 
         ner_stats = self.result.stats.all_projects.get_mode(MetricMode.NER).stats
         # Raw counts of the NER only mode
-        self.assertEqual(ner_stats.cui_gold_counts["__NER__"], 4)
+        self.assertEqual(ner_stats.cui_gold_counts["DETECTED_ENTITY"], 4)
         
     def test_raw_counts_full_pipe(self) -> None:
         stats = self.result.stats.all_projects.get_mode(MetricMode.FULL).stats
@@ -326,16 +326,16 @@ class StatsTests(TrainedModelTests):
             self.assertAlmostEqual(full_pipe[cui].f1, 0.0)
 
         ner_pipe = self.result.stats.all_projects.get_mode(MetricMode.NER).metrics.per_cui
-        self.assertAlmostEqual(ner_pipe["__NER__"].precision, 1.0)
-        self.assertAlmostEqual(ner_pipe["__NER__"].recall, 0.75)
-        self.assertAlmostEqual(ner_pipe["__NER__"].f1, 0.85, places=1)
+        self.assertAlmostEqual(ner_pipe["DETECTED_ENTITY"].precision, 1.0)
+        self.assertAlmostEqual(ner_pipe["DETECTED_ENTITY"].recall, 0.75)
+        self.assertAlmostEqual(ner_pipe["DETECTED_ENTITY"].f1, 0.85, places=1)
 
     def test_cuis_exist(self) -> None:
         cui_metrics = self.result.stats.all_projects.get_mode(MetricMode.FULL).metrics.per_cui
         ner_cui_metrics = self.result.stats.all_projects.get_mode(MetricMode.NER).metrics.per_cui
         linker_cui_metrics = self.linker_result.stats.all_projects.get_mode(MetricMode.LINKING).metrics.per_cui
-        self.assertIn("__NER__", ner_cui_metrics)
-        self.assertNotIn("__NER__", cui_metrics)
+        self.assertIn("DETECTED_ENTITY", ner_cui_metrics)
+        self.assertNotIn("DETECTED_ENTITY", cui_metrics)
         for cui in ["195967001", "387458008", "25609006", "116154003", "387517004"]:
             self.assertNotIn(cui, ner_cui_metrics)
             self.assertIn(cui, cui_metrics)
@@ -378,9 +378,9 @@ class StatsTests(TrainedModelTests):
         # same as previous!
         intersection = len("asthma") + len("aspirin") + len("patient")
         union = len("asthma") + len("aspirin") + len("patient") + len("paracetamol")
-        self.assertAlmostEqual(ner_metrics["__NER__"].char_iou, intersection/union)
-        self.assertAlmostEqual(ner_metrics["__NER__"].char_giou, intersection/union)
-        self.assertAlmostEqual(ner_metrics["__NER__"].char_cohen_k, 0.63, places=2)
+        self.assertAlmostEqual(ner_metrics["DETECTED_ENTITY"].char_iou, intersection/union)
+        self.assertAlmostEqual(ner_metrics["DETECTED_ENTITY"].char_giou, intersection/union)
+        self.assertAlmostEqual(ner_metrics["DETECTED_ENTITY"].char_cohen_k, 0.63, places=2)
         
         linker_metrics = self.linker_result.stats.all_projects.get_mode(MetricMode.LINKING).metrics.per_cui
         self.assertAlmostEqual(linker_metrics["195967001"].char_iou, 1.0)
@@ -388,4 +388,32 @@ class StatsTests(TrainedModelTests):
         self.assertAlmostEqual(linker_metrics["25609006"].char_iou, 0.0)
         self.assertAlmostEqual(linker_metrics["116154003"].char_iou, 0.0)
         self.assertAlmostEqual(linker_metrics["387517004"].char_iou, 1.0)
-        
+
+    def test_examples(self) -> None:
+        examples = self.result.stats.all_projects.get_mode(MetricMode.FULL).stats.examples
+        tp = examples["tp"]
+        fp = examples["fp"]
+        fn = examples["fn"]
+        self.assertIn("195967001", tp)
+        self.assertIn("387458008", tp)
+        self.assertIn("25609006", fp)
+        self.assertIn("116154003", fn)
+        linking_examples = self.result.stats.all_projects.get_mode(MetricMode.NER).stats.examples
+        self.assertIn("DETECTED_ENTITY", linking_examples['tp'])
+        self.assertIn("DETECTED_ENTITY", linking_examples['fn'])
+        self.assertNotIn("DETECTED_ENTITY", linking_examples['fp'])
+
+    def test_example_contents(self) -> None:
+        examples = self.result.stats.all_projects.get_mode(MetricMode.FULL).stats.examples
+        sample = examples["tp"]["195967001"]
+        self.assertEqual(len(sample), 1)
+        self.assertEqual(sample[0]['cui'], "195967001")
+        self.assertEqual(sample[0]['document_id'], "0")
+        self.assertEqual(sample[0]['document_name'], "dummy_doc")
+        self.assertEqual(sample[0]['project_id'], "0")
+        self.assertEqual(sample[0]['project_name'], "dummy_project")
+        self.assertEqual(sample[0]['text'], "The patient has asthma and takes aspirin, and paracetamol.")
+        self.assertEqual(sample[0]['start'], 16)
+        self.assertEqual(sample[0]['end'], 22)
+        self.assertEqual(sample[0]['acc'], 1.0)
+        self.assertEqual(sample[0]['source_value'], "asthma")
