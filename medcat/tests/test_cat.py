@@ -729,20 +729,30 @@ class CATSupTrainingTests(CATUnsupTrainingTests):
 
 class CATSupTrainingWithMissingConceptsTests(CATSupTrainingTests):
     # NOTE: should remain consistent unless we change the model or data
-    EXPECTED_HASH = "9c299628c9e6c220"
+    EXPECTED_HASH = "6bb0991d58b569ec"
+    removed_cui: str = ''
 
     @classmethod
     def setUpClass(cls):
         # NOTE: training will be performed in super setup
         super().setUpClass()
+        cui_counts_in_data = cls._get_cui_counts()
+        # everything else has the default reset value of 100 + the count in data
+        for cui, count in cui_counts_in_data.items():
+            cls.EXPECT_TRAIN[cui] = 100 + count
+        # removed cui count is only what is in the data
+        cls.EXPECT_TRAIN[cls.removed_cui] = cui_counts_in_data[cls.removed_cui]
+
+    # NOTE: name counts now do not match because cui counts were manipulated
+    def test_training_has_same_cui_and_name_counts(self):
+        pass
 
     @classmethod
     def _remove_cui_from_data(cls, data: dict):
         # use supervised data so that we don't remove something only in unsup training
         cuis = set(ann['cui'] for _, _, ann in iter_anns(data))
         # sorting for consistency
-        cui_in_data = next(iter(sorted(cuis)))
-        cls.EXPECT_TRAIN.pop(cui_in_data)
+        cls.removed_cui = cui_in_data = next(iter(sorted(cuis)))
         cls.cat.cdb.remove_cui(cui_in_data)
 
     @classmethod
