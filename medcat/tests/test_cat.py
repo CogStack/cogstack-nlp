@@ -727,6 +727,32 @@ class CATSupTrainingTests(CATUnsupTrainingTests):
         self.assertEqual(cc, cn)
 
 
+class CATSupTrainingWithMissingConceptsTests(CATSupTrainingTests):
+    EXPECTED_HASH = "9c299628c9e6c220"
+
+    @classmethod
+    def setUpClass(cls):
+        # NOTE: training will be performed in super setup
+        super().setUpClass()
+
+    @classmethod
+    def _remove_cui_from_data(cls, data: dict):
+        # use supervised data so that we don't remove something only in unsup training
+        cuis = set(ann['cui'] for _, _, ann in iter_anns(data))
+        # sorting for consistency
+        cui_in_data = next(iter(sorted(cuis)))
+        cls.EXPECT_TRAIN.pop(cui_in_data)
+        cls.cat.cdb.remove_cui(cui_in_data)
+
+    @classmethod
+    def _perform_training(cls):
+        data = cls._get_data()
+        # NOTE: need to do CDB manipulation BEFORE training
+        cls._remove_cui_from_data(data)
+        # NOTE: need to explicitly ask to reset CUI counts
+        cls.cat.trainer.train_supervised_raw(data, reset_cui_count=True)
+
+
 class CATWithDictNERSupTrainingTests(CATSupTrainingTests):
     from medcat.components.types import CoreComponentType
     from medcat.components.ner.dict_based_ner import NER as DNER
