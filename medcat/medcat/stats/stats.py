@@ -1,4 +1,3 @@
-from functools import partial
 from typing import Optional, Callable, TextIO, Any
 import logging
 
@@ -14,7 +13,8 @@ from medcat.data.mctexport import (
     MedCATTrainerExportDocument)
 from medcat.config.config import LinkingFilters
 from medcat.cdb.concepts import CUIInfo, get_new_cui_info
-from medcat.tokenizing.tokens import MutableDocument, MutableEntity, UNTOKENIZABLE_ENTITY_ID
+from medcat.tokenizing.tokens import (
+    MutableDocument, MutableEntity, UNTOKENIZABLE_ENTITY_ID)
 from medcat.components.types import CoreComponentType
 from medcat.utils.training_utils import dataset_aware_component
 from collections import defaultdict
@@ -866,7 +866,8 @@ class StatsCalculator:
         Args:
             project: The project data containing documents and annotations.
             project_index: Index of the project in the export.
-            doc_getter: Function to get the document (with predicted entities) from text.
+            doc_getter: Function to get the document (with predicted entities)
+                from text.
             mode: Evaluation mode (full, ner, linking).
             calculate_ner_performance: Whether to calculate NER performance.
             use_project_filters: Whether to apply project-specific filters.

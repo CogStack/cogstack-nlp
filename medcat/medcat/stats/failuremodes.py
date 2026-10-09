@@ -1,15 +1,13 @@
 from enum import Enum
 from pprint import pprint
-from typing import Callable, Iterable, Collection, Literal, TypedDict
+from typing import Callable, Collection, Literal, TypedDict
 from itertools import product
 import logging
 from collections import Counter, defaultdict
 
 from medcat.cat import CAT
 from medcat.cdb.concepts import CUIInfo, NameInfo
-from medcat.components.base import CoreComponentType
 from medcat.config import LinkingFilters
-from medcat.pipeline import Pipeline
 from medcat.tokenizing.tokens import MutableDocument, MutableToken
 from medcat.stats.common import NER_DETECTED_ENTITY_TAG, PredictedAnnotation
 from medcat.utils.cdb_utils import reverse_pt2ch
