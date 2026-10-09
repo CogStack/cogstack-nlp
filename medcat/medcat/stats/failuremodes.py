@@ -135,7 +135,6 @@ def get_ner_candidates(
     doc: MutableDocument,
     tkns: list[MutableToken],
 ) -> list[tuple[int, int, Collection[str]]]:
-    # print("GNC", tkns)
     start_char_index = tkns[0].base.char_index
     end_char_index = tkns[-1].base.char_index + len(tkns[-1].base.text)
     return [
@@ -322,15 +321,12 @@ class FailureModeFinder:
         gold_cui: str,
     ) -> FailureMode | None:
         name_versions = _build_opts(tkns, self.token_separator)
-        # print("OPTS", name_versions)
         suitable_names = [
             name for name in name_versions if name in self.name2info]
-        # print("S", suitable_names)
         # any name variant linking to the gold concept is enough
         candidates: set[str] = set()
         for name in suitable_names:
             candidates.update(self.name2info[name]['per_cui_status'])
-        # print("CANDS", candidates)
         # NOTE: for NER-only stats the concept ID is a special one
         #       since the assumption is that the perfect linker knows
         #       every concept
@@ -428,8 +424,6 @@ class FailureModeFinder:
         gold_cui = example['cui']
         context = example['text']
         source_val = example['source_value']
-        
-        # print("SV", source_val)
 
         # prep for step 0
         start, end = _get_local_span(
@@ -437,20 +431,12 @@ class FailureModeFinder:
             source_val, window_size
         )
 
-        # print("IN EXAMPLE", example['start'], example['end'])
-        # print("LOCAL", start, end)
-
-        all_tkns = list(mut_doc)
-        # print("ALL TOKENS", [(t.base.text, t.base.char_index) for t in all_tkns])
-
         tkns = [
             tkn for tkn in mut_doc
             if (not tkn.to_skip and
                 example['start'] <= tkn.base.char_index < example['end']
                 )
         ]
-
-        # print("TKNS", [t.base.text for t in tkns])
 
         return (
             self._step_0_gold_sanity(context, start, end, source_val)
