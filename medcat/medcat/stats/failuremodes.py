@@ -436,15 +436,11 @@ class FailureModeFinder:
         Returns:
             FailureMode: The resulting failure mode.
         """
+        context = mut_doc.base.text
         gold_cui = example['cui']
-        context = example['text']
+        start = example['start']
+        end = example['end']
         source_val = example['source_value']
-
-        # prep for step 0
-        start, end = _get_local_span(
-            context, example['start'], example['end'],
-            source_val, window_size
-        )
 
         tkns = [
             tkn for tkn in mut_doc
