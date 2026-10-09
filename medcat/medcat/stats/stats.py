@@ -908,6 +908,10 @@ class StatsCalculator:
                         doc.get('id', 'Unkown'), doc.get('name', 'Unknown'),
                     )
                     continue
+                predictions: (
+                    list[MutableEntity] |
+                    tuple[list[MutableEntity], list[MutableEntity]]
+                )
                 if calculate_ner_performance:
                     predictions = (mut_doc.ner_ents, mut_doc.linked_ents)
                 else:
