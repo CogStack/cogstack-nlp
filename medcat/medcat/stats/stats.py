@@ -908,7 +908,10 @@ class StatsCalculator:
                         doc.get('id', 'Unkown'), doc.get('name', 'Unknown'),
                     )
                     continue
-                predictions = mut_doc.linked_ents
+                if calculate_ner_performance:
+                    predictions = (mut_doc.ner_ents, mut_doc.linked_ents)
+                else:
+                    predictions = mut_doc.linked_ents
                 self.process_document(
                     mut_doc,
                     doc,
