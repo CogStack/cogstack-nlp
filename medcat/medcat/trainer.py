@@ -121,6 +121,8 @@ class Trainer:
                         for ann in doc['annotations']):
                 cuis.append(ann['cui'])
         for cui in set(cuis):
+            if cui not in self.cdb.cui2info:
+                continue
             if self.cdb.cui2info[cui]['count_train'] != 0:
                 self.cdb.cui2info[cui]['count_train'] = reset_val
 
