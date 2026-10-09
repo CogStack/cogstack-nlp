@@ -797,7 +797,9 @@ class StatsCalculator:
         project_index: int,
         project_name: str,
         project_id: Any,
-        predictions: list[MutableEntity],
+        predictions: list[MutableEntity] | tuple[
+            list[MutableEntity], list[MutableEntity]
+        ],
         mode: MetricMode,
         calculate_ner_performance: bool = False,
     ) -> None:
@@ -809,19 +811,39 @@ class StatsCalculator:
             predictions: Model's predicted entities
         """
         full_pipe_gold_anns = self._extract_gold_annotations(doc)
-        full_pipe_pred_anns = self._extract_predictions(predictions, doc)
+        linked_predictions: list[MutableEntity]
+        if calculate_ner_performance:
+            if not isinstance(predictions, tuple):
+                raise TypeError(
+                    "NER performance requires separate NER and linked predictions"
+                )
+            linked_predictions = predictions[1]
+            full_pipe_pred_linked_anns = self._extract_predictions(linked_predictions, 
+                                                                   doc)
+            ner_predictions: list[MutableEntity] = predictions[0]
+            full_pipe_pred_ner_anns = self._extract_predictions(ner_predictions, 
+                                                                doc)
+        else:
+            if not isinstance(predictions, list):
+                raise TypeError(
+                    "Predictions must be a list when NER performance is disabled"
+                )
+            linked_predictions = predictions
+            full_pipe_pred_linked_anns = self._extract_predictions(linked_predictions, 
+                                                                   doc)
         logger.debug(
             "Processing %d gold annotations and %d predictions "
             "(%d after filtering).",
             len(full_pipe_gold_anns), len(predictions),
-            len(full_pipe_pred_anns)
+            len(linked_predictions)
         )
-
+        
+        
         self._count_gold_annotations(full_pipe_gold_anns, project_index, mode)
         self._score_annotations(
             mut_doc,
-            full_pipe_gold_anns,
-            full_pipe_pred_anns,
+            full_pipe_gold_anns, 
+            full_pipe_pred_linked_anns,
             project_index,
             project_id,
             project_name,
@@ -830,15 +852,15 @@ class StatsCalculator:
         )
         self._score_character_annotations(
             full_pipe_gold_anns,
-            full_pipe_pred_anns,
-            project_index,
+            full_pipe_pred_linked_anns,
+            project_index, 
             mode=mode, doc_length=len(doc['text'])
         )
 
         # This gets called in the full pipeline call, if ner performance is called.
         if calculate_ner_performance:
             ner_gold_anns, ner_pred_anns = self._to_ner_views(
-                full_pipe_gold_anns, full_pipe_pred_anns)
+                full_pipe_gold_anns, full_pipe_pred_ner_anns)
             self._count_gold_annotations(ner_gold_anns, project_index,
                                          mode=MetricMode.NER)
             self._score_annotations(mut_doc, ner_gold_anns, ner_pred_anns,
