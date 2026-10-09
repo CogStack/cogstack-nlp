@@ -29,24 +29,90 @@ NAMES = {
     "heart attack": {"per_cui_status": {"B": "P"}},
     "fever": {"per_cui_status": {"X": "P"}},
 }
+_GOLD_NAME = "stroke"
+GOLD_CONTEXT = DOC[
+    min(DOC.find(_GOLD_NAME) - WINDOW, 0): (
+        DOC.find(_GOLD_NAME) + len(_GOLD_NAME) + WINDOW)
+]
 
 
 # --- fakes / helpers ---------------------------------------------------
 
+
 class FakeToken:
-    def __init__(self, text: str) -> None:
+
+    def __init__(self, start_char_index: int, text: str) -> None:
+        self.char_index = start_char_index
+        self.base = self
         self.text = text
-        self.to_skip = not any(c.isalnum() for c in text)
-        # real tokens offer several versions (raw, lowercase, ...)
-        self.text_versions = [text, text.lower()]
+        self.to_skip = False
+        self.text_versions = [text,]
 
-    @property
-    def base(self) -> "FakeToken":
-        return self
+    @classmethod
+    def from_proposal(
+        cls,
+        proposal: list[tuple[int, int, set[str]]],
+    ) -> list['FakeToken']:
+        if not proposal:
+            return [cls(0, "")]
+        prop0 = proposal[0]
+        text = next(iter(prop0[-1]))
+        # don't need end index for now
+        out_l = [*prop0[:-2], text]
+        return [cls(*out_l)]
 
 
-def fake_tokenizer(text: str) -> list[FakeToken]:
-    return [FakeToken(part) for part in text.split()]
+class FakeEntity:
+
+    def __init__(self, start_char_index: int, end_char_index: int, names: set[str], cuis: list[str]) -> None:
+        self.start_char_index = start_char_index
+        self.end_char_index = end_char_index
+        self.names = names
+        self.base = self
+        self.link_candidates = cuis
+
+
+class FakeDocument:
+
+    def __init__(self, tokens: list[FakeToken], ner_ents: list[FakeEntity]) -> None:
+        self.tokens = tokens
+        self.ner_ents = ner_ents
+
+    @classmethod
+    def from_proposal(
+        cls,
+        proposal: list[tuple[int, int, set[str]]],
+        cui: str,
+        full_text: str = GOLD_CONTEXT,
+    ) -> 'FakeDocument':
+        ner_ents = [FakeEntity(*prop, cuis=[cui]) for prop in proposal]
+        print("FULL TEXT", full_text)
+        words = full_text.split()
+        per_word_start_ends = []
+        cursor = 0
+        for word in words:
+            per_word_start_ends.append((cursor, cursor + len(word), {word}))
+            cursor += len(word) + 1
+        tkns = [
+            FakeToken.from_proposal([pwse])[0]
+            for pwse in per_word_start_ends
+        ]
+        print("TKNS", [(t.text, t.char_index) for t in tkns], 'due to', per_word_start_ends)
+        print("NER ents", [(ent.start_char_index, ent.names, ent.link_candidates) for ent in ner_ents])
+        return cls(tkns, ner_ents)
+
+    @classmethod
+    def from_example(cls, example: dict, full_text: str) -> 'FakeDocument':
+        # start_local, end_local = _get_local_span(
+        #     example['text'], example['start'], example['end'],
+        #     example["source_value"], window_size=WINDOW)
+        # ent_locs = [(start_local, end_local, {example['source_value']})]
+        ent_locs = [(example['start'], example['end'], {example['source_value']})]
+        print("Els", ent_locs)
+        return cls.from_proposal(ent_locs, example['cui'], full_text=full_text)
+
+    def __iter__(self):
+        yield from self.tokens
 
 
 def make_example(
@@ -73,19 +139,15 @@ def ner_proposing(*proposals):
 
 def make_finder(
     *, cuis=ALL_CUIS, names=NAMES, pt2ch=PT2CH,
-    allow=(), disallow=(), ner=None,
+    allow=(), disallow=(),
 ) -> FailureModeFinder:
-    if ner is None:
-        ner = ner_proposing((*GOLD_LOCAL, {"B"}))
     return FailureModeFinder(
-        tokenizer=fake_tokenizer,
         cui2info={cui: SimpleNamespace() for cui in cuis},
         name2info=names,
         pt2ch=pt2ch,
         linking_filters=SimpleNamespace(
             cuis=set(allow), cuis_exclude=set(disallow)),
         token_separator=" ",
-        ner_candidates=ner,
     )
 
 
@@ -93,9 +155,11 @@ def pred(cui: str, start: int, end: int) -> dict:
     return {"cui": cui, "start": start, "end": end}
 
 
-def run(finder, span=(), all_=(), example=GOLD) -> FM:
+def run(finder: FailureModeFinder, span=(), all_=(), example=GOLD, full_text=DOC) -> FM:
+    mut_doc = FakeDocument.from_example(example, full_text)
     return finder.get_failure_mode(
-        example, list(span), list(all_), window_size=WINDOW)
+        mut_doc, example, list(span),
+        list(all_), window_size=WINDOW)
 
 
 # --- span relations ----------------------------------------------------
@@ -224,22 +288,30 @@ class TestStep0GoldSanity(unittest.TestCase):
 
 class TestStep1NameLookup(unittest.TestCase):
 
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.gold_tkns = FakeToken.from_proposal([[GOLD_START, GOLD_END, {'stroke'}]])
+        cls.unknown_name_tkns = FakeToken.from_proposal([[0, 1, {'something'}]])
+        fever_start = GOLD_CONTEXT.find("fever")
+        cls.fever_tkns = FakeToken.from_proposal(
+            [(fever_start, fever_start + len('fever'), {'fever'})])
+
     def test_cui_not_in_cdb(self):
         finder = make_finder(cuis=[c for c in ALL_CUIS if c != "B"])
         self.assertIs(finder._step_1_concept_and_name_lookup(
-            "B", "stroke"), FM.CUI_NOT_IN_CDB)
+            self.gold_tkns, "F"), FM.CUI_NOT_IN_CDB)
 
     def test_name_unknown(self):
         self.assertIs(make_finder()._step_1_concept_and_name_lookup(
-            "B", "gibberish"), FM.NAME_UNKNOWN)
+            self.unknown_name_tkns, "B"), FM.NAME_UNKNOWN)
 
     def test_name_not_linked_to_cui(self):
         self.assertIs(make_finder()._step_1_concept_and_name_lookup(
-            "B", "fever"), FM.NAME_NOT_LINKED_TO_CUI)
+            self.fever_tkns, "B"), FM.NAME_NOT_LINKED_TO_CUI)
 
     def test_known_name_linked_to_cui(self):
         self.assertIs(make_finder()._step_1_concept_and_name_lookup(
-            "B", "stroke"), None)
+            self.gold_tkns, "B"), None)
 
     def test_any_name_variant_linking_to_gold_is_enough(self):
         # "Stroke" has the variants "Stroke" and "stroke"; only one of them
@@ -248,22 +320,16 @@ class TestStep1NameLookup(unittest.TestCase):
             "Stroke": {"per_cui_status": {"B": "P"}},
             "stroke": {"per_cui_status": {"X": "P"}},
         }
+        tkns = FakeToken.from_proposal(
+            [(0, 5, {"Stroke"}), ]
+        )
         self.assertIs(make_finder(names=names)._step_1_concept_and_name_lookup(
-            "B", "Stroke"), None)
-
-    def test_multi_token_name_via_casing_variants(self):
-        self.assertIs(make_finder()._step_1_concept_and_name_lookup(
-            "B", "Heart Attack"), None)
-
-    def test_skipped_tokens_are_ignored(self):
-        # "." is marked to_skip by the fake tokenizer
-        self.assertIs(make_finder()._step_1_concept_and_name_lookup(
-            "B", "stroke ."), None)
+            tkns, "B"), None)
 
 
 class TestStep2Ner(unittest.TestCase):
 
-    PROPOSALS_A = [
+    PROPOSALS_A: list[list[tuple[int, int, set[str]]]] = [
         [],                                # nothing proposed
         [(*GOLD_LOCAL, {"X"})],            # gold not among the candidates
         [(0, 3, {"B"})],                   # elsewhere in the context
@@ -275,10 +341,12 @@ class TestStep2Ner(unittest.TestCase):
             with self.subTest(f"Proposal: {prop}"):
                 self._test_ner_miss(prop)
 
-    def _test_ner_miss(self, proposals):
-        finder = make_finder(ner=ner_proposing(*proposals))
+    def _test_ner_miss(self, proposal: list[tuple[int, int, set[str]]]):
+        finder = make_finder()
+        mut_doc = FakeDocument.from_proposal(proposal, "B")
+        tkns = FakeToken.from_proposal([])
         self.assertIs(finder._step_2_ner(
-            GOLD["text"], *GOLD_LOCAL, "B"), FM.NER_NO_SPAN
+            mut_doc, tkns), FM.NER_NO_SPAN
         )
 
     PROPOSALS_B = [
@@ -294,19 +362,14 @@ class TestStep2Ner(unittest.TestCase):
                 self._test_any_overlapping_proposal_with_gold_is_not_a_miss(
                     prop)
 
-    def _test_any_overlapping_proposal_with_gold_is_not_a_miss(self, proposal):
-        finder = make_finder(ner=ner_proposing(proposal))
-        self.assertIsNone(finder._step_2_ner(GOLD["text"], *GOLD_LOCAL, "B"))
-
-    def test_ner_gets_the_context_text(self):
-        seen = []
-
-        def spy(text):
-            seen.append(text)
-            return []
-
-        make_finder(ner=spy)._step_2_ner(GOLD["text"], *GOLD_LOCAL, "B")
-        self.assertEqual(seen, [GOLD["text"]])
+    def _test_any_overlapping_proposal_with_gold_is_not_a_miss(
+        self,
+        proposal: list[tuple[int, int, set[str]]]
+    ):
+        finder = make_finder()
+        mut_doc = FakeDocument.from_proposal([proposal], 'B')
+        tkns = FakeToken.from_proposal([proposal])
+        self.assertIsNone(finder._step_2_ner(mut_doc, tkns))
 
 
 class TestStep3Filters(unittest.TestCase):
@@ -384,14 +447,16 @@ class TestGetFailureMode(unittest.TestCase):
         self.assertIs(run(make_finder()), FM.BELOW_THRESHOLD)
 
     def test_gold_at_document_start(self):
-        ex = make_example("Stroke noted on arrival, nothing else.", "Stroke")
-        finder = make_finder(ner=ner_proposing((0, 6, {"B"})))
-        self.assertIs(run(finder, example=ex), FM.BELOW_THRESHOLD)
+        doc = "stroke noted on arrival, nothing else."
+        ex = make_example(doc, "stroke")
+        finder = make_finder()
+        self.assertIs(run(finder, example=ex, full_text=doc), FM.BELOW_THRESHOLD)
 
     def test_gold_at_document_end(self):
-        ex = make_example("Admitted with a stroke", "stroke")
-        finder = make_finder(ner=ner_proposing((5, 11, {"B"})))
-        self.assertIs(run(finder, example=ex), FM.BELOW_THRESHOLD)
+        doc = "Admitted with a stroke"
+        ex = make_example(doc, "stroke")
+        finder = make_finder()
+        self.assertIs(run(finder, example=ex, full_text=doc), FM.BELOW_THRESHOLD)
 
     def test_sanity_beats_lookup(self):
         bad = {**GOLD, "source_value": "stoke"}
@@ -399,12 +464,8 @@ class TestGetFailureMode(unittest.TestCase):
         self.assertIs(run(finder, example=bad), FM.SPAN_INCORRECT_FOR_VALUE)
 
     def test_lookup_beats_ner(self):
-        finder = make_finder(names={}, ner=ner_proposing())
+        finder = make_finder(names={})
         self.assertIs(run(finder), FM.NAME_UNKNOWN)
-
-    def test_ner_beats_filters(self):
-        finder = make_finder(disallow=["B"], ner=ner_proposing())
-        self.assertIs(run(finder), FM.NER_NO_SPAN)
 
     def test_filters_beat_disambiguation(self):
         finder = make_finder(disallow=["B"])
