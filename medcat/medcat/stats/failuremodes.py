@@ -353,6 +353,9 @@ class FailureModeFinder:
     ) -> FailureMode | None:
         allow_filter = self.linking_filters.cuis
         disallow_filter = self.linking_filters.cuis_exclude
+        if gold_cui == NER_DETECTED_ENTITY_TAG:
+            # NOTE: for NER terms there is no filter
+            return None
         if allow_filter and gold_cui not in allow_filter:
             return FailureMode.FILTERED_NOT_IN_ALLOW_LIST
         if gold_cui in disallow_filter:
@@ -385,16 +388,28 @@ class FailureModeFinder:
     ) -> FailureMode | None:
         partially_matching_spans = _get_partially_overlapping_spans(
             example, all_predictions)
+        fm_priority = [
+            FailureMode.SPAN_PARTIAL_OVERLAP,
+            FailureMode.SPAN_GOLD_CONTAINS_PRED,
+            FailureMode.SPAN_PRED_CONTAINS_GOLD,
+        ]
         if partially_matching_spans:
             cntr: Counter[FailureMode] = Counter(
                 fm for _, fm in partially_matching_spans)
             if len(cntr) > 1:
-                most_common = cntr.most_common(1)[0][0]
-                logger.warning(
-                    "Got multiple types of partial failure modes. "
-                    "Using most common (%s), available: %s",
-                    most_common, cntr
-                )
+                if example['cui'] == NER_DETECTED_ENTITY_TAG:
+                    # NOTE: all overlapping entities will match due to
+                    #       all of them having the same CUI so we will
+                    #       prioritise the least "accurate" here since
+                    #       we cannot fully be sure
+                    most_common = sorted(cntr.keys(), key=fm_priority.index)[0]
+                else:
+                    most_common = cntr.most_common(1)[0][0]
+                    logger.warning(
+                        "Got multiple types of partial failure modes. "
+                        "Using most common (%s), available: %s",
+                        most_common, cntr
+                    )
                 return most_common
             return next(iter(cntr.keys()))
         return None
