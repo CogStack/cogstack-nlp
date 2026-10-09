@@ -1,3 +1,4 @@
+from functools import partial
 from typing import Optional, Callable, TextIO, Any
 import logging
 
@@ -13,7 +14,7 @@ from medcat.data.mctexport import (
     MedCATTrainerExportDocument)
 from medcat.config.config import LinkingFilters
 from medcat.cdb.concepts import CUIInfo, get_new_cui_info
-from medcat.tokenizing.tokens import MutableEntity, UNTOKENIZABLE_ENTITY_ID
+from medcat.tokenizing.tokens import MutableDocument, MutableEntity, UNTOKENIZABLE_ENTITY_ID
 from medcat.components.types import CoreComponentType
 from medcat.utils.training_utils import dataset_aware_component
 from collections import defaultdict
@@ -384,6 +385,7 @@ class StatsCalculator:
 
     def _add_failure_mode(
         self,
+        mut_doc: MutableDocument,
         example: dict,
         gold: GoldAnnotation,
         pred_anns: list[PredictedAnnotation],
@@ -394,7 +396,7 @@ class StatsCalculator:
             gold, pred_anns, check_cui=False)
         suitable = [pred_anns[idx] for idx in suitable_ids]
         example['failure_mode'] = self.failure_mode_finder.get_failure_mode(
-            example, suitable, pred_anns,
+            mut_doc, example, suitable, pred_anns,
         )
 
     def _record_fp(self,
@@ -495,6 +497,7 @@ class StatsCalculator:
         return matches
 
     def _score_annotations(self,
+                           mut_doc: MutableDocument,
                            gold_anns: list[GoldAnnotation],
                            pred_anns: list[PredictedAnnotation],
                            project_index: int,
@@ -557,7 +560,7 @@ class StatsCalculator:
                     example = self._record_fn(
                         state.stats, gold, project_id, project_name)
                     if self.failure_mode_finder:
-                        self._add_failure_mode(example, gold, pred_anns)
+                        self._add_failure_mode(mut_doc, example, gold, pred_anns)
 
             # Phase 2: Remaining predictions are False Positives
             for idx, pred in enumerate(pred_anns):
@@ -789,6 +792,7 @@ class StatsCalculator:
 
     def process_document(
         self,
+        mut_doc: MutableDocument,
         doc: MedCATTrainerExportDocument,
         project_index: int,
         project_name: str,
@@ -815,6 +819,7 @@ class StatsCalculator:
 
         self._count_gold_annotations(full_pipe_gold_anns, project_index, mode)
         self._score_annotations(
+            mut_doc,
             full_pipe_gold_anns,
             full_pipe_pred_anns,
             project_index,
@@ -836,7 +841,7 @@ class StatsCalculator:
                 full_pipe_gold_anns, full_pipe_pred_anns)
             self._count_gold_annotations(ner_gold_anns, project_index,
                                          mode=MetricMode.NER)
-            self._score_annotations(ner_gold_anns, ner_pred_anns,
+            self._score_annotations(mut_doc, ner_gold_anns, ner_pred_anns,
                                     project_index, project_name,
                                     project_id, mode=MetricMode.NER,
                                     filter_fp_by_cui=False)
@@ -850,7 +855,7 @@ class StatsCalculator:
 
     def process_project(self, project: MedCATTrainerExportProject,
                         project_index: int,
-                        entity_getter: Callable[[str], list[MutableEntity]],
+                        doc_getter: Callable[[str], MutableDocument | None],
                         mode: MetricMode,
                         calculate_ner_performance: bool = False,
                         use_project_filters: bool = False,
@@ -861,7 +866,7 @@ class StatsCalculator:
         Args:
             project: The project data containing documents and annotations.
             project_index: Index of the project in the export.
-            entity_getter: Function to get predicted entities from text.
+            doc_getter: Function to get the document (with predicted entities) from text.
             mode: Evaluation mode (full, ner, linking).
             calculate_ner_performance: Whether to calculate NER performance.
             use_project_filters: Whether to apply project-specific filters.
@@ -873,8 +878,16 @@ class StatsCalculator:
                              use_project_filters):
             for doc in tqdm(project['documents'],
                             desc='Documents'):
-                predictions = entity_getter(doc['text'])
+                mut_doc = doc_getter(doc['text'])
+                if mut_doc is None:
+                    logger.warning(
+                        "Got no document from model! Ignoring doc %s (%s)",
+                        doc.get('id', 'Unkown'), doc.get('name', 'Unknown'),
+                    )
+                    continue
+                predictions = mut_doc.linked_ents
                 self.process_document(
+                    mut_doc,
                     doc,
                     project_index,
                     project['name'],
@@ -883,15 +896,6 @@ class StatsCalculator:
                     mode=mode,
                     calculate_ner_performance=calculate_ner_performance,
                 )
-
-    def _get_linked_ents(self, cat: CAT, text: str) -> list[MutableEntity]:
-        """Required for mypy cleanliness"""
-        doc = cat(text)
-        if doc is None:
-            logger.warning(
-                "Model returned no document! Returning no predicted enitities")
-            return []
-        return doc.linked_ents
 
     def process_export(self, cat: CAT, export: MedCATTrainerExport,
                        mode: MetricMode,
@@ -916,7 +920,7 @@ class StatsCalculator:
             self.process_project(
                 proj,
                 i,
-                lambda text: self._get_linked_ents(cat, text),
+                cat.__call__,
                 mode=mode,
                 calculate_ner_performance=calculate_ner_performance,
                 use_project_filters=use_project_filters,

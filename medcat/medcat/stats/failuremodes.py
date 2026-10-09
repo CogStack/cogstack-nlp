@@ -10,8 +10,7 @@ from medcat.cdb.concepts import CUIInfo, NameInfo
 from medcat.components.base import CoreComponentType
 from medcat.config import LinkingFilters
 from medcat.pipeline import Pipeline
-from medcat.tokenizing.tokenizers import BaseTokenizer
-from medcat.tokenizing.tokens import MutableToken
+from medcat.tokenizing.tokens import MutableDocument, MutableToken
 from medcat.stats.common import NER_DETECTED_ENTITY_TAG, PredictedAnnotation
 from medcat.utils.cdb_utils import reverse_pt2ch
 
@@ -134,23 +133,19 @@ class FailureMode(str, Enum):
         return f"<{str(self)}>"
 
 
-# Given some text, return (start, end, link_candidates) for every entity the
-# NER step proposed, with char indices relative to that text. See
-# `make_ner_candidates` for how to build one.
-NERCandidates = Callable[[str], Iterable[tuple[int, int, Collection[str]]]]
-
-
-def _make_ner_candidates(
-    pipe: Pipeline,
-) -> NERCandidates:
-    def run(text: str) -> list[tuple[int, int, Collection[str]]]:
-        doc = pipe.pipe_until(text, CoreComponentType.linking)
-        return [
-            (ent.base.start_char_index, ent.base.end_char_index,
-             ent.link_candidates)
-            for ent in doc.ner_ents
-        ]
-    return run
+def get_ner_candidates(
+    doc: MutableDocument,
+    tkns: list[MutableToken],
+) -> list[tuple[int, int, Collection[str]]]:
+    # print("GNC", tkns)
+    start_char_index = tkns[0].base.char_index
+    end_char_index = tkns[-1].base.char_index + len(tkns[-1].base.text)
+    return [
+        (ent.base.start_char_index, ent.base.end_char_index,
+            ent.link_candidates)
+        for ent in doc.ner_ents
+        if start_char_index <= ent.base.start_char_index < end_char_index
+    ]
 
 
 def _get_local_span(
@@ -248,44 +243,22 @@ def _get_partially_overlapping_spans(
     ]
 
 
-def _ner_proposed_span(
-    ner_candidates: NERCandidates,
-    context: str,
-    local_start: int, local_end: int,
-    gold_cui: str,
-) -> bool:
-    """Did NER propose anything overlapping the gold span that had the gold
-    concept among its link candidates?
-
-    Overlap rather than same-start, so a shifted/longer/shorter proposal is
-    not an NER miss: it falls through to the span modes.
-    """
-    return any(
-        start < local_end and local_start < end and gold_cui in cands
-        for start, end, cands in ner_candidates(context)
-    )
-
-
 class FailureModeFinder:
 
     def __init__(
         self,
-        tokenizer: BaseTokenizer,
         cui2info: dict[str, CUIInfo],
         name2info: dict[str, NameInfo],
         pt2ch: dict[str, list[str]],
         linking_filters: LinkingFilters,
         token_separator: str,
-        ner_candidates: NERCandidates,
     ) -> None:
-        self.tokenizer = tokenizer
         self.cui2info = cui2info
         self.name2info = name2info
         self.pt2ch = pt2ch
         self._ch2pt: dict[str, list[str]] | None = None
         self.linking_filters = linking_filters
         self.token_separator = token_separator
-        self.ner_candidates = ner_candidates
 
     @property
     def ch2pt(self) -> dict[str, list[str]]:
@@ -296,9 +269,9 @@ class FailureModeFinder:
     @classmethod
     def from_cat(cls, cat: CAT) -> 'FailureModeFinder':
         return cls(
-            cat.pipe.tokenizer_with_tag, cat.cdb.cui2info, cat.cdb.name2info,
+            cat.cdb.cui2info, cat.cdb.name2info,
             cat.cdb.addl_info['pt2ch'], cat.config.components.linking.filters,
-            cat.config.general.separator, _make_ner_candidates(cat.pipe)
+            cat.config.general.separator
         )
 
     def _ancestors(self, cui: str) -> set[str]:
@@ -347,20 +320,19 @@ class FailureModeFinder:
 
     def _step_1_concept_and_name_lookup(
         self,
+        tkns: list[MutableToken],
         gold_cui: str,
-        source_val: str,
     ) -> FailureMode | None:
-        tkns = [
-            tkn for tkn in self.tokenizer(source_val)
-            if not tkn.to_skip
-        ]
         name_versions = _build_opts(tkns, self.token_separator)
+        # print("OPTS", name_versions)
         suitable_names = [
             name for name in name_versions if name in self.name2info]
+        # print("S", suitable_names)
         # any name variant linking to the gold concept is enough
         candidates: set[str] = set()
         for name in suitable_names:
             candidates.update(self.name2info[name]['per_cui_status'])
+        # print("CANDS", candidates)
         # NOTE: for NER-only stats the concept ID is a special one
         #       since the assumption is that the perfect linker knows
         #       every concept
@@ -375,10 +347,10 @@ class FailureModeFinder:
         return None
 
     def _step_2_ner(
-        self, context: str, start: int, end: int, gold_cui: str
+        self, mut_doc: MutableDocument, tkns: list[MutableToken],
     ) -> FailureMode | None:
-        if not _ner_proposed_span(
-                self.ner_candidates, context, start, end, gold_cui):
+        if not get_ner_candidates(
+                mut_doc, tkns):
             return FailureMode.NER_NO_SPAN
         return None
 
@@ -435,6 +407,7 @@ class FailureModeFinder:
 
     def get_failure_mode(
         self,
+        mut_doc: MutableDocument,
         example: dict,
         span_predictions: list[PredictedAnnotation],
         all_predictions: list[PredictedAnnotation],
@@ -457,6 +430,8 @@ class FailureModeFinder:
         gold_cui = example['cui']
         context = example['text']
         source_val = example['source_value']
+        
+        # print("SV", source_val)
 
         # prep for step 0
         start, end = _get_local_span(
@@ -464,10 +439,25 @@ class FailureModeFinder:
             source_val, window_size
         )
 
+        # print("IN EXAMPLE", example['start'], example['end'])
+        # print("LOCAL", start, end)
+
+        all_tkns = list(mut_doc)
+        # print("ALL TOKENS", [(t.base.text, t.base.char_index) for t in all_tkns])
+
+        tkns = [
+            tkn for tkn in mut_doc
+            if (not tkn.to_skip and
+                example['start'] <= tkn.base.char_index < example['end']
+                )
+        ]
+
+        # print("TKNS", [t.base.text for t in tkns])
+
         return (
             self._step_0_gold_sanity(context, start, end, source_val)
-            or self._step_1_concept_and_name_lookup(gold_cui, source_val)
-            or self._step_2_ner(context, start, end, gold_cui)
+            or self._step_1_concept_and_name_lookup(tkns, gold_cui)
+            or self._step_2_ner(mut_doc, tkns)
             or self._step_3_filters(gold_cui)
             or self._step_4_disambiguation(
                 span_predictions, gold_cui, source_val)
