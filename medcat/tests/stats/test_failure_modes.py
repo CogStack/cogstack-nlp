@@ -4,6 +4,7 @@ from types import SimpleNamespace
 import unittest
 
 # NOTE: adjust this import to wherever the module lives
+from medcat.components import base
 from medcat.stats.failuremodes import (
     FailureMode as FM, FailureModeFinder,
     _get_failure_mode_for_partial_span, _get_local_span,
@@ -77,6 +78,8 @@ class FakeDocument:
     def __init__(self, tokens: list[FakeToken], ner_ents: list[FakeEntity]) -> None:
         self.tokens = tokens
         self.ner_ents = ner_ents
+        self.base = self
+        self.text = " ".join(tkn.text for tkn in tokens)
 
     @classmethod
     def from_proposal(
@@ -103,10 +106,6 @@ class FakeDocument:
 
     @classmethod
     def from_example(cls, example: dict, full_text: str) -> 'FakeDocument':
-        # start_local, end_local = _get_local_span(
-        #     example['text'], example['start'], example['end'],
-        #     example["source_value"], window_size=WINDOW)
-        # ent_locs = [(start_local, end_local, {example['source_value']})]
         ent_locs = [(example['start'], example['end'], {example['source_value']})]
         print("Els", ent_locs)
         return cls.from_proposal(ent_locs, example['cui'], full_text=full_text)
