@@ -89,7 +89,6 @@ class FakeDocument:
         full_text: str = GOLD_CONTEXT,
     ) -> 'FakeDocument':
         ner_ents = [FakeEntity(*prop, cuis=[cui]) for prop in proposal]
-        print("FULL TEXT", full_text)
         words = full_text.split()
         per_word_start_ends = []
         cursor = 0
@@ -100,14 +99,11 @@ class FakeDocument:
             FakeToken.from_proposal([pwse])[0]
             for pwse in per_word_start_ends
         ]
-        print("TKNS", [(t.text, t.char_index) for t in tkns], 'due to', per_word_start_ends)
-        print("NER ents", [(ent.start_char_index, ent.names, ent.link_candidates) for ent in ner_ents])
         return cls(tkns, ner_ents)
 
     @classmethod
     def from_example(cls, example: dict, full_text: str) -> 'FakeDocument':
         ent_locs = [(example['start'], example['end'], {example['source_value']})]
-        print("Els", ent_locs)
         return cls.from_proposal(ent_locs, example['cui'], full_text=full_text)
 
     def __iter__(self):
