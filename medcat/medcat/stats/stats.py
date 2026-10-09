@@ -757,7 +757,9 @@ class StatsCalculator:
         project_index: int,
         project_name: str,
         project_id: Any,
-        predictions: list[MutableEntity],
+        predictions: list[MutableEntity] | tuple[
+            list[MutableEntity], list[MutableEntity]
+        ],
         mode: MetricMode,
         calculate_ner_performance: bool = False,
     ) -> None:
@@ -769,12 +771,32 @@ class StatsCalculator:
             predictions: Model's predicted entities
         """
         full_pipe_gold_anns = self._extract_gold_annotations(doc)
-        full_pipe_pred_anns = self._extract_predictions(predictions, doc)
+        linked_predictions: list[MutableEntity]
+        if calculate_ner_performance:
+            if not isinstance(predictions, tuple):
+                raise TypeError(
+                    "NER performance requires separate NER and linked predictions"
+                )
+            linked_predictions = predictions[1]
+            full_pipe_pred_linked_anns = self._extract_predictions(linked_predictions, 
+                                                                   doc)
+            ner_predictions: list[MutableEntity] = predictions[0]
+            full_pipe_pred_ner_anns = self._extract_predictions(ner_predictions, 
+                                                                doc)
+        else:
+            if not isinstance(predictions, list):
+                raise TypeError(
+                    "Predictions must be a list when NER performance is disabled"
+                )
+            linked_predictions = predictions
+            full_pipe_pred_linked_anns = self._extract_predictions(linked_predictions, 
+                                                                   doc)
+        
         
         self._count_gold_annotations(full_pipe_gold_anns, project_index, mode)
         self._score_annotations(
             full_pipe_gold_anns, 
-            full_pipe_pred_anns,
+            full_pipe_pred_linked_anns,
             project_index,
             project_id,
             project_name,
@@ -783,7 +805,7 @@ class StatsCalculator:
         )
         self._score_character_annotations(
             full_pipe_gold_anns,
-            full_pipe_pred_anns,
+            full_pipe_pred_linked_anns,
             project_index, 
             mode=mode, doc_length=len(doc['text'])
         )
@@ -791,7 +813,7 @@ class StatsCalculator:
         # This gets called in the full pipeline call, if ner performance is called.
         if calculate_ner_performance:
             ner_gold_anns, ner_pred_anns = self._to_ner_views(
-                full_pipe_gold_anns, full_pipe_pred_anns)
+                full_pipe_gold_anns, full_pipe_pred_ner_anns)
             self._count_gold_annotations(ner_gold_anns, project_index,
                                         mode=MetricMode.NER)
             self._score_annotations(ner_gold_anns, ner_pred_anns,
@@ -808,7 +830,11 @@ class StatsCalculator:
         
     def process_project(self, project: MedCATTrainerExportProject,
                         project_index: int,
-                        entity_getter: Callable[[str], list[MutableEntity]],
+                        entity_getter: Callable[
+                            [str],
+                            list[MutableEntity]
+                            | tuple[list[MutableEntity], list[MutableEntity]],
+                        ],
                         mode: MetricMode,
                         calculate_ner_performance: bool = False,
                         use_project_filters: bool = False,
@@ -842,12 +868,24 @@ class StatsCalculator:
                     calculate_ner_performance=calculate_ner_performance,
                 )
 
-    def _get_linked_ents(self, cat: CAT, text: str) -> list[MutableEntity]:
+    def _get_linked_ents(
+                         self,
+                         cat: CAT,
+                         text: str,
+                         calculate_ner_performance: bool = False
+                         ) -> (
+                             tuple[list[MutableEntity], list[MutableEntity]] 
+                             | list[MutableEntity]
+                         ):
         """Required for mypy cleanliness"""
         doc = cat(text)
         if doc is None:
             return []
-        return doc.linked_ents
+        if calculate_ner_performance:
+            # return both NER_ents and linked_ents for NER performance evaluation
+            return (doc.ner_ents, doc.linked_ents)
+        else:
+            return doc.linked_ents
 
     def process_export(self, cat: CAT, export: MedCATTrainerExport,
                        mode: MetricMode,
@@ -872,7 +910,9 @@ class StatsCalculator:
             self.process_project(
                 proj, 
                 i,
-                lambda text: self._get_linked_ents(cat, text),
+                lambda text: self._get_linked_ents(cat, 
+                                                   text, 
+                                                   calculate_ner_performance),
                 mode=mode,
                 calculate_ner_performance=calculate_ner_performance,
                 use_project_filters=use_project_filters,
