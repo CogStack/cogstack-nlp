@@ -24,3 +24,5 @@
 "peft>=0.8.2"
 "setuptools<82" # NOTE: 82 removes pkg_resources
 "setuptools-scm<9"  # NOTE: 9.1 has some compatibility issues due to our old setup.py based install
+# transitive dependency that brakes workflow as of 26.0 due to requiring numpy 2.0
+"pyarrow<26.0"
