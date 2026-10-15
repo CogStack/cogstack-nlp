@@ -124,25 +124,26 @@
         </div>
       </template>
       <template #item.tps="{ item }">
-        <button class="btn btn-outline-success res-btn" :disabled="item.tps === 0"
-                @click="openExamples('tp_examples', item)">
-          {{ item.tps }}
+        <button type="button" class="btn btn-outline-success res-btn" :disabled="countValue(item, 'tps') === 0"
+                @click.stop="openExamples('tp_examples', item)">
+          {{ countValue(item, 'tps') }}
         </button>
       </template>
       <template #item.fns="{ item }">
-        <button class="btn btn-outline-warning res-btn" :disabled="item.fns === 0"
-                @click="openExamples('fn_examples', item)">
-          {{ item.fns }}
+        <button type="button" class="btn btn-outline-warning res-btn" :disabled="countValue(item, 'fns') === 0"
+                @click.stop="openExamples('fn_examples', item)">
+          {{ countValue(item, 'fns') }}
         </button>
       </template>
       <template #item.fps="{ item }">
-        <button class="btn btn-outline-danger res-btn" :disabled="item.fps === 0"
-                @click="openExamples('fp_examples', item)">
-          {{ item.fps }}
+        <button type="button" class="btn btn-outline-danger res-btn" :disabled="countValue(item, 'fps') === 0"
+                @click.stop="openExamples('fp_examples', item)">
+          {{ countValue(item, 'fps') }}
         </button>
       </template>
     </v-data-table>
 
+    <teleport to="body">
     <modal v-if="showModal" :closable="true" @modal:close="clearModalData" class="examples-modal">
       <template #header>
         <h3>{{ modalData.title }}</h3>
@@ -186,12 +187,14 @@
         </div>
       </template>
     </modal>
+    </teleport>
   </div>
 </template>
 
 <script>
 import AnnoResult from '@/components/anns/AnnoResult.vue'
 import Modal from '@/components/common/Modal.vue'
+import { documentTextForExample } from '@/components/metrics/exampleFields'
 
 export default {
   name: 'ConceptSummary',
@@ -270,20 +273,54 @@ export default {
           return '0.0'
       }
     },
+    countValue (item, field) {
+      const row = this.exampleRow(item)
+      const value = Number(row && row[field])
+      return Number.isFinite(value) ? value : 0
+    },
+    exampleRow (item) {
+      // v-data-table may pass its internal wrapper ({ type, raw }) rather than the source row.
+      if (item && item.type === 'item' && item.raw) return item.raw
+      return item
+    },
+    exampleList (row, exampleType) {
+      const direct = row && row[exampleType]
+      if (Array.isArray(direct)) return direct
+      if (direct && typeof direct === 'object') return [direct]
+
+      const items = Array.isArray(this.items) ? this.items : []
+      // Identity lookup fails when the table hands back a copy of the row.
+      const idx = row ? items.indexOf(row) : -1
+      if (idx !== -1 && Array.isArray(items[idx][exampleType])) return items[idx][exampleType]
+
+      const match = items.find(candidate =>
+        candidate && row && candidate.cui === row.cui &&
+        (row.concept_name == null || candidate.concept_name === row.concept_name)
+      )
+      const matched = match && match[exampleType]
+      if (Array.isArray(matched)) return matched
+      if (matched && typeof matched === 'object') return [matched]
+      return []
+    },
     openExamples(exampleType, item) {
+      const row = this.exampleRow(item) || {}
+      const label = row.concept_name || 'Concept'
+      const cui = row.cui || ''
       if (exampleType === 'tp_examples') {
-        this.modalData.title = `${item.concept_name} (${item.cui}) - True Positive Model Predictions`
+        this.modalData.title = `${label} (${cui}) - True Positive Model Predictions`
         this.modalData.type = 'tp'
       } else if (exampleType === 'fp_examples') {
-        this.modalData.title = `${item.concept_name} (${item.cui}) - False Positive Model Predictions`
+        this.modalData.title = `${label} (${cui}) - False Positive Model Predictions`
         this.modalData.type = 'fp'
       } else {
-        this.modalData.title = `${item.concept_name} (${item.cui}) - False Negative Model Predictions`
+        this.modalData.title = `${label} (${cui}) - False Negative Model Predictions`
         this.modalData.type = 'fn'
       }
-      const idx = this.items.indexOf(item)
-      this.modalData.results = this.items[idx][exampleType]
-      this.showModal = true
+      this.modalData.results = this.exampleList(row, exampleType)
+      // Open after this click finishes so the new dialog mask cannot receive it and close immediately.
+      this.$nextTick(() => {
+        this.showModal = true
+      })
     },
     clearModalData() {
       this.modalData = {
@@ -294,8 +331,7 @@ export default {
       this.showModal = false
     },
     textFromAnno(anno) {
-      const docId = anno['document id']
-      return this.docs2text[docId]
+      return documentTextForExample(this.docs2text, anno)
     }
   }
 }
