@@ -5,13 +5,27 @@
       <font-awesome-icon icon="search" class="search-icon" @click="activateSearch"></font-awesome-icon>
     </div>
     <div v-if="searching" class="search-docs">
-      <input id="doc-search-input" type="text" class="form-control" placeholder="Search by note name"
+      <div class="search-mode">
+        <button type="button" class="btn btn-sm search-mode-name"
+                :class="searchMode === 'name' ? 'btn-primary' : 'btn-outline-primary'"
+                @click="setSearchMode('name')">Name</button>
+        <button type="button" class="btn btn-sm search-mode-text"
+                :class="searchMode === 'text' ? 'btn-primary' : 'btn-outline-primary'"
+                @click="setSearchMode('text')">Text</button>
+      </div>
+      <input id="doc-search-input" type="text" class="form-control"
+             :placeholder="searchMode === 'text' ? 'Search note text' : 'Search by note name'"
              :value="searchCrit" @keyup="searchDocs">
+      <div v-if="searchMode === 'text' && searchCrit" class="search-status">
+        <span v-if="textSearchLoading">Searching...</span>
+        <span v-else-if="textSearchError">{{ textSearchError }}</span>
+        <span v-else>{{ textSearchCount }} matching note{{ textSearchCount === 1 ? '' : 's' }}</span>
+      </div>
     </div>
     <div v-if="loadingDoc" class="loading-doc"></div>
 
     <div id="doc-sum-list" class="doc-list">
-      <div v-for="doc of (searchCrit ? filteredDocs : docs)" :key="doc.id" class="doc clickable"
+      <div v-for="doc of displayedDocs" :key="doc.id" class="doc clickable"
            :class="{'selected-doc': selectedDocId === doc.id}" @click="loadDoc(doc)">
         <font-awesome-icon :id="'doc-sub-' + doc.id"
                            v-if="validatedDocIds.includes(doc.id)"
@@ -21,7 +35,9 @@
                            class="prepared-doc"
                            icon="clipboard-check"></font-awesome-icon>
 
-        <div class="note-summary">
+        <div v-if="textSnippet(doc)" class="note-summary">{{ textSnippet(doc).pre }}<span
+            class="search-match">{{ textSnippet(doc).match }}</span>{{ textSnippet(doc).post }}</div>
+        <div v-else class="note-summary">
           {{doc.text === 'nan' ? '' : (limitText(doc.text) || '')}}
         </div>
         <v-tooltip activator="parent"
@@ -33,7 +49,12 @@
           Doc: {{doc.id}} complete
         </v-tooltip>
       </div>
-      <div class="clickable">
+      <div class="clickable" v-if="isTextSearch">
+        <div v-if="textSearchNextUrl && !textSearchLoading" @click="loadMoreTextResults" class="more-docs">
+          <font-awesome-icon icon="plus" class="icon"></font-awesome-icon>More Results
+        </div>
+      </div>
+      <div class="clickable" v-else>
         <div v-if="moreDocs" @click="loadMoreDocs" class="more-docs">
           <font-awesome-icon icon="plus" class="icon"></font-awesome-icon>More Docs
         </div>
@@ -43,10 +64,14 @@
 </template>
 
 <script>
+const TEXT_SEARCH_DEBOUNCE_MS = 300
+const SNIPPET_CONTEXT_CHARS = 60
+
 export default {
   name: 'DocumentSummary',
   props: {
     projId: Number,
+    datasetId: Number,
     docs: Array,
     moreDocs: Boolean,
     selectedDocId: Number,
@@ -61,11 +86,30 @@ export default {
   data () {
     return {
       searching: false,
+      searchMode: 'name',
       filteredDocs: [],
       searchCrit: null,
+      textSearchResults: [],
+      textSearchCount: 0,
+      textSearchNextUrl: null,
+      textSearchLoading: false,
+      textSearchError: null,
+      textSearchTimer: null,
+      textSearchReqId: 0,
       hoverDoc: null,
       completeBgTasks: [],
       runningBgTasks: []
+    }
+  },
+  computed: {
+    isTextSearch () {
+      return this.searchMode === 'text' && !!this.searchCrit
+    },
+    displayedDocs () {
+      if (!this.searchCrit) {
+        return this.docs
+      }
+      return this.searchMode === 'text' ? this.textSearchResults : this.filteredDocs
     }
   },
   methods: {
@@ -105,16 +149,98 @@ export default {
         }, 50)
       } else {
         this.searchCrit = null
+        this.resetTextSearch()
       }
     },
+    setSearchMode (mode) {
+      if (this.searchMode === mode) {
+        return
+      }
+      this.searchMode = mode
+      this.runSearch()
+    },
     searchDocs (event) {
+      if (event.target.value === (this.searchCrit || '')) {
+        // ignore keys that don't change the input, e.g. arrows used for doc navigation
+        return
+      }
       this.searchCrit = event.target.value
-      if (this.searchCrit) {
+      this.runSearch()
+    },
+    runSearch () {
+      this.resetTextSearch()
+      if (!this.searchCrit) {
+        this.filteredDocs = []
+        return
+      }
+      if (this.searchMode === 'text') {
+        this.textSearchLoading = true
+        this.textSearchTimer = setTimeout(() => {
+          this.textSearchTimer = null
+          const params = new URLSearchParams({ text__icontains: this.searchCrit })
+          if (this.datasetId !== undefined && this.datasetId !== null) {
+            params.set('dataset', this.datasetId)
+          }
+          this.fetchTextResults(`/api/documents/?${params.toString()}`)
+        }, TEXT_SEARCH_DEBOUNCE_MS)
+      } else {
         this.filteredDocs = this.docs.filter(d => {
           return d.name.toLowerCase().startsWith(this.searchCrit.toLowerCase())
         })
-      } else {
-        this.filteredDocs = []
+      }
+    },
+    resetTextSearch () {
+      if (this.textSearchTimer) {
+        clearTimeout(this.textSearchTimer)
+        this.textSearchTimer = null
+      }
+      this.textSearchReqId++
+      this.textSearchResults = []
+      this.textSearchCount = 0
+      this.textSearchNextUrl = null
+      this.textSearchLoading = false
+      this.textSearchError = null
+    },
+    fetchTextResults (url) {
+      const reqId = ++this.textSearchReqId
+      this.textSearchLoading = true
+      this.textSearchError = null
+      this.$http.get(url).then(resp => {
+        if (reqId !== this.textSearchReqId) {
+          return
+        }
+        this.textSearchResults = this.textSearchResults.concat(resp.data.results)
+        this.textSearchCount = resp.data.count
+        this.textSearchNextUrl = resp.data.next
+      }).catch(() => {
+        if (reqId === this.textSearchReqId) {
+          this.textSearchError = 'Search failed'
+        }
+      }).finally(() => {
+        if (reqId === this.textSearchReqId) {
+          this.textSearchLoading = false
+        }
+      })
+    },
+    loadMoreTextResults () {
+      if (this.textSearchNextUrl) {
+        this.fetchTextResults(`/api/documents/?${this.textSearchNextUrl.split('?').slice(-1)[0]}`)
+      }
+    },
+    textSnippet (doc) {
+      if (!this.isTextSearch || !doc.text) {
+        return null
+      }
+      const idx = doc.text.toLowerCase().indexOf(this.searchCrit.toLowerCase())
+      if (idx === -1) {
+        return null
+      }
+      const end = idx + this.searchCrit.length
+      const start = Math.max(0, idx - SNIPPET_CONTEXT_CHARS)
+      return {
+        pre: (start > 0 ? '...' : '') + doc.text.slice(start, idx),
+        match: doc.text.slice(idx, end),
+        post: doc.text.slice(end, end + SNIPPET_CONTEXT_CHARS)
       }
     },
     limitText (value) {
@@ -129,8 +255,9 @@ export default {
   mounted () {
     window.addEventListener('keyup', this.keyup)
   },
-  beforeDestroy () {
+  beforeUnmount () {
     window.removeEventListener('keyup', this.keyup)
+    this.resetTextSearch()
   },
 }
 </script>
@@ -242,6 +369,29 @@ $width: 175px;
 
 .search-docs {
   width: 100%;
+}
+
+.search-mode {
+  display: flex;
+  gap: 4px;
+  margin: 4px 0;
+
+  .btn {
+    flex: 1;
+    padding: 0 4px;
+    font-size: 10pt;
+  }
+}
+
+.search-status {
+  font-size: 9pt;
+  opacity: 0.7;
+  padding: 2px 4px;
+}
+
+.search-match {
+  background: $warning;
+  font-weight: bold;
 }
 
 </style>

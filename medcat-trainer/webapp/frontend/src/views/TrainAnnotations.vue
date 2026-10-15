@@ -24,7 +24,8 @@
     </div>
 
     <div class="app-main">
-      <document-summary :projId="(project || {}).id" :docs="docs" :moreDocs="nextDocSetUrl !== null"
+      <document-summary :projId="(project || {}).id" :datasetId="(project || {}).dataset"
+                        :docs="docs" :moreDocs="nextDocSetUrl !== null"
                         :validatedDocIds="(project || {}).validated_documents"
                         :preparedDocIds="(project || {}).prepared_documents"
                         :selectedDocId="currentDoc !== null ? currentDoc.id : null" :loadingDoc="loadingMsg !== null"
