@@ -168,7 +168,7 @@ describe('DocumentSummary.vue', () => {
       await wrapper.vm.$nextTick()
 
       expect(mockGet).toHaveBeenCalledTimes(1)
-      expect(mockGet).toHaveBeenCalledWith('/api/documents/?text__icontains=chest+pain&dataset=5')
+      expect(mockGet).toHaveBeenCalledWith('/api/search-documents/?dataset=5&text=chest+pain')
       const docEls = wrapper.findAll('.doc')
       expect(docEls).toHaveLength(1)
       expect(wrapper.find('.search-match').text()).toBe('chest pain')
@@ -181,7 +181,7 @@ describe('DocumentSummary.vue', () => {
     it('pages through further results with More Results', async () => {
       const mockGet = vi.fn()
         .mockResolvedValueOnce({
-          data: { count: 2, next: 'http://host/api/documents/?dataset=5&page=2&text__icontains=pain', results: textResults }
+          data: { count: 2, next: '/api/search-documents/?dataset=5&text=pain&page=2', results: textResults }
         })
         .mockResolvedValueOnce({
           data: { count: 2, next: null, results: [{ id: 8, name: 'n8', text: 'pain' }] }
@@ -197,9 +197,33 @@ describe('DocumentSummary.vue', () => {
       await wrapper.find('.more-docs').trigger('click')
       await flush()
       await wrapper.vm.$nextTick()
-      expect(mockGet).toHaveBeenLastCalledWith('/api/documents/?dataset=5&page=2&text__icontains=pain')
+      expect(mockGet).toHaveBeenLastCalledWith('/api/search-documents/?dataset=5&text=pain&page=2')
       expect(wrapper.findAll('.doc')).toHaveLength(2)
       expect(wrapper.find('.more-docs').exists()).toBe(false)
+    })
+
+    it('renders the Solr highlight snippet when the result has one', async () => {
+      const highlighted = {
+        ...textResults[0],
+        highlight: [
+          { text: 'History: patient has ', match: false },
+          { text: 'chest  pain', match: true },
+          { text: ' on exertion.', match: false }
+        ]
+      }
+      const mockGet = vi.fn().mockResolvedValue({
+        data: { count: 1, next: null, results: [highlighted] }
+      })
+      const wrapper = mountWithHttp(mockGet)
+      const vm = wrapper.vm as unknown as TextSearchVm
+      vm.searchMode = 'text'
+      vm.searchDocs({ target: { value: 'chest pain' } })
+      vi.advanceTimersByTime(300)
+      await flush()
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.find('.search-match').text()).toBe('chest  pain')
+      expect(wrapper.find('.note-summary').text()).toBe('History: patient has chest  pain on exertion.')
     })
 
     it('ignores stale responses from superseded searches', async () => {

@@ -35,8 +35,9 @@
                            class="prepared-doc"
                            icon="clipboard-check"></font-awesome-icon>
 
-        <div v-if="textSnippet(doc)" class="note-summary">{{ textSnippet(doc).pre }}<span
-            class="search-match">{{ textSnippet(doc).match }}</span>{{ textSnippet(doc).post }}</div>
+        <div v-if="textSnippet(doc)" class="note-summary"><span
+            v-for="(seg, i) of textSnippet(doc)" :key="i"
+            :class="{'search-match': seg.match}">{{ seg.text }}</span></div>
         <div v-else class="note-summary">
           {{doc.text === 'nan' ? '' : (limitText(doc.text) || '')}}
         </div>
@@ -177,11 +178,8 @@ export default {
         this.textSearchLoading = true
         this.textSearchTimer = setTimeout(() => {
           this.textSearchTimer = null
-          const params = new URLSearchParams({ text__icontains: this.searchCrit })
-          if (this.datasetId !== undefined && this.datasetId !== null) {
-            params.set('dataset', this.datasetId)
-          }
-          this.fetchTextResults(`/api/documents/?${params.toString()}`)
+          const params = new URLSearchParams({ dataset: this.datasetId, text: this.searchCrit })
+          this.fetchTextResults(`/api/search-documents/?${params.toString()}`)
         }, TEXT_SEARCH_DEBOUNCE_MS)
       } else {
         this.filteredDocs = this.docs.filter(d => {
@@ -224,11 +222,17 @@ export default {
     },
     loadMoreTextResults () {
       if (this.textSearchNextUrl) {
-        this.fetchTextResults(`/api/documents/?${this.textSearchNextUrl.split('?').slice(-1)[0]}`)
+        this.fetchTextResults(`/api/search-documents/?${this.textSearchNextUrl.split('?').slice(-1)[0]}`)
       }
     },
     textSnippet (doc) {
-      if (!this.isTextSearch || !doc.text) {
+      if (!this.isTextSearch) {
+        return null
+      }
+      if (doc.highlight && doc.highlight.length) {
+        return doc.highlight
+      }
+      if (!doc.text) {
         return null
       }
       const idx = doc.text.toLowerCase().indexOf(this.searchCrit.toLowerCase())
@@ -237,11 +241,11 @@ export default {
       }
       const end = idx + this.searchCrit.length
       const start = Math.max(0, idx - SNIPPET_CONTEXT_CHARS)
-      return {
-        pre: (start > 0 ? '...' : '') + doc.text.slice(start, idx),
-        match: doc.text.slice(idx, end),
-        post: doc.text.slice(end, end + SNIPPET_CONTEXT_CHARS)
-      }
+      return [
+        { text: (start > 0 ? '...' : '') + doc.text.slice(start, idx), match: false },
+        { text: doc.text.slice(idx, end), match: true },
+        { text: doc.text.slice(end, end + SNIPPET_CONTEXT_CHARS), match: false }
+      ]
     },
     limitText (value) {
       value = value.trim()
