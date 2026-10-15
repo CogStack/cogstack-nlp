@@ -144,11 +144,20 @@ class MetaAnnotationViewSet(viewsets.ModelViewSet):
     filterset_fields = ['id', 'annotated_entity', 'validated']
 
 
+class DocumentFilter(drf.FilterSet):
+    name__icontains = drf.CharFilter(field_name='name', lookup_expr='icontains')
+    text__icontains = drf.CharFilter(field_name='text', lookup_expr='icontains')
+
+    class Meta:
+        model = Document
+        fields = ['dataset']
+
+
 class DocumentViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     queryset = Document.objects.all()
     serializer_class = DocumentSerializer
-    filterset_fields = ['dataset']
+    filterset_class = DocumentFilter
 
 
 class EntityViewSet(viewsets.ModelViewSet):
