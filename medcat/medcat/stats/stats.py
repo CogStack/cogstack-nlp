@@ -1,20 +1,29 @@
-from typing import Optional, Callable, TextIO, TypedDict, Any
+from typing import Optional, Callable, TextIO, Any
+import logging
 
 from tqdm import tqdm
 
 from medcat.cat import CAT
+from medcat.stats.common import (
+    GoldAnnotation, PredictedAnnotation, NER_DETECTED_ENTITY_TAG)
+from medcat.stats.failuremodes import FailureModeFinder
 from medcat.utils.filters import project_filters
 from medcat.data.mctexport import (
     MedCATTrainerExport, MedCATTrainerExportProject,
     MedCATTrainerExportDocument)
 from medcat.config.config import LinkingFilters
 from medcat.cdb.concepts import CUIInfo, get_new_cui_info
-from medcat.tokenizing.tokens import MutableEntity, UNTOKENIZABLE_ENTITY_ID
+from medcat.tokenizing.tokens import (
+    MutableDocument, MutableEntity, UNTOKENIZABLE_ENTITY_ID)
 from medcat.components.types import CoreComponentType
 from medcat.utils.training_utils import dataset_aware_component
 from collections import defaultdict
 from pydantic import BaseModel, Field
 from enum import Enum
+
+
+logger = logging.getLogger(__name__)
+
 
 class MetricMode(str, Enum):
     """Supported evaluation modes for statistics collection."""
@@ -35,8 +44,8 @@ class RawStats(BaseModel):
     # i.e. entity at chars 100-103, token is 100-104.
     no_tokens: int = 0
 
-    # per document IoU metrics, summed over all documents and 
-    # averaged later via char_docs, which counts the number of 
+    # per document IoU metrics, summed over all documents and
+    # averaged later via char_docs, which counts the number of
     # documents that have entities that have been processed.
     iou_sum: float = 0.0
     giou_sum: float = 0.0
@@ -50,7 +59,7 @@ class RawStats(BaseModel):
     # gold counts is the number of labels for that CUI
     cui_gold_counts: dict[str, int] = Field(default_factory=dict)
     cui_no_tokens: dict[str, int] = Field(default_factory=dict)
-    
+
     examples: dict[str, dict[str, list]] = {
         'tp': {}, 'fp': {}, 'fn': {}}
 
@@ -71,10 +80,10 @@ class OverallMetrics(BaseModel):
     precision: float = 0.0
     recall: float = 0.0
     f1: float = 0.0
-    
+
     # Number of labels where it is not possible to generate an entity
     no_tokens: int = 0
-    # Number of labels in entire project where it is not 
+    # Number of labels in entire project where it is not
     # possible to generate an entity
     no_tokens_ratio: float = 0.0
 
@@ -113,45 +122,15 @@ class Metrics(BaseModel):
     per_cui: dict[str, CUIMetrics] = Field(default_factory=dict)
 
 
-class GoldAnnotation(TypedDict):
-    """Validated gold annotation payload after CUI filtering."""
-
-    start: int
-    end: int
-    cuis: list[str]
-    cui: str
-    text: str
-    raw: object
-    document_id: int
-    document_name: str
-    # context is 60 chars before + after the entity
-    context: str
-
-
-class PredictedAnnotation(TypedDict):
-    """Predicted entity payload used for scoring and metrics."""
-
-    start: int
-    end: int
-    cui: str
-    text: str
-    confidence: float
-    raw: MutableEntity
-    no_tokens: int  
-    document_id: int
-    document_name: str
-    # context is 60 chars before + after the entity
-    context: str
-
-
 class ModeStats(BaseModel):
     """Accumulated state and calculated metrics for one evaluation mode."""
 
     stats: RawStats = Field(default_factory=RawStats)
     metrics: Metrics | None = None
-    
+
+
 class ProjectStats(BaseModel):
-    """Accumulated state and calculated metrics for one project 
+    """Accumulated state and calculated metrics for one project
     or all projects."""
     full_pipeline: ModeStats = Field(
         default_factory=ModeStats
@@ -162,7 +141,7 @@ class ProjectStats(BaseModel):
     def get_mode(self, mode: MetricMode) -> ModeStats | None:
         normalized = MetricMode(mode)
         return getattr(self, normalized.value)
-    
+
     @classmethod
     def create(
         cls,
@@ -173,7 +152,8 @@ class ProjectStats(BaseModel):
             ner=ModeStats() if ner else None,
             linking=ModeStats() if linking else None,
         )
-    
+
+
 class StatsCollection(BaseModel):
     """Accumulated state and calculated metrics for all projects."""
     all_projects: ProjectStats = Field(
@@ -211,7 +191,8 @@ class StatsCollection(BaseModel):
                 for i in range(num_projects)
             },
         )
-    
+
+
 class StatsCalculator:
     """Calculates statistics for entity linking."""
 
@@ -221,16 +202,18 @@ class StatsCalculator:
                  num_projects: int,
                  ner_performance: bool = False,
                  linking_performance: bool = False,
+                 failure_mode_finder: FailureModeFinder | None = None
                  ) -> None:
         self.filters = filters
         self.cui2info = cui2info
-        self.reset(num_projects, 
+        self.reset(num_projects,
                    ner_performance,
                    linking_performance)
+        self.failure_mode_finder = failure_mode_finder
 
-    def reset(self, 
-              num_projects: int, 
-              ner_performance: bool = False, 
+    def reset(self,
+              num_projects: int,
+              ner_performance: bool = False,
               linking_performance: bool = False) -> None:
         self.ner_performance = ner_performance
         self.linking_performance = linking_performance
@@ -281,7 +264,7 @@ class StatsCalculator:
                     'raw': ann
                 })
         return gold_anns
-    
+
     def _extract_predictions(
         self,
         predictions: list[MutableEntity],
@@ -320,14 +303,14 @@ class StatsCalculator:
         """Count gold annotations for a project and all-projects aggregate."""
         project_stats = self.stats.get_project_stats(project_index)
         aggregate_stats = self.stats.get_aggregate_stats()
-        
+
         for stats in (project_stats, aggregate_stats):
             mode_stats = stats.get_mode(mode)
             if mode_stats is None:
                 continue
             state = mode_stats.stats
             if mode == MetricMode.NER:
-                key = "DETECTED_ENTITY"
+                key = NER_DETECTED_ENTITY_TAG
                 state.cui_gold_counts[key] = (
                     state.cui_gold_counts.get(key, 0)
                     + len(gold_anns)
@@ -343,7 +326,7 @@ class StatsCalculator:
     def _create_example(self, project_name: str, project_id: str, cui: str,
                            ann: PredictedAnnotation | GoldAnnotation,
                            confidence: float = 1.0) -> dict:
-        """Create a standardized example payload for true positive, false positive, and 
+        """Create a standardized example payload for true positive, false positive, and
         false negative examples."""
         return {
             'cui': cui,
@@ -357,10 +340,10 @@ class StatsCalculator:
             'source_value': ann['text'],
             'text': ann['context'],
         }
-        
-    def _record_tp(self, 
-                   state: RawStats, 
-                   gold: GoldAnnotation, 
+
+    def _record_tp(self,
+                   state: RawStats,
+                   gold: GoldAnnotation,
                    pred: PredictedAnnotation,
                    project_id: str,
                    project_name: str) -> None:
@@ -368,6 +351,7 @@ class StatsCalculator:
         cui = pred['cui']
         state.tp += 1
         state.cui_tp[cui] = state.cui_tp.get(cui, 0) + 1
+
         if cui not in state.examples['tp']:
             state.examples['tp'][cui] = []
         state.examples['tp'][cui].append(self._create_example(
@@ -378,27 +362,45 @@ class StatsCalculator:
             confidence=pred['confidence']
         ))
 
-    def _record_fn(self, 
-                   state: RawStats, 
+    def _record_fn(self,
+                   state: RawStats,
                    gold: GoldAnnotation,
                    project_id: str,
-                   project_name: str) -> None:
+                   project_name: str) -> dict:
         """Record a false negative."""
         cui = gold['cui']
         state.fn += 1
         state.cui_fn[cui] = state.cui_fn.get(cui, 0) + 1
-        
+
         if cui not in state.examples['fn']:
             state.examples['fn'][cui] = []
-        state.examples['fn'][cui].append(self._create_example(
+        example = self._create_example(
             project_name=project_name,
             project_id=project_id,
             cui=cui,
             ann=gold
-        ))
-        
-    def _record_fp(self, 
-                   state: RawStats, 
+        )
+        state.examples['fn'][cui].append(example)
+        return example
+
+    def _add_failure_mode(
+        self,
+        mut_doc: MutableDocument,
+        example: dict,
+        gold: GoldAnnotation,
+        pred_anns: list[PredictedAnnotation],
+    ) -> None:
+        if self.failure_mode_finder is None:
+            return  # NOTE: already checked before call, really
+        suitable_ids = self._find_all_matching_prediction(
+            gold, pred_anns, check_cui=False)
+        suitable = [pred_anns[idx] for idx in suitable_ids]
+        example['failure_mode'] = self.failure_mode_finder.get_failure_mode(
+            mut_doc, example, suitable, pred_anns,
+        )
+
+    def _record_fp(self,
+                   state: RawStats,
                    pred: PredictedAnnotation,
                    project_id: str,
                    project_name: str) -> None:
@@ -406,7 +408,7 @@ class StatsCalculator:
         cui = pred['cui']
         state.fp += 1
         state.cui_fp[cui] = state.cui_fp.get(cui, 0) + 1
-        
+
         if cui not in state.examples['fp']:
             state.examples['fp'][cui] = []
         state.examples['fp'][cui].append(self._create_example(
@@ -416,11 +418,11 @@ class StatsCalculator:
             ann=pred,
             confidence=pred['confidence']
         ))
-            
-    def _record_no_tokens(self, 
-                          state: RawStats, 
-                          pred: PredictedAnnotation, 
-                          project_id: str, 
+
+    def _record_no_tokens(self,
+                          state: RawStats,
+                          pred: PredictedAnnotation,
+                          project_id: str,
                           project_name: str) -> None:
         """Record a prediction with no tokens (ID -1000)."""
         # When there's an entity with no way for the tokenizer to parse it
@@ -443,7 +445,7 @@ class StatsCalculator:
         state.no_tokens += 1
         state.cui_no_tokens[cui] = state.cui_no_tokens.get(cui, 0) + 1
         self._record_fn(state, gold, project_id, project_name)
-        
+
     def _find_matching_prediction(
         self,
         gold: GoldAnnotation,
@@ -458,31 +460,56 @@ class StatsCalculator:
         - Predicted CUI is in gold's acceptable CUIs
         - Not already matched
         """
-        for idx, pred in enumerate(predictions):
+        logger.debug(
+            "  Trying to find a match for gold... @ [%d:%d] w %s (%s). "
+            "Already matched %d/%d",
+            gold['start'], gold['end'], gold['cuis'], gold['cui'],
+            len(matched_preds), len(predictions)
+        )
+        all_matches = self._find_all_matching_prediction(
+            gold, predictions)
+        for idx in all_matches:
             if idx in matched_preds:
                 continue
+            return idx
 
+        return None
+
+    def _find_all_matching_prediction(
+        self,
+        gold: GoldAnnotation,
+        predictions: list[PredictedAnnotation],
+        check_cui: bool = True,
+    ) -> list[int]:
+        matches: list[int] = []
+        for idx, pred in enumerate(predictions):
+            logger.debug(
+                "    Compare to %04d : %04d w %s (%s)",
+                pred['start'], pred['end'], pred['cui'],
+                pred['cui'] in gold['cuis']
+            )
             # Exact span match
             if pred['start'] == gold['start']:
                 # Check if predicted CUI is acceptable
-                if pred['cui'] in gold['cuis']:
-                    return idx
+                if not check_cui or pred['cui'] in gold['cuis']:
+                    matches.append(idx)
 
-        return None
-        
-    def _score_annotations(self, 
-                           gold_anns: list[GoldAnnotation], 
+        return matches
+
+    def _score_annotations(self,
+                           mut_doc: MutableDocument,
+                           gold_anns: list[GoldAnnotation],
                            pred_anns: list[PredictedAnnotation],
                            project_index: int,
                            project_id: str,
                            project_name: str,
-                           mode: MetricMode, 
+                           mode: MetricMode,
                            filter_fp_by_cui: bool = True) -> None:
         aggregate_stats = self.stats.get_aggregate_stats()
         project_stats = self.stats.get_project_stats(project_index)
         all_projects_state = aggregate_stats.get_mode(mode)
         project_state = project_stats.get_mode(mode)
-        
+
         project_and_aggregate = (all_projects_state, project_state)
 
         for state in project_and_aggregate:
@@ -499,28 +526,41 @@ class StatsCalculator:
             if mode == MetricMode.LINKING:
                 for pred in pred_anns:
                     if pred['no_tokens'] == 1:
-                        self._record_no_tokens(state.stats, pred, project_id, 
+                        self._record_no_tokens(state.stats, pred, project_id,
                                                project_name)
 
             # NOTE: All predictions where ID are -1000 are false positives.
             # this should only really happen on the linker testing, as it's a perfect
             # NER step which is trying to create tokenless entities.
             # Phase 1: Match gold annotations to predictions (find TPs and FNs)
+            logger.debug("%d gold anns", len(gold_anns))
+            num_found = 0
             for gold in gold_anns:
+                logger.debug(
+                    " Scoring for CUI: %s @[%d: %d]: '%s'",
+                    gold['cui'], gold['start'], gold['end'], gold['text']
+                )
                 if not gold['cuis']:
                     # No valid CUIs for this gold annotation, skip it
+                    logger.debug("  NO CUI - ignore")
                     continue
                 match_idx = self._find_matching_prediction(
                     gold, pred_anns, matched_preds)
 
                 if match_idx is not None:
+                    num_found += 1
+                    logger.debug("  GOT match - true positive")
                     # True Positive
                     matched_preds.add(match_idx)
                     pred = pred_anns[match_idx]
                     self._record_tp(state.stats, gold, pred, project_id, project_name)
                 else:
+                    logger.debug("  NO match - false negative")
                     # False Negative
-                    self._record_fn(state.stats, gold, project_id, project_name)
+                    example = self._record_fn(
+                        state.stats, gold, project_id, project_name)
+                    if self.failure_mode_finder:
+                        self._add_failure_mode(mut_doc, example, gold, pred_anns)
 
             # Phase 2: Remaining predictions are False Positives
             for idx, pred in enumerate(pred_anns):
@@ -530,11 +570,11 @@ class StatsCalculator:
                     continue
                 self._record_fp(state.stats, pred, project_id, project_name)
 
-    def _to_ner_views(self, 
-                      gold_anns: list[GoldAnnotation], 
+    def _to_ner_views(self,
+                      gold_anns: list[GoldAnnotation],
                       pred_anns: list[PredictedAnnotation]
                       ) -> tuple[list[GoldAnnotation], list[PredictedAnnotation]]:
-        ner_cui = 'DETECTED_ENTITY'
+        ner_cui = NER_DETECTED_ENTITY_TAG
         eval_pred_anns: list[PredictedAnnotation] = [
             {**pred, "cui": ner_cui}
             for pred in pred_anns
@@ -545,7 +585,7 @@ class StatsCalculator:
             for gold in gold_anns
         ]
         return eval_gold_anns, eval_pred_anns
-    
+
     def _build_character_sets(
         self,
         anns: list[PredictedAnnotation] | list[GoldAnnotation],
@@ -559,9 +599,8 @@ class StatsCalculator:
             char_idxs = set(range(start, end))
             chars_by_cui[cui].update(char_idxs)
 
-
         return dict(chars_by_cui)
-    
+
     def _character_cohen_kappa(
         self,
         gold_chars: set[int],
@@ -569,9 +608,9 @@ class StatsCalculator:
         document_length: int,
     ) -> float:
         """
-        The voices in my chatbot told me this is faster than the 
+        The voices in my chatbot told me this is faster than the
         sklearn implementation, and it is also more memory efficient.
-        
+
         Testing shows same metrics, and halving computation speed.
         """
 
@@ -608,7 +647,7 @@ class StatsCalculator:
             return 1.0
 
         return (po - pe) / denominator
-    
+
     def _calculate_document_character_scores(
         self,
         gold_anns: list[GoldAnnotation],
@@ -699,19 +738,19 @@ class StatsCalculator:
         state.stats.cohen_k_sum += doc_cohen_k
         state.stats.char_docs += 1
 
-    def _score_character_annotations(self, 
-                                     gold_anns: list[GoldAnnotation], 
+    def _score_character_annotations(self,
+                                     gold_anns: list[GoldAnnotation],
                                      pred_anns: list[PredictedAnnotation],
-                                     project_index: int, 
-                                     mode: MetricMode, 
+                                     project_index: int,
+                                     mode: MetricMode,
                                      doc_length: int) -> None:
         """
         Calculate:
         - Character Intersection over Union (IoU) for gold and predicted annotations.
-        - Gold label Character Intersection over Union (IoU) for gold and 
+        - Gold label Character Intersection over Union (IoU) for gold and
         predicted annotations.
         - Cohen's Kappa for gold and predicted annotations.
-        
+
         Cheat sheet of what we're generating:
         # iou = sum of document-level macro IoUs
         #     -> divide by number of documents
@@ -753,6 +792,7 @@ class StatsCalculator:
 
     def process_document(
         self,
+        mut_doc: MutableDocument,
         doc: MedCATTrainerExportDocument,
         project_index: int,
         project_name: str,
@@ -791,10 +831,17 @@ class StatsCalculator:
             linked_predictions = predictions
             full_pipe_pred_linked_anns = self._extract_predictions(linked_predictions, 
                                                                    doc)
+        logger.debug(
+            "Processing %d gold annotations and %d predictions "
+            "(%d after filtering).",
+            len(full_pipe_gold_anns), len(predictions),
+            len(linked_predictions)
+        )
         
         
         self._count_gold_annotations(full_pipe_gold_anns, project_index, mode)
         self._score_annotations(
+            mut_doc,
             full_pipe_gold_anns, 
             full_pipe_pred_linked_anns,
             project_index,
@@ -815,37 +862,34 @@ class StatsCalculator:
             ner_gold_anns, ner_pred_anns = self._to_ner_views(
                 full_pipe_gold_anns, full_pipe_pred_ner_anns)
             self._count_gold_annotations(ner_gold_anns, project_index,
-                                        mode=MetricMode.NER)
-            self._score_annotations(ner_gold_anns, ner_pred_anns,
+                                         mode=MetricMode.NER)
+            self._score_annotations(mut_doc, ner_gold_anns, ner_pred_anns,
                                     project_index, project_name,
                                     project_id, mode=MetricMode.NER,
                                     filter_fp_by_cui=False)
             self._score_character_annotations(
-                ner_gold_anns, 
+                ner_gold_anns,
                 ner_pred_anns,
-                project_index, 
+                project_index,
                 mode=MetricMode.NER,
                 doc_length=len(doc['text'])
             )
-        
+
     def process_project(self, project: MedCATTrainerExportProject,
                         project_index: int,
-                        entity_getter: Callable[
-                            [str],
-                            list[MutableEntity]
-                            | tuple[list[MutableEntity], list[MutableEntity]],
-                        ],
+                        doc_getter: Callable[[str], MutableDocument | None],
                         mode: MetricMode,
                         calculate_ner_performance: bool = False,
                         use_project_filters: bool = False,
                         extra_cui_filter: set[str] | None = None
                         ) -> None:
         """Process all documents in a project.
-        
+
         Args:
             project: The project data containing documents and annotations.
             project_index: Index of the project in the export.
-            entity_getter: Function to get predicted entities from text.
+            doc_getter: Function to get the document (with predicted entities)
+                from text.
             mode: Evaluation mode (full, ner, linking).
             calculate_ner_performance: Whether to calculate NER performance.
             use_project_filters: Whether to apply project-specific filters.
@@ -857,8 +901,23 @@ class StatsCalculator:
                              use_project_filters):
             for doc in tqdm(project['documents'],
                             desc='Documents'):
-                predictions = entity_getter(doc['text'])
+                mut_doc = doc_getter(doc['text'])
+                if mut_doc is None:
+                    logger.warning(
+                        "Got no document from model! Ignoring doc %s (%s)",
+                        doc.get('id', 'Unkown'), doc.get('name', 'Unknown'),
+                    )
+                    continue
+                predictions: (
+                    list[MutableEntity] |
+                    tuple[list[MutableEntity], list[MutableEntity]]
+                )
+                if calculate_ner_performance:
+                    predictions = (mut_doc.ner_ents, mut_doc.linked_ents)
+                else:
+                    predictions = mut_doc.linked_ents
                 self.process_document(
+                    mut_doc,
                     doc,
                     project_index,
                     project['name'],
@@ -868,25 +927,6 @@ class StatsCalculator:
                     calculate_ner_performance=calculate_ner_performance,
                 )
 
-    def _get_linked_ents(
-                         self,
-                         cat: CAT,
-                         text: str,
-                         calculate_ner_performance: bool = False
-                         ) -> (
-                             tuple[list[MutableEntity], list[MutableEntity]] 
-                             | list[MutableEntity]
-                         ):
-        """Required for mypy cleanliness"""
-        doc = cat(text)
-        if doc is None:
-            return []
-        if calculate_ner_performance:
-            # return both NER_ents and linked_ents for NER performance evaluation
-            return (doc.ner_ents, doc.linked_ents)
-        else:
-            return doc.linked_ents
-
     def process_export(self, cat: CAT, export: MedCATTrainerExport,
                        mode: MetricMode,
                        calculate_ner_performance: bool = False,
@@ -894,7 +934,7 @@ class StatsCalculator:
                        extra_cui_filter: set[str] | None = None,
                        filter_before_disamb: bool = False) -> None:
         """Process all projects in the export.
-        
+
         Args:
             cat: The MedCAT CAT instance for entity linking.
             export: The MedCAT trainer export data.
@@ -908,17 +948,15 @@ class StatsCalculator:
             cat.config.components.linking.filter_before_disamb = True
         for i, proj in tqdm(enumerate(export['projects']), desc='Projects'):
             self.process_project(
-                proj, 
+                proj,
                 i,
-                lambda text: self._get_linked_ents(cat, 
-                                                   text, 
-                                                   calculate_ner_performance),
+                cat.__call__,
                 mode=mode,
                 calculate_ner_performance=calculate_ner_performance,
                 use_project_filters=use_project_filters,
                 extra_cui_filter=extra_cui_filter
             )
-            
+
     @staticmethod
     def _compute_prf(tp: int, fp: int, fn: int, no_tokens: int) -> dict:
         """Compute precision, recall, F1."""
@@ -927,10 +965,10 @@ class StatsCalculator:
         f1 = 2 * prec * rec / (prec + rec) if (prec + rec) > 0 else 0.0
         no_tokens_ratio = no_tokens / (tp + fn) if (tp + fn) > 0 else 0.0
         return {
-            'precision': prec, 
-            'recall': rec, 
-            'f1': f1, 
-            'no_tokens': no_tokens, 
+            'precision': prec,
+            'recall': rec,
+            'f1': f1,
+            'no_tokens': no_tokens,
             'no_tokens_ratio': f'{no_tokens_ratio:.4f}'
         }
 
@@ -940,11 +978,11 @@ class StatsCalculator:
         if info:
             return info.get('preferred_name') or list(info['names'])[0]
         return cui
-    
+
     def _safe_mean(self, values):
         return sum(values) / len(values) if values else 0.0
 
-    def _prepare_metrics(self, 
+    def _prepare_metrics(self,
                          raw_stats: RawStats) -> tuple[OverallMetrics, dict[str, dict]]:
         """Prepare overall and per-CUI metrics from raw accumulated state."""
         # project metrics
@@ -1032,7 +1070,7 @@ class StatsCalculator:
         if mode_stats is None:
             return
         overall, per_cui = self._prepare_metrics(mode_stats.stats)
-        
+
         # Store computed metrics in the ModeStats object
         mode_stats.metrics = Metrics(
             overall=overall,
@@ -1041,7 +1079,7 @@ class StatsCalculator:
                 for cui, metrics in per_cui.items()
             },
         )
-            
+
     def compute_all_metrics(self,
                             ner_performance: bool = True,
                             linking_performance: bool = True) -> None:
@@ -1052,20 +1090,20 @@ class StatsCalculator:
             self.compute_metrics(stats, MetricMode.NER)
         if linking_performance:
             self.compute_metrics(stats, MetricMode.LINKING)
-        
+
         if self.num_projects > 1:
             for i in range(self.num_projects):
                 stats = self.stats.get_project_stats(i)
-                self.compute_metrics(stats, 
+                self.compute_metrics(stats,
                                      MetricMode.FULL)
                 if ner_performance:
-                    self.compute_metrics(stats, 
+                    self.compute_metrics(stats,
                                          MetricMode.NER)
                 if linking_performance:
-                    self.compute_metrics(stats, 
+                    self.compute_metrics(stats,
                                          MetricMode.LINKING)
-            
-    # these 3 functions are just copied from previous, 
+
+    # these 3 functions are just copied from previous,
     # they get nice names for concepts
     def _empty(self, cui: str) -> CUIInfo:
         return get_new_cui_info(
@@ -1077,7 +1115,7 @@ class StatsCalculator:
     def _get_pref_name(self, cui: str) -> str:
         info = self._get_or_empty(cui)
         return info['preferred_name'] or list(info['names'])[0]
-    
+
     def print_stats(self,
                     epoch: int,
                     mode_stats: ModeStats,
@@ -1182,7 +1220,8 @@ class StatsCalculator:
         )
         return to_return
 
-def get_stats_calculator(cat: CAT, 
+
+def get_stats_calculator(cat: CAT,
                          data: MedCATTrainerExport,
                          epoch: int = 0,
                          use_project_filters: bool = False,
@@ -1190,16 +1229,18 @@ def get_stats_calculator(cat: CAT,
                          ner_performance: bool = False,
                          linking_performance: bool = False,
                          extra_cui_filter: Optional[set[str]] = None,
-                         do_print: bool = True,) -> StatsCalculator:
+                         do_print: bool = True,
+                         include_failure_modes: bool = False,
+) -> StatsCalculator:
     """Return the stats calculator.
 
-    This doesn't just return the per project stats for the full pipeline, 
-    but all stats for each project and the aggregate, for all modes 
+    This doesn't just return the per project stats for the full pipeline,
+    but all stats for each project and the aggregate, for all modes
     (full, ner, linking) if required.
 
-    This should be called without calling "get_stats", as that is just a 
+    This should be called without calling "get_stats", as that is just a
     legacy wrapper.
-    
+
     Args:
         cat: The MedCAT CAT instance for entity linking.
         data: The MedCAT trainer export data.
@@ -1214,12 +1255,15 @@ def get_stats_calculator(cat: CAT,
     Returns:
         StatsCalculator: An instance of StatsCalculator with computed statistics.
     """
+    fm_finder = (
+        FailureModeFinder.from_cat(cat) if include_failure_modes else None)
     calculator = StatsCalculator(
                     filters=cat.config.components.linking.filters,
                     cui2info=cat.cdb.cui2info,
                     num_projects=len(data['projects']),
                     ner_performance=ner_performance,
-                    linking_performance=linking_performance
+                    linking_performance=linking_performance,
+                    failure_mode_finder=fm_finder,
             )
     # Always compute full pipeline metrics.
     # If ner is of interest then also compute NER metrics from the same pass.
@@ -1243,6 +1287,7 @@ def get_stats_calculator(cat: CAT,
             )
 
     calculator.compute_all_metrics(ner_performance, linking_performance)
+
     if do_print:
         full_stats = calculator.stats.all_projects.get_mode(MetricMode.FULL)
         if full_stats is None:
@@ -1250,22 +1295,25 @@ def get_stats_calculator(cat: CAT,
         calculator.print_stats(epoch, full_stats)
     return calculator
 
-def get_stats(cat: CAT, 
+
+def get_stats(cat: CAT,
               data: MedCATTrainerExport,
               epoch: int = 0,
               use_project_filters: bool = False,
               use_overlaps: bool = False,
               extra_cui_filter: Optional[set[str]] = None,
-              do_print: bool = True,) -> tuple[
+              do_print: bool = True,
+              include_failure_modes: bool = False,
+              ) -> tuple[
         dict[str, int], dict[str, int], dict[str, int],
         dict[str, float], dict[str, float], dict[str, float],
         dict[str, int], dict
-    ]:
+]:
     """Return stats for the entire project and full pipeline.
 
-    This should be called without calling "get_stats", as that is just a 
+    This should be called without calling "get_stats", as that is just a
     legacy wrapper.
-    
+
     Args:
         cat: The MedCAT CAT instance for entity linking.
         data: The MedCAT trainer export data.
@@ -1294,7 +1342,8 @@ def get_stats(cat: CAT,
         ner_performance=False,
         linking_performance=False,
         extra_cui_filter=extra_cui_filter,
-        do_print=False
+        do_print=False,
+        include_failure_modes=include_failure_modes,
     )
     full_stats = calculator.stats.all_projects.full_pipeline
     if do_print:
