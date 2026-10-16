@@ -236,7 +236,7 @@ class Document:
                    ) -> list[MutableToken]:
         char_indices = self._ensure_char_indices()
         lo = bisect_left(char_indices, start_index)
-        hi = bisect_right(char_indices, end_index)
+        hi = bisect_left(char_indices, end_index)
         return [Token(self._delegate[i]) for i in range(lo, hi)]
 
     def set_addon_data(self, path: str, val: Any) -> None:
