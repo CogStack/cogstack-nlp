@@ -1,4 +1,4 @@
-from typing import Callable, Optional
+from typing import Callable, Optional, cast
 from typing_extensions import Self
 from contextlib import contextmanager
 import logging
@@ -24,9 +24,13 @@ logger = logging.getLogger(__name__)
 class _CheatingComponent(AbstractEntityProvidingComponent):
     name = 'cheating_component'
 
-    def __init__(self,
-            comp_type: CoreComponentType,
-            predictor: Callable[[MutableDocument], list[MutableEntity]]):
+    def __init__(
+        self,
+        orig_comp: AbstractEntityProvidingComponent,
+        comp_type: CoreComponentType,
+        predictor: Callable[[MutableDocument], list[MutableEntity]]
+    ):
+        self._orig_comp = orig_comp
         self._comp_type = comp_type
         super().__init__(
             comp_type == CoreComponentType.linking,
@@ -39,7 +43,14 @@ class _CheatingComponent(AbstractEntityProvidingComponent):
     def predict_entities(self, doc: MutableDocument,
                          ents: list[MutableEntity] | None = None
                          ) -> list[MutableEntity]:
-        return self._predictor(doc)
+        try:
+            return self._predictor(doc)
+        except NoSuchDocumentException as e:
+            logger.debug(
+                "Unable to find matching document in dataset, "
+                "falling back to original component"
+            )
+            return self._orig_comp.predict_entities(doc, ents)
 
     @classmethod
     def create_new_component(
@@ -65,16 +76,20 @@ def cheating_component(
     """
     comps_list = cat.pipe._components
     # find original index
-    original_comp = cat.pipe.get_component(comp_type)
+    original_comp = cast(
+        AbstractEntityProvidingComponent, cat.pipe.get_component(comp_type))
     replace_index = comps_list.index(original_comp)
     # create and replace
-    cheater = _CheatingComponent(comp_type, predictor)
+    cheater = _CheatingComponent(original_comp, comp_type, predictor)
     comps_list[replace_index] = cheater
     try:
         yield
     finally:
         # restore original component
         comps_list[replace_index] = original_comp
+
+class NoSuchDocumentException(ValueError):
+    pass
 
 
 def _identify_document(
@@ -84,7 +99,7 @@ def _identify_document(
         for ann_doc in proj['documents']:
             if ann_doc['text'] == doc.base.text:
                 return ann_doc
-    raise ValueError("Unable to identify correct document")
+    raise NoSuchDocumentException("Unable to identify correct document")
 
 
 def _parse_raw_name(
