@@ -73,7 +73,10 @@ const mountSummary = (items = [sourceRow]) =>
 describe('metrics ConceptSummary.vue', () => {
   it('opens the example dialog when an FN count is clicked', async () => {
     const wrapper = mountSummary()
-    await wrapper.find('.btn-outline-warning').trigger('click')
+    expect(wrapper.find('.btn-outline-success').exists()).toBe(true)
+    expect(wrapper.find('.btn-outline-secondary').exists()).toBe(true)
+    expect(wrapper.find('.btn-outline-danger').exists()).toBe(true)
+    await wrapper.find('.btn-outline-secondary').trigger('click')
     await flushPromises()
 
     expect(wrapper.vm.showModal).toBe(true)

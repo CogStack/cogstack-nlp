@@ -130,7 +130,7 @@
         </button>
       </template>
       <template #item.fns="{ item }">
-        <button type="button" class="btn btn-outline-warning res-btn" :disabled="countValue(item, 'fns') === 0"
+        <button type="button" class="btn btn-outline-secondary res-btn" :disabled="countValue(item, 'fns') === 0"
                 @click.stop="openExamples('fn_examples', item)">
           {{ countValue(item, 'fns') }}
         </button>
@@ -350,6 +350,13 @@ export default {
   height: 25px;
   padding: 3px 10px !important;
   border: 0 !important;
+}
+
+/* Vuetify sets `color: inherit` on [type=button], which otherwise wipes these outline colors. */
+.res-btn.btn-outline-success,
+.res-btn.btn-outline-secondary,
+.res-btn.btn-outline-danger {
+  color: var(--bs-btn-color);
 }
 
 .res-btn:hover {
