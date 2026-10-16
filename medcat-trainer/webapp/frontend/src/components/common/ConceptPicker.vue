@@ -48,7 +48,7 @@ export default {
     selection: String
   },
   created () {
-    let that = this
+    const that = this
     window.setTimeout(function () {
       const el = document.getElementById('searchBox')
       el.focus()
@@ -106,7 +106,7 @@ export default {
       conceptDBset.delete(null)
       const conceptDbs = Array.from(conceptDBset).join(',')
       const searchByTerm = function () {
-        let searchConceptsQueryParams = `search=${term}&cdbs=${conceptDbs}`
+        const searchConceptsQueryParams = `search=${term}&cdbs=${conceptDbs}`
         that.$http.get(`/api/search-concepts/?${searchConceptsQueryParams}`).then(resp => {
           that.searchResults = filterResults(resp.data.results.map(res => mapResult(res, resp.data.results)))
           // loading(false)
@@ -120,7 +120,7 @@ export default {
       const filterResults = function (results) {
         if (that.restrict_concept_lookup) {
           if (that.cui_filter) {
-            let cuis = that.cui_filter.split(',').map(c => c.trim())
+            const cuis = that.cui_filter.split(',').map(c => c.trim())
             results = results.filter(r => cuis.indexOf(r.cui) !== -1)
           }
         }

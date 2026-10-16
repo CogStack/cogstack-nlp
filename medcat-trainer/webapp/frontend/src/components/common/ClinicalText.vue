@@ -158,7 +158,7 @@ export default {
       const getStyleClass = (ent, origIndex) => {
         let styleClass = taskHighlightDefault
         if (ent.assignedValues[this.taskName] !== null) {
-          let btnIndex = this.taskValues.indexOf(ent.assignedValues[this.taskName])
+          const btnIndex = this.taskValues.indexOf(ent.assignedValues[this.taskName])
           styleClass = `highlight-task-${btnIndex}`
         }
 
@@ -334,7 +334,7 @@ export default {
   },
   methods: {
     scrollIntoView  (timeout) {
-      let el = document.getElementsByClassName('highlight-task-selected')
+      const el = document.getElementsByClassName('highlight-task-selected')
       setTimeout(function () { // setTimeout to put this into event queue
         if (el[0]) {
           el[0].scrollIntoView({
@@ -378,8 +378,8 @@ export default {
         let priorText = anchor.data.slice(0, selection.anchorOffset)
         let priorSibling = anchor.previousSibling || anchor.parentElement.previousSibling
 
-        let sameNode = anchor.compareDocumentPosition(focus) === 0
-        let focusProceedingAnchor = anchor.compareDocumentPosition(focus) === 2
+        const sameNode = anchor.compareDocumentPosition(focus) === 0
+        const focusProceedingAnchor = anchor.compareDocumentPosition(focus) === 2
         if (!sameNode) {
           if (focusProceedingAnchor) {
             priorText = focus.data.slice(0, selection.focusOffset)
@@ -428,7 +428,7 @@ export default {
 
         // event is 132 px too large.
         // TODO: Fix hack, bug introduced with vue-multipane.
-        let ev = {
+        const ev = {
           pageY: event.pageY - 42,
           pageX: event.pageX
         }

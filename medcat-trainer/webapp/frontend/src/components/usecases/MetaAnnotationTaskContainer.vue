@@ -60,7 +60,7 @@ export default {
       }
     },
     updateMetaAnno (task, option) {
-      let payload = {
+      const payload = {
         validated: task.validated,
         predicted_meta_task_value: task.predicted_meta_task_value,
         annotated_entity: this.selectedEnt.id,

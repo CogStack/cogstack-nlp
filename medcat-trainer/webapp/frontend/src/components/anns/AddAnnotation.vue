@@ -161,7 +161,7 @@ export default {
   mounted () {
     window.addEventListener('keydown', this.keydown)
   },
-  beforeDestroy () {
+  beforeUnmount () {
     window.removeEventListener('keydown', this.keydown)
   }
 }

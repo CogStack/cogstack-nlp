@@ -120,7 +120,7 @@ export default {
       this.conceptSummary = {}
       if (this.selectedEnt && Object.keys(this.selectedEnt).length) {
         // remove props
-        let ent = Object.keys(this.selectedEnt)
+        const ent = Object.keys(this.selectedEnt)
           .filter(k => !HIDDEN_PROPS.includes(k))
           .reduce((obj, key) => {
             obj[key] = this.selectedEnt[key]
@@ -139,8 +139,8 @@ export default {
         }
 
         // order the keys to tuples.
-        let props = CONST_PROPS_ORDER.concat(Object.keys(this.selectedEnt.assignedValues))
-        for (let k of props) {
+        const props = CONST_PROPS_ORDER.concat(Object.keys(this.selectedEnt.assignedValues))
+        for (const k of props) {
           this.conceptSummary[k] = ent[k]
         }
 
@@ -171,7 +171,7 @@ export default {
   mounted () {
     window.addEventListener('keyup', this.keyup)
   },
-  beforeDestroy () {
+  beforeUnmount () {
     window.removeEventListener('keyup', this.keyup)
   },
   watch: {
