@@ -204,7 +204,7 @@ export default {
       }
     }
   },
-  beforeDestroy () {
+  beforeUnmount () {
     EventBus.$off('login:success', this.loginSuccessful)
     EventBus.$off(UNAUTHORIZED_EVENT, this.onUnauthorized)
   },

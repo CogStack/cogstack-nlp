@@ -102,7 +102,7 @@ export default {
         selection_occur_idx: this.selection.selectionOccurrenceIdx
       }
       Object.assign(payload, this.concept)
-      let nextCtx = this.selection.nextText.slice(0, 30).split(' ').slice(0, -1)
+      const nextCtx = this.selection.nextText.slice(0, 30).split(' ').slice(0, -1)
       payload['context'] = `${this.selection.prevText}${this.selection.selStr}${nextCtx}`
 
       this.loading = true
@@ -114,14 +114,14 @@ export default {
           this.loading = false
           if (err.code === 400) {
             this.addConceptErr = 'Invalid CUI value. CUI already exists in MedCAT.'
-            let that = this
+            const that = this
             setTimeout(function () {
               that.addConceptErr = false
             }, 5000)
           } else {
             this.addConceptErr = `Error adding concept:${(err.response.data || {}).err || 'Unknown error: more info in the console'}`
             console.error(err)
-            let that = this
+            const that = this
             setTimeout(function () {
               that.addConceptErr = false
             }, 5000)
@@ -130,7 +130,7 @@ export default {
       }).catch(err => {
         this.loading = false
         this.addConceptErr = err.response?.data?.message || 'Error loading model.'
-        let that = this
+        const that = this
         setTimeout(function () {
           that.addConceptErr = false
         }, 5000)

@@ -501,7 +501,7 @@ export default {
       })
     },
     fetchDocuments(numPagesLoaded, finishedLoading) {
-      let params = this.nextDocSetUrl === null ? `?dataset=${this.project.dataset}`
+      const params = this.nextDocSetUrl === null ? `?dataset=${this.project.dataset}`
           : `?${this.nextDocSetUrl.split('?').slice(-1)[0]}`
 
       this.$http.get(`/api/documents/${params}`).then(resp => {
@@ -560,7 +560,7 @@ export default {
         this.loadingMsg = "Loading MedCAT model..."
         this.$http.get(`/api/cache-project-model/${this.project.id}/`).then(_ => {
           this.loadingMsg = "Preparing Document..."
-          let payload = {
+          const payload = {
             project_id: this.project.id,
             document_ids: [this.currentDoc.id]
           }
@@ -586,10 +586,10 @@ export default {
       }
     },
     fetchEntities(selectedEntId) {
-      let params = this.nextEntSetUrl === null ? `?project=${this.projectId}&document=${this.currentDoc.id}`
+      const params = this.nextEntSetUrl === null ? `?project=${this.projectId}&document=${this.currentDoc.id}`
           : `?${this.nextEntSetUrl.split('?').slice(-1)[0]}`
       this.$http.get(`/api/annotated-entities/${params}`).then(resp => {
-        let useAssignedVal = !this.project.require_entity_validation ||
+        const useAssignedVal = !this.project.require_entity_validation ||
             this.project.validated_documents.indexOf(this.currentDoc.id) !== -1
 
         const ents = resp.data.results.map(e => {
@@ -724,7 +724,7 @@ export default {
         this.setStatus('alternative')
         this.markEntity(this.project.tasks.length === 0)
         this.metaAnnotate = this.project.tasks.length > 0
-        let i = this.ents.indexOf(this.currentEnt)
+        const i = this.ents.indexOf(this.currentEnt)
         this.currentEnt = JSON.parse(JSON.stringify(this.currentEnt))
         this.ents[i] = this.currentEnt
       })
@@ -740,7 +740,7 @@ export default {
       this.conceptSynonymSelection = null
       if (addedAnnotationId) {
         this.$http.get(`/api/annotated-entities/${addedAnnotationId}/`).then(resp => {
-          let newEnt = resp.data
+          const newEnt = resp.data
           newEnt.assignedValues = {}
           newEnt.assignedValues[TASK_NAME] = CONCEPT_CORRECT
           this.ents = null
@@ -750,7 +750,7 @@ export default {
       }
     },
     removeNewAnno(i) {
-      let entToRemove = this.ents[i]
+      const entToRemove = this.ents[i]
       this.$http.delete(`/api/annotated-entities/${entToRemove.id}/`).then(_ => {
         if (i === this.ents.length - 1) {
           this.back()
@@ -762,7 +762,7 @@ export default {
     },
     addSynonym(selection) {
       this.conceptSynonymSelection = null
-      let that = this
+      const that = this
       window.setTimeout(function () {
         that.conceptSynonymSelection = selection
         that.metaAnnotate = false
@@ -790,7 +790,7 @@ export default {
             return ent
           })
         }
-        let that = this
+        const that = this
         if (annoUpdates.length > 1) {
           Promise.all(annoUpdates).then(_ => {
             that.confirmSubmitListenerAdd()
@@ -808,14 +808,14 @@ export default {
       this.$http.get(`/api/project-annotate-entities/?id=${this.projectId}`).then(resp => {
         // refresh project validated documents as multiple users may be submitting. Mitigates but
         // does not solve a potential inconsistent validated_documents state seen.
-        let proj = resp.data.results[0]
+        const proj = resp.data.results[0]
         if (proj.validated_documents.indexOf(this.currentDoc.id) === -1) {
           proj.validated_documents = this.project.validated_documents.concat(this.currentDoc.id)
         }
         this.project = proj
         this.fetchCDBSearchIndex()
         this.$http.put(`/api/project-annotate-entities/${this.projectId}/`, this.project).then(() => {
-          let payload = {
+          const payload = {
             project_id: this.project.id,
             document_id: this.currentDoc.id
           }
@@ -841,7 +841,7 @@ export default {
       })
     },
     submitAll() {
-      let subPromises = []
+      const subPromises = []
       for (const vDoc of this.project.validated_documents) {
         const payload = {
           project_id: this.project.id,
@@ -901,7 +901,7 @@ export default {
       })
     }
   },
-  beforeDestroy() {
+  beforeUnmount() {
     EventBus.$off(UNAUTHORIZED_EVENT, this.onUnauthorized)
     this.confirmSubmitListenerRemove()
   }

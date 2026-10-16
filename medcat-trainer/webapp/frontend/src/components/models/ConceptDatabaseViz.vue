@@ -75,7 +75,7 @@ export default {
     this.debouncedScroll = _.debounce(this.onScroll, 100)
     window.addEventListener('scroll', this.debouncedScroll)
   },
-  beforeDestroy () {
+  beforeUnmount () {
     window.removeEventListener('scroll', this.debouncedScroll)
   },
   methods: {
