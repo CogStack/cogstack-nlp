@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import ConceptSummary from '@/components/metrics/ConceptSummary.vue'
+import conceptSummarySource from '@/components/metrics/ConceptSummary.vue?raw'
 
 const fnExample = {
   cui: '195967001',
@@ -24,7 +25,7 @@ const sourceRow = {
   cui_f1: 0.5,
   cui_prec: 0.5,
   cui_rec: 0.5,
-  tps: 0,
+  tps: 1,
   fns: 1,
   fps: 2,
   tp_examples: [],
@@ -71,12 +72,32 @@ const mountSummary = (items = [sourceRow]) =>
   })
 
 describe('metrics ConceptSummary.vue', () => {
+  it('paints non-zero TP, FN, and FP counts green, grey, and red', () => {
+    const wrapper = mountSummary()
+    const zero = mountSummary([{ ...sourceRow, tps: 0, fns: 0, fps: 0 }])
+
+    expect(wrapper.get('button.tp-count').attributes('disabled')).toBeUndefined()
+    expect(wrapper.get('button.fn-count').attributes('disabled')).toBeUndefined()
+    expect(wrapper.get('button.fp-count').attributes('disabled')).toBeUndefined()
+    expect(zero.get('button.tp-count').attributes('disabled')).toBeDefined()
+    expect(zero.get('button.fn-count').attributes('disabled')).toBeDefined()
+    expect(zero.get('button.fp-count').attributes('disabled')).toBeDefined()
+
+    // jsdom does not apply Vue SFC CSS, so lock the declarations that the browser uses.
+    expect(conceptSummarySource).toContain('button.res-btn.tp-count:not(:disabled)')
+    expect(conceptSummarySource).toContain('color: #009639 !important')
+    expect(conceptSummarySource).toContain('button.res-btn.fn-count:not(:disabled)')
+    expect(conceptSummarySource).toContain('color: #768692 !important')
+    expect(conceptSummarySource).toContain('button.res-btn.fp-count:not(:disabled)')
+    expect(conceptSummarySource).toContain('color: #DA291C !important')
+
+    wrapper.unmount()
+    zero.unmount()
+  })
+
   it('opens the example dialog when an FN count is clicked', async () => {
     const wrapper = mountSummary()
-    expect(wrapper.find('.btn-outline-success').exists()).toBe(true)
-    expect(wrapper.find('.btn-outline-secondary').exists()).toBe(true)
-    expect(wrapper.find('.btn-outline-danger').exists()).toBe(true)
-    await wrapper.find('.btn-outline-secondary').trigger('click')
+    await wrapper.find('button.fn-count').trigger('click')
     await flushPromises()
 
     expect(wrapper.vm.showModal).toBe(true)

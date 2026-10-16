@@ -124,19 +124,19 @@
         </div>
       </template>
       <template #item.tps="{ item }">
-        <button type="button" class="btn btn-outline-success res-btn" :disabled="countValue(item, 'tps') === 0"
+        <button type="button" class="btn res-btn tp-count" :disabled="countValue(item, 'tps') === 0"
                 @click.stop="openExamples('tp_examples', item)">
           {{ countValue(item, 'tps') }}
         </button>
       </template>
       <template #item.fns="{ item }">
-        <button type="button" class="btn btn-outline-secondary res-btn" :disabled="countValue(item, 'fns') === 0"
+        <button type="button" class="btn res-btn fn-count" :disabled="countValue(item, 'fns') === 0"
                 @click.stop="openExamples('fn_examples', item)">
           {{ countValue(item, 'fns') }}
         </button>
       </template>
       <template #item.fps="{ item }">
-        <button type="button" class="btn btn-outline-danger res-btn" :disabled="countValue(item, 'fps') === 0"
+        <button type="button" class="btn res-btn fp-count" :disabled="countValue(item, 'fps') === 0"
                 @click.stop="openExamples('fp_examples', item)">
           {{ countValue(item, 'fps') }}
         </button>
@@ -350,17 +350,35 @@ export default {
   height: 25px;
   padding: 3px 10px !important;
   border: 0 !important;
+  background-color: transparent;
 }
 
-/* Vuetify sets `color: inherit` on [type=button], which otherwise wipes these outline colors. */
-.res-btn.btn-outline-success,
-.res-btn.btn-outline-secondary,
-.res-btn.btn-outline-danger {
-  color: var(--bs-btn-color);
+/* Vuetify sets `color: inherit` on [type=button]. Literal colors with !important keep non-zero counts visible. */
+button.res-btn.tp-count:not(:disabled) {
+  color: #009639 !important;
 }
 
-.res-btn:hover {
-  color: white !important;
+button.res-btn.fn-count:not(:disabled) {
+  color: #768692 !important;
+}
+
+button.res-btn.fp-count:not(:disabled) {
+  color: #DA291C !important;
+}
+
+button.res-btn.tp-count:not(:disabled):hover {
+  color: #fff !important;
+  background-color: #009639 !important;
+}
+
+button.res-btn.fn-count:not(:disabled):hover {
+  color: #fff !important;
+  background-color: #768692 !important;
+}
+
+button.res-btn.fp-count:not(:disabled):hover {
+  color: #fff !important;
+  background-color: #DA291C !important;
 }
 
 .v-card {
