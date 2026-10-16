@@ -353,32 +353,49 @@ export default {
   background-color: transparent;
 }
 
-/* Vuetify sets `color: inherit` on [type=button]. These variables are the NHS theme colours. */
+button.res-btn.tp-count {
+  opacity: 0.3;
+  /* color: var(--success); */
+}
+
+button.res-btn.fn-count {
+  opacity: 0.3;
+  /* color: var(--warning); */
+}
+
+button.res-btn.fp-count {
+  opacity: 0.3;
+  /* color: var(--danger); */
+}
+
 button.res-btn.tp-count:not(:disabled) {
-  color: var(--success) !important;
+  opacity: 1;
+  color: var(--success);
 }
 
 button.res-btn.fn-count:not(:disabled) {
-  color: var(--warning) !important;
+  opacity: 1;
+  color: var(--warning);
 }
 
 button.res-btn.fp-count:not(:disabled) {
-  color: var(--danger) !important;
+  opacity: 1;
+  color: var(--danger);
 }
 
 button.res-btn.tp-count:not(:disabled):hover {
-  color: var(--bs-white) !important;
-  background-color: var(--success) !important;
+  color: var(--bs-white);
+  background-color: var(--success);
 }
 
 button.res-btn.fn-count:not(:disabled):hover {
-  color: var(--bs-white) !important;
-  background-color: var(--warning) !important;
+  color: var(--bs-white);
+  background-color: var(--warning);
 }
 
 button.res-btn.fp-count:not(:disabled):hover {
-  color: var(--bs-white) !important;
-  background-color: var(--danger) !important;
+  color: var(--bs-white);
+  background-color: var(--danger);
 }
 
 .v-card {
