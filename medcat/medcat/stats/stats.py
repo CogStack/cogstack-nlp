@@ -282,7 +282,9 @@ class StatsCalculator:
                 'start': ent.base.start_char_index,
                 'end': ent.base.end_char_index,
                 'cui': ent.cui,
-                'text': ent.base.text,
+                'text': doc['text'][max(0, ent.base.start_char_index):
+                                       ent.base.end_char_index],
+                'detected_name': ent.detected_name,
                 'context': doc['text'][max(0, ent.base.start_char_index - 60):
                                        ent.base.end_char_index + 60],
                 'document_id': doc['id'],

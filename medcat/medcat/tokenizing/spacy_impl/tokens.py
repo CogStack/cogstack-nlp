@@ -1,5 +1,5 @@
 from typing import Iterator, Union, Optional, overload, cast, Any
-from bisect import bisect_left, bisect_right
+from bisect import bisect_left
 import logging
 
 from spacy.tokens import Token as SpacyToken
@@ -236,7 +236,7 @@ class Document:
                    ) -> list[MutableToken]:
         char_indices = self._ensure_char_indices()
         lo = bisect_left(char_indices, start_index)
-        hi = bisect_right(char_indices, end_index)
+        hi = bisect_left(char_indices, end_index)
         return [Token(self._delegate[i]) for i in range(lo, hi)]
 
     def set_addon_data(self, path: str, val: Any) -> None:
