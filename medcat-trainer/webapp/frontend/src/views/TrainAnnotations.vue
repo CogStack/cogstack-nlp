@@ -24,13 +24,16 @@
     </div>
 
     <div class="app-main">
-      <document-summary :projId="(project || {}).id" :datasetId="(project || {}).dataset"
-                        :docs="docs" :moreDocs="nextDocSetUrl !== null"
-                        :validatedDocIds="(project || {}).validated_documents"
-                        :preparedDocIds="(project || {}).prepared_documents"
-                        :selectedDocId="currentDoc !== null ? currentDoc.id : null" :loadingDoc="loadingMsg !== null"
-                        @request:nextDocSet="fetchDocuments()" @request:loadDoc="loadDoc"></document-summary>
       <splitpanes class="default-theme">
+        <pane size="15" min-size="10">
+          <document-summary :projId="(project || {}).id" :datasetId="(project || {}).dataset"
+                            :docs="docs" :moreDocs="nextDocSetUrl !== null"
+                            :validatedDocIds="(project || {}).validated_documents"
+                            :preparedDocIds="(project || {}).prepared_documents"
+                            :selectedDocId="currentDoc !== null ? currentDoc.id : null"
+                            :loadingDoc="loadingMsg !== null"
+                            @request:nextDocSet="fetchDocuments()" @request:loadDoc="loadDoc"></document-summary>
+        </pane>
         <pane size="70" min-size="20">
           <div class="main-viewport">
             <clinical-text :loading="loadingMsg" :text="currentDoc !== null ? currentDoc.text : null"

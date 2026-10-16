@@ -269,8 +269,6 @@ export default {
 <style scoped lang="scss">
 @import "bootstrap";
 
-$width: 175px;
-
 .title {
   padding: 5px 10px;
   font-size: 16pt;
@@ -278,16 +276,20 @@ $width: 175px;
 }
 
 .doc-summary {
-  flex: 0 0 $width;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  min-width: 0;
   padding: 5px;
   position: relative;
   background: $background;
 }
 
 .doc-list {
+  flex: 1 1 auto;
+  min-height: 0;
   overflow: auto;
-  height: calc(100% - 41px);
-  width: $width;
 }
 
 .doc {
@@ -369,6 +371,10 @@ $width: 175px;
   &:hover {
     opacity: 1;
   }
+}
+
+.title, .search-docs {
+  flex-shrink: 0;
 }
 
 .search-docs {

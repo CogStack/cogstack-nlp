@@ -236,3 +236,26 @@ describe('TrainAnnotations.vue fetchEntities', () => {
     expect(wrapper.vm.ents).toEqual([])
   })
 })
+
+describe('TrainAnnotations.vue layout', () => {
+  it('places the document summary in a resizable pane alongside the text and concept sidebar', () => {
+    const wrapper = shallowMount(TrainAnnotations, {
+      props: { projectId: 1 },
+      global: {
+        plugins: [router],
+        renderStubDefaultSlot: true,
+        mocks: {
+          $http: { get: vi.fn(() => new Promise(() => { })), defaults: { headers: { common: {} } } },
+          $cookies: { get: vi.fn((key: string) => sessionCookies[key] ?? null) }
+        }
+      }
+    })
+
+    const panes = wrapper.findAllComponents({ name: 'Pane' })
+    expect(panes).toHaveLength(3)
+    expect(panes[0].findComponent({ name: 'DocumentSummary' }).exists()).toBe(true)
+    expect(panes[0].props('minSize')).toBe('10')
+    expect(panes[1].findComponent({ name: 'ClinicalText' }).exists()).toBe(true)
+    expect(panes[2].find('.sidebar-container').exists()).toBe(true)
+  })
+})
