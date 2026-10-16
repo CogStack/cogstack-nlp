@@ -353,32 +353,32 @@ export default {
   background-color: transparent;
 }
 
-/* Vuetify sets `color: inherit` on [type=button]. Literal colors with !important keep non-zero counts visible. */
+/* Vuetify sets `color: inherit` on [type=button]. These variables are the NHS theme colours. */
 button.res-btn.tp-count:not(:disabled) {
-  color: #009639 !important;
+  color: var(--success) !important;
 }
 
 button.res-btn.fn-count:not(:disabled) {
-  color: #768692 !important;
+  color: var(--warning) !important;
 }
 
 button.res-btn.fp-count:not(:disabled) {
-  color: #DA291C !important;
+  color: var(--danger) !important;
 }
 
 button.res-btn.tp-count:not(:disabled):hover {
-  color: #fff !important;
-  background-color: #009639 !important;
+  color: var(--bs-white) !important;
+  background-color: var(--success) !important;
 }
 
 button.res-btn.fn-count:not(:disabled):hover {
-  color: #fff !important;
-  background-color: #768692 !important;
+  color: var(--bs-white) !important;
+  background-color: var(--warning) !important;
 }
 
 button.res-btn.fp-count:not(:disabled):hover {
-  color: #fff !important;
-  background-color: #DA291C !important;
+  color: var(--bs-white) !important;
+  background-color: var(--danger) !important;
 }
 
 .v-card {
