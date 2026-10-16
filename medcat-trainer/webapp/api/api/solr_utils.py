@@ -12,7 +12,7 @@ from rest_framework.response import Response
 from opentelemetry.semconv.attributes import server_attributes
 from opentelemetry.semconv._incubating.attributes import service_attributes
 from api.models import ConceptDB
-from core.settings import SOLR_HOST, SOLR_PORT
+from core.settings import SOLR_HOST, SOLR_PORT, DOCUMENT_SEARCH_COLLECTION
 
 SOLR_INDEX_SCHEMA = {}
 
@@ -67,7 +67,7 @@ def collections_available(cdbs: List[int]):
     logger.info(f'Retrieving all SOLR collections: {url}')
     resp = requests.get(url)
     if resp.status_code == 200:
-        collections = json.loads(resp.text)['collections']
+        collections = [c for c in json.loads(resp.text)['collections'] if c != DOCUMENT_SEARCH_COLLECTION]
         # cache schema field types
         for col in collections:
             _cache_solr_collection_schema_types(col)

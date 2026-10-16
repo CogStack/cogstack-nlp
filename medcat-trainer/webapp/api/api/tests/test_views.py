@@ -442,3 +442,39 @@ class ProjectGroupCreateTests(TestCase):
         resp = client.post('/api/project-groups/', {'name': 'nope'}, format='json')
         self.assertIn(resp.status_code, (401, 403))
 
+
+@override_settings(MEDIA_ROOT='/tmp/mct-tests-views')
+class DocumentViewSetFilterTests(TestCase):
+    def setUp(self):
+        self.user = create_user(username='docsearch')
+        self.client = _auth_client(self.user)
+        self.project = create_basic_project(name='doc-search-proj')
+        self.other_project = create_basic_project(name='doc-search-other')
+        create_document(self.project, name='note-1', text='Patient reports Chest Pain today.')
+        create_document(self.project, name='note-2', text='No fever or cough.')
+        create_document(self.project, name='note-3', text='chest pain resolved')
+        create_document(self.other_project, name='note-x', text='chest pain elsewhere')
+
+    def _names(self, query):
+        resp = self.client.get(f'/api/documents/?{query}')
+        self.assertEqual(resp.status_code, 200)
+        return [d['name'] for d in resp.json()['results']]
+
+    def test_filter_by_text_span_is_case_insensitive_and_scoped_to_dataset(self):
+        names = self._names(f'dataset={self.project.dataset.id}&text__icontains=chest%20pain')
+        self.assertEqual(names, ['note-1', 'note-3'])
+
+    def test_filter_by_text_span_no_match(self):
+        self.assertEqual(
+            self._names(f'dataset={self.project.dataset.id}&text__icontains=diabetes'), [],
+        )
+
+    def test_filter_by_name_contains(self):
+        self.assertEqual(
+            self._names(f'dataset={self.project.dataset.id}&name__icontains=TE-2'), ['note-2'],
+        )
+
+    def test_filter_by_dataset_still_works(self):
+        names = self._names(f'dataset={self.other_project.dataset.id}')
+        self.assertEqual(names, ['note-x'])
+

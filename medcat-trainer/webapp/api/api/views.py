@@ -3,6 +3,7 @@ import os
 from smtplib import SMTPException
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 from typing import Any
+from urllib.parse import urlencode
 import shutil
 
 from background_task.models import Task, CompletedTask
@@ -26,6 +27,7 @@ from opentelemetry import trace
 from .admin import download_projects_with_text, download_projects_without_text, \
     import_concepts_from_cdb
 from .data_utils import upload_projects_export
+from .document_search import DocumentSearchUnavailable, search_dataset_documents
 from .metrics import calculate_metrics
 from .model_cache import get_medcat, get_medcat_from_model_pack_id, get_cached_cdb, VOCAB_MAP, clear_cached_medcat, clear_cached_medcat_by_model_pack_id, is_model_pack_loaded, CAT_MAP, CDB_MAP, is_model_loaded
 from .permissions import *
@@ -144,11 +146,20 @@ class MetaAnnotationViewSet(viewsets.ModelViewSet):
     filterset_fields = ['id', 'annotated_entity', 'validated']
 
 
+class DocumentFilter(drf.FilterSet):
+    name__icontains = drf.CharFilter(field_name='name', lookup_expr='icontains')
+    text__icontains = drf.CharFilter(field_name='text', lookup_expr='icontains')
+
+    class Meta:
+        model = Document
+        fields = ['dataset']
+
+
 class DocumentViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     queryset = Document.objects.all()
     serializer_class = DocumentSerializer
-    filterset_fields = ['dataset']
+    filterset_class = DocumentFilter
 
 
 class EntityViewSet(viewsets.ModelViewSet):
@@ -871,6 +882,55 @@ def search_solr(request):
     query = request.GET.get('search')
     cdbs = request.GET.get('cdbs').split(',')
     return search_collection(cdbs, query)
+
+
+DOCUMENT_SEARCH_PAGE_SIZE = 50
+
+
+@api_view(http_method_names=['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def search_documents(request):
+    """Full text (phrase) search of a dataset's documents.
+
+    Served from the Solr document index, falling back to a case-insensitive DB substring match
+    when Solr is unavailable or the dataset has not finished indexing.
+    """
+    text = request.GET.get('text', '').strip()
+    try:
+        dataset_id = int(request.GET.get('dataset', ''))
+        page = max(1, int(request.GET.get('page', 1)))
+    except ValueError:
+        return Response({'message': 'dataset and page must be integers'}, 400)
+    if not text:
+        return Response({'message': 'text is required'}, 400)
+
+    dataset_docs = Document.objects.filter(dataset_id=dataset_id)
+    start = (page - 1) * DOCUMENT_SEARCH_PAGE_SIZE
+    try:
+        count, hits = search_dataset_documents(dataset_id, text, start, DOCUMENT_SEARCH_PAGE_SIZE,
+                                               expected_doc_count=dataset_docs.count())
+        docs_by_id = dataset_docs.in_bulk([doc_id for doc_id, _ in hits])
+        results = [{**DocumentSerializer(docs_by_id[doc_id]).data, 'highlight': segments}
+                   for doc_id, segments in hits if doc_id in docs_by_id]
+        backend = 'solr'
+    except DocumentSearchUnavailable as e:
+        logger.warning('Document search falling back to DB for dataset %s: %s', dataset_id, e)
+        matches = dataset_docs.filter(text__icontains=text).order_by('id')
+        count = matches.count()
+        page_docs = matches[start:start + DOCUMENT_SEARCH_PAGE_SIZE]
+        results = [{**DocumentSerializer(d).data, 'highlight': None} for d in page_docs]
+        backend = 'db'
+
+    def page_url(p):
+        return f'/api/search-documents/?{urlencode({"dataset": dataset_id, "text": text, "page": p})}'
+
+    return Response({
+        'count': count,
+        'next': page_url(page + 1) if start + DOCUMENT_SEARCH_PAGE_SIZE < count else None,
+        'previous': page_url(page - 1) if page > 1 else None,
+        'results': results,
+        'search_backend': backend,
+    })
 
 
 @api_view(http_method_names=['POST'])

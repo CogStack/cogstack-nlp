@@ -325,6 +325,9 @@ BACKGROUND_TASK_ASYNC_THREADS = 4
 # Solr Concept Search settings
 SOLR_HOST = os.environ.get('CONCEPT_SEARCH_SERVICE_HOST', 'solr')
 SOLR_PORT = os.environ.get('CONCEPT_SEARCH_SERVICE_PORT', '8983')
+# Solr collection holding the text of every dataset document, for full text document search
+DOCUMENT_SEARCH_COLLECTION = os.environ.get('DOCUMENT_SEARCH_COLLECTION', 'medcattrainer_documents')
+DOCUMENT_SEARCH_INDEX_ENABLED = os.environ.get('DOCUMENT_SEARCH_INDEX_ENABLED', '1').lower() in ('1', 'true', 'y', 'yes')
 
 SILENCED_SYSTEM_CHECKS = ['admin.E130']
 
