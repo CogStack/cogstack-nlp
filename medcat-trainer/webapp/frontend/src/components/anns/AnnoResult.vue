@@ -1,17 +1,18 @@
 <template>
   <tr class="result-container">
-    <td class="doc-name">{{result['document name']}}</td>
-    <td class="cui">{{result.cui}}</td>
-    <td class="source-value">{{result['source value']}}</td>
-    <td class="accu">{{Number(result.acc).toFixed(3)}}</td>
+    <td class="doc-name">{{ documentName }}</td>
+    <td class="cui">{{ result && result.cui }}</td>
+    <td class="source-value">{{ sourceValue }}</td>
+    <td class="accu">{{ accuracy }}</td>
     <td class="text">
-      <v-runtime-template :template="text"></v-runtime-template>
+      <v-runtime-template v-if="text" :template="text"></v-runtime-template>
     </td>
   </tr>
 </template>
 
 <script>
 import VRuntimeTemplate from 'vue3-runtime-template'
+import { escapeTemplateText, exampleField } from '@/components/metrics/exampleFields'
 
 export default {
   name: 'AnnoResult.vue',
@@ -25,34 +26,69 @@ export default {
     docText: String
   },
   computed: {
+    documentName () {
+      return exampleField(this.result, 'document name', 'document_name') || ''
+    },
+    sourceValue () {
+      return exampleField(this.result, 'source value', 'source_value') || ''
+    },
+    projectId () {
+      return exampleField(this.result, 'project id', 'project_id')
+    },
+    documentId () {
+      return exampleField(this.result, 'document id', 'document_id')
+    },
+    accuracy () {
+      const acc = this.result ? (this.result.acc ?? this.result.confidence) : undefined
+      const numeric = Number(acc)
+      return Number.isFinite(numeric) ? numeric.toFixed(3) : ''
+    },
     text () {
-      if (!this.result || !this.result.text || !this.result['source value']) {
-        return ''
-      }
-      // default to tp
+      const srcVal = this.sourceValue
+      if (!this.result || !srcVal) return ''
+
       let highlightClass = 'highlight-task-0'
       if (this.type === 'fp' || this.type === 'fn') {
         highlightClass = 'highlight-task-1'
       }
-      
-      const srcVal = this.result['source value']
-      let outText = `<span>${this.docText.slice(this.result['start'] - 60, this.result['start'])}`
-      outText += `<span class="${highlightClass}" @click="openAnno">${srcVal}</span>`
-      outText += `${this.docText.slice(this.result['end'], this.result['end'] + 60)}</span>`
-      return outText
+      const highlight = `<span class="${highlightClass}" @click="openAnno">${escapeTemplateText(srcVal)}</span>`
+      const snippet = this.snippetAround(srcVal)
+      return `<span>${snippet.before}${highlight}${snippet.after}</span>`
     }
   },
   methods: {
+    snippetAround (srcVal) {
+      const start = Number(this.result.start)
+      const end = Number(this.result.end)
+      const fullText = typeof this.docText === 'string' ? this.docText : ''
+      if (fullText && Number.isFinite(start) && Number.isFinite(end)) {
+        return {
+          before: escapeTemplateText(fullText.slice(Math.max(0, start - 60), Math.max(0, start))),
+          after: escapeTemplateText(fullText.slice(Math.max(0, end), Math.max(0, end) + 60))
+        }
+      }
+
+      const context = typeof this.result.text === 'string' ? this.result.text : ''
+      const idx = context.indexOf(srcVal)
+      if (idx === -1) {
+        return { before: escapeTemplateText(context), after: '' }
+      }
+      return {
+        before: escapeTemplateText(context.slice(0, idx)),
+        after: escapeTemplateText(context.slice(idx + srcVal.length))
+      }
+    },
     openAnno () {
+      if (this.projectId == null || this.documentId == null) return
       const routeData = this.$router.resolve(
         {
-          path: `/train-annotations/${this.result['project id']}/${this.result['document id']}`,
+          path: `/train-annotations/${this.projectId}/${this.documentId}`,
           query: {
-            annoStart: this.result['start'],
-            annoEnd: this.result['end']
+            annoStart: this.result.start,
+            annoEnd: this.result.end
           }
       })
-      window.open(routeData.href, '_blank');
+      window.open(routeData.href, '_blank')
     }
   }
 }

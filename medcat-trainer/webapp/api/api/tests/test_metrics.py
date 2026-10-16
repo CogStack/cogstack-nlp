@@ -5,6 +5,8 @@ using a synthetic MedCAT export. Code paths requiring an actual CAT model
 are exercised by passing cat=None.
 """
 
+from unittest.mock import MagicMock, patch
+
 import pandas as pd
 from django.test import TestCase
 
@@ -152,6 +154,80 @@ class RenameMetaAnnsTests(TestCase):
             meta_ann_values2rename={'Existence': {'True': 'Yes'}},
         )
         self.assertEqual(pm.annotations[0]['Existence'], 'Yes')
+
+
+class EnrichMedcatMetricsTests(TestCase):
+    def _examples(self):
+        return {
+            'tp': {},
+            'fp': {
+                'C001': [{
+                    'project_id': 4,
+                    'document_id': 9,
+                    'project_name': 'Ward round',
+                    'document_name': 'Note 9',
+                    'source_value': 'asthma',
+                    'text': 'history of asthma today',
+                    'start': 11,
+                    'end': 17,
+                    'cui': 'C001',
+                    'acc': 0.5,
+                }]
+            },
+            'fn': {
+                'C002': [{
+                    'project id': 4,
+                    'document id': 9,
+                    'source value': 'diabetes',
+                    'text': 'diabetes mellitus',
+                    'start': 0,
+                    'end': 8,
+                    'cui': 'C002',
+                    'acc': 1,
+                }]
+            },
+        }
+
+    @patch('api.metrics.AnnotatedEntity.objects.get')
+    def test_snake_case_examples_are_normalized_and_assigned_a_user(self, mock_get):
+        ann = MagicMock()
+        ann.user.username = 'alice'
+        mock_get.return_value = ann
+        pm = ProjectMetrics(_build_export(), cat=None)
+
+        examples = pm.enrich_medcat_metrics(self._examples())
+        fp = examples['fp']['C001'][0]
+
+        self.assertEqual(fp['user'], 'alice')
+        self.assertEqual(fp['project id'], 4)
+        self.assertEqual(fp['document id'], 9)
+        self.assertEqual(fp['document name'], 'Note 9')
+        self.assertEqual(fp['source value'], 'asthma')
+        mock_get.assert_any_call(project_id=4, document_id=9, start_ind=11, end_ind=17)
+
+    @patch('api.metrics.AnnotatedEntity.objects.get')
+    def test_legacy_spaced_keys_still_resolve_the_annotation(self, mock_get):
+        ann = MagicMock()
+        ann.user.username = 'bob'
+        mock_get.return_value = ann
+        pm = ProjectMetrics(_build_export(), cat=None)
+
+        examples = pm.enrich_medcat_metrics(self._examples())
+        fn = examples['fn']['C002'][0]
+
+        self.assertEqual(fn['user'], 'bob')
+        self.assertEqual(fn['project_id'], 4)
+        self.assertEqual(fn['document_id'], 9)
+        self.assertEqual(fn['source_value'], 'diabetes')
+        mock_get.assert_any_call(project_id=4, document_id=9, start_ind=0, end_ind=8)
+
+    @patch('api.metrics.AnnotatedEntity.objects.get', side_effect=LookupError('missing'))
+    def test_missing_annotation_still_normalizes_keys(self, _mock_get):
+        pm = ProjectMetrics(_build_export(), cat=None)
+        examples = pm.enrich_medcat_metrics(self._examples())
+        fp = examples['fp']['C001'][0]
+        self.assertIsNone(fp['user'])
+        self.assertEqual(fp['source value'], 'asthma')
 
 
 class EmptyExportTests(TestCase):
