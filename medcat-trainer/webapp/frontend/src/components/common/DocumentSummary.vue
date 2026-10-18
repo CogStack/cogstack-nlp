@@ -1,30 +1,42 @@
 <template>
   <div class="doc-summary">
     <div class="title">
-      Clinical Notes
-      <font-awesome-icon icon="search" class="search-icon" @click="activateSearch"></font-awesome-icon>
+      <span class="title-label">Clinical Notes</span>
+      <button type="button" class="search-toggle" :class="{ 'is-open': searching }"
+              :aria-pressed="searching" aria-label="Search notes" @click="activateSearch">
+        <font-awesome-icon icon="search"></font-awesome-icon>
+      </button>
     </div>
     <div v-if="searching" class="search-docs">
-      <div class="search-mode">
-        <button type="button" class="btn btn-sm search-mode-name"
-                :class="searchMode === 'name' ? 'btn-primary' : 'btn-outline-primary'"
+      <div class="search-mode" role="group" aria-label="Search by">
+        <button type="button" class="search-mode-name"
+                :class="{ active: searchMode === 'name' }"
                 @click="setSearchMode('name')">Name</button>
-        <button type="button" class="btn btn-sm search-mode-text"
-                :class="searchMode === 'text' ? 'btn-primary' : 'btn-outline-primary'"
+        <button type="button" class="search-mode-text"
+                :class="{ active: searchMode === 'text' }"
                 @click="setSearchMode('text')">Text</button>
       </div>
-      <input id="doc-search-input" type="text" class="form-control"
-             :placeholder="searchMode === 'text' ? 'Search note text' : 'Search by note name'"
-             :value="searchCrit" @keyup="searchDocs">
-      <div v-if="searchMode === 'text' && searchCrit" class="search-status">
-        <span v-if="textSearchLoading">Searching...</span>
+      <div class="search-field">
+        <font-awesome-icon icon="search" class="search-field-icon"></font-awesome-icon>
+        <input id="doc-search-input" type="text"
+               :placeholder="searchMode === 'text' ? 'Search note text' : 'Search by note name'"
+               :value="searchCrit" @keyup="searchDocs">
+        <button v-if="searchCrit" type="button" class="search-clear" aria-label="Clear search"
+                @click="clearSearch">
+          <font-awesome-icon icon="times"></font-awesome-icon>
+        </button>
+      </div>
+      <div v-if="searchMode === 'text' && searchCrit" class="search-status"
+           :class="{ 'is-error': !!textSearchError }">
+        <span v-if="textSearchLoading">Searching…</span>
         <span v-else-if="textSearchError">{{ textSearchError }}</span>
         <span v-else>{{ textSearchCount }} matching note{{ textSearchCount === 1 ? '' : 's' }}</span>
       </div>
     </div>
     <div v-if="loadingDoc" class="loading-doc"></div>
 
-    <div id="doc-sum-list" class="doc-list">
+    <div id="doc-sum-list" class="doc-list" :class="{ 'is-searching': !!searchCrit }">
+      <div v-if="showEmptySearch" class="search-empty">No matching notes</div>
       <div v-for="doc of displayedDocs" :key="doc.id" class="doc clickable"
            :class="{'selected-doc': selectedDocId === doc.id}" @click="loadDoc(doc)">
         <font-awesome-icon :id="'doc-sub-' + doc.id"
@@ -35,6 +47,7 @@
                            class="prepared-doc"
                            icon="clipboard-check"></font-awesome-icon>
 
+        <div v-if="searchCrit && doc.name" class="note-name">{{ doc.name }}</div>
         <div v-if="textSnippet(doc)" class="note-summary"><span
             v-for="(seg, i) of textSnippet(doc)" :key="i"
             :class="{'search-match': seg.match}">{{ seg.text }}</span></div>
@@ -111,6 +124,15 @@ export default {
         return this.docs
       }
       return this.searchMode === 'text' ? this.textSearchResults : this.filteredDocs
+    },
+    showEmptySearch () {
+      if (!this.searchCrit) {
+        return false
+      }
+      if (this.searchMode === 'text' && (this.textSearchLoading || this.textSearchError)) {
+        return false
+      }
+      return this.displayedDocs.length === 0
     }
   },
   methods: {
@@ -152,6 +174,17 @@ export default {
         this.searchCrit = null
         this.resetTextSearch()
       }
+    },
+    clearSearch () {
+      this.searchCrit = ''
+      this.filteredDocs = []
+      this.resetTextSearch()
+      this.$nextTick(() => {
+        const el = document.getElementById('doc-search-input')
+        if (el) {
+          el.focus()
+        }
+      })
     },
     setSearchMode (mode) {
       if (this.searchMode === mode) {
@@ -270,9 +303,18 @@ export default {
 @import "bootstrap";
 
 .title {
-  padding: 5px 10px;
-  font-size: 16pt;
-  box-shadow: 0 5px 5px -5px rgba(0,0,0,0.2);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.2;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.08);
+}
+
+.title-label {
+  min-width: 0;
 }
 
 .doc-summary {
@@ -283,7 +325,7 @@ export default {
   min-width: 0;
   padding: 5px;
   position: relative;
-  background: $background;
+  background: #fff;
 }
 
 .doc-list {
@@ -336,11 +378,14 @@ export default {
 .more-docs {
   color: $primary;
   text-align: center;
+  font-size: 12px;
+  padding: 2px 0 8px;
 
   .icon {
     position: relative;
-    bottom: 2px;
-    padding-right: 3px;
+    bottom: 1px;
+    padding-right: 4px;
+    font-size: 10px;
   }
 }
 
@@ -362,14 +407,23 @@ export default {
   }
 }
 
-.search-icon {
-  font-size: 10pt;
-  vertical-align: center;
-  opacity: 0.5;
-  text-align: right;
+.search-toggle {
+  margin-left: auto;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: $color-5;
+  padding: 0;
+  line-height: 1;
+  cursor: pointer;
 
-  &:hover {
-    opacity: 1;
+  &:hover,
+  &.is-open {
+    color: $primary;
+    background: rgba($primary, 0.08);
   }
 }
 
@@ -378,30 +432,136 @@ export default {
 }
 
 .search-docs {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   width: 100%;
+  padding: 6px 8px 5px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 .search-mode {
   display: flex;
-  gap: 4px;
-  margin: 4px 0;
+  height: 22px;
+  border: 1px solid rgba($primary, 0.4);
+  border-radius: 4px;
+  overflow: hidden;
 
-  .btn {
+  button {
     flex: 1;
-    padding: 0 4px;
-    font-size: 10pt;
+    border: 0;
+    background: transparent;
+    color: $primary;
+    font-size: 11px;
+    line-height: 20px;
+    padding: 0;
+    cursor: pointer;
+
+    & + button {
+      border-left: 1px solid rgba($primary, 0.4);
+    }
+
+    &.active {
+      background: $primary;
+      color: #fff;
+    }
+  }
+}
+
+.search-field {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 6px;
+  border: 1px solid #c5cdd1;
+  border-radius: 4px;
+  background: #fff;
+
+  &:focus-within {
+    border-color: $primary;
+  }
+
+  input {
+    flex: 1 1 auto;
+    min-width: 0;
+    border: 0;
+    outline: none;
+    padding: 0;
+    background: transparent;
+    font-size: 12px;
+    line-height: 1.2;
+    color: $text;
+  }
+}
+
+.search-field-icon {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: $color-5;
+}
+
+.search-clear {
+  flex-shrink: 0;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  line-height: 1;
+  font-size: 11px;
+  color: $color-5;
+  cursor: pointer;
+
+  &:hover {
+    color: $text;
   }
 }
 
 .search-status {
-  font-size: 9pt;
-  opacity: 0.7;
-  padding: 2px 4px;
+  font-size: 11px;
+  line-height: 1.2;
+  color: $color-5;
+  padding: 0 1px;
+
+  &.is-error {
+    color: $danger;
+  }
+}
+
+.search-empty {
+  font-size: 12px;
+  color: $color-5;
+  text-align: center;
+  padding: 14px 8px;
+}
+
+.note-name {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: $text;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 2px;
+}
+
+.doc-list.is-searching .doc {
+  margin: 6px 8px;
+  padding: 6px 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+.doc-list.is-searching .note-summary {
+  height: auto;
+  max-height: 4.5em;
+  font-size: 11px;
+  line-height: 1.35;
 }
 
 .search-match {
-  background: $warning;
-  font-weight: bold;
+  background: #fff3bf;
+  color: $text;
+  border-radius: 2px;
 }
 
 </style>
