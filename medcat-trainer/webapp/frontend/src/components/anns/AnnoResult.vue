@@ -12,7 +12,7 @@
 
 <script>
 import VRuntimeTemplate from 'vue3-runtime-template'
-import { escapeTemplateText, exampleField } from '@/components/metrics/exampleFields'
+import { contextMentionIndex, escapeTemplateText, exampleField, resolvedExampleEnd } from '@/components/metrics/exampleFields'
 
 export default {
   name: 'AnnoResult.vue',
@@ -61,15 +61,16 @@ export default {
       const start = Number(this.result.start)
       const end = Number(this.result.end)
       const fullText = typeof this.docText === 'string' ? this.docText : ''
-      if (fullText && Number.isFinite(start) && Number.isFinite(end)) {
+      const resolvedEnd = resolvedExampleEnd(fullText, start, end, srcVal)
+      if (resolvedEnd != null) {
         return {
-          before: escapeTemplateText(fullText.slice(Math.max(0, start - 60), Math.max(0, start))),
-          after: escapeTemplateText(fullText.slice(Math.max(0, end), Math.max(0, end) + 60))
+          before: escapeTemplateText(fullText.slice(Math.max(0, start - 60), start)),
+          after: escapeTemplateText(fullText.slice(resolvedEnd, resolvedEnd + 60))
         }
       }
 
       const context = typeof this.result.text === 'string' ? this.result.text : ''
-      const idx = context.indexOf(srcVal)
+      const idx = contextMentionIndex(context, start, srcVal)
       if (idx === -1) {
         return { before: escapeTemplateText(context), after: '' }
       }
@@ -80,12 +81,16 @@ export default {
     },
     openAnno () {
       if (this.projectId == null || this.documentId == null) return
+      const start = Number(this.result.start)
+      const end = Number(this.result.end)
+      const fullText = typeof this.docText === 'string' ? this.docText : ''
+      const resolvedEnd = resolvedExampleEnd(fullText, start, end, this.sourceValue)
       const routeData = this.$router.resolve(
         {
           path: `/train-annotations/${this.projectId}/${this.documentId}`,
           query: {
             annoStart: this.result.start,
-            annoEnd: this.result.end
+            annoEnd: resolvedEnd == null ? this.result.end : resolvedEnd
           }
       })
       window.open(routeData.href, '_blank')

@@ -93,6 +93,47 @@ describe('AnnoResult.vue', () => {
     expect(template).not.toContain('<asthma>')
   })
 
+  it('does not repeat the mention when the example end equals its start', () => {
+    const doc = 'Patient is a 70-year-old female with prior history of lung cancer, status post upper lobectomy.'
+    const start = doc.indexOf('lung cancer')
+    const { wrapper } = mountResult({
+      docText: doc,
+      result: {
+        ...snakeCaseResult,
+        source_value: 'lung cancer',
+        text: doc.slice(Math.max(0, start - 60), start + 60),
+        start,
+        end: start
+      }
+    })
+    const template = wrapper.find('.runtime-template').text()
+    const marker = '>lung cancer</span>'
+    const at = template.indexOf(marker)
+    expect(at).toBeGreaterThan(-1)
+    expect(template.slice(at + marker.length)).toContain(', status post upper lobectomy.')
+    expect(template.slice(at + marker.length)).not.toContain('lung cancer')
+    expect(template.slice(0, at)).not.toContain('lung cancer')
+  })
+
+  it('highlights the centred mention when the context window repeats it', () => {
+    const left = `prior asthma ${'x'.repeat(47)}`
+    const context = `${left}asthma later`
+    const { wrapper } = mountResult({
+      docText: undefined,
+      result: {
+        ...snakeCaseResult,
+        text: context,
+        start: 80,
+        end: 80
+      }
+    })
+    const template = wrapper.find('.runtime-template').text()
+    const marker = '>asthma</span>'
+    const at = template.indexOf(marker)
+    expect(template.slice(0, at)).toContain('prior asthma ')
+    expect(template.slice(at + marker.length)).toBe(' later</span>')
+  })
+
   it('opens the annotation from snake_case project and document ids', () => {
     const open = vi.spyOn(window, 'open').mockImplementation(() => null)
     const { wrapper, resolve } = mountResult()

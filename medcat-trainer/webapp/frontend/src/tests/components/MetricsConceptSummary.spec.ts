@@ -84,13 +84,13 @@ describe('metrics ConceptSummary.vue', () => {
     expect(zero.get('button.fn-count').attributes('disabled')).toBeDefined()
     expect(zero.get('button.fp-count').attributes('disabled')).toBeDefined()
 
-    // jsdom does not apply Vue SFC CSS, so lock the variable declarations the browser uses.
+    // jsdom does not apply Vue SFC CSS, so lock the declarations the browser uses.
     expect(metricsSource).toContain('--success: #{map-get($theme-colors, "success")}')
     expect(metricsSource).toContain('--warning: #{map-get($theme-colors, "warning")}')
     expect(metricsSource).toContain('--danger: #{map-get($theme-colors, "danger")}')
-    expect(conceptSummarySource).toContain('color: var(--success) !important')
-    expect(conceptSummarySource).toContain('color: var(--warning) !important')
-    expect(conceptSummarySource).toContain('color: var(--danger) !important')
+    expect(conceptSummarySource).toMatch(/button\.res-btn\.tp-count:not\(:disabled\)\s*\{[^}]*color:\s*var\(--success\)/)
+    expect(conceptSummarySource).toMatch(/button\.res-btn\.fn-count:not\(:disabled\)\s*\{[^}]*color:\s*var\(--warning\)/)
+    expect(conceptSummarySource).toMatch(/button\.res-btn\.fp-count:not\(:disabled\)\s*\{[^}]*color:\s*var\(--danger\)/)
 
     wrapper.unmount()
     zero.unmount()
