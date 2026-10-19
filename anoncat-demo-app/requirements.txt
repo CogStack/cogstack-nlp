@@ -1,5 +1,5 @@
 --extra-index-url https://download.pytorch.org/whl/cpu/
-Django~=4.2
+Django~=6.1
 django-cors-headers~=4.3
 djangorestframework~=3.14
 medcat~=1.10
