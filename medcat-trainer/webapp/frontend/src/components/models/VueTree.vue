@@ -179,21 +179,21 @@ export default {
     },
     setScale(scaleNum) {
       if (typeof scaleNum !== 'number') return
-      let pos = this.getTranslate()
-      let translateString = `translate(${pos[0]}px, ${pos[1]}px)`
+      const pos = this.getTranslate()
+      const translateString = `translate(${pos[0]}px, ${pos[1]}px)`
       this.$refs.svg.style.transform = `scale(${scaleNum}) ` + translateString
       this.$refs.domContainer.style.transform =
         `scale(${scaleNum}) ` + translateString
       this.currentScale = scaleNum
     },
     getTranslate() {
-      let string = this.$refs.svg.style.transform
-      let match = string.match(MATCH_TRANSLATE_REGEX)
+      const string = this.$refs.svg.style.transform
+      const match = string.match(MATCH_TRANSLATE_REGEX)
       if (match === null) {
         return [null, null]
       }
-      let x = parseInt(match[1])
-      let y = parseInt(match[2])
+      const x = parseInt(match[1])
+      const y = parseInt(match[2])
       return [x, y]
     },
     isVertical() {
@@ -203,10 +203,10 @@ export default {
      * Returns updated dataset by deep copying every nodes from the externalData and adding unique '_key' attributes.
      **/
     updatedInternalData(externalData) {
-      var data = { name: '__invisible_root', children: [] }
+      const data = { name: '__invisible_root', children: [] }
       if (!externalData) return data
       if (Array.isArray(externalData)) {
-        for (var i = externalData.length - 1; i >= 0; i--) {
+        for (let i = externalData.length - 1; i >= 0; i--) {
           data.children.push(this.deepCopy(externalData[i]))
         }
       } else {
@@ -219,8 +219,8 @@ export default {
      * If selected node or it's children have no '_key' attribute it will assign a new one.
      **/
     deepCopy(node) {
-      let obj = { _key: uuid() }
-      for (var key in node) {
+      const obj = { _key: uuid() }
+      for (const key in node) {
         if (node[key] === null) {
           obj[key] = null
         } else if (Array.isArray(node[key])) {
@@ -309,7 +309,7 @@ export default {
       }
     },
     draw() {
-      var [nodeDataList, linkDataList] = this.buildTree(this._dataset)
+      let [nodeDataList, linkDataList] = this.buildTree(this._dataset)
       // Do not render the invisible root node.
       nodeDataList.splice(0, 1)
       linkDataList = linkDataList.filter(
@@ -441,10 +441,10 @@ export default {
             originOffsetY = parseInt(offsetY)
           }
         }
-        let newX =
+        const newX =
           Math.floor((event.clientX - startX) / this.currentScale) +
           originOffsetX
-        let newY =
+        const newY =
           Math.floor((event.clientY - startY) / this.currentScale) +
           originOffsetY
         let transformStr = `translate(${newX}px, ${newY}px)`

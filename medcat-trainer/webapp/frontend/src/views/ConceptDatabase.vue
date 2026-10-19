@@ -81,9 +81,9 @@ export default {
   },
   created () {
     let cdbList = []
-    let that = this
+    const that = this
     const baseUrl = '/api/concept-dbs/'
-    let getCDBs = function (url) {
+    const getCDBs = function (url) {
       that.$http.get(url).then(resp => {
         if (!resp.data.next) {
           that.cdbs = cdbList.concat(_.uniqBy(resp.data.results, r => r.id))

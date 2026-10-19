@@ -5,7 +5,7 @@ description = "MedCAT Trainer Documentation"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "mkdocs-material>=9.7.0",
+    "mkdocs-material>=9.7.7",
     "termynal>=0.13.1",
 ]
 

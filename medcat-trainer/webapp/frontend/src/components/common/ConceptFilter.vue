@@ -66,7 +66,7 @@ export default {
   },
   created () {
     this.loading = true
-    let payload = {
+    const payload = {
       cuis: this.cuis !== '' ? this.cuis.split(',') : null,
       cdb_id: this.cdb_id
     }
@@ -89,7 +89,7 @@ export default {
         const lowercaseQuery = query.toLowerCase();
         return concepts.map(concept => {
           const name = concept.name
-          let lowercaseStr = name.toLowerCase();
+          const lowercaseStr = name.toLowerCase();
           let result = '';
           let lastIndex = 0;
 
