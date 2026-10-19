@@ -255,9 +255,9 @@ export default {
         totalFNs += item.fns
       })
 
-      let precision = totalTPs / (totalTPs + totalFPs)
-      let recall = totalTPs / (totalTPs + totalFNs)
-      let f1 = 2 * (precision * recall) / (precision + recall)
+      const precision = totalTPs / (totalTPs + totalFPs)
+      const recall = totalTPs / (totalTPs + totalFNs)
+      const f1 = 2 * (precision * recall) / (precision + recall)
 
       switch(metric) {
         case 'cui_prec':
