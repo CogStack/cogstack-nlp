@@ -54,6 +54,7 @@ class DummyEntity:
     base: SimpleNamespace = field(init=False)
 
     def __post_init__(self):
+        self.detected_name = self.text
         self.base = SimpleNamespace(
             text=self.text,
             start_char_index=self.start_char_index,
