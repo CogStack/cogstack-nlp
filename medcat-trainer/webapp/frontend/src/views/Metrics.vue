@@ -759,9 +759,9 @@ $metrics-header-height: 50px;
   height: 25px;
   padding: 3px 10px !important;
   border: 0 !important;
-  &:hover {
-    color: white !important;
-  }
+  --success: #{map-get($theme-colors, "success")};
+  --warning: #{map-get($theme-colors, "warning")};
+  --danger: #{map-get($theme-colors, "danger")};
 }
 .v-input--density-default {
   --v-input-control-height: 30px !important;
