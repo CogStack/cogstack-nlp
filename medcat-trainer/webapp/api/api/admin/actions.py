@@ -10,6 +10,7 @@ from django.db.models import QuerySet
 from django.http import HttpResponse
 from rest_framework.exceptions import PermissionDenied
 
+from api.document_search import index_dataset_task
 from api.models import AnnotatedEntity, MetaAnnotation, EntityRelation, Document, ConceptDB
 from api.solr_utils import drop_collection, import_all_concepts, solr_collection_name
 from api.utils import clear_cdb_cnf_addons
@@ -351,6 +352,15 @@ def clone_projects(modeladmin, request, queryset):
             project_copy.tasks.add(t)
 
         project_copy.save()
+
+
+def index_datasets_for_search(modeladmin, request, queryset):
+    for dataset in queryset:
+        index_dataset_task(dataset.id)
+    modeladmin.message_user(request, f'Scheduled text search indexing for {queryset.count()} dataset(s)')
+
+
+index_datasets_for_search.short_description = 'Index selected datasets for text search'
 
 
 def dataset_document_counts(dataset):

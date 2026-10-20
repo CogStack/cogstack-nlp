@@ -30,6 +30,7 @@ urlpatterns = [
     path('api/health/', include('health_check.urls')),
     path('api/anno-conf/', api.views.get_anno_tool_conf),
     path('api/search-concepts/', api.views.search_solr),
+    path('api/search-documents/', api.views.search_documents),
     path('api/prepare-documents/', api.views.prepare_documents),
     path('api/prepare-documents-bg/', api.views.prepare_documents_bg),
     path('api/prep-docs-bg-tasks/', api.views.prepare_docs_bg_tasks),
