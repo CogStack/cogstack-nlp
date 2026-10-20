@@ -1,17 +1,43 @@
 <template>
   <div class="doc-summary">
     <div class="title">
-      Clinical Notes
-      <font-awesome-icon icon="search" class="search-icon" @click="activateSearch"></font-awesome-icon>
+      <span class="title-label">Clinical Notes</span>
+      <button type="button" class="search-toggle" :class="{ 'is-open': searching }"
+              :aria-pressed="searching" aria-label="Search notes" @click="activateSearch">
+        <font-awesome-icon icon="search"></font-awesome-icon>
+      </button>
     </div>
     <div v-if="searching" class="search-docs">
-      <input id="doc-search-input" type="text" class="form-control" placeholder="Search by note name"
-             :value="searchCrit" @keyup="searchDocs">
+      <div class="search-mode" role="group" aria-label="Search by">
+        <button type="button" class="search-mode-name"
+                :class="{ active: searchMode === 'name' }"
+                @click="setSearchMode('name')">Name</button>
+        <button type="button" class="search-mode-text"
+                :class="{ active: searchMode === 'text' }"
+                @click="setSearchMode('text')">Text</button>
+      </div>
+      <div class="search-field">
+        <font-awesome-icon icon="search" class="search-field-icon"></font-awesome-icon>
+        <input id="doc-search-input" type="text"
+               :placeholder="searchMode === 'text' ? 'Search note text' : 'Search by note name'"
+               :value="searchCrit" @keyup="searchDocs">
+        <button v-if="searchCrit" type="button" class="search-clear" aria-label="Clear search"
+                @click="clearSearch">
+          <font-awesome-icon icon="times"></font-awesome-icon>
+        </button>
+      </div>
+      <div v-if="searchMode === 'text' && searchCrit" class="search-status"
+           :class="{ 'is-error': !!textSearchError }">
+        <span v-if="textSearchLoading">Searching…</span>
+        <span v-else-if="textSearchError">{{ textSearchError }}</span>
+        <span v-else>{{ textSearchCount }} matching note{{ textSearchCount === 1 ? '' : 's' }}</span>
+      </div>
     </div>
     <div v-if="loadingDoc" class="loading-doc"></div>
 
-    <div id="doc-sum-list" class="doc-list">
-      <div v-for="doc of (searchCrit ? filteredDocs : docs)" :key="doc.id" class="doc clickable"
+    <div id="doc-sum-list" class="doc-list" :class="{ 'is-searching': !!searchCrit }">
+      <div v-if="showEmptySearch" class="search-empty">No matching notes</div>
+      <div v-for="doc of displayedDocs" :key="doc.id" class="doc clickable"
            :class="{'selected-doc': selectedDocId === doc.id}" @click="loadDoc(doc)">
         <font-awesome-icon :id="'doc-sub-' + doc.id"
                            v-if="validatedDocIds.includes(doc.id)"
@@ -21,7 +47,11 @@
                            class="prepared-doc"
                            icon="clipboard-check"></font-awesome-icon>
 
-        <div class="note-summary">
+        <div v-if="searchCrit && doc.name" class="note-name">{{ doc.name }}</div>
+        <div v-if="textSnippet(doc)" class="note-summary"><span
+            v-for="(seg, i) of textSnippet(doc)" :key="i"
+            :class="{'search-match': seg.match}">{{ seg.text }}</span></div>
+        <div v-else class="note-summary">
           {{doc.text === 'nan' ? '' : (limitText(doc.text) || '')}}
         </div>
         <v-tooltip activator="parent"
@@ -33,7 +63,12 @@
           Doc: {{doc.id}} complete
         </v-tooltip>
       </div>
-      <div class="clickable">
+      <div class="clickable" v-if="isTextSearch">
+        <div v-if="textSearchNextUrl && !textSearchLoading" @click="loadMoreTextResults" class="more-docs">
+          <font-awesome-icon icon="plus" class="icon"></font-awesome-icon>More Results
+        </div>
+      </div>
+      <div class="clickable" v-else>
         <div v-if="moreDocs" @click="loadMoreDocs" class="more-docs">
           <font-awesome-icon icon="plus" class="icon"></font-awesome-icon>More Docs
         </div>
@@ -43,10 +78,14 @@
 </template>
 
 <script>
+const TEXT_SEARCH_DEBOUNCE_MS = 300
+const SNIPPET_CONTEXT_CHARS = 60
+
 export default {
   name: 'DocumentSummary',
   props: {
     projId: Number,
+    datasetId: Number,
     docs: Array,
     moreDocs: Boolean,
     selectedDocId: Number,
@@ -61,11 +100,39 @@ export default {
   data () {
     return {
       searching: false,
+      searchMode: 'name',
       filteredDocs: [],
       searchCrit: null,
+      textSearchResults: [],
+      textSearchCount: 0,
+      textSearchNextUrl: null,
+      textSearchLoading: false,
+      textSearchError: null,
+      textSearchTimer: null,
+      textSearchReqId: 0,
       hoverDoc: null,
       completeBgTasks: [],
       runningBgTasks: []
+    }
+  },
+  computed: {
+    isTextSearch () {
+      return this.searchMode === 'text' && !!this.searchCrit
+    },
+    displayedDocs () {
+      if (!this.searchCrit) {
+        return this.docs
+      }
+      return this.searchMode === 'text' ? this.textSearchResults : this.filteredDocs
+    },
+    showEmptySearch () {
+      if (!this.searchCrit) {
+        return false
+      }
+      if (this.searchMode === 'text' && (this.textSearchLoading || this.textSearchError)) {
+        return false
+      }
+      return this.displayedDocs.length === 0
     }
   },
   methods: {
@@ -105,17 +172,113 @@ export default {
         }, 50)
       } else {
         this.searchCrit = null
+        this.resetTextSearch()
       }
     },
+    clearSearch () {
+      this.searchCrit = ''
+      this.filteredDocs = []
+      this.resetTextSearch()
+      this.$nextTick(() => {
+        const el = document.getElementById('doc-search-input')
+        if (el) {
+          el.focus()
+        }
+      })
+    },
+    setSearchMode (mode) {
+      if (this.searchMode === mode) {
+        return
+      }
+      this.searchMode = mode
+      this.runSearch()
+    },
     searchDocs (event) {
+      if (event.target.value === (this.searchCrit || '')) {
+        // ignore keys that don't change the input, e.g. arrows used for doc navigation
+        return
+      }
       this.searchCrit = event.target.value
-      if (this.searchCrit) {
+      this.runSearch()
+    },
+    runSearch () {
+      this.resetTextSearch()
+      if (!this.searchCrit) {
+        this.filteredDocs = []
+        return
+      }
+      if (this.searchMode === 'text') {
+        this.textSearchLoading = true
+        this.textSearchTimer = setTimeout(() => {
+          this.textSearchTimer = null
+          const params = new URLSearchParams({ dataset: this.datasetId, text: this.searchCrit })
+          this.fetchTextResults(`/api/search-documents/?${params.toString()}`)
+        }, TEXT_SEARCH_DEBOUNCE_MS)
+      } else {
         this.filteredDocs = this.docs.filter(d => {
           return d.name.toLowerCase().startsWith(this.searchCrit.toLowerCase())
         })
-      } else {
-        this.filteredDocs = []
       }
+    },
+    resetTextSearch () {
+      if (this.textSearchTimer) {
+        clearTimeout(this.textSearchTimer)
+        this.textSearchTimer = null
+      }
+      this.textSearchReqId++
+      this.textSearchResults = []
+      this.textSearchCount = 0
+      this.textSearchNextUrl = null
+      this.textSearchLoading = false
+      this.textSearchError = null
+    },
+    fetchTextResults (url) {
+      const reqId = ++this.textSearchReqId
+      this.textSearchLoading = true
+      this.textSearchError = null
+      this.$http.get(url).then(resp => {
+        if (reqId !== this.textSearchReqId) {
+          return
+        }
+        this.textSearchResults = this.textSearchResults.concat(resp.data.results)
+        this.textSearchCount = resp.data.count
+        this.textSearchNextUrl = resp.data.next
+      }).catch(() => {
+        if (reqId === this.textSearchReqId) {
+          this.textSearchError = 'Search failed'
+        }
+      }).finally(() => {
+        if (reqId === this.textSearchReqId) {
+          this.textSearchLoading = false
+        }
+      })
+    },
+    loadMoreTextResults () {
+      if (this.textSearchNextUrl) {
+        this.fetchTextResults(`/api/search-documents/?${this.textSearchNextUrl.split('?').slice(-1)[0]}`)
+      }
+    },
+    textSnippet (doc) {
+      if (!this.isTextSearch) {
+        return null
+      }
+      if (doc.highlight && doc.highlight.length) {
+        return doc.highlight
+      }
+      if (!doc.text) {
+        return null
+      }
+      const idx = doc.text.toLowerCase().indexOf(this.searchCrit.toLowerCase())
+      if (idx === -1) {
+        return null
+      }
+      const end = idx + this.searchCrit.length
+      const start = Math.max(0, idx - SNIPPET_CONTEXT_CHARS)
+      return [
+        { text: (start > 0 ? '...' : '') + doc.text.slice(start, idx), match: false },
+        { text: doc.text.slice(idx, end), match: true },
+        { text: doc.text.slice(end, end + SNIPPET_CONTEXT_CHARS), match: false }
+      ]
     },
     limitText (value) {
       value = value.trim()
@@ -131,6 +294,7 @@ export default {
   },
   beforeUnmount () {
     window.removeEventListener('keyup', this.keyup)
+    this.resetTextSearch()
   },
 }
 </script>
@@ -138,25 +302,36 @@ export default {
 <style scoped lang="scss">
 @import "bootstrap";
 
-$width: 175px;
-
 .title {
-  padding: 5px 10px;
-  font-size: 16pt;
-  box-shadow: 0 5px 5px -5px rgba(0,0,0,0.2);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.2;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.08);
+}
+
+.title-label {
+  min-width: 0;
 }
 
 .doc-summary {
-  flex: 0 0 $width;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  min-width: 0;
   padding: 5px;
   position: relative;
-  background: $background;
+  background: #fff;
 }
 
 .doc-list {
+  flex: 1 1 auto;
+  min-height: 0;
   overflow: auto;
-  height: calc(100% - 41px);
-  width: $width;
 }
 
 .doc {
@@ -203,11 +378,14 @@ $width: 175px;
 .more-docs {
   color: $primary;
   text-align: center;
+  font-size: 12px;
+  padding: 2px 0 8px;
 
   .icon {
     position: relative;
-    bottom: 2px;
-    padding-right: 3px;
+    bottom: 1px;
+    padding-right: 4px;
+    font-size: 10px;
   }
 }
 
@@ -229,19 +407,161 @@ $width: 175px;
   }
 }
 
-.search-icon {
-  font-size: 10pt;
-  vertical-align: center;
-  opacity: 0.5;
-  text-align: right;
+.search-toggle {
+  margin-left: auto;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: $color-5;
+  padding: 0;
+  line-height: 1;
+  cursor: pointer;
 
-  &:hover {
-    opacity: 1;
+  &:hover,
+  &.is-open {
+    color: $primary;
+    background: rgba($primary, 0.08);
   }
 }
 
+.title, .search-docs {
+  flex-shrink: 0;
+}
+
 .search-docs {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   width: 100%;
+  padding: 6px 8px 5px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.search-mode {
+  display: flex;
+  height: 22px;
+  border: 1px solid rgba($primary, 0.4);
+  border-radius: 4px;
+  overflow: hidden;
+
+  button {
+    flex: 1;
+    border: 0;
+    background: transparent;
+    color: $primary;
+    font-size: 11px;
+    line-height: 20px;
+    padding: 0;
+    cursor: pointer;
+
+    & + button {
+      border-left: 1px solid rgba($primary, 0.4);
+    }
+
+    &.active {
+      background: $primary;
+      color: #fff;
+    }
+  }
+}
+
+.search-field {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 6px;
+  border: 1px solid #c5cdd1;
+  border-radius: 4px;
+  background: #fff;
+
+  &:focus-within {
+    border-color: $primary;
+  }
+
+  input {
+    flex: 1 1 auto;
+    min-width: 0;
+    border: 0;
+    outline: none;
+    padding: 0;
+    background: transparent;
+    font-size: 12px;
+    line-height: 1.2;
+    color: $text;
+  }
+}
+
+.search-field-icon {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: $color-5;
+}
+
+.search-clear {
+  flex-shrink: 0;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  line-height: 1;
+  font-size: 11px;
+  color: $color-5;
+  cursor: pointer;
+
+  &:hover {
+    color: $text;
+  }
+}
+
+.search-status {
+  font-size: 11px;
+  line-height: 1.2;
+  color: $color-5;
+  padding: 0 1px;
+
+  &.is-error {
+    color: $danger;
+  }
+}
+
+.search-empty {
+  font-size: 12px;
+  color: $color-5;
+  text-align: center;
+  padding: 14px 8px;
+}
+
+.note-name {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: $text;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 2px;
+}
+
+.doc-list.is-searching .doc {
+  margin: 6px 8px;
+  padding: 6px 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+.doc-list.is-searching .note-summary {
+  height: auto;
+  max-height: 4.5em;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.search-match {
+  background: #fff3bf;
+  color: $text;
+  border-radius: 2px;
 }
 
 </style>

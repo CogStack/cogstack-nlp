@@ -26,6 +26,11 @@ Database migrations are applied automatically on container startup.
 - Container logs: `docker compose logs -f medcattrainer`
 - Concept search availability: verify Solr container and project concept import
   status.
+- Document text search: each uploaded dataset is indexed into the Solr collection
+  `DOCUMENT_SEARCH_COLLECTION` (default `medcattrainer_documents`) by a background task.
+  Datasets uploaded before this was available can be indexed via the Django admin
+  Datasets action "Index selected datasets for text search". Until a dataset is fully
+  indexed, or if Solr is unavailable, text search falls back to a slower database match.
 
 ## Backup and restore (SQLite deployments)
 

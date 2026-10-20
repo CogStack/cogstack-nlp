@@ -48,6 +48,19 @@ class CollectionsAvailableTests(TestCase):
         self.assertEqual(response.data['results']['1']['index_name'], 'my_id_1')
 
     @patch('api.solr_utils.requests.get')
+    def test_excludes_document_search_collection(self, mock_get):
+        def side_effect(url, *args, **kwargs):
+            if 'admin/collections' in url:
+                collections = ['my_id_1', solr_utils.DOCUMENT_SEARCH_COLLECTION]
+                return MagicMock(status_code=200, text=json.dumps({'collections': collections}))
+            return MagicMock(text=json.dumps({'schema': {'fields': [{'name': 'cui', 'type': 'string'}]}}))
+
+        mock_get.side_effect = side_effect
+
+        response = solr_utils.collections_available([])
+        self.assertEqual(list(response.data['results'].keys()), ['1'])
+
+    @patch('api.solr_utils.requests.get')
     def test_returns_500_when_solr_admin_unavailable(self, mock_get):
         mock_get.return_value = MagicMock(status_code=500, text='boom')
         response = solr_utils.collections_available(['1'])
