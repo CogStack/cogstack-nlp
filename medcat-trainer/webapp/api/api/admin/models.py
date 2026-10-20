@@ -37,6 +37,7 @@ class DatasetAdmin(ReportErrorModelAdminMixin, admin.ModelAdmin):
     model = Dataset
     form = DatasetForm
     list_display = ['name', 'create_time', 'description', dataset_document_counts]
+    actions = [index_datasets_for_search]
 
 
 class ProjectAnnotateEntitiesAdmin(admin.ModelAdmin):

@@ -118,6 +118,147 @@ describe('DocumentSummary.vue', () => {
     expect(wrapper.findAll('.doc')).toHaveLength(1)
   })
 
+  describe('text search', () => {
+    type TextSearchVm = {
+      searching: boolean
+      searchMode: string
+      searchDocs: (e: { target: { value: string } }) => void
+      setSearchMode: (mode: string) => void
+      textSearchResults: { id: number }[]
+    }
+
+    const textResults = [
+      { id: 7, name: 'note-far', text: 'History: patient has chest pain on exertion.' }
+    ]
+
+    const mountWithHttp = (mockGet: ReturnType<typeof vi.fn>, props = {}) =>
+      mount(DocumentSummary, {
+        props: { ...defaultProps, datasetId: 5, ...props },
+        global: {
+          stubs: { 'font-awesome-icon': true, 'v-tooltip': true },
+          mocks: { $http: { get: mockGet } }
+        }
+      })
+
+    const flush = () => new Promise(resolve => originalSetTimeout(resolve, 0))
+
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('queries the API for docs containing the span and lists the results', async () => {
+      const mockGet = vi.fn().mockResolvedValue({
+        data: { count: 1, next: null, results: textResults }
+      })
+      const wrapper = mountWithHttp(mockGet)
+      const vm = wrapper.vm as unknown as TextSearchVm
+      vm.searching = true
+      await wrapper.vm.$nextTick()
+      await wrapper.find('.search-mode-text').trigger('click')
+
+      vm.searchDocs({ target: { value: 'chest pain' } })
+      vm.searchDocs({ target: { value: 'chest pain' } })
+      expect(mockGet).not.toHaveBeenCalled()
+      vi.advanceTimersByTime(300)
+      await flush()
+      await wrapper.vm.$nextTick()
+
+      expect(mockGet).toHaveBeenCalledTimes(1)
+      expect(mockGet).toHaveBeenCalledWith('/api/search-documents/?dataset=5&text=chest+pain')
+      const docEls = wrapper.findAll('.doc')
+      expect(docEls).toHaveLength(1)
+      expect(wrapper.find('.search-match').text()).toBe('chest pain')
+      expect(wrapper.find('.search-status').text()).toContain('1 matching note')
+
+      await docEls[0].trigger('click')
+      expect(wrapper.emitted('request:loadDoc')?.[0]).toEqual([textResults[0]])
+    })
+
+    it('pages through further results with More Results', async () => {
+      const mockGet = vi.fn()
+        .mockResolvedValueOnce({
+          data: { count: 2, next: '/api/search-documents/?dataset=5&text=pain&page=2', results: textResults }
+        })
+        .mockResolvedValueOnce({
+          data: { count: 2, next: null, results: [{ id: 8, name: 'n8', text: 'pain' }] }
+        })
+      const wrapper = mountWithHttp(mockGet)
+      const vm = wrapper.vm as unknown as TextSearchVm
+      vm.searchMode = 'text'
+      vm.searchDocs({ target: { value: 'pain' } })
+      vi.advanceTimersByTime(300)
+      await flush()
+      await wrapper.vm.$nextTick()
+
+      await wrapper.find('.more-docs').trigger('click')
+      await flush()
+      await wrapper.vm.$nextTick()
+      expect(mockGet).toHaveBeenLastCalledWith('/api/search-documents/?dataset=5&text=pain&page=2')
+      expect(wrapper.findAll('.doc')).toHaveLength(2)
+      expect(wrapper.find('.more-docs').exists()).toBe(false)
+    })
+
+    it('renders the Solr highlight snippet when the result has one', async () => {
+      const highlighted = {
+        ...textResults[0],
+        highlight: [
+          { text: 'History: patient has ', match: false },
+          { text: 'chest  pain', match: true },
+          { text: ' on exertion.', match: false }
+        ]
+      }
+      const mockGet = vi.fn().mockResolvedValue({
+        data: { count: 1, next: null, results: [highlighted] }
+      })
+      const wrapper = mountWithHttp(mockGet)
+      const vm = wrapper.vm as unknown as TextSearchVm
+      vm.searchMode = 'text'
+      vm.searchDocs({ target: { value: 'chest pain' } })
+      vi.advanceTimersByTime(300)
+      await flush()
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.find('.search-match').text()).toBe('chest  pain')
+      expect(wrapper.find('.note-summary').text()).toBe('History: patient has chest  pain on exertion.')
+    })
+
+    it('ignores stale responses from superseded searches', async () => {
+      let resolveFirst: (v: unknown) => void = () => {}
+      const mockGet = vi.fn()
+        .mockImplementationOnce(() => new Promise(resolve => { resolveFirst = resolve }))
+        .mockResolvedValueOnce({ data: { count: 1, next: null, results: textResults } })
+      const wrapper = mountWithHttp(mockGet)
+      const vm = wrapper.vm as unknown as TextSearchVm
+      vm.searchMode = 'text'
+      vm.searchDocs({ target: { value: 'fever' } })
+      vi.advanceTimersByTime(300)
+      vm.searchDocs({ target: { value: 'chest' } })
+      vi.advanceTimersByTime(300)
+      await flush()
+      resolveFirst({ data: { count: 1, next: null, results: [{ id: 99, name: 'stale', text: 'fever' }] } })
+      await flush()
+      await wrapper.vm.$nextTick()
+      expect(vm.textSearchResults.map(d => d.id)).toEqual([7])
+    })
+
+    it('switching back to name mode filters loaded docs without calling the API', async () => {
+      const mockGet = vi.fn()
+      const wrapper = mountWithHttp(mockGet)
+      const vm = wrapper.vm as unknown as TextSearchVm
+      vm.searchMode = 'text'
+      vm.searchDocs({ target: { value: 'note-b' } })
+      vm.setSearchMode('name')
+      vi.advanceTimersByTime(300)
+      await wrapper.vm.$nextTick()
+      expect(mockGet).not.toHaveBeenCalled()
+      expect(wrapper.findAll('.doc')).toHaveLength(1)
+    })
+  })
+
   it('treats nan text as empty in preview', () => {
     const wrapper = mountComponent()
     const docWithNan = wrapper.findAll('.note-summary')[2]

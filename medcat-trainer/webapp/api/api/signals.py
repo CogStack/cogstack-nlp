@@ -4,11 +4,13 @@ import os
 import shutil
 
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.db import transaction
 from django.db.models.fields.files import FileField
 from django.db.models.signals import post_save, post_delete, pre_save, m2m_changed, pre_delete
 from django.dispatch import receiver
 
 from api.data_utils import dataset_from_file, delete_orphan_docs, upload_projects_export
+from api.document_search import index_dataset_task, remove_dataset_task
 from api.extensions import (
     annotation_created,
     annotation_deleted,
@@ -28,7 +30,7 @@ from api.models import (
     ProjectFields,
     ProjectGroup,
 )
-from core.settings import MEDIA_ROOT
+from core.settings import MEDIA_ROOT, DOCUMENT_SEARCH_INDEX_ENABLED
 
 
 logger = logging.getLogger(__name__)
@@ -37,6 +39,17 @@ logger = logging.getLogger(__name__)
 @receiver(post_save, sender=Dataset)
 def save_dataset(sender, instance, **kwargs):
     dataset_from_file(instance)
+    if DOCUMENT_SEARCH_INDEX_ENABLED:
+        dataset_id = instance.id
+        # schedule after commit so the worker sees the dataset's documents
+        transaction.on_commit(lambda: index_dataset_task(dataset_id))
+
+
+@receiver(post_delete, sender=Dataset)
+def remove_dataset_from_search_index(sender, instance, **kwargs):
+    if DOCUMENT_SEARCH_INDEX_ENABLED:
+        dataset_id = instance.id
+        transaction.on_commit(lambda: remove_dataset_task(dataset_id))
 
 
 @receiver(pre_save, sender=Dataset)
