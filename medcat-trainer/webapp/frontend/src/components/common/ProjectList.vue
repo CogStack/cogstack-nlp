@@ -572,7 +572,7 @@ export default {
       if (this.selectedProjects.length === 0) {
         return {class: ''}
       } else {
-        let disabled = !(this.selectedProjects[0].concept_db === data.item.concept_db &&
+        const disabled = !(this.selectedProjects[0].concept_db === data.item.concept_db &&
                         this.selectedProjects[0].vocab === data.item.vocab) ||
                         this.selectedProjects[0].model_pack !== data.item.model_pack
         return {class: disabled ? ' disabled-row' : ''}
@@ -591,7 +591,7 @@ export default {
       })
     },
     select (_, { item }) {
-      let project = item
+      const project = item
       if (project) {
         if (project.project_locked) {
           this.projectLockedWarning = true
@@ -612,7 +612,7 @@ export default {
       }
     },
     runModel (projectId) {
-      let payload = {
+      const payload = {
         project_id: projectId
       }
       this.runningBgTasks = new Set([...this.runningBgTasks, projectId])
@@ -626,7 +626,7 @@ export default {
       })
     },
     saveModel (projectId) {
-      let payload = {
+      const payload = {
         project_id: projectId
       }
       this.saving = true
@@ -661,7 +661,7 @@ export default {
       })
     },
     confirmCancelBgTaskStop () {
-      let project = this.cancelRunningBgTaskModal.proj
+      const project = this.cancelRunningBgTaskModal.proj
       this.$http.delete(`/api/prep-docs-bg-tasks/${project.id}/`).then(_ => {
         this.runningBgTasks.delete(project.id)
       }).catch(exc => {

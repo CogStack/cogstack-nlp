@@ -99,7 +99,7 @@ export default {
     EventBus.$on('login:success', this.loggedIn)
     EventBus.$on(UNAUTHORIZED_EVENT, this.onUnauthorized)
   },
-  beforeDestroy () {
+  beforeUnmount () {
     EventBus.$off('login:success', this.loggedIn)
     EventBus.$off(UNAUTHORIZED_EVENT, this.onUnauthorized)
   },

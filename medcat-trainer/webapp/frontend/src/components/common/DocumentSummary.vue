@@ -119,7 +119,7 @@ export default {
     },
     limitText (value) {
       value = value.trim()
-      let splitText = value.split('\n')
+      const splitText = value.split('\n')
       if (splitText.length > 5) {
         return splitText.slice(0, 5).join('\n')
       }
@@ -129,7 +129,7 @@ export default {
   mounted () {
     window.addEventListener('keyup', this.keyup)
   },
-  beforeDestroy () {
+  beforeUnmount () {
     window.removeEventListener('keyup', this.keyup)
   },
 }

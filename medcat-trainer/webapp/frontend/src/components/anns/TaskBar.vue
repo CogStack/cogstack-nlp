@@ -83,9 +83,9 @@ export default {
           this.submit()
         }
       } else if (e.keyCode >= 49 && e.keyCode < 54 && !this.taskLocked) {
-        let codeRange = _.range(5)
-        let keyRange = _.range(49, 54)
-        let selectIdx = _.zipObject(keyRange, codeRange)[e.keyCode]
+        const codeRange = _.range(5)
+        const keyRange = _.range(49, 54)
+        const selectIdx = _.zipObject(keyRange, codeRange)[e.keyCode]
         switch (selectIdx) {
           case 0:
             this.correct()
@@ -118,7 +118,7 @@ export default {
   mounted () {
     this.listenShortcuts()
   },
-  beforeDestroy () {
+  beforeUnmount () {
     this.ignoreShortcuts()
   }
 }
