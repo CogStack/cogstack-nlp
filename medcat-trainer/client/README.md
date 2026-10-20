@@ -8,7 +8,7 @@ A Python client for interacting with a MedCATTrainer web application instance. T
 ## Features
 
 - Manage datasets, concept databases, vocabularies, and model packs
-- Create and manage users and projects
+- Create and manage users, projects, and project groups
 - Retrieve and upload project annotations
 - Command-line interface (CLI) for automation
 
@@ -87,6 +87,8 @@ session = MedCATTrainerSession(
 ### MedCATTrainerSession Methods
 
 - `create_project(name, description, members, dataset, cuis=[], cuis_file=None, concept_db=None, vocab=None, cdb_search_filter=None, modelpack=None, meta_tasks=[], rel_tasks=[])`
+- `create_project_group(name, description, annotators, dataset, administrators=None, cuis=None, cuis_file=None, create_associated_projects=True, concept_db=None, vocab=None, cdb_search_filter=None, modelpack=None, meta_tasks=None, rel_tasks=None)`
+- `get_project_groups()`
 - `create_dataset(name, dataset_file)`
 - `create_user(username, password)`
 - `create_medcat_model(cdb, vocab)`

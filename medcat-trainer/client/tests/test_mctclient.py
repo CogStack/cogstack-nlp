@@ -3,8 +3,9 @@ import time
 import unittest
 from unittest.mock import patch, MagicMock
 from mctclient import (
-    MedCATTrainerSession, KeycloakSettings,
-    MCTDataset, MCTConceptDB, MCTVocab, MCTModelPack, MCTMetaTask, MCTRelTask, MCTUser, MCTProject
+    MedCATTrainerSession, KeycloakSettings, MCTUtilsException,
+    MCTDataset, MCTConceptDB, MCTVocab, MCTModelPack, MCTMetaTask, MCTRelTask,
+    MCTUser, MCTProject, MCTProjectGroup
 )
 
 class TestMCTClient(unittest.TestCase):
@@ -802,6 +803,193 @@ class TestMCTClient(unittest.TestCase):
         session.ensure_token_fresh()
         self.assertEqual(call_count[0], 1)
         self.assertEqual(session.headers['Authorization'], 'Bearer token-1')
+
+    @patch('mctclient.requests.post')
+    def test_create_project_group(self, mock_post):
+        def post_side_effect(url, *args, **kwargs):
+            if url.endswith('/api/api-token-auth/'):
+                return MagicMock(status_code=200, text='{"token": "abc"}')
+            if url.endswith('/api/project-groups/'):
+                self.assertEqual(kwargs['json']['name'], 'Neuro Group')
+                self.assertEqual(kwargs['json']['annotators'], ['1'])
+                self.assertEqual(kwargs['json']['administrators'], ['9'])
+                self.assertEqual(kwargs['json']['dataset'], '2')
+                self.assertEqual(kwargs['json']['concept_db'], '20')
+                self.assertEqual(kwargs['json']['vocab'], '30')
+                self.assertEqual(kwargs['json']['cuis'], '84757009,91175000')
+                self.assertEqual(kwargs['json']['tasks'], ['200'])
+                self.assertEqual(kwargs['json']['relations'], ['300'])
+                self.assertTrue(kwargs['json']['create_associated_projects'])
+                return MagicMock(
+                    status_code=201,
+                    json=lambda: {
+                        'id': 7,
+                        'name': 'Neuro Group',
+                        'create_time': '2021-01-01T00:00:00Z',
+                        'last_modified': None,
+                    },
+                )
+            return MagicMock(status_code=404, text='')
+
+        mock_post.side_effect = post_side_effect
+        session = MedCATTrainerSession(server='http://localhost', username='u', password='p')
+        group = session.create_project_group(
+            name='Neuro Group',
+            description='one project per annotator',
+            annotators=[MCTUser(id='1', username='ann')],
+            administrators=[MCTUser(id='9', username='boss')],
+            dataset=MCTDataset(id='2', name='Neuro DS'),
+            concept_db=MCTConceptDB(id='20', name='cdb', conceptdb_file='cdb.dat'),
+            vocab=MCTVocab(id='30', name='vocab', vocab_file='vocab.dat'),
+            cuis=['84757009', '91175000'],
+            meta_tasks=[MCTMetaTask(id='200', name='Temporality')],
+            rel_tasks=[MCTRelTask(id='300', name='Has_Finding')],
+        )
+        self.assertIsInstance(group, MCTProjectGroup)
+        self.assertEqual(group.id, 7)
+        self.assertEqual(group.name, 'Neuro Group')
+        self.assertEqual(group.annotators[0].username, 'ann')
+        self.assertEqual(group.dataset.name, 'Neuro DS')
+        self.assertTrue(group.create_associated_projects)
+
+    @patch('mctclient.requests.post')
+    @patch('mctclient.requests.get')
+    def test_create_project_group_resolves_names(self, mock_get, mock_post):
+        def json_response(body):
+            return MagicMock(status_code=200, text=json.dumps(body), json=lambda: body)
+
+        def get_side_effect(url, *args, **kwargs):
+            if url.endswith('/api/users/'):
+                return json_response({'results': [{'id': 1, 'username': 'ann'}, {'id': 9, 'username': 'boss'}]})
+            if url.endswith('/api/datasets/'):
+                return json_response({'results': [{'id': 2, 'name': 'Neuro DS', 'original_file': 'neuro.csv'}]})
+            if url.endswith('/api/concept-dbs/'):
+                return json_response({'results': [{'id': 20, 'name': 'example_cdb', 'cdb_file': 'cdb.dat'}]})
+            if url.endswith('/api/vocabs/'):
+                return json_response({'results': [{'id': 30, 'name': 'example_vocab', 'vocab_file': 'vocab.dat'}]})
+            if url.endswith('/api/meta-tasks/'):
+                return json_response({'results': [{'id': 200, 'name': 'Temporality'}]})
+            if url.endswith('/api/relations/'):
+                return json_response({'results': [{'id': 300, 'label': 'Has_Finding'}]})
+            return json_response({'results': []})
+
+        def post_side_effect(url, *args, **kwargs):
+            if url.endswith('/api/api-token-auth/'):
+                return MagicMock(status_code=200, text='{"token": "abc"}')
+            if url.endswith('/api/project-groups/'):
+                body = kwargs['json']
+                self.assertEqual(body['annotators'], [1])
+                self.assertEqual(body['administrators'], [9])
+                self.assertEqual(body['dataset'], 2)
+                self.assertEqual(body['concept_db'], 20)
+                self.assertEqual(body['vocab'], 30)
+                self.assertEqual(body['tasks'], [200])
+                self.assertEqual(body['relations'], [300])
+                self.assertNotIn('model_pack', body)
+                return MagicMock(status_code=201, json=lambda: {'id': 8, 'name': 'Named Group'})
+            return MagicMock(status_code=404, text='')
+
+        mock_get.side_effect = get_side_effect
+        mock_post.side_effect = post_side_effect
+        session = MedCATTrainerSession(server='http://localhost', username='u', password='p')
+        group = session.create_project_group(
+            name='Named Group',
+            annotators=[MCTUser(username='ann')],
+            administrators=['boss'],
+            dataset='Neuro DS',
+            concept_db=MCTConceptDB(name='example_cdb'),
+            vocab='example_vocab',
+            meta_tasks=['Temporality'],
+            rel_tasks=['Has_Finding'],
+        )
+        self.assertEqual(group.id, 8)
+        self.assertEqual(group.annotators[0].id, 1)
+        self.assertEqual(group.dataset.id, 2)
+        self.assertEqual(group.concept_db.id, 20)
+        self.assertEqual(group.meta_tasks[0].id, 200)
+        self.assertEqual(group.rel_tasks[0].id, 300)
+
+    @patch('mctclient.requests.post')
+    def test_create_project_group_rejects_cdb_and_modelpack(self, mock_post):
+        mock_post.return_value = MagicMock(status_code=200, text='{"token": "abc"}')
+        session = MedCATTrainerSession(server='http://localhost', username='u', password='p')
+        with self.assertRaises(MCTUtilsException):
+            session.create_project_group(
+                name='Bad Group',
+                annotators=[MCTUser(id=1, username='ann')],
+                dataset=MCTDataset(id=2, name='Neuro DS'),
+                concept_db=MCTConceptDB(id=20, name='cdb'),
+                vocab=MCTVocab(id=30, name='vocab'),
+                modelpack=MCTModelPack(id=4, name='pack'),
+            )
+        self.assertEqual(mock_post.call_count, 1)
+
+    @patch('mctclient.requests.post')
+    def test_create_project_group_raises_on_api_error(self, mock_post):
+        def post_side_effect(url, *args, **kwargs):
+            if url.endswith('/api/api-token-auth/'):
+                return MagicMock(status_code=200, text='{"token": "abc"}')
+            return MagicMock(status_code=400, text='{"annotators": ["Select at least one annotator"]}')
+
+        mock_post.side_effect = post_side_effect
+        session = MedCATTrainerSession(server='http://localhost', username='u', password='p')
+        with self.assertRaises(MCTUtilsException) as raised:
+            session.create_project_group(
+                name='Empty Group',
+                annotators=[],
+                dataset=MCTDataset(id=2, name='Neuro DS'),
+                modelpack=MCTModelPack(id=4, name='pack'),
+                create_associated_projects=True,
+            )
+        self.assertIn('annotators', str(raised.exception))
+
+    @patch('mctclient.requests.post')
+    @patch('mctclient.requests.get')
+    def test_get_project_groups(self, mock_get, mock_post):
+        mock_post.return_value = MagicMock(status_code=200, text='{"token": "abc"}')
+        mock_get.return_value = MagicMock(
+            status_code=200,
+            text='',
+            json=lambda: {
+                'results': [{
+                    'id': 7,
+                    'name': 'Neuro Group',
+                    'description': 'shared setup',
+                    'cuis': '84757009',
+                    'create_time': '2021-01-01T00:00:00Z',
+                    'last_modified': '2021-02-01T00:00:00Z',
+                    'annotation_classification': False,
+                    'project_locked': False,
+                    'project_status': 'A',
+                    'deid_model_annotation': False,
+                    'create_associated_projects': True,
+                    'dataset': 2,
+                    'concept_db': 20,
+                    'vocab': 30,
+                    'model_pack': None,
+                    'cdb_search_filter': [20],
+                    'administrators': [9],
+                    'annotators': [1],
+                    'tasks': [200],
+                    'relations': [],
+                }]
+            },
+        )
+        session = MedCATTrainerSession(server='http://localhost', username='u', password='p')
+        groups = session.get_project_groups()
+        self.assertEqual(len(groups), 1)
+        group = groups[0]
+        self.assertIsInstance(group, MCTProjectGroup)
+        self.assertEqual(group.name, 'Neuro Group')
+        self.assertEqual(group.dataset.id, 2)
+        self.assertEqual(group.concept_db.id, 20)
+        self.assertIsNone(group.model_pack)
+        self.assertEqual(group.cdb_search_filter[0].id, 20)
+        self.assertEqual([user.id for user in group.annotators], [1])
+        self.assertEqual([user.id for user in group.administrators], [9])
+        self.assertEqual(group.meta_tasks[0].id, 200)
+        self.assertEqual(group.rel_tasks, [])
+        mock_get.assert_called_with('http://localhost/api/project-groups/', headers=session.headers)
 
 
 if __name__ == '__main__':
