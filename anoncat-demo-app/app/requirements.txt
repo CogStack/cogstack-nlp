@@ -1,6 +1,6 @@
 --extra-index-url https://download.pytorch.org/whl/cpu/
 uwsgi~=2.0
-Django~=4.2
+Django~=6.1
 djangorestframework~=3.14
 django-filter~=23.2
 medcat~=1.10
