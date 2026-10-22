@@ -3,7 +3,7 @@ from types import SimpleNamespace
 from typing import Any, Optional, Union
 from torch import Tensor, nn
 from torchcrf import CRF
-from transformers import AutoModelForTokenClassification
+from transformers import AutoModel
 import json
 import logging
 import torch
@@ -32,10 +32,11 @@ class ModelForBinaryNER(nn.Module):
         self.num_labels = num_labels
         self.aux_loss_weight = aux_loss_weight
         self.id2label = id2label
-        self.language_model = AutoModelForTokenClassification.from_pretrained(
+        self.language_model = AutoModel.from_pretrained(
             embedding_model_name,
-            num_labels=self.num_labels,
+            trust_remote_code=True,  # generally harmless for standard models
         )
+
         # Make sure hidden states are available for the auxiliary heads.
         self.language_model.config.output_hidden_states = True
         self.base_model_name = self.language_model.config.name_or_path
@@ -43,6 +44,9 @@ class ModelForBinaryNER(nn.Module):
         # For the auxiliary start/end position heads, we use the hidden states 
         # from the last layer of the transformer.
         hidden_size = self.language_model.config.hidden_size
+
+        # Main token classification head: CRF emissions
+        self.classifier = nn.Linear(hidden_size, self.num_labels)
         self.start_head = nn.Linear(hidden_size, 1)
         self.end_head = nn.Linear(hidden_size, 1)
         
@@ -86,9 +90,9 @@ class ModelForBinaryNER(nn.Module):
         outputs = self.language_model(**inputs, 
                                       return_dict=True, 
                                       output_hidden_states=True)
-        emissions = outputs.logits
-        # the last layer's hidden states for the start/end heads
-        hidden_states = outputs.hidden_states[-1]
+        hidden_states = outputs.last_hidden_state
+        # Main token-classification logits, used as CRF emissions
+        emissions = self.classifier(hidden_states)
         
         # Linear classifiers for boundary heads
         start_logits = self.start_head(hidden_states).squeeze(-1)  # [B, T]
