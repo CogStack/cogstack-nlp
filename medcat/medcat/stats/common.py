@@ -28,6 +28,7 @@ class PredictedAnnotation(TypedDict):
     end: int
     cui: str
     text: str
+    detected_name: str
     confidence: float
     raw: MutableEntity
     no_tokens: int

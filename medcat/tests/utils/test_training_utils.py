@@ -27,6 +27,7 @@ class _FakeEntity:
     def __init__(self, start: int, end: int, text: str, cui: str):
         self.base = _FakeEntityBase(start, end, text)
         self.cui = cui
+        self.detected_name = text
         self.context_similarity = 1.0
         self.id = 0
 
