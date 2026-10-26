@@ -15,9 +15,7 @@ class ModelForBinaryNER(nn.Module):
 
     The architecture is: transformer backbone -> linear classifier -> CRF.
     """
-    # for mypy checking
-    label_is_start: Tensor
-    label_is_end: Tensor
+    class_weights: Tensor
 
     def __init__(
         self,
@@ -26,52 +24,50 @@ class ModelForBinaryNER(nn.Module):
         num_labels: int = 5,
         top_n_layers_to_unfreeze: int = -1,
         device: Optional[Union[str, torch.device]] = None,
-        aux_loss_weight: float = 0.5,
+        class_weights: Optional[dict[str, float]] = None,
+        crf_loss_weight: float = 1.0,
     ) -> None:
         super().__init__()
         self.num_labels = num_labels
-        self.aux_loss_weight = aux_loss_weight
         self.id2label = id2label
+        self.class_weights_dict = dict(class_weights or {})
+        self.crf_loss_weight = crf_loss_weight
         self.language_model = AutoModel.from_pretrained(
             embedding_model_name,
             trust_remote_code=True,  # generally harmless for standard models
         )
 
-        # Make sure hidden states are available for the auxiliary heads.
-        self.language_model.config.output_hidden_states = True
         self.base_model_name = self.language_model.config.name_or_path
-        
-        # For the auxiliary start/end position heads, we use the hidden states 
-        # from the last layer of the transformer.
         hidden_size = self.language_model.config.hidden_size
 
         # Main token classification head: CRF emissions
         self.classifier = nn.Linear(hidden_size, self.num_labels)
-        self.start_head = nn.Linear(hidden_size, 1)
-        self.end_head = nn.Linear(hidden_size, 1)
         
         # For state transitions
         self.crf = CRF(num_tags=self.num_labels, batch_first=True)
         
-        # Build boundary lookup tables from BIOES label names.
-        # This is future proof in the sense that "B" and "E" would still be the same
-        # for multiple different types of entities.
-        start_flags = []
-        end_flags = []
-        for i in range(self.num_labels):
-            label = self.id2label[i]
-            prefix = label.split("-", 1)[0]
-
-            start_flags.append(1.0 if prefix == "B" else 0.0)
-            end_flags.append(1.0 if prefix == "E" else 0.0)
-            
-        self.register_buffer("label_is_start", 
-                             torch.tensor(start_flags, dtype=torch.float))
-        self.register_buffer("label_is_end", 
-                             torch.tensor(end_flags, dtype=torch.float))
+        # non-persistent so that existing checkpoints still load
+        self.register_buffer("class_weights",
+                             self._build_class_weights_tensor(),
+                             persistent=False)
 
         target_device = self._resolve_device(device)
         self.to(target_device)
+
+    def _build_class_weights_tensor(self) -> Tensor:
+        """cross_entropy needs a 1-D tensor indexed by label id; labels
+        without a given weight default to 1.0."""
+        return torch.tensor(
+            [self.class_weights_dict.get(self.id2label[i], 1.0)
+             for i in range(self.num_labels)],
+            dtype=torch.float)
+
+    def set_class_weights(self, class_weights: dict[str, float]) -> None:
+        """Update the class weights (by label name) on an already built model.
+        If all weights are 0 the weighted cross entropy is skipped (CRF loss
+        only)."""
+        self.class_weights_dict = dict(class_weights)
+        self.class_weights = self._build_class_weights_tensor().to(self.device)
 
     @staticmethod
     def _resolve_device(device: Optional[Union[str, torch.device]]) -> torch.device:
@@ -93,16 +89,11 @@ class ModelForBinaryNER(nn.Module):
         hidden_states = outputs.last_hidden_state
         # Main token-classification logits, used as CRF emissions
         emissions = self.classifier(hidden_states)
-        
-        # Linear classifiers for boundary heads
-        start_logits = self.start_head(hidden_states).squeeze(-1)  # [B, T]
-        end_logits = self.end_head(hidden_states).squeeze(-1)      # [B, T]
 
         # CRF can't handle -100 labels so this handles it
         loss = None
         crf_loss = None
-        start_loss = None
-        end_loss = None
+        weighted_ce_loss = None
         
         valid_mask = attention_mask.bool()
         
@@ -129,17 +120,21 @@ class ModelForBinaryNER(nn.Module):
                 mask=crf_mask,
                 reduction="token_mean",
             )
-            
-            # Auxiliary start/end targets
-            start_targets, end_targets = self._build_boundary_targets(labels)
 
-            # Use the standard attention mask, but exclude -100 positions
-            aux_mask = valid_mask & (labels != -100)
+            loss = self.crf_loss_weight * crf_loss
 
-            start_loss = self._masked_bce_loss(start_logits, start_targets, aux_mask)
-            end_loss = self._masked_bce_loss(end_logits, end_targets, aux_mask)
-
-            loss = crf_loss + self.aux_loss_weight * (start_loss + end_loss)
+            # The CRF NLL is sequence-level and cannot be weighted per class,
+            # so class weights are applied via a token-level cross entropy
+            # on the emissions, added to the (scaled) CRF loss.
+            use_ce = self.class_weights.sum() > 0
+            if use_ce:
+                weighted_ce_loss = nn.functional.cross_entropy(
+                    emissions.reshape(-1, self.num_labels),
+                    labels.masked_fill(~valid_mask, -100).reshape(-1),
+                    weight=self.class_weights,
+                    ignore_index=-100,
+                )
+                loss = loss + weighted_ce_loss
 
         decoded_sequences = None
         decoded_tensor = None
@@ -163,43 +158,11 @@ class ModelForBinaryNER(nn.Module):
         return SimpleNamespace(
             loss=loss,
             crf_loss=crf_loss,
-            start_loss=start_loss,
-            end_loss=end_loss,
+            weighted_ce_loss=weighted_ce_loss,
             logits=emissions,
-            start_logits=start_logits,
-            end_logits=end_logits,
             predictions=decoded_tensor,
             decoded_sequences=decoded_sequences,
         )
-
-    def _masked_bce_loss(self, logits: Tensor, targets: Tensor, mask: Tensor) -> Tensor:
-        """
-        Normal BCE doesn't handle masking (i.e. handling [-100]), 
-        so this implements a masked version.
-        """
-        loss_fn = nn.BCEWithLogitsLoss(reduction="none")
-        loss = loss_fn(logits, targets.float())
-        loss = loss * mask.float()
-
-        denom = mask.float().sum().clamp_min(1.0)
-        return loss.sum() / denom
-    
-    def _build_boundary_targets(self, labels: Tensor) -> tuple[Tensor, Tensor]:
-        """
-        Convert BIOES token labels into binary start/end targets.
-        - start = 1 for B-*, (and maybe S-*)
-        - end   = 1 for E-*, (and maybe S-*)
-        """
-        safe_labels = labels.clone()
-        safe_labels[safe_labels == -100] = 0
-
-        start_targets = self.label_is_start[safe_labels].to(labels.device)
-        end_targets = self.label_is_end[safe_labels].to(labels.device)
-
-        start_targets = start_targets.masked_fill(labels == -100, 0.0)
-        end_targets = end_targets.masked_fill(labels == -100, 0.0)
-
-        return start_targets, end_targets
 
     def _freeze_all_parameters(self) -> None:
         for param in self.language_model.parameters():
@@ -250,7 +213,8 @@ class ModelForBinaryNER(nn.Module):
             "embedding_model_name": self.base_model_name,
             "num_labels": self.num_labels,
             "id2label": self.id2label,
-            "aux_loss_weight": self.aux_loss_weight,
+            "class_weights": self.class_weights_dict,
+            "crf_loss_weight": self.crf_loss_weight,
         }
         with open(save_path / "config.json", "w", encoding="utf-8") as f:
             json.dump(config, f, indent=2)
@@ -278,9 +242,18 @@ class ModelForBinaryNER(nn.Module):
                 for key, value in config["id2label"].items():
                     id2label[int(key)] = value
                 config["id2label"] = id2label
+            # the auxiliary start/end loss was removed; tolerate old checkpoints
+            config.pop("aux_loss_weight", None)
+            config.pop("class_weighted_loss_coef", None)
             config.update(kwargs)
             model = cls(device=target_device, **config)
             state_dict = torch.load(weights_path, map_location="cpu")
+            legacy_prefixes = ("start_head.", "end_head.")
+            legacy_buffers = ("label_is_start", "label_is_end")
+            state_dict = {
+                k: v for k, v in state_dict.items()
+                if not k.startswith(legacy_prefixes) and k not in legacy_buffers
+            }
             model.load_state_dict(state_dict)
             model.to(target_device)
             return model
