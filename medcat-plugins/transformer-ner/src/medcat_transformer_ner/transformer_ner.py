@@ -617,7 +617,6 @@ class NER(AbstractEntityProvidingComponent,
                 f"{model_folder}. Expected both config.json and pytorch_model.bin."
             )
 
-        # ner.model = AutoModelForTokenClassification.from_pretrained(model_folder)
         ner.model = ModelForBinaryNER.from_pretrained(
             model_folder,
             device=ner.device,
