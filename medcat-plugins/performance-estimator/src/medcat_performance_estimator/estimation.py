@@ -17,7 +17,7 @@ estimator, which in turn wraps a stage-1 estimator -- so e.g. requesting
 looks itself up in `per_stage_configs`, not just the top-level `estim_type`.
 """
 from collections.abc import Callable
-from enum import Enum
+from enum import StrEnum
 from typing import cast
 
 from medcat.cat import CAT
@@ -40,7 +40,7 @@ from .stage3_calibration import (
 from .training_fetcher import CDBTrainingFetcher
 
 
-class EstimationType(str, Enum):
+class EstimationType(StrEnum):
     STAGE1 = "stage1"
     STAGE2 = "stage2"
     CALIBRATED = "calibrated"
