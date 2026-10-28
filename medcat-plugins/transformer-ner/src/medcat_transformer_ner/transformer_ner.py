@@ -60,9 +60,61 @@ class NER(AbstractEntityProvidingComponent,
             return str(candidate.resolve())
         return str(path_or_model_name)
     
+    def set_class_weights(self, class_weights: dict[str, float]) -> None:
+        """Set per-label loss weights (labels not given keep their current
+        weight). Updates the config and, if loaded, the model.
+        
+        Args: class_weights (dict[str, float]): A dictionary mapping label names to 
+        their corresponding weights. The labels and weight mapping should follow the 
+        BIOES scheme:
+            {
+                "O": not an entity,
+                "B-ENT": the begining token of a multi-token entity,
+                "I-ENT": the intermediate token of a multi-token entity,
+                "E-ENT": the ending token of a multi-token entity,
+                "S-ENT": a single token entity,
+            }
+        """
+        unknown = set(class_weights) - set(self.label2id)
+        if unknown:
+            raise ValueError(f"Unknown labels in class_weights: {sorted(unknown)}")
+        self.cnf_ner.class_weights = {**self.cnf_ner.class_weights, **class_weights}
+        if hasattr(self, "model"):
+            self.model.set_class_weights(self.cnf_ner.class_weights)
+
+    def set_crf_loss_weight(self, crf_loss_weight: float) -> None:
+        """Set the multiplier on the CRF loss. Updates the config and, if
+        loaded, the model."""
+        self.cnf_ner.crf_loss_weight = crf_loss_weight
+        if hasattr(self, "model"):
+            self.model.crf_loss_weight = crf_loss_weight
+
+    def set_learning_rate(self, learning_rate: float) -> None:
+        """Set the learning rate. Updates the config and, if loaded, the
+        optimizer and scheduler."""
+        self.cnf_ner.learning_rate = learning_rate
+        if hasattr(self, "optimizer"):
+            for group in self.optimizer.param_groups:
+                group["lr"] = learning_rate
+                # the scheduler scales from the initial lr, so it must change too
+                group["initial_lr"] = learning_rate
+            self.scheduler.base_lrs = [learning_rate] * len(
+                self.optimizer.param_groups)
+
+    def set_weight_decay(self, weight_decay: float) -> None:
+        """Set the weight decay. Updates the config and, if loaded, the
+        optimizer."""
+        self.cnf_ner.weight_decay = weight_decay
+        if hasattr(self, "optimizer"):
+            for group in self.optimizer.param_groups:
+                group["weight_decay"] = weight_decay
+
     def _get_model_init_kwargs(self) -> dict[str, Any]:
         """Build kwargs passed to ModelForEmbeddingLinking.from_pretrained."""
-        return dict(self._model_init_kwargs)
+        kwargs = dict(self._model_init_kwargs)
+        kwargs.setdefault("class_weights", dict(self.cnf_ner.class_weights))
+        kwargs.setdefault("crf_loss_weight", self.cnf_ner.crf_loss_weight)
+        return kwargs
 
     def load_transformers(self, language_model_name: Union[str, Path]) -> None:
         """Load tokenizer/model from local path or Hugging Face model id."""
@@ -95,9 +147,10 @@ class NER(AbstractEntityProvidingComponent,
             self.model.to(self.device)
             self._loaded_model_source: str = model_source
             self._loaded_model_init_kwargs: dict[str, Any] = model_init_kwargs
-            self.optimizer = torch.optim.AdamW(self.model.parameters(), 
-                                               lr=1e-5, 
-                                               weight_decay=0.001)
+            self.optimizer = torch.optim.AdamW(
+                self.model.parameters(),
+                lr=self.cnf_ner.learning_rate,
+                weight_decay=self.cnf_ner.weight_decay)
             self.scheduler = get_constant_schedule_with_warmup(
                 self.optimizer,
                 num_warmup_steps=20,
@@ -564,14 +617,14 @@ class NER(AbstractEntityProvidingComponent,
                 f"{model_folder}. Expected both config.json and pytorch_model.bin."
             )
 
-        # ner.model = AutoModelForTokenClassification.from_pretrained(model_folder)
         ner.model = ModelForBinaryNER.from_pretrained(
             model_folder,
             device=ner.device,
         )
-        ner.optimizer = torch.optim.AdamW(ner.model.parameters(), 
-                                          lr=1e-5, 
-                                          weight_decay=0.001)
+        ner.optimizer = torch.optim.AdamW(
+            ner.model.parameters(),
+            lr=ner.cnf_ner.learning_rate,
+            weight_decay=ner.cnf_ner.weight_decay)
         ner.scheduler = get_constant_schedule_with_warmup(ner.optimizer, 
                                                           num_warmup_steps=20)
         ner.model.to(ner.device)

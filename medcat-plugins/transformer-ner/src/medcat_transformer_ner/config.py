@@ -29,6 +29,25 @@ class TransformerNER(Ner):
     This helps with low signal words not being detected by the model. This will
     increase computation time, and could reduce precision."""
     learning_rate: float = 1e-5
-    """The learning rate to be used for training the model"""
+    """The learning rate to be used for training the model. Set via
+    TransformerNER.set_learning_rate on a loaded model so the change is propagated 
+    to the optimizer."""
     weight_decay: float = 0.001
-    """The weight decay to be used for training the model"""
+    """The weight decay to be used for training the model. Set via
+    TransformerNER.set_weight_decay on a loaded model so the change is propagated 
+    to the optimizer."""
+    class_weights: dict[str, float] = {
+        "O": 1.0,
+        "B-ENT": 1.0,
+        "I-ENT": 1.0,
+        "E-ENT": 1.0,
+        "S-ENT": 1.0,
+    }
+    """Per-label weights for the token-level cross entropy loss, keyed by
+    label name. Uniform by default. Set via TransformerNER.set_class_weights so the 
+    change is propagated to the loaded model."""
+    crf_loss_weight: float = 1.0
+    """Multiplier on the CRF loss in the total loss:
+    crf_loss_weight * crf_loss + weighted_cross_entropy. Changing this will proioritize 
+    different metrics over the other. Set via TransformerNER.set_crf_loss_weight so the
+    change is propagated to the loaded model."""
