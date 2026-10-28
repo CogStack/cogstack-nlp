@@ -240,6 +240,88 @@ class MCTProject(MCTObj):
 
 
 
+@dataclass
+class MCTProjectGroup(MCTObj):
+    """A project group in the MedCATTrainer instance.
+
+    A group shares one annotation setup across annotators. With
+    ``create_associated_projects`` enabled, saving the group creates one
+    ``ProjectAnnotateEntities`` per annotator, named ``{group name} - {username}``.
+
+    Attributes:
+        name (str): The name of the project group. Must be unique.
+        description (str): The description copied onto each generated project.
+        create_time (datetime): The date and time the group was created.
+        last_modified (datetime): The latest modification time of an associated project.
+        cuis (str): Comma-separated CUIs used to filter concepts.
+        dataset (MCTDataset): The dataset annotated by the group.
+        annotation_classification (bool): Whether annotations contribute to a general-purpose model.
+        project_locked (bool): Whether annotation collection is complete.
+        project_status (str): Annotating (A), Discontinued (D), or Complete (C).
+        deid_model_annotation (bool): Whether the group collects de-identification annotations.
+        concept_db (MCTConceptDB): The concept database used for annotation.
+        vocab (MCTVocab): The vocabulary used for annotation.
+        model_pack (MCTModelPack): The model pack used for annotation.
+        cdb_search_filter (List[MCTConceptDB]): Concept databases used for concept lookup.
+        administrators (List[MCTUser]): Users who can see every project in the group.
+        annotators (List[MCTUser]): Users who each receive an annotation project.
+        meta_tasks (List[MCTMetaTask]): Meta annotation tasks copied onto generated projects.
+        rel_tasks (List[MCTRelTask]): Relation tasks copied onto generated projects.
+        create_associated_projects (bool): Create one project per annotator when the group is created.
+    """
+    name: str=None
+    description: str=None
+    create_time: Union[datetime, str]=None
+    last_modified: Union[datetime, str]=None
+    cuis: str=None
+    dataset: MCTDataset=None
+    annotation_classification: bool=None
+    project_locked: bool=None
+    project_status: str='A'
+    deid_model_annotation: bool=False
+    concept_db: MCTConceptDB=None
+    vocab: MCTVocab=None
+    model_pack: MCTModelPack=None
+    cdb_search_filter: List[MCTConceptDB]=None
+    administrators: List[MCTUser]=None
+    annotators: List[MCTUser]=None
+    meta_tasks: List[MCTMetaTask]=None
+    rel_tasks: List[MCTRelTask]=None
+    create_associated_projects: bool=True
+
+    def __str__(self):
+        return f'{self.id} : {self.name} \t {self.description} \t {self.dataset}'
+
+
+def _project_group_from_api(payload: Dict[str, Any]) -> MCTProjectGroup:
+    """Build an MCTProjectGroup from a ProjectGroup serializer payload."""
+    def _cdb(cdb_id):
+        return MCTConceptDB(id=cdb_id) if cdb_id else None
+
+    return MCTProjectGroup(
+        id=payload.get('id'),
+        name=payload.get('name'),
+        description=payload.get('description'),
+        cuis=payload.get('cuis'),
+        create_time=payload.get('create_time'),
+        last_modified=payload.get('last_modified'),
+        annotation_classification=payload.get('annotation_classification'),
+        project_locked=payload.get('project_locked'),
+        project_status=payload.get('project_status'),
+        deid_model_annotation=payload.get('deid_model_annotation'),
+        create_associated_projects=payload.get('create_associated_projects', True),
+        dataset=MCTDataset(id=payload['dataset']) if payload.get('dataset') else None,
+        concept_db=_cdb(payload.get('concept_db')),
+        vocab=MCTVocab(id=payload['vocab']) if payload.get('vocab') else None,
+        model_pack=MCTModelPack(id=payload['model_pack']) if payload.get('model_pack') else None,
+        cdb_search_filter=[_cdb(cdb_id) for cdb_id in payload.get('cdb_search_filter') or []],
+        administrators=[MCTUser(id=user_id) for user_id in payload.get('administrators') or []],
+        annotators=[MCTUser(id=user_id) for user_id in payload.get('annotators') or []],
+        meta_tasks=[MCTMetaTask(id=task_id) for task_id in payload.get('tasks') or []],
+        rel_tasks=[MCTRelTask(id=rel_id) for rel_id in payload.get('relations') or []],
+    )
+
+
 class MedCATTrainerSession:
     """Wrapper for the MedCATTrainer API.
     This class provides a wrapper around the MedCATTrainer API, allowing for easy creation of projects, datasets, users, and models.
@@ -270,6 +352,10 @@ class MedCATTrainerSession:
     >>> # MCTObjects can be referenced by name or by the wrapper object.
     >>> session.create_project(name='test-project', description='test-description', members=[MCTUser(username='test-user')], dataset=ds,
     concept_db=MCTConceptDB(name='test_cdb'), vocab=MCTVocab(name='test_vocab'))
+
+        Create a project group that provisions one annotation project per annotator.
+    >>> session.create_project_group(name='test-group', description='test-description',
+    annotators=[MCTUser(username='test-user')], dataset=ds, concept_db=cdb, vocab=vocab)
 
         To download annotations for a project:
     >>> projects = session.get_projects()
@@ -464,6 +550,167 @@ class MedCATTrainerSession:
                               deid_model_annotation=deid_model_annotation)
         else:
             raise MCTUtilsException(f'Failed to create project with name: {name}', resp.text)
+
+    def create_project_group(self, name: str,
+                             description: str='',
+                             annotators: Union[List[MCTUser], List[str]]=None,
+                             dataset: Union[MCTDataset, str]=None,
+                             administrators: Union[List[MCTUser], List[str]]=None,
+                             cuis: List[str]=None,
+                             cuis_file: str=None,
+                             create_associated_projects: bool=True,
+                             deid_model_annotation: bool=False,
+                             annotation_classification: bool=False,
+                             concept_db: Union[MCTConceptDB, str]=None,
+                             vocab: Union[MCTVocab, str]=None,
+                             cdb_search_filter: Union[MCTConceptDB, str, List[Union[MCTConceptDB, str]]]=None,
+                             modelpack: Union[MCTModelPack, str]=None,
+                             meta_tasks: Union[List[MCTMetaTask], List[str]]=None,
+                             rel_tasks: Union[List[MCTRelTask], List[str]]=None):
+        """Create a project group, and one annotation project per annotator by default.
+
+        Users, models, and datasets can be referred to by their wrapper object or by name.
+        The authenticated user is added as an administrator by the server.
+
+        Only a concept_db and vocab pair, or a modelpack, needs to be specified.
+        With ``create_associated_projects`` left at its default, at least one annotator is required.
+        Each generated project is named ``{group name} - {username}``.
+
+        Args:
+            name (str): The name of the project group.
+            description (str): The description copied onto each generated project.
+            annotators (Union[List[MCTUser], List[str]]): Users who each receive an annotation project.
+            dataset (Union[MCTDataset, str]): The dataset to be annotated.
+            administrators (Union[List[MCTUser], List[str]], optional): Users who can see every project in the group.
+            cuis (List[str]): CUIs used to filter concepts.
+            cuis_file (str): A file of extra CUIs, appended to ``cuis``.
+            create_associated_projects (bool): Create one project per annotator. Defaults to True.
+            deid_model_annotation (bool): Whether the group collects de-identification annotations.
+            annotation_classification (bool): Whether annotations contribute to a general-purpose model.
+            concept_db (Union[MCTConceptDB, str], optional): The concept database used for annotation.
+            vocab (Union[MCTVocab, str], optional): The vocabulary used for annotation.
+            cdb_search_filter (Union[MCTConceptDB, str, List], optional): Concept databases used for lookup.
+            modelpack (Union[MCTModelPack, str], optional): The model pack used for annotation.
+            meta_tasks (Union[List[MCTMetaTask], List[str]], optional): Meta tasks copied onto generated projects.
+            rel_tasks (Union[List[MCTRelTask], List[str]], optional): Relation tasks copied onto generated projects.
+
+        Raises:
+            MCTUtilsException: If the project group creation fails.
+
+        Returns:
+            MCTProjectGroup: The created project group.
+        """
+        def unresolved_name(value):
+            """Return a name to look up, or None when value already has an id."""
+            if isinstance(value, str):
+                return value
+            if value is not None and not getattr(value, 'id', None) and getattr(value, 'name', None):
+                return value.name
+            return None
+
+        def resolve_named(items, value, label):
+            name = unresolved_name(value)
+            if name is None:
+                return value
+            try:
+                return [item for item in items if item.name == name].pop()
+            except IndexError:
+                raise MCTUtilsException(f'{label} not found in MedCATTrainer instance: {name}')
+
+        def resolve_users(users, label):
+            if not users:
+                return [] if users is not None else None
+            names = []
+            for user in users:
+                if isinstance(user, str):
+                    names.append(user)
+                elif isinstance(user, MCTUser) and not user.valid() and user.username:
+                    names.append(user.username)
+                else:
+                    return list(users)
+            found = [user for user in self.get_users() if user.username in names]
+            if len(found) != len(set(names)):
+                raise MCTUtilsException(
+                    f'Not all {label} found in MedCATTrainer instance: {users} requested, '
+                    f'trainer users found: {found}'
+                )
+            return found
+
+        def resolve_named_list(values, loader, label):
+            values = list(values or [])
+            if not any(unresolved_name(item) for item in values):
+                return values
+            known = loader()
+            return [resolve_named(known, item, label) for item in values]
+
+        annotators = resolve_users(annotators, 'annotators') or []
+        administrators = resolve_users(administrators, 'administrators')
+        cuis = list(cuis or [])
+
+        if unresolved_name(dataset):
+            dataset = resolve_named(self.get_datasets(), dataset, 'Dataset')
+        if dataset is None or not dataset.valid():
+            raise MCTUtilsException('A dataset is required to create a project group')
+
+        if unresolved_name(concept_db):
+            concept_db = resolve_named(self.get_concept_dbs(), concept_db, 'Concept DB')
+        if unresolved_name(vocab):
+            vocab = resolve_named(self.get_vocabs(), vocab, 'Vocab')
+        if unresolved_name(modelpack):
+            modelpack = resolve_named(self.get_model_packs(), modelpack, 'Model pack')
+
+        if cdb_search_filter is not None:
+            filters = cdb_search_filter if isinstance(cdb_search_filter, list) else [cdb_search_filter]
+            cdb_search_filter = resolve_named_list(filters, self.get_concept_dbs, 'Concept DB')
+
+        meta_tasks = resolve_named_list(meta_tasks, self.get_meta_tasks, 'Meta task')
+        rel_tasks = resolve_named_list(rel_tasks, self.get_rel_tasks, 'Rel task')
+
+        if (concept_db or vocab) and modelpack:
+            raise MCTUtilsException('Cannot specify both concept_db/vocab and modelpack')
+
+        payload = {
+            'name': name,
+            'description': description or '',
+            'cuis': ','.join(cuis),
+            'dataset': dataset.id,
+            'annotators': [annotator.id for annotator in annotators],
+            'tasks': [task.id for task in meta_tasks],
+            'relations': [task.id for task in rel_tasks],
+            'annotation_classification': annotation_classification,
+            'deid_model_annotation': deid_model_annotation,
+            'create_associated_projects': create_associated_projects,
+        }
+        if administrators is not None:
+            payload['administrators'] = [admin.id for admin in administrators]
+        if concept_db and vocab:
+            payload['concept_db'] = concept_db.id
+            payload['vocab'] = vocab.id
+        elif modelpack:
+            payload['model_pack'] = modelpack.id
+        if cdb_search_filter:
+            payload['cdb_search_filter'] = [cdb.id for cdb in cdb_search_filter]
+
+        url = f'{self.server}/api/project-groups/'
+        if cuis_file:
+            with open(cuis_file, 'rb') as cui_upload:
+                resp = requests.post(url, data=payload, files={'cuis_file': cui_upload}, headers=self.headers)
+        else:
+            resp = requests.post(url, json=payload, headers=self.headers)
+        if 200 <= resp.status_code < 300:
+            resp_json = resp.json()
+            return MCTProjectGroup(
+                id=resp_json['id'], name=name, description=description, cuis=','.join(cuis),
+                dataset=dataset, concept_db=concept_db, vocab=vocab, model_pack=modelpack,
+                cdb_search_filter=cdb_search_filter, administrators=administrators, annotators=annotators,
+                meta_tasks=meta_tasks, rel_tasks=rel_tasks,
+                annotation_classification=annotation_classification,
+                deid_model_annotation=deid_model_annotation,
+                create_associated_projects=create_associated_projects,
+                create_time=resp_json.get('create_time'),
+                last_modified=resp_json.get('last_modified'),
+            )
+        raise MCTUtilsException(f'Failed to create project group with name: {name}', resp.text)
 
     def create_dataset(self, name: str, dataset_file: str):
         """Create a new dataset in the MedCATTrainer session.
@@ -669,6 +916,29 @@ class MedCATTrainerSession:
                                     meta_tasks=[MCTMetaTask(id=mt) for mt in p['tasks']],
                                     rel_tasks=[MCTRelTask(id=rt) for rt in p['relations']]) for p in resp]
         return mct_projects
+
+    def get_project_groups(self) -> List[MCTProjectGroup]:
+        """Get all project groups in the MedCATTrainer instance.
+
+        Returns:
+            List[MCTProjectGroup]: A list of all project groups in the MedCATTrainer instance.
+        """
+        resp = requests.get(f'{self.server}/api/project-groups/', headers=self.headers)
+        if not (200 <= resp.status_code < 300):
+            raise MCTUtilsException(
+                f'Failed to get project groups from MedCATTrainer instance running at: {self.server}',
+                f'HTTP {resp.status_code}: {resp.text[:500]}',
+            )
+        try:
+            payload = resp.json()
+            if not isinstance(payload, dict):
+                payload = json.loads(resp.text or '{}')
+        except Exception as e:
+            raise MCTUtilsException(
+                f'Failed to parse project groups response from MedCATTrainer instance running at: {self.server}',
+                e,
+            )
+        return [_project_group_from_api(group) for group in payload.get('results', [])]
 
     def get_datasets(self) -> List[MCTDataset]:
         """Get all datasets that have been created in the MedCATTrainer instance.

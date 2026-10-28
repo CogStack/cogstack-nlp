@@ -234,7 +234,7 @@ export default {
   created() {
     if (this.reportId || (this.$route.query && this.$route.query.reportId)) {
       this.loading = true
-      let reportId = this.reportId ? this.reportId : this.$route.query.reportId
+      const reportId = this.reportId ? this.reportId : this.$route.query.reportId
       this.$http.get(`/api/metrics/${reportId}/`).then(resp => {
         this.loading = false
         this.reportName = resp.data.results.report_name || resp.data.results.report_name_generated
@@ -261,7 +261,7 @@ export default {
         this.projects2name = resp.data.results.projects2name
         this.docs2name = resp.data.results.docs2name
 
-        let anno_summary = resp.data.results.annotation_summary.map(s => {
+        const anno_summary = resp.data.results.annotation_summary.map(s => {
           if (s.correct) {
             s.status = 'Correct'
           } else if (s.deleted) {
@@ -280,7 +280,7 @@ export default {
         this.annoSummary.items = anno_summary
         this.metaAnnsSummary.items = resp.data.results.meta_anno_summary
 
-        let summaryHeaders = resp.data.results.meta_anns_task_summary.map(task => {
+        const summaryHeaders = resp.data.results.meta_anns_task_summary.map(task => {
           // Create task header with children
           const taskName = task['name']
           const taskHeader = {
@@ -571,9 +571,9 @@ export default {
         totalFNs += item.fns
       })
 
-      let precision = totalTPs / (totalTPs + totalFPs)
-      let recall = totalTPs / (totalTPs + totalFNs)
-      let f1 = 2 * (precision * recall) / (precision + recall)
+      const precision = totalTPs / (totalTPs + totalFPs)
+      const recall = totalTPs / (totalTPs + totalFNs)
+      const f1 = 2 * (precision * recall) / (precision + recall)
 
       switch(metric) {
         case 'cui_prec':
@@ -625,7 +625,7 @@ export default {
   mounted() {
     window.addEventListener('keydown', this.keydown)
   },
-  beforeDestroy() {
+  beforeUnmount() {
     window.removeEventListener('keydown', this.keydown)
   }
 }
@@ -759,9 +759,9 @@ $metrics-header-height: 50px;
   height: 25px;
   padding: 3px 10px !important;
   border: 0 !important;
-  &:hover {
-    color: white !important;
-  }
+  --success: #{map-get($theme-colors, "success")};
+  --warning: #{map-get($theme-colors, "warning")};
+  --danger: #{map-get($theme-colors, "danger")};
 }
 .v-input--density-default {
   --v-input-control-height: 30px !important;

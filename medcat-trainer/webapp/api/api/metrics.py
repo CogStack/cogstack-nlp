@@ -173,30 +173,62 @@ class ProjectMetrics(object):
 
     def enrich_medcat_metrics(self, examples):
         """
-        Add the user prop to the medcat output metrics. Can potentially add more later for each of the categories
+        Add the user prop to the medcat output metrics. Can potentially add more later for each of the categories.
+
+        get_stats examples use snake_case keys (document_id). Older payloads used
+        spaced keys ("document id"). Accept both so FP/FN/TP dialogs can be enriched.
         """
-        for tp in [i for e_i in examples['tp'].values() for i in e_i]:
-            try:
-                ann = AnnotatedEntity.objects.get(project_id=tp['project id'], document_id=tp['document id'],
-                                                  start_ind=tp['start'], end_ind=tp['end'])
-                tp['user'] = ann.user.username
-            except:
-                tp['user'] = None
-        for fp in (i for e_i in examples['fp'].values() for i in e_i):
-            try:
-                ann = AnnotatedEntity.objects.get(project_id=fp['project id'], document_id=fp['document id'],
-                                                  start_ind=fp['start'], end_ind=fp['end'])
-                fp['user'] = ann.user.username
-            except:
-                fp['user'] = None
-        for fn in (i for e_i in examples['fn'].values() for i in e_i):
-            try:
-                ann = AnnotatedEntity.objects.get(project_id=fn['project id'], document_id=fn['document id'],
-                                                  start_ind=fn['start'], end_ind=fn['end'])
-                fn['user'] = ann.user.username
-            except:
-                fn['user'] = None
+        if not isinstance(examples, dict):
+            return examples
+        for kind in ('tp', 'fp', 'fn'):
+            grouped = examples.get(kind) or {}
+            if not isinstance(grouped, dict):
+                continue
+            for example_list in grouped.values():
+                if not isinstance(example_list, list):
+                    continue
+                for example in example_list:
+                    if isinstance(example, dict):
+                        self._attach_example_user(example)
         return examples
+
+    @staticmethod
+    def _example_value(example, *keys):
+        for key in keys:
+            if key in example and example[key] is not None:
+                return example[key]
+        return None
+
+    @classmethod
+    def _normalize_example_keys(cls, example):
+        """Expose both legacy spaced keys and current snake_case keys on one example."""
+        aliases = (
+            ('project id', 'project_id'),
+            ('project name', 'project_name'),
+            ('document id', 'document_id'),
+            ('document name', 'document_name'),
+            ('source value', 'source_value'),
+        )
+        for legacy, modern in aliases:
+            if legacy not in example and modern in example:
+                example[legacy] = example[modern]
+            elif modern not in example and legacy in example:
+                example[modern] = example[legacy]
+        if 'acc' not in example and example.get('confidence') is not None:
+            example['acc'] = example['confidence']
+        return example
+
+    def _attach_example_user(self, example):
+        self._normalize_example_keys(example)
+        project_id = self._example_value(example, 'project id', 'project_id')
+        document_id = self._example_value(example, 'document id', 'document_id')
+        try:
+            ann = AnnotatedEntity.objects.get(project_id=project_id, document_id=document_id,
+                                              start_ind=example.get('start'), end_ind=example.get('end'))
+            example['user'] = ann.user.username if getattr(ann, 'user', None) else None
+        except Exception:
+            example['user'] = None
+        return example
 
     def user_stats(self, by_user: bool = True):
         """

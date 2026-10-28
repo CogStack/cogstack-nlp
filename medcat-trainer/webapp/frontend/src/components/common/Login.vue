@@ -58,7 +58,7 @@ export default {
   },
   methods: {
     login () {
-      let payload = {
+      const payload = {
         username: this.uname,
         password: this.password
       }

@@ -26,6 +26,9 @@ MAX_DATASET_SIZE=10000
 ### Solr Concept Search Conf ###
 CONCEPT_SEARCH_SERVICE_HOST=solr
 CONCEPT_SEARCH_SERVICE_PORT=8983
+# Solr collection used for full text search of dataset documents, (re-)indexed on dataset upload
+DOCUMENT_SEARCH_COLLECTION=medcattrainer_documents
+DOCUMENT_SEARCH_INDEX_ENABLED=1
 
 ### DB backup dir - should be set ideally to a mounted / backed up drive ###
 # volume mount location, default docker host system volume location, this might be different in /etc/docker/daemon.json
