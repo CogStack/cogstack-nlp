@@ -2,10 +2,9 @@
 name = "medcattrainer-webapp"
 version = "1.0.0"
 description = "MedCATtrainer Django web application"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
 dependencies = [
-    "scipy>=1.7.0,<1.14; python_version < '3.13'",         # pin for py<3.13 so macOS arm64 gets pre-built wheels
     "uwsgi>=2.0,<3",
     "Django>=5.2.18,<6",
     "django-filter>=25.2",

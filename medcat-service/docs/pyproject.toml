@@ -3,7 +3,7 @@ name = "medcat-trainer-documentation"
 version = "0.1.0"
 description = "MedCAT Service Documentation"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "mkdocs-material>=9.7.0",
     "termynal>=0.13.1",

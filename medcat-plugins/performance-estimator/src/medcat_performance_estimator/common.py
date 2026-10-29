@@ -6,13 +6,13 @@ and `calibration.py` can all depend on the *same* result type, config base
 class, and estimator protocol without any of them depending on each other.
 It should stay a leaf module (no imports from elsewhere in this package).
 """
-from enum import Enum
+from enum import StrEnum
 from typing import Protocol, TypedDict, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict
 
 
-class ActionTier(str, Enum):
+class ActionTier(StrEnum):
     A = "A"  # High performance / Minimal tuning needed
     B = "B"  # Moderate performance / Needs targeted coverage
     C = "C"  # Poor performance / High-priority for annotation & tuning

@@ -22,7 +22,7 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           # start at lowest possible
-          python-version: "3.10"
+          python-version: "3.11"
       - name: Install with latest deps
         shell: bash
         run: |
@@ -49,7 +49,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: [ "3.10", "3.11", "3.12", "3.13"]
+        python-version: [ "3.11", "3.12", "3.13"]
 
     steps:
       - uses: actions/checkout@v7

@@ -57,10 +57,10 @@ jobs:
           git pull origin $BRANCH_NAME
 
         # NOTE: building with the lowest python version supported by the package
-      - name: Set up Python 3.10
+      - name: Set up Python 3.11
         uses: actions/setup-python@v7
         with:
-          python-version: "3.10"
+          python-version: "3.11"
 
       - name: Install build dependencies
         run: pip install --upgrade build
@@ -82,7 +82,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
+        python-version: ["3.11", "3.12", "3.13"]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -152,7 +152,7 @@ jobs:
         with:
           name: bundles-${{ matrix.python-version }}
           path: |
-            medca2/medcat-v${{ needs.build.outputs.version_only }}-${{ matrix.python-version }}-cpu.tar.gz
+            medcat/medcat-v${{ needs.build.outputs.version_only }}-${{ matrix.python-version }}-cpu.tar.gz
 #            medcat/medcat-v${{ needs.build.outputs.version_only }}-${{ matrix.python-version }}-gpu.tar.gz
 
   release:

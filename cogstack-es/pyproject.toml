@@ -9,13 +9,12 @@ description = "ElasticSearch or OpenSearch wrapper for CogStack deployments"
 readme = "ReadMe.md"
 authors = [{ name = "Mart Ratas", email = "mart.ratas@kcl.ac.uk" }]
 license = { text = "Apache-2.0" }
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
