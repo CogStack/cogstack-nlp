@@ -22,7 +22,7 @@ jobs:
       contents: read
     strategy:
       matrix:
-        python-version: [ '3.10', '3.11', '3.12', '3.13' ]
+        python-version: [ '3.11', '3.12', '3.13' ]
       max-parallel: 4
 
     steps:
@@ -46,7 +46,7 @@ jobs:
       contents: read
     strategy:
       matrix:
-        python-version: [ '3.10', '3.11', '3.12', '3.13' ]
+        python-version: [ '3.11', '3.12', '3.13' ]
         install-target: [ "ES9", "ES8", "OS", ]
       max-parallel: 4
 
@@ -80,7 +80,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v7
         with:
-          python-version: '3.10'
+          python-version: '3.11'
 
       - name: Install dependencies
         run: |

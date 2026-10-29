@@ -2,7 +2,7 @@
 name = "medcat-v2-documentation"
 version = "0.1.0"
 description = "MedCAT v2 Documentation"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "mkdocs-api-autonav>=0.4.0",
     "mkdocs-jupyter>=0.26.3",
