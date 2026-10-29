@@ -23,10 +23,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       # NOTE: using oldest supported python version
-      - name: Install uv for Python 3.10
+      - name: Install uv for Python 3.11
         uses: astral-sh/setup-uv@v7
         with:
-          python-version: "3.10"
+          python-version: "3.11"
           enable-cache: true
           cache-dependency-glob: "medcat/uv.lock"
       - name: Install the project
@@ -40,7 +40,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [ '3.10', '3.11', '3.12', '3.13' ]
+        python-version: [ '3.11', '3.12', '3.13' ]
       max-parallel: 5
     steps:
       - uses: actions/checkout@v7
