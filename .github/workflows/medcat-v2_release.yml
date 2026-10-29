@@ -152,7 +152,7 @@ jobs:
         with:
           name: bundles-${{ matrix.python-version }}
           path: |
-            medca2/medcat-v${{ needs.build.outputs.version_only }}-${{ matrix.python-version }}-cpu.tar.gz
+            medcat/medcat-v${{ needs.build.outputs.version_only }}-${{ matrix.python-version }}-cpu.tar.gz
 #            medcat/medcat-v${{ needs.build.outputs.version_only }}-${{ matrix.python-version }}-gpu.tar.gz
 
   release:
