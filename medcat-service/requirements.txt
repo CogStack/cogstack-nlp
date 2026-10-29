@@ -1,10 +1,10 @@
 gunicorn==23.0.0
-setuptools==78.1.1
+setuptools==84.1.0
 simplejson==3.19.3
 setuptools-rust==1.11.0
 medcat[meta-cat,spacy,deid]~=2.9.0
 # pinned because of issues with de-id models and past models (it will not do any de-id)
-transformers>=4.34.0,<5.0.0
+transformers>=5.21.1,<6.0.0
 requests==2.33.0
 fastapi[standard]==0.136.3
 pydantic>=2.11.10,<2.12.5
