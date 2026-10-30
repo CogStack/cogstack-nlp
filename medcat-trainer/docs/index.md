@@ -20,8 +20,9 @@ review-only workflows (collect annotations without changing the model).
     - Terminate
     - Irrelevant
 - Collect optional **meta annotations** and **relation annotations**.
-- Use **Project Groups** for multi-annotator setups.
-- Run **metrics reports** across one or more compatible projects.
+- Use **Project Groups** for multi-annotator setups (from `/project-admin` or the Python client).
+- Run **metrics reports** across one or more compatible projects, including Concept Summary filtering of low-F1 concepts.
+- Search clinical notes by **name or full text** in the annotator Clinical Notes panel.
 - Explore concept hierarchies and export concept filters.
 
 ## Typical workflow

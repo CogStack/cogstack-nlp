@@ -26,6 +26,24 @@ After import, project list shows whether concepts are indexed for the selected
 ![](_static/img/concepts-imported-status.png)
 
 
+## Document text-search index
+
+Clinical Notes **Text** search (annotate entities page) uses a separate Solr
+collection from concept lookup. New datasets are indexed automatically after
+upload when `DOCUMENT_SEARCH_INDEX_ENABLED=1`.
+
+To index datasets uploaded before text search was available:
+
+1. Open `/admin`.
+2. Go to **Datasets**.
+3. Select one or more datasets.
+4. Run **Index selected datasets for text search**.
+
+Until indexing finishes (or if Solr is down), text search falls back to a
+database match. See [Maintenance](maintenance.md) for the collection name and
+ops checks.
+
+
 ## Downloading annotations
 
 From Django admin (`/admin` -> **Project annotate entities**), use bulk actions
