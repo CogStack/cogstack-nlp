@@ -236,7 +236,7 @@
                     class="form-control"
                     :class="{ 'is-invalid': validationErrors.model_pack }"
                     :disabled="useBackupOption || formData.use_model_service"
-                    @change="clearValidationError('model_pack')"
+                    @change="onModelPackChange"
                   >
                     <option :value="null">None</option>
                     <option v-for="mp in modelPacks" :key="mp.id" :value="mp.id">{{ mp.name }}</option>
@@ -418,6 +418,39 @@
                 placeholder="Optional: paste comma separated list e.g. 91175000, 84757009"
                 @blur="syncPillsFromCuiText"
               ></textarea>
+            </div>
+
+            <div class="form-section">
+              <h4>Meta Annotation &amp; Relation Tasks</h4>
+              <div class="form-row">
+                <div class="form-group form-group-inline">
+                  <label>Meta Annotation Tasks</label>
+                  <select v-model="formData.tasks" multiple class="form-control task-multi-select">
+                    <option v-for="task in metaTasks" :key="'task-' + task.id" :value="task.id">
+                      {{ task.name }}
+                    </option>
+                  </select>
+                  <small class="form-text text-muted">
+                    Hold Ctrl/Cmd to select multiple. These appear in the annotator sidebar for Correct/Alternative concepts.
+                    Model packs with MetaCAT models may auto-apply their linked tasks on save.
+                  </small>
+                </div>
+                <div class="form-group form-group-inline">
+                  <label>Relation Tasks</label>
+                  <select v-model="formData.relations" multiple class="form-control task-multi-select">
+                    <option v-for="rel in availableRelations" :key="'rel-' + rel.id" :value="rel.id">
+                      {{ rel.label }}
+                    </option>
+                  </select>
+                  <small class="form-text text-muted">
+                    Hold Ctrl/Cmd to select multiple. Available relation types between annotated concepts.
+                  </small>
+                </div>
+              </div>
+              <p v-if="!metaTasks.length && !availableRelations.length" class="form-text text-muted">
+                No meta or relation tasks are defined yet. Create them in Django admin
+                (<code>/admin</code>) under Meta Tasks / Relations, or upload a model pack that includes MetaCAT models.
+              </p>
             </div>
 
             <div class="form-section">
@@ -687,6 +720,8 @@ export default {
       // User management
       showUserForm: false,
       editingUser: null,
+      metaTasks: [],
+      availableRelations: [],
       formData: {
         name: '',
         description: '',
@@ -710,6 +745,8 @@ export default {
         enable_entity_annotation_comments: false,
         cuis: '',
         cuis_file: null,
+        tasks: [],
+        relations: [],
         members: [],
         administrators: [],
         annotators: [],
@@ -750,7 +787,9 @@ export default {
           this.fetchConceptDbs(),
           this.fetchVocabs(),
           this.fetchModelPacks(),
-          this.fetchUsers()
+          this.fetchUsers(),
+          this.fetchMetaTasks(),
+          this.fetchRelations()
         ])
       } catch (error) {
         console.error('Error loading data:', error)
@@ -809,6 +848,34 @@ export default {
       const response = await this.$http.get('/api/users/')
       this.users = response.data.results || response.data
     },
+    async fetchMetaTasks() {
+      const response = await this.$http.get('/api/meta-tasks/')
+      this.metaTasks = response.data.results || response.data || []
+    },
+    async fetchRelations() {
+      const response = await this.$http.get('/api/relations/')
+      this.availableRelations = response.data.results || response.data || []
+    },
+    toIdList(values) {
+      if (!Array.isArray(values)) return []
+      return values.map(v => (typeof v === 'object' && v !== null ? v.id : v)).filter(v => v != null)
+    },
+    suggestTasksFromModelPack(modelPackId) {
+      if (!modelPackId) return
+      const modelPack = this.modelPacks.find(mp => mp.id === modelPackId)
+      const metaCatIds = this.toIdList(modelPack?.meta_cats || [])
+      if (!metaCatIds.length) return
+      const linked = this.metaTasks
+        .filter(task => task.prediction_model != null && metaCatIds.includes(task.prediction_model))
+        .map(task => task.id)
+      if (linked.length) {
+        this.formData.tasks = linked
+      }
+    },
+    onModelPackChange() {
+      this.clearValidationError('model_pack')
+      this.suggestTasksFromModelPack(this.formData.model_pack)
+    },
     selectProject(event, { item }) {
       // v-data-table click:row passes (event, { item })
       this.editProject(item)
@@ -842,6 +909,8 @@ export default {
         enable_entity_annotation_comments: project.enable_entity_annotation_comments || false,
         cuis: project.cuis || '',
         cuis_file: null,
+        tasks: this.toIdList(project.tasks),
+        relations: this.toIdList(project.relations),
         members: project.members ? project.members.map(m => typeof m === 'object' ? m.id : m) : []
       }
       // Show backup options if CDB or Vocab are set
@@ -897,6 +966,8 @@ export default {
         enable_entity_annotation_comments: false,
         cuis: '',
         cuis_file: null,
+        tasks: [],
+        relations: [],
         members: [],
         administrators: [],
         annotators: [],
@@ -1126,6 +1197,9 @@ export default {
           payload.cdb_search_filter = []
         }
 
+        payload.tasks = this.toIntList(payload.tasks)
+        payload.relations = this.toIntList(payload.relations)
+
         // Group-only fields are not valid on a single project
         delete payload.administrators
         delete payload.annotators
@@ -1194,6 +1268,8 @@ export default {
       payload.cdb_search_filter = conceptDbIdForFilter != null ? this.toIntList([conceptDbIdForFilter]) : []
       payload.administrators = this.toIntList(payload.administrators)
       payload.annotators = this.toIntList(payload.annotators)
+      payload.tasks = this.toIntList(payload.tasks)
+      payload.relations = this.toIntList(payload.relations)
       payload.create_associated_projects = !!payload.create_associated_projects
       delete payload.members
       delete payload.cuis_file
