@@ -52,9 +52,35 @@ project = session.create_project(
 )
 ```
 
+## Project groups
+
+Create one shared configuration and, by default, one annotation project per
+annotator (named `<group name> - <username>`):
+
+```python
+group = session.create_project_group(
+    name="Stroke IAA",
+    description="Inter-annotator agreement campaign",
+    annotators=[annotator],
+    administrators=[],  # optional; the authenticated user is always an admin
+    dataset=ds,
+    modelpack=model_packs[0],
+    create_associated_projects=True,
+)
+
+groups = session.get_project_groups()
+```
+
+Users, datasets, and model packs may be passed as wrapper objects or resolved
+by name. Supply **either** `modelpack` **or** `concept_db` + `vocab`, not both.
+With `create_associated_projects=True` (the default), at least one annotator is
+required.
+
 ## Common methods
 
 - `create_project(...)`
+- `create_project_group(...)`
+- `get_project_groups()`
 - `create_dataset(name, dataset_file)`
 - `create_user(username, password)`
 - `create_medcat_model(cdb, vocab)`
@@ -73,6 +99,9 @@ project = session.create_project(
 
 ## Notes
 
-- `create_project` expects **either** `modelpack` **or** `concept_db + vocab`.
+- `create_project` and `create_project_group` expect **either** `modelpack`
+  **or** `concept_db + vocab`.
 - Wrapper objects (`MCTDataset`, `MCTConceptDB`, etc.) can often be passed by
   object or resolved by name.
+- See [Project Groups](project_group_admin.md) for the UI workflow these client
+  calls mirror.
