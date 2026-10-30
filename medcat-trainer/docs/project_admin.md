@@ -65,6 +65,12 @@ Pick one of:
 | **Irrelevant available** | Shows irrelevant action in annotation toolbar. |
 | **Entity annotation comments** | Enables free-text comments per annotation. |
 
+### Meta Annotation & Relation Tasks
+| Field                        | Description                                                                 |
+|------------------------------|-----------------------------------------------------------------------------|
+| **Meta Annotation Tasks** | Multi-select of Meta Tasks (for example Temporality, Assertion, Experiencer) shown in the annotator sidebar for Correct/Alternative concepts. Define task values in Django admin (`/admin`) first, or upload a model pack that includes MetaCAT models. Selecting a model pack with linked MetaCAT models pre-fills matching tasks. |
+| **Relation Tasks** | Multi-select of relation types available between annotated concepts in the Relation tab. |
+
 ### Concept Filtering
 | Field                        | Description                                                                 |
 |------------------------------|-----------------------------------------------------------------------------|
