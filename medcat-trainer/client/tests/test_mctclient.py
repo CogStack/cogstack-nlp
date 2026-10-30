@@ -5,7 +5,7 @@ from unittest.mock import patch, MagicMock
 from mctclient import (
     MedCATTrainerSession, KeycloakSettings, MCTUtilsException,
     MCTDataset, MCTConceptDB, MCTVocab, MCTModelPack, MCTMetaTask, MCTRelTask,
-    MCTUser, MCTProject, MCTProjectGroup
+    MCTUser, MCTProject, MCTProjectGroup, MCTModelRun
 )
 
 class TestMCTClient(unittest.TestCase):
@@ -990,6 +990,234 @@ class TestMCTClient(unittest.TestCase):
         self.assertEqual(group.meta_tasks[0].id, 200)
         self.assertEqual(group.rel_tasks, [])
         mock_get.assert_called_with('http://localhost/api/project-groups/', headers=session.headers)
+
+
+def _auth_post(url, *args, **kwargs):
+    if url.endswith('/api/api-token-auth/'):
+        return MagicMock(status_code=200, text='{"token": "abc"}')
+    return None
+
+
+class TestRunModel(unittest.TestCase):
+
+    def _session(self, mock_post):
+        mock_post.side_effect = _auth_post
+        return MedCATTrainerSession(server='http://localhost', username='u', password='p')
+
+    @patch('mctclient.requests.post')
+    def test_run_model_queues_background_job(self, mock_post):
+        def post_side_effect(url, *args, **kwargs):
+            auth = _auth_post(url)
+            if auth is not None:
+                return auth
+            self.assertTrue(url.endswith('/api/run-model/'))
+            self.assertEqual(kwargs['json'], {'project_id': 3, 'background': True})
+            self.assertEqual(kwargs['headers']['Authorization'], 'Token abc')
+            return MagicMock(
+                status_code=200,
+                text='',
+                json=lambda: {
+                    'bg_job_id': 12,
+                    'project_id': 3,
+                    'documents_queued': 4,
+                    'status': 'queued',
+                    'already_running': False,
+                },
+            )
+
+        mock_post.side_effect = post_side_effect
+        session = MedCATTrainerSession(server='http://localhost', username='u', password='p')
+        run = session.run_model(MCTProject(id=3, name='Demo'))
+        self.assertIsInstance(run, MCTModelRun)
+        self.assertEqual(run.job_id, 12)
+        self.assertEqual(run.status, 'queued')
+        self.assertEqual(run.documents_queued, 4)
+        self.assertEqual(run.project_id, 3)
+        self.assertFalse(run.already_running)
+
+    @patch('mctclient.requests.post')
+    def test_run_model_accepts_project_id_and_sync_flag(self, mock_post):
+        def post_side_effect(url, *args, **kwargs):
+            auth = _auth_post(url)
+            if auth is not None:
+                return auth
+            self.assertEqual(kwargs['json']['project_id'], 8)
+            self.assertFalse(kwargs['json']['background'])
+            self.assertEqual(kwargs['timeout'], 15)
+            return MagicMock(
+                status_code=200,
+                json=lambda: {
+                    'project_id': 8,
+                    'status': 'complete',
+                    'dataset_len': 2,
+                    'prepd_docs_len': 2,
+                    'documents_queued': 2,
+                    'documents_prepared': 2,
+                },
+            )
+
+        mock_post.side_effect = post_side_effect
+        session = MedCATTrainerSession(server='http://localhost', username='u', password='p')
+        run = session.run_model(8, background=False, timeout=15)
+        self.assertEqual(run.status, 'complete')
+        self.assertEqual(run.dataset_len, 2)
+        self.assertEqual(run.prepared_docs, 2)
+
+    @patch('mctclient.requests.get')
+    @patch('mctclient.requests.post')
+    def test_run_model_resolves_project_name(self, mock_post, mock_get):
+        mock_post.side_effect = _auth_post
+        session = MedCATTrainerSession(server='http://localhost', username='u', password='p')
+
+        def post_side_effect(url, *args, **kwargs):
+            auth = _auth_post(url)
+            if auth is not None:
+                return auth
+            self.assertEqual(kwargs['json']['project_id'], 9)
+            return MagicMock(status_code=200, json=lambda: {'bg_job_id': 1, 'project_id': 9, 'status': 'queued'})
+
+        mock_post.side_effect = post_side_effect
+        mock_get.return_value = MagicMock(
+            status_code=200,
+            text=json.dumps({'results': [{
+                'id': 9,
+                'name': 'Cardio',
+                'description': '',
+                'cuis': '',
+                'create_time': '2021-01-01T00:00:00Z',
+                'last_modified': '2021-01-01T00:00:00Z',
+                'annotation_classification': False,
+                'project_locked': False,
+                'project_status': 'A',
+                'deid_model_annotation': False,
+                'validated_documents': [],
+                'dataset': 2,
+                'concept_db': None,
+                'vocab': None,
+                'members': [],
+                'tasks': [],
+                'relations': [],
+            }]}),
+        )
+        run = session.run_model('Cardio')
+        self.assertEqual(run.project_id, 9)
+        self.assertEqual(run.job_id, 1)
+
+    @patch('mctclient.requests.post')
+    def test_run_model_raises_on_api_error(self, mock_post):
+        def post_side_effect(url, *args, **kwargs):
+            auth = _auth_post(url)
+            if auth is not None:
+                return auth
+            return MagicMock(status_code=403, text='{"error": "forbidden"}')
+
+        mock_post.side_effect = post_side_effect
+        session = MedCATTrainerSession(server='http://localhost', username='u', password='p')
+        with self.assertRaises(MCTUtilsException) as raised:
+            session.run_model(3)
+        self.assertIn('403', str(raised.exception))
+
+    @patch('mctclient.time.sleep', return_value=None)
+    @patch('mctclient.requests.get')
+    @patch('mctclient.requests.post')
+    def test_run_model_waits_until_complete(self, mock_post, mock_get, _sleep):
+        def post_side_effect(url, *args, **kwargs):
+            auth = _auth_post(url)
+            if auth is not None:
+                return auth
+            return MagicMock(status_code=200, json=lambda: {
+                'bg_job_id': 5, 'project_id': 3, 'status': 'queued', 'documents_queued': 2,
+            })
+
+        statuses = [
+            {'status': 'running', 'bg_job_id': 5, 'project_id': 3, 'dataset_len': 2, 'prepd_docs_len': 1},
+            {'status': 'complete', 'bg_job_id': None, 'project_id': 3, 'dataset_len': 2, 'prepd_docs_len': 2,
+             'documents_remaining': 0},
+        ]
+
+        def get_side_effect(url, *args, **kwargs):
+            self.assertTrue(url.endswith('/api/run-model/3/'))
+            return MagicMock(status_code=200, json=lambda payload=statuses.pop(0): payload)
+
+        mock_post.side_effect = post_side_effect
+        mock_get.side_effect = get_side_effect
+        session = MedCATTrainerSession(server='http://localhost', username='u', password='p')
+        run = session.run_model(3, wait=True, timeout=30, poll_interval=0)
+        self.assertEqual(run.status, 'complete')
+        self.assertEqual(run.job_id, 5)
+        self.assertEqual(run.prepared_docs, 2)
+        self.assertEqual(run.documents_queued, 2)
+        self.assertEqual(mock_get.call_count, 2)
+
+    @patch('mctclient.time.sleep', return_value=None)
+    @patch('mctclient.time.monotonic', side_effect=[0, 0, 10, 10])
+    @patch('mctclient.requests.get')
+    @patch('mctclient.requests.post')
+    def test_run_model_wait_times_out(self, mock_post, mock_get, _monotonic, _sleep):
+        def post_side_effect(url, *args, **kwargs):
+            auth = _auth_post(url)
+            if auth is not None:
+                return auth
+            return MagicMock(status_code=200, json=lambda: {'bg_job_id': 5, 'project_id': 3, 'status': 'queued'})
+
+        mock_post.side_effect = post_side_effect
+        mock_get.return_value = MagicMock(
+            status_code=200,
+            json=lambda: {'status': 'running', 'bg_job_id': 5, 'project_id': 3},
+        )
+        session = MedCATTrainerSession(server='http://localhost', username='u', password='p')
+        with self.assertRaises(MCTUtilsException) as raised:
+            session.run_model(3, wait=True, timeout=5, poll_interval=0)
+        self.assertIn('process_tasks', str(raised.exception))
+
+    @patch('mctclient.requests.get')
+    @patch('mctclient.requests.post')
+    def test_get_model_run_and_list(self, mock_post, mock_get):
+        mock_post.return_value = MagicMock(status_code=200, text='{"token": "abc"}')
+        session = MedCATTrainerSession(server='http://localhost', username='u', password='p')
+
+        def get_side_effect(url, *args, **kwargs):
+            if url.endswith('/api/run-model/3/'):
+                return MagicMock(status_code=200, json=lambda: {
+                    'status': 'idle', 'project_id': 3, 'dataset_len': 4, 'prepd_docs_len': 1,
+                    'documents_remaining': 3,
+                })
+            if url.endswith('/api/run-model/'):
+                return MagicMock(status_code=200, json=lambda: {
+                    'running_tasks': [{'project': 3, 'user_id': 1}],
+                    'comp_tasks': [{'project': 4, 'user_id': 2}],
+                })
+            return MagicMock(status_code=404, text='')
+
+        mock_get.side_effect = get_side_effect
+        status = session.get_model_run(MCTProject(id='3', name='Demo'))
+        self.assertEqual(status.status, 'idle')
+        self.assertEqual(status.prepared_docs, 1)
+        self.assertEqual(status.documents_remaining, 3)
+        listed = session.get_model_runs()
+        self.assertEqual(listed['running'], [{'project_id': 3, 'user_id': 1}])
+        self.assertEqual(listed['complete'], [{'project_id': 4, 'user_id': 2}])
+
+    @patch('mctclient.requests.delete')
+    @patch('mctclient.requests.post')
+    def test_stop_model_run(self, mock_post, mock_delete):
+        mock_post.return_value = MagicMock(status_code=200, text='{"token": "abc"}')
+        mock_delete.return_value = MagicMock(
+            status_code=200,
+            json=lambda: {'project_id': 3, 'status': 'stopped', 'message': 'Successfully stopped running response'},
+        )
+        session = MedCATTrainerSession(server='http://localhost', username='u', password='p')
+        stopped = session.stop_model_run(3)
+        self.assertEqual(stopped.status, 'stopped')
+        mock_delete.assert_called_once()
+        self.assertTrue(mock_delete.call_args.args[0].endswith('/api/run-model/3/'))
+
+    @patch('mctclient.requests.post')
+    def test_run_model_requires_an_id_or_name(self, mock_post):
+        mock_post.return_value = MagicMock(status_code=200, text='{"token": "abc"}')
+        session = MedCATTrainerSession(server='http://localhost', username='u', password='p')
+        with self.assertRaises(MCTUtilsException):
+            session.run_model(MCTProject())
 
 
 if __name__ == '__main__':

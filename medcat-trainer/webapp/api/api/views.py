@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 from smtplib import SMTPException
@@ -33,7 +34,15 @@ from .model_cache import get_medcat, get_medcat_from_model_pack_id, get_cached_c
 from .permissions import *
 from .serializers import *
 from .solr_utils import collections_available, search_collection, ensure_concept_searchable
-from .utils import add_annotations, remove_annotations, train_medcat, create_annotation, prep_docs
+from .utils import (
+    add_annotations,
+    create_annotation,
+    documents_for_model_run,
+    prep_docs,
+    remove_annotations,
+    run_project_model,
+    train_medcat,
+)
 
 logger = logging.getLogger(__name__)
 tracer = trace.get_tracer("medcat-trainer")
@@ -369,59 +378,211 @@ def prepare_documents(request):
     return Response({'message': 'Documents prepared successfully'})
 
 
-@api_view(http_method_names=['POST'])
-def prepare_documents_bg(request):
-    user = request.user
-    # Get project id
-    p_id = request.data['project_id']
-    project = ProjectAnnotateEntities.objects.get(id=p_id)
-    docs = Document.objects.filter(dataset=project.dataset)
-
-    # Get docs that have no AnnotatedEntities
-    d_ids = [d.id for d in docs if len(AnnotatedEntity.objects.filter(document=d).filter(project=project)) == 0 or
-             d in project.validated_documents.all()]
-
-    # execute model infer in bg
-    job = prep_docs(p_id, d_ids, user.id)
-    return Response({'bg_job_id': job.id})
+def _request_flag(value, default=True):
+    """Interpret a JSON or form boolean. A missing value keeps ``default``."""
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value != 0
+    if isinstance(value, str):
+        return value.strip().lower() in ('1', 'true', 't', 'yes', 'y')
+    return default
 
 
-@api_view(http_method_names=['GET'])
-def prepare_docs_bg_tasks(_):
-    running_doc_prep_tasks = Task.objects.filter(queue='doc_prep')
-    completed_doc_prep_tasks = CompletedTask.objects.filter(queue='doc_prep')
+def _task_positional_args(task):
+    """Positional args stored on a django-background-task row, or None."""
+    try:
+        parsed = json.loads(task.task_params)
+    except (TypeError, ValueError):
+        return None
+    if isinstance(parsed, (list, tuple)) and parsed and isinstance(parsed[0], (list, tuple)):
+        return list(parsed[0])
+    return None
 
-    def transform_task_params(task_params_str):
-        task_params = json.loads(task_params_str)[0]
-        return {
-            'project': task_params[0],
-            'user_id': task_params[2]
-        }
-    running_tasks = [transform_task_params(task.task_params) for task in running_doc_prep_tasks]
-    complete_tasks = [transform_task_params(task.task_params) for task in completed_doc_prep_tasks]
+
+def _project_id_from_task(task):
+    args = _task_positional_args(task)
+    if not args:
+        return None
+    try:
+        return int(args[0])
+    except (TypeError, ValueError):
+        return None
+
+
+def _doc_prep_tasks_for_project(manager, project_id):
+    project_id = int(project_id)
+    return [
+        task for task in manager.filter(queue='doc_prep').order_by('id')
+        if _project_id_from_task(task) == project_id
+    ]
+
+
+def _task_summary(task):
+    args = _task_positional_args(task) or []
+    user_id = args[2] if len(args) > 2 else None
+    return {'project': _project_id_from_task(task), 'user_id': user_id}
+
+
+def _list_doc_prep_tasks():
+    running_tasks = [_task_summary(task) for task in Task.objects.filter(queue='doc_prep').order_by('id')
+                     if _project_id_from_task(task) is not None]
+    complete_tasks = [_task_summary(task) for task in CompletedTask.objects.filter(queue='doc_prep').order_by('id')
+                      if _project_id_from_task(task) is not None]
     return Response({'running_tasks': running_tasks, 'comp_tasks': complete_tasks})
 
 
-@api_view(http_method_names=['GET', 'DELETE'])
-def prepare_docs_bg_task(request, proj_id):
-    if request.method == 'GET':
-        # state of bg running process as determined by prepared docs
-        try:
-            proj = ProjectAnnotateEntities.objects.get(id=proj_id)
-            prepd_docs_count = proj.prepared_documents.count()
-            ds_total_count = Document.objects.filter(
-                dataset=ProjectAnnotateEntities.objects.get(id=proj_id).dataset.id).count()
-            return Response({'proj_id': proj_id, 'dataset_len': ds_total_count, 'prepd_docs_len': prepd_docs_count})
-        except ObjectDoesNotExist:
-            return HttpResponseBadRequest('No Project found for the given ID')
+def _model_run_status(project):
+    """Progress of a model run, plus whether one is currently queued."""
+    dataset_len = Document.objects.filter(dataset_id=project.dataset_id).count() if project.dataset_id else 0
+    prepared_len = project.prepared_documents.count()
+    remaining = documents_for_model_run(project).count() if project.dataset_id else 0
+    running = _doc_prep_tasks_for_project(Task.objects, project.id)
+    payload = {
+        'proj_id': project.id,
+        'project_id': project.id,
+        'dataset_len': dataset_len,
+        'prepd_docs_len': prepared_len,
+        'documents_remaining': remaining,
+        'bg_job_id': None,
+        'last_error': None,
+    }
+    if running:
+        payload['status'] = 'running'
+        payload['bg_job_id'] = running[-1].id
+        return payload
+
+    completed = _doc_prep_tasks_for_project(CompletedTask.objects, project.id)
+    latest = completed[-1] if completed else None
+    if remaining == 0:
+        payload['status'] = 'complete'
+    elif latest is not None and getattr(latest, 'failed_at', None):
+        payload['status'] = 'failed'
+        payload['last_error'] = getattr(latest, 'last_error', None) or None
     else:
-        running_doc_prep_tasks = {json.loads(task.task_params)[0][0]: task.id
-                                  for task in Task.objects.filter(queue='doc_prep')}
-        if proj_id in running_doc_prep_tasks:
-            Task.objects.filter(id=running_doc_prep_tasks[proj_id]).delete()
-            return Response("Successfully stopped running response")
-        else:
-            return HttpResponseBadRequest('Could not find running BG Process to stop')
+        payload['status'] = 'idle'
+    return payload
+
+
+def _load_project_for_model_run(project_id):
+    try:
+        return ProjectAnnotateEntities.objects.get(id=int(project_id)), None
+    except (ObjectDoesNotExist, TypeError, ValueError):
+        return None, Response({'message': 'No Project found for the given ID'}, status=404)
+
+
+@api_view(http_method_names=['POST', 'GET'])
+@permission_classes([permissions.IsAuthenticated])
+def prepare_documents_bg(request):
+    """Run the project model over its dataset, or list background runs.
+
+    POST queues the same background document preparation as the project list
+    Run action. Pass ``background: false`` to run inside this request.
+
+    Documents that already have annotations, that have been submitted, or that
+    have already been prepared are left unchanged.
+
+    GET returns the running and completed ``doc_prep`` tasks.
+    """
+    if request.method == 'GET':
+        return _list_doc_prep_tasks()
+
+    if 'project_id' not in request.data:
+        return HttpResponseBadRequest('project_id is required')
+
+    project, error = _load_project_for_model_run(request.data.get('project_id'))
+    if error is not None:
+        return error
+    if not is_project_admin(request.user, project):
+        return Response(
+            {'error': 'You do not have permission to run the model for this project'},
+            status=403,
+        )
+    if project.dataset_id is None:
+        return HttpResponseBadRequest('Project has no dataset')
+
+    background = _request_flag(request.data.get('background', True), default=True)
+    doc_ids = list(documents_for_model_run(project).values_list('id', flat=True))
+
+    if background:
+        existing = _doc_prep_tasks_for_project(Task.objects, project.id)
+        if existing:
+            task = existing[-1]
+            args = _task_positional_args(task) or []
+            queued = len(args[1]) if len(args) > 1 and isinstance(args[1], list) else len(doc_ids)
+            return Response({
+                'bg_job_id': task.id,
+                'project_id': project.id,
+                'documents_queued': queued,
+                'status': 'running',
+                'already_running': True,
+                'message': 'Model run already in progress',
+            })
+        job = prep_docs(project.id, doc_ids, request.user.id)
+        logger.info('Queued model run %s for project %s over %s documents', job.id, project.id, len(doc_ids))
+        return Response({
+            'bg_job_id': job.id,
+            'project_id': project.id,
+            'documents_queued': len(doc_ids),
+            'status': 'queued',
+            'already_running': False,
+            'message': 'Model run queued',
+        })
+
+    try:
+        processed = run_project_model(project.id, doc_ids, request.user.id)
+    except Exception as exc:
+        logger.warning('Error running model for project %s', project.id, exc_info=exc)
+        return Response({
+            'message': exc.args[0] if exc.args else 'Internal Server Error',
+            'description': exc.args[1] if len(exc.args) > 1 else '',
+            'project_id': project.id,
+            'status': 'failed',
+        }, status=500)
+
+    payload = _model_run_status(project)
+    payload.update({
+        'documents_queued': len(doc_ids),
+        'documents_prepared': processed,
+        'already_running': False,
+        'message': 'Model run finished',
+    })
+    return Response(payload)
+
+
+@api_view(http_method_names=['GET'])
+@permission_classes([permissions.IsAuthenticated])
+def prepare_docs_bg_tasks(_):
+    return _list_doc_prep_tasks()
+
+
+@api_view(http_method_names=['GET', 'DELETE'])
+@permission_classes([permissions.IsAuthenticated])
+def prepare_docs_bg_task(request, proj_id):
+    """Status of a project model run, or cancel the queued run."""
+    project, error = _load_project_for_model_run(proj_id)
+    if error is not None:
+        return error
+
+    if request.method == 'GET':
+        return Response(_model_run_status(project))
+
+    if not is_project_admin(request.user, project):
+        return Response(
+            {'error': 'You do not have permission to stop the model run for this project'},
+            status=403,
+        )
+    running = _doc_prep_tasks_for_project(Task.objects, project.id)
+    if running:
+        Task.objects.filter(id__in=[task.id for task in running]).delete()
+        return Response({
+            'message': 'Successfully stopped running response',
+            'project_id': project.id,
+            'status': 'stopped',
+        })
+    return HttpResponseBadRequest('Could not find running BG Process to stop')
 
 
 @api_view(http_method_names=['POST'])

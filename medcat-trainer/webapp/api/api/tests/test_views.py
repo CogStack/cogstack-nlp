@@ -197,9 +197,9 @@ class PrepareDocsBgTaskTests(TestCase):
         for i in range(2):
             create_document(self.project, name=f'd-{i}', text=f't-{i}')
 
-    def test_returns_400_for_unknown_project(self):
+    def test_returns_404_for_unknown_project(self):
         resp = self.client.get('/api/prep-docs-bg-tasks/999999/')
-        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.status_code, 404)
 
     def test_returns_doc_counts_for_known_project(self):
         resp = self.client.get(f'/api/prep-docs-bg-tasks/{self.project.id}/')

@@ -113,7 +113,9 @@ Upload CSV or XLSX with at least:
 From the home **Projects** table:
 
 - Open and annotate a project.
-- Run document preparation in the background.
+- Run document preparation in the background. The same run is available from
+  the API (`POST /api/run-model/`) and the Python client (`session.run_model`)
+  once the project exists.
 - View model-loaded state and clear model cache.
 - Save current model state.
 - Select compatible projects and submit a metrics report.

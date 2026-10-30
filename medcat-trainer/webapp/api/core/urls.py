@@ -35,6 +35,9 @@ urlpatterns = [
     path('api/prepare-documents-bg/', api.views.prepare_documents_bg),
     path('api/prep-docs-bg-tasks/', api.views.prepare_docs_bg_tasks),
     path('api/prep-docs-bg-tasks/<int:proj_id>/', api.views.prepare_docs_bg_task),
+    # Same handlers as the project-list Run action, under a stable name.
+    path('api/run-model/', api.views.prepare_documents_bg),
+    path('api/run-model/<int:proj_id>/', api.views.prepare_docs_bg_task),
     path('api/api-token-auth/', auth_views.obtain_auth_token),
     path('admin/', admin.site.urls),
     path('api/api-auth/', include('rest_framework.urls', namespace='rest_framework')),
