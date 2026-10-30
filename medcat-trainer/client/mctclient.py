@@ -239,6 +239,28 @@ class MCTProject(MCTObj):
         return f'{self.id} : {self.name} \t {self.description} \t {self.dataset}'
 
 
+@dataclass
+class MCTModelRun:
+    """A run of a project's model over that project's dataset.
+
+    ``status`` is one of ``queued``, ``running``, ``complete``, ``idle``,
+    ``failed``, or ``stopped``. ``idle`` means no run is in progress and some
+    documents are still unprepared. ``complete`` means every document has
+    either been prepared, annotated, or submitted.
+    """
+    project_id: Union[str, int] = None
+    job_id: Optional[int] = None
+    status: Optional[str] = None
+    dataset_len: Optional[int] = None
+    prepared_docs: Optional[int] = None
+    documents_queued: Optional[int] = None
+    documents_remaining: Optional[int] = None
+    already_running: bool = False
+    last_error: Optional[str] = None
+
+    def __str__(self):
+        return f'{self.project_id} : {self.status} \t job {self.job_id}'
+
 
 @dataclass
 class MCTProjectGroup(MCTObj):
@@ -360,6 +382,12 @@ class MedCATTrainerSession:
         To download annotations for a project:
     >>> projects = session.get_projects()
     >>> annotations = session.get_project_annos(projects[0])
+
+        Once a project exists, run its model over the project dataset. Background
+        runs are picked up by the MedCATTrainer ``process_tasks`` worker. Pass
+        ``background=False`` to run inside the request, or ``wait=True`` to poll
+        until the worker finishes.
+    >>> run = session.run_model(project, wait=True, timeout=3600)
     """
 
     def __init__(self, server=None, username=None, password=None, keycloak_settings=None, use_oidc: bool = False):
@@ -1020,6 +1048,214 @@ class MedCATTrainerSession:
             return resp.json()
         else:
             raise MCTUtilsException(f'Failed to upload projects export: {resp.text}')
+
+    def _resolve_project_id(self, project: Union[MCTProject, int, str]) -> int:
+        """Return a project id from a wrapper, an id, or a unique project name."""
+        if isinstance(project, MCTProject):
+            if project.id is None:
+                if not project.name:
+                    raise MCTUtilsException('Project id is required to run the model')
+                project = project.name
+            else:
+                return int(project.id)
+        if isinstance(project, int) or (isinstance(project, str) and str(project).isdigit()):
+            return int(project)
+        if isinstance(project, str):
+            matches = [item for item in self.get_projects() if item.name == project]
+            if len(matches) != 1:
+                if matches:
+                    raise MCTUtilsException(
+                        f'Multiple projects named {project} were found; pass a project id'
+                    )
+                raise MCTUtilsException(f'Project not found in MedCATTrainer instance: {project}')
+            return int(matches[0].id)
+        raise MCTUtilsException(f'Unsupported project reference: {project}')
+
+    def _response_payload(self, resp) -> Dict[str, Any]:
+        data = None
+        json_fn = getattr(resp, 'json', None)
+        if callable(json_fn):
+            try:
+                data = json_fn()
+            except Exception:
+                data = None
+        if isinstance(data, dict):
+            return data
+        try:
+            parsed = json.loads(getattr(resp, 'text', None) or '{}')
+        except Exception as exc:
+            raise MCTUtilsException('Failed to parse model run response', exc)
+        if isinstance(parsed, dict):
+            return parsed
+        return {}
+
+    def _model_run_from_payload(self, project_id, payload: Dict[str, Any]) -> MCTModelRun:
+        return MCTModelRun(
+            project_id=payload.get('project_id', payload.get('proj_id', project_id)),
+            job_id=payload.get('bg_job_id', payload.get('job_id')),
+            status=payload.get('status'),
+            dataset_len=payload.get('dataset_len'),
+            prepared_docs=payload.get('prepd_docs_len', payload.get('prepared_docs')),
+            documents_queued=payload.get('documents_queued'),
+            documents_remaining=payload.get('documents_remaining'),
+            already_running=bool(payload.get('already_running', False)),
+            last_error=payload.get('last_error'),
+        )
+
+    def run_model(self, project: Union[MCTProject, int, str],
+                  background: bool = True,
+                  wait: bool = False,
+                  timeout: Optional[float] = None,
+                  poll_interval: float = 2.0) -> MCTModelRun:
+        """Run the project's model over its dataset.
+
+        This is the project-list Run action. With ``background=True`` (the default)
+        the server queues a ``doc_prep`` task and returns once it is accepted.
+        The MedCATTrainer worker (``manage.py process_tasks``) performs the run.
+
+        ``wait=True`` polls until that task leaves the queue. ``timeout`` is the
+        number of seconds to wait before raising ``MCTUtilsException``.
+
+        ``background=False`` runs the model inside the HTTP request. Use it for
+        small datasets when a background worker is unavailable. ``timeout`` is
+        then the HTTP timeout.
+
+        Args:
+            project (Union[MCTProject, int, str]): Project wrapper, id, or unique name.
+            background (bool): Queue the run for the worker. Defaults to True.
+            wait (bool): Poll until the queued run finishes. Defaults to False.
+            timeout (float, optional): Wait limit in seconds. Defaults to None.
+            poll_interval (float): Seconds between status polls. Defaults to 2.
+
+        Raises:
+            MCTUtilsException: If the run cannot be started, fails, or times out.
+
+        Returns:
+            MCTModelRun: The queued, finished, or in-progress model run.
+        """
+        self.ensure_token_fresh()
+        project_id = self._resolve_project_id(project)
+        payload = {'project_id': project_id, 'background': background}
+        post_kwargs = {'json': payload, 'headers': self.headers}
+        if not background and timeout is not None:
+            post_kwargs['timeout'] = timeout
+        resp = requests.post(f'{self.server}/api/run-model/', **post_kwargs)
+        if not (200 <= resp.status_code < 300):
+            raise MCTUtilsException(
+                f'Failed to run model for project {project_id}',
+                f'HTTP {resp.status_code}: {getattr(resp, "text", "")[:500]}',
+            )
+        run = self._model_run_from_payload(project_id, self._response_payload(resp))
+        if background and wait:
+            finished = self._wait_for_model_run(project_id, timeout, poll_interval)
+            if finished.job_id is None:
+                finished.job_id = run.job_id
+            if finished.documents_queued is None:
+                finished.documents_queued = run.documents_queued
+            finished.already_running = run.already_running
+            return finished
+        return run
+
+    def get_model_run(self, project: Union[MCTProject, int, str]) -> MCTModelRun:
+        """Return the current model-run status for a project.
+
+        Args:
+            project (Union[MCTProject, int, str]): Project wrapper, id, or unique name.
+
+        Raises:
+            MCTUtilsException: If the status request fails.
+
+        Returns:
+            MCTModelRun: Current dataset progress and run status.
+        """
+        self.ensure_token_fresh()
+        project_id = self._resolve_project_id(project)
+        resp = requests.get(f'{self.server}/api/run-model/{project_id}/', headers=self.headers)
+        if not (200 <= resp.status_code < 300):
+            raise MCTUtilsException(
+                f'Failed to get model run status for project {project_id}',
+                f'HTTP {resp.status_code}: {getattr(resp, "text", "")[:500]}',
+            )
+        return self._model_run_from_payload(project_id, self._response_payload(resp))
+
+    def stop_model_run(self, project: Union[MCTProject, int, str]) -> MCTModelRun:
+        """Stop a queued model run for a project.
+
+        Args:
+            project (Union[MCTProject, int, str]): Project wrapper, id, or unique name.
+
+        Raises:
+            MCTUtilsException: If there is no queued run to stop, or the request fails.
+
+        Returns:
+            MCTModelRun: The stopped run.
+        """
+        self.ensure_token_fresh()
+        project_id = self._resolve_project_id(project)
+        resp = requests.delete(f'{self.server}/api/run-model/{project_id}/', headers=self.headers)
+        if not (200 <= resp.status_code < 300):
+            raise MCTUtilsException(
+                f'Failed to stop model run for project {project_id}',
+                f'HTTP {resp.status_code}: {getattr(resp, "text", "")[:500]}',
+            )
+        payload = self._response_payload(resp)
+        if payload:
+            run = self._model_run_from_payload(project_id, payload)
+            if run.status is None:
+                run.status = 'stopped'
+            return run
+        return MCTModelRun(project_id=project_id, status='stopped')
+
+    def get_model_runs(self) -> Dict[str, List[Dict[str, Any]]]:
+        """List background model runs known to the server.
+
+        Returns:
+            Dict[str, List[Dict[str, Any]]]: ``running`` and ``complete`` lists.
+            Each item has ``project_id`` and ``user_id``.
+
+        Raises:
+            MCTUtilsException: If the list request fails.
+        """
+        self.ensure_token_fresh()
+        resp = requests.get(f'{self.server}/api/run-model/', headers=self.headers)
+        if not (200 <= resp.status_code < 300):
+            raise MCTUtilsException(
+                'Failed to list model runs',
+                f'HTTP {resp.status_code}: {getattr(resp, "text", "")[:500]}',
+            )
+        payload = self._response_payload(resp)
+
+        def _normalise(tasks):
+            return [
+                {
+                    'project_id': task.get('project', task.get('project_id')),
+                    'user_id': task.get('user_id'),
+                }
+                for task in tasks or []
+            ]
+
+        return {
+            'running': _normalise(payload.get('running_tasks')),
+            'complete': _normalise(payload.get('comp_tasks')),
+        }
+
+    def _wait_for_model_run(self, project_id: int, timeout: Optional[float], poll_interval: float) -> MCTModelRun:
+        started = time.monotonic()
+        while True:
+            current = self.get_model_run(project_id)
+            if current.status == 'failed':
+                raise MCTUtilsException(
+                    f'Model run failed for project {project_id}',
+                    current.last_error,
+                )
+            if current.status not in ('queued', 'running'):
+                return current
+            if timeout is not None and (time.monotonic() - started) > timeout:
+                raise MCTUtilsException(
+                    f'Timed out waiting for model run on project {project_id}. '
+                    f'The MedCATTrainer process_tasks worker must be running.'
+                )
+            time.sleep(poll_interval)
 
     def __str__(self) -> str:
         return f'{self.server} \t {self.username} \t {self.password}'
