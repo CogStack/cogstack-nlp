@@ -12,7 +12,7 @@ Examples:
 
 ## Configure meta tasks
 
-Create and manage tasks in Django admin (`/admin`):
+Create and manage task definitions in Django admin (`/admin`):
 
 1. Create **Meta Task Values** (the allowed label options).
 2. Create a **Meta Task**:
@@ -21,7 +21,9 @@ Create and manage tasks in Django admin (`/admin`):
     - default value (optional)
     - description
     - ordering
-3. Attach selected tasks to your project (`Project annotate entities`).
+3. Attach selected tasks to your project from **Project Admin** (`/project-admin`)
+   using the **Meta Annotation Tasks** multi-select (also available for project groups).
+   Django admin (`Project annotate entities`) can still be used for the same attachment.
 
 ## Model-pack predictions vs manual labels
 

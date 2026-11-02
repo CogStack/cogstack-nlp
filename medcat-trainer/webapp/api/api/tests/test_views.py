@@ -16,7 +16,9 @@ from ..models import (
     ConceptDB,
     Document,
     Entity,
+    MetaTask,
     ProjectAnnotateEntities,
+    Relation,
     Vocabulary,
 )
 from ._helpers import (
@@ -333,6 +335,23 @@ class ProjectAdminCloneTests(TestCase):
         self.assertEqual(resp.status_code, 201)
         self.assertEqual(resp.json()['name'], 'clone-proj (Clone)')
 
+    def test_clone_copies_tasks_and_relations(self):
+        task = MetaTask.objects.create(name='Temporality')
+        relation = Relation.objects.create(label='is associated with')
+        self.project.tasks.add(task)
+        self.project.relations.add(relation)
+
+        client = _auth_client(self.member)
+        resp = client.post(
+            f'/api/project-admin/projects/{self.project.id}/clone/',
+            {'name': 'clone-with-tasks'},
+            format='json',
+        )
+        self.assertEqual(resp.status_code, 201, msg=resp.content)
+        clone = ProjectAnnotateEntities.objects.get(name='clone-with-tasks')
+        self.assertIn(task, clone.tasks.all())
+        self.assertIn(relation, clone.relations.all())
+
     def test_clone_returns_404_for_unknown_project(self):
         client = _auth_client(self.member)
         resp = client.post('/api/project-admin/projects/99999/clone/', {}, format='json')
@@ -346,6 +365,90 @@ class ProjectAdminCloneTests(TestCase):
             format='json',
         )
         self.assertEqual(resp.status_code, 403)
+
+
+@override_settings(MEDIA_ROOT='/tmp/mct-tests-views')
+class ProjectAdminMetaTaskSelectionTests(TestCase):
+    def setUp(self):
+        self.user = create_user(username='task-admin')
+        self.client = _auth_client(self.user)
+        self.base = create_basic_project(name='task-base')
+        self.task = MetaTask.objects.create(name='Assertion')
+        self.relation = Relation.objects.create(label='causes')
+
+    def test_create_persists_tasks_and_relations(self):
+        resp = self.client.post(
+            '/api/project-admin/projects/create/',
+            {
+                'name': 'with-meta-tasks',
+                'dataset': self.base.dataset_id,
+                'concept_db': self.base.concept_db_id,
+                'vocab': self.base.vocab_id,
+                'cuis': '',
+                'members': [self.user.id],
+                'cdb_search_filter': [self.base.concept_db_id],
+                'tasks': [self.task.id],
+                'relations': [self.relation.id],
+            },
+            format='json',
+        )
+        self.assertEqual(resp.status_code, 201, msg=resp.content)
+        project = ProjectAnnotateEntities.objects.get(name='with-meta-tasks')
+        self.assertIn(self.task, project.tasks.all())
+        self.assertIn(self.relation, project.relations.all())
+        self.assertEqual(resp.json()['tasks'], [self.task.id])
+        self.assertEqual(resp.json()['relations'], [self.relation.id])
+
+    def test_update_persists_tasks_and_relations(self):
+        project = create_basic_project(name='update-tasks-proj')
+        project.members.add(self.user)
+        other_task = MetaTask.objects.create(name='Experiencer')
+
+        resp = self.client.put(
+            f'/api/project-admin/projects/{project.id}/',
+            {
+                'name': project.name,
+                'dataset': project.dataset_id,
+                'concept_db': project.concept_db_id,
+                'vocab': project.vocab_id,
+                'cuis': '',
+                'members': [self.user.id],
+                'cdb_search_filter': [project.concept_db_id],
+                'tasks': [self.task.id, other_task.id],
+                'relations': [self.relation.id],
+            },
+            format='json',
+        )
+        self.assertEqual(resp.status_code, 200, msg=resp.content)
+        project.refresh_from_db()
+        self.assertEqual(set(project.tasks.values_list('id', flat=True)), {self.task.id, other_task.id})
+        self.assertEqual(list(project.relations.values_list('id', flat=True)), [self.relation.id])
+
+    def test_update_can_clear_tasks_and_relations(self):
+        project = create_basic_project(name='clear-tasks-proj')
+        project.members.add(self.user)
+        project.tasks.add(self.task)
+        project.relations.add(self.relation)
+
+        resp = self.client.put(
+            f'/api/project-admin/projects/{project.id}/',
+            {
+                'name': project.name,
+                'dataset': project.dataset_id,
+                'concept_db': project.concept_db_id,
+                'vocab': project.vocab_id,
+                'cuis': '',
+                'members': [self.user.id],
+                'cdb_search_filter': [project.concept_db_id],
+                'tasks': [],
+                'relations': [],
+            },
+            format='json',
+        )
+        self.assertEqual(resp.status_code, 200, msg=resp.content)
+        project.refresh_from_db()
+        self.assertEqual(project.tasks.count(), 0)
+        self.assertEqual(project.relations.count(), 0)
 
 
 @override_settings(MEDIA_ROOT='/tmp/mct-tests-views')
