@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import json
 import logging
-from collections.abc import Callable
-from typing import Any, Iterable
+from collections.abc import Callable, Iterable
+from typing import Any
 
 from medcat.cdb import CDB
 from medcat.components.types import CoreComponentType
@@ -35,6 +35,7 @@ class LLMLinkConfig(LLMConnectionConfig):
         "'NONE' if none fit.\n\nCONTEXT:\n%s\n\nTERM: %s\n\nCANDIDATES "
         "(cui: name):\n%s"
     )
+    prompt_multiprocess_threads: int = 4
 
 def _extract_cui(raw: str) -> str:
     text = clean_response(raw)
@@ -96,15 +97,12 @@ class LLMLinker(AbstractLLMEntityComponent):
             prompt = self._prep_prompt(text, ent, candidates)
             yield idx, prompt, candidates
 
-    def predict_entities(
-        self, doc: MutableDocument, ents: list[MutableEntity] | None = None
+    def _predict_entities_with_context_sequential(
+        self,
+        ents: list[MutableEntity],
+        all_contexts: Iterable[tuple[int, str, list[tuple[str ,str]]]],
     ) -> list[MutableEntity]:
         linked_ents: list[MutableEntity] = []
-        if ents is None:
-            raise NotImplementedError(
-                "MyLLMLinker only implements the linking step (ents "
-                "required); use MyLLMNER for the NER step.")
-        all_contexts = self._prepare_contexts(doc, ents)
         for ent_idx, prompt, candidates in all_contexts:
             raw = one_chat(
                 self.cnf, self._client,
@@ -113,11 +111,60 @@ class LLMLinker(AbstractLLMEntityComponent):
             cui = _pick_cui(raw, candidates)
             ent = ents[ent_idx]
             if cui is not None:
-                ent.cui = cui  # NOTE: attribute name is a guess - adjust to MutableEntity's real API
-                # we did not do that, really - but for downstream filtering
-                ent.context_similarity = ent.confidence = 1.0
+                self._update_entity(ent, cui)
                 linked_ents.append(ent)
         return linked_ents
+
+    def _update_entity(self, ent: MutableEntity, cui: str) -> None:
+        ent.cui = cui
+        # we did not do that, really - but for downstream filtering
+        ent.context_similarity = ent.confidence = 1.0
+
+    def _predict_entities_with_context_mp(
+        self,
+        ents: list[MutableEntity],
+        all_contexts: Iterable[tuple[int, str, list[tuple[str ,str]]]],
+    ) -> list[MutableEntity]:
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        max_workers = self.cnf.prompt_multiprocess_threads
+        linked_ents: list[MutableEntity | None] = [None for _ in all_contexts]
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # Submit all tasks
+            future_to_id_cands = {
+                executor.submit(
+                    one_chat,
+                    self.cnf,
+                    self._client,
+                    prompt,
+                    self._candidate_schema(cands)): (idx, cands)
+                for idx, prompt, cands in all_contexts}
+
+            # Collect results as they complete
+            for future in as_completed(future_to_id_cands):
+                raw_result = future.result()
+                ent_idx, cands = future_to_id_cands[future]
+                cui = _pick_cui(raw_result, cands)
+                ent = ents[ent_idx]
+                if cui is not None:
+                    self._update_entity(ent, cui)
+                    linked_ents.append(ent)
+        return [e for e in linked_ents if e is not None]
+
+    def predict_entities(
+        self, doc: MutableDocument, ents: list[MutableEntity] | None = None
+    ) -> list[MutableEntity]:
+        if ents is None:
+            raise NotImplementedError(
+                "MyLLMLinker only implements the linking step (ents "
+                "required); use MyLLMNER for the NER step.")
+        all_contexts = self._prepare_contexts(doc, ents)
+        if self.cnf.prompt_multiprocess_threads <= 1:
+            return self._predict_entities_with_context_sequential(
+                ents, all_contexts
+            )
+        return self._predict_entities_with_context_mp(
+            ents, all_contexts
+        )
 
     @classmethod
     def create_new_component(
