@@ -16,8 +16,8 @@ from .base import (
     AbstractLLMEntityComponent,
     LLMConnectionConfig,
     MisconfiguredComponentException,
-    one_chat,
     clean_response,
+    one_chat,
 )
 
 logger = logging.getLogger(__name__)

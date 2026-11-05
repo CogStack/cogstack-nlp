@@ -19,8 +19,8 @@ from .base import (
     LLMConnectionConfig,
     MisconfiguredComponentException,
     UnknownSpanException,
-    one_chat,
     clean_response,
+    one_chat,
 )
 
 logger = logging.getLogger(__name__)
