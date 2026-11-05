@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import logging
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Iterable
 
 from medcat.cdb import CDB
 from medcat.components.types import CoreComponentType
@@ -83,6 +83,19 @@ class LLMLinker(AbstractLLMEntityComponent):
         prompt = self.cnf.prompt % (context, ent.base.text, cand_str)
         return prompt
 
+    def _prepare_contexts(
+        self,
+        doc: MutableDocument,
+        ents: list[MutableEntity],
+    ) -> Iterable[tuple[int, str, list[tuple[str, str]]]]:
+        text = doc.base.text
+        for idx, ent in enumerate(ents):
+            candidates = self.candidate_fn(ent.detected_name)
+            if not candidates:
+                continue
+            prompt = self._prep_prompt(text, ent, candidates)
+            yield idx, prompt, candidates
+
     def predict_entities(
         self, doc: MutableDocument, ents: list[MutableEntity] | None = None
     ) -> list[MutableEntity]:
@@ -91,17 +104,14 @@ class LLMLinker(AbstractLLMEntityComponent):
             raise NotImplementedError(
                 "MyLLMLinker only implements the linking step (ents "
                 "required); use MyLLMNER for the NER step.")
-        text = doc.base.text
-        for ent in ents:
-            candidates = self.candidate_fn(ent.detected_name)
-            if not candidates:
-                continue
-            prompt = self._prep_prompt(text, ent, candidates)
+        all_contexts = self._prepare_contexts(doc, ents)
+        for ent_idx, prompt, candidates in all_contexts:
             raw = one_chat(
                 self.cnf, self._client,
                 prompt, schema=self._candidate_schema(candidates)
             )
             cui = _pick_cui(raw, candidates)
+            ent = ents[ent_idx]
             if cui is not None:
                 ent.cui = cui  # NOTE: attribute name is a guess - adjust to MutableEntity's real API
                 # we did not do that, really - but for downstream filtering
