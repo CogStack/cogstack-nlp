@@ -19,6 +19,7 @@ from .base import (
     LLMConnectionConfig,
     MisconfiguredComponentException,
     UnknownSpanException,
+    one_chat,
 )
 
 logger = logging.getLogger(__name__)
@@ -78,7 +79,9 @@ class LLMNER(AbstractLLMEntityComponent):
         return out
 
     def _call_api_raw(self, text: str) -> list[tuple[str, int, int]]:
-        raw = self._chat(self.cnf.prompt % text)
+        raw = one_chat(
+            self.cnf, self._client,
+            self.cnf.prompt % text)
         return self._parse_csv(raw)
 
     def _get_real_start_end(

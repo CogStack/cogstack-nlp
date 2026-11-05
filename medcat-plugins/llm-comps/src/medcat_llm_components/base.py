@@ -78,6 +78,41 @@ class LLMConnectionConfig(ComponentConfig):
     def get_init_attrs(cls) -> list[str]:
         return ['base_url', 'model']
 
+def one_chat(
+    cnf: LLMConnectionConfig,
+    client: OpenAI,
+    prompt: str,
+    schema: dict[str, Any] | None = None,
+) -> str:
+    """Send `prompt` as a single user message, return the raw text
+    response. `schema`, if given, requests structured output for
+    this call specifically (falls back to freeform if the backend
+    rejects it). Retries transient connection/timeout failures."""
+    structured_output_supported = cnf.use_structured_output
+    use_schema = schema if structured_output_supported else None
+
+    last_exc: Exception | None = None
+    for attempt in range(cnf.retries + 1):
+        try:
+            return _one_call(cnf, client, prompt, use_schema)
+        except _StructuredOutputUnsupported:
+            logger.warning(
+                "%s: backend rejected structured output, falling "
+                "back to freeform for the rest of this session",
+                cnf.comp_name)
+            structured_output_supported = False
+            use_schema = None
+            continue  # retry immediately, don't burn a retry slot on this
+        except (APIConnectionError, APITimeoutError, APIError) as exc:
+            last_exc = exc
+            logger.warning(
+                "%s: LLM call failed (attempt %d/%d): %s",
+                cnf.comp_name, attempt + 1, cnf.retries + 1, exc)
+            if attempt < cnf.retries:
+                time.sleep(cnf.retry_backoff_seconds)
+    assert last_exc is not None
+    raise last_exc
+
 
 def _one_call(
     cnf: LLMConnectionConfig,
@@ -119,35 +154,6 @@ class AbstractLLMEntityComponent(AbstractEntityProvidingComponent, ABC):
         # once a backend tells us it doesn't support structured output,
         # don't keep paying a failed round-trip to rediscover that
         self._structured_output_supported = cnf.use_structured_output
-
-    def _chat(self, prompt: str, schema: dict[str, Any] | None = None) -> str:
-        """Send `prompt` as a single user message, return the raw text
-        response. `schema`, if given, requests structured output for
-        this call specifically (falls back to freeform if the backend
-        rejects it). Retries transient connection/timeout failures."""
-        use_schema = schema if self._structured_output_supported else None
-
-        last_exc: Exception | None = None
-        for attempt in range(self.cnf.retries + 1):
-            try:
-                return _one_call(self.cnf, self._client, prompt, use_schema)
-            except _StructuredOutputUnsupported:
-                logger.warning(
-                    "%s: backend rejected structured output, falling "
-                    "back to freeform for the rest of this session",
-                    self.cnf.comp_name)
-                self._structured_output_supported = False
-                use_schema = None
-                continue  # retry immediately, don't burn a retry slot on this
-            except (APIConnectionError, APITimeoutError, APIError) as exc:
-                last_exc = exc
-                logger.warning(
-                    "%s: LLM call failed (attempt %d/%d): %s",
-                    self.cnf.comp_name, attempt + 1, self.cnf.retries + 1, exc)
-                if attempt < self.cnf.retries:
-                    time.sleep(self.cnf.retry_backoff_seconds)
-        assert last_exc is not None
-        raise last_exc
 
     _FENCE_RE = re.compile(r"^```[a-zA-Z]*\n|\n```$")
     _TABLE_ROW_RE = re.compile(r"^\|.*\|$")

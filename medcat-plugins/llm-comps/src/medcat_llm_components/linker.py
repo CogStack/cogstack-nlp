@@ -16,6 +16,7 @@ from .base import (
     AbstractLLMEntityComponent,
     LLMConnectionConfig,
     MisconfiguredComponentException,
+    one_chat,
 )
 
 logger = logging.getLogger(__name__)
@@ -67,7 +68,10 @@ class LLMLinker(AbstractLLMEntityComponent):
     ) -> str | None:
         cand_str = "\n".join(f"{cui}: {pretty}" for cui, pretty in candidates)
         prompt = self.cnf.prompt % (context, name, cand_str)
-        raw = self._chat(prompt, schema=self._candidate_schema(candidates))
+        raw = one_chat(
+            self.cnf, self._client,
+            prompt, schema=self._candidate_schema(candidates)
+        )
         answer = self._extract_cui(raw)
         valid = {cui for cui, _ in candidates}
         return answer if answer in valid else None
