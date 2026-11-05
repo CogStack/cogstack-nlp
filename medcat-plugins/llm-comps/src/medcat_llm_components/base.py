@@ -79,6 +79,32 @@ class LLMConnectionConfig(ComponentConfig):
         return ['base_url', 'model']
 
 
+def _one_call(
+    cnf: LLMConnectionConfig,
+    client: OpenAI,
+    prompt: str,
+    schema: dict[str, Any] | None,
+) -> str:
+    kwargs: dict[str, Any] = {
+        "model": cnf.model,
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": cnf.temperature,
+        "timeout": cnf.timeout,
+    }
+    if schema is not None:
+        kwargs["response_format"] = {
+            "type": "json_schema",
+            "json_schema": {"name": "response", "schema": schema, "strict": True},
+        }
+    print(" - C w prompt len", len(prompt))
+    try:
+        resp = client.chat.completions.create(**kwargs)
+    except APIError as exc:
+        if schema is not None and _looks_like_unsupported_response_format(exc):
+            raise _StructuredOutputUnsupported from exc
+        raise
+    return resp.choices[0].message.content or ""
+
 class AbstractLLMEntityComponent(AbstractEntityProvidingComponent, ABC):
     """Shared connection / chat / cleanup plumbing for LLM-based components.
 
@@ -104,7 +130,7 @@ class AbstractLLMEntityComponent(AbstractEntityProvidingComponent, ABC):
         last_exc: Exception | None = None
         for attempt in range(self.cnf.retries + 1):
             try:
-                return self._one_call(prompt, use_schema)
+                return _one_call(self.cnf, self._client, prompt, use_schema)
             except _StructuredOutputUnsupported:
                 logger.warning(
                     "%s: backend rejected structured output, falling "
@@ -122,26 +148,6 @@ class AbstractLLMEntityComponent(AbstractEntityProvidingComponent, ABC):
                     time.sleep(self.cnf.retry_backoff_seconds)
         assert last_exc is not None
         raise last_exc
-
-    def _one_call(self, prompt: str, schema: dict[str, Any] | None) -> str:
-        kwargs: dict[str, Any] = {
-            "model": self.cnf.model,
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": self.cnf.temperature,
-            "timeout": self.cnf.timeout,
-        }
-        if schema is not None:
-            kwargs["response_format"] = {
-                "type": "json_schema",
-                "json_schema": {"name": "response", "schema": schema, "strict": True},
-            }
-        try:
-            resp = self._client.chat.completions.create(**kwargs)
-        except APIError as exc:
-            if schema is not None and _looks_like_unsupported_response_format(exc):
-                raise _StructuredOutputUnsupported from exc
-            raise
-        return resp.choices[0].message.content or ""
 
     _FENCE_RE = re.compile(r"^```[a-zA-Z]*\n|\n```$")
     _TABLE_ROW_RE = re.compile(r"^\|.*\|$")
