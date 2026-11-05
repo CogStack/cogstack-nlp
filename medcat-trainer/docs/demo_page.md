@@ -9,7 +9,8 @@ behavior without creating a full annotation project.
 
 - quick model sanity checks
 - ad-hoc text exploration
-- testing concept filters before project setup
+- testing concept filters before project setup (see also [Concepts](concepts.md)
+  for building and exporting CUI filters)
 
 It does **not** persist annotation decisions like a project workflow does.
 
