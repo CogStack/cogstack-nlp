@@ -20,6 +20,7 @@ from .base import (
     MisconfiguredComponentException,
     UnknownSpanException,
     one_chat,
+    clean_response,
 )
 
 logger = logging.getLogger(__name__)
@@ -62,7 +63,7 @@ class LLMNER(AbstractLLMEntityComponent):
         return CoreComponentType.ner
 
     def _parse_csv(self, raw: str) -> list[tuple[str, int, int]]:
-        text = self._clean_response(raw)
+        text = clean_response(raw)
         if not text:
             return []
         reader = csv.DictReader(io.StringIO(text))

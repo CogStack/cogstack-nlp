@@ -17,6 +17,7 @@ from .base import (
     LLMConnectionConfig,
     MisconfiguredComponentException,
     one_chat,
+    clean_response,
 )
 
 logger = logging.getLogger(__name__)
@@ -34,6 +35,19 @@ class LLMLinkConfig(LLMConnectionConfig):
         "'NONE' if none fit.\n\nCONTEXT:\n%s\n\nTERM: %s\n\nCANDIDATES "
         "(cui: name):\n%s"
     )
+
+def _extract_cui(raw: str) -> str:
+    text = clean_response(raw)
+    try:
+        return json.loads(text)["cui"].strip()
+    except (json.JSONDecodeError, KeyError, TypeError):
+        return text  # freeform fallback: model just replied with the CUI/NONE
+
+
+def _pick_cui(raw: str, candidates: list[tuple[str, str]]):
+        answer = _extract_cui(raw)
+        valid = {cui for cui, _ in candidates}
+        return answer if answer in valid else None
 
 
 class LLMLinker(AbstractLLMEntityComponent):
@@ -56,26 +70,6 @@ class LLMLinker(AbstractLLMEntityComponent):
             "required": ["cui"],
         }
 
-    def _extract_cui(self, raw: str) -> str:
-        text = self._clean_response(raw)
-        try:
-            return json.loads(text)["cui"]
-        except (json.JSONDecodeError, KeyError, TypeError):
-            return text  # freeform fallback: model just replied with the CUI/NONE
-
-    def _pick_cui(
-        self, context: str, name: str, candidates: list[tuple[str, str]]
-    ) -> str | None:
-        cand_str = "\n".join(f"{cui}: {pretty}" for cui, pretty in candidates)
-        prompt = self.cnf.prompt % (context, name, cand_str)
-        raw = one_chat(
-            self.cnf, self._client,
-            prompt, schema=self._candidate_schema(candidates)
-        )
-        answer = self._extract_cui(raw)
-        valid = {cui for cui, _ in candidates}
-        return answer if answer in valid else None
-
     def predict_entities(
         self, doc: MutableDocument, ents: list[MutableEntity] | None = None
     ) -> list[MutableEntity]:
@@ -91,7 +85,14 @@ class LLMLinker(AbstractLLMEntityComponent):
                 continue
             start = max(0, ent.base.start_char_index - self.cnf.context_window)
             end = min(len(text), ent.base.end_char_index + self.cnf.context_window)
-            cui = self._pick_cui(text[start:end], ent.base.text, candidates)
+            cand_str = "\n".join(f"{cui}: {pretty}" for cui, pretty in candidates)
+            context = text[start:end]
+            prompt = self.cnf.prompt % (context, ent.base.text, cand_str)
+            raw = one_chat(
+                self.cnf, self._client,
+                prompt, schema=self._candidate_schema(candidates)
+            )
+            cui = _pick_cui(raw, candidates)
             if cui is not None:
                 ent.cui = cui  # NOTE: attribute name is a guess - adjust to MutableEntity's real API
                 # we did not do that, really - but for downstream filtering
