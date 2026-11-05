@@ -101,6 +101,10 @@ session = MedCATTrainerSession(
 - `get_projects()`
 - `get_datasets()`
 - `get_project_annos(projects)`
+- `run_model(project, background=True, wait=False, timeout=None)`
+- `get_model_run(project)`
+- `stop_model_run(project)`
+- `get_model_runs()`
 
 Each method returns the corresponding object or a list of objects.
 

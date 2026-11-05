@@ -38,6 +38,31 @@ Modern project-admin UI uses dedicated endpoints:
 - `POST /api/project-admin/projects/<project_id>/clone/`
 - `POST /api/project-admin/projects/<project_id>/reset/`
 
+## Run a model over a project dataset
+
+Once a project has a dataset and a model (model pack, CDB + vocab, or a remote
+model service), run that model to create the initial annotations:
+
+- `POST /api/run-model/` with `{"project_id": <id>}` queues the run. The
+  `process_tasks` worker performs it. The response includes `bg_job_id`,
+  `documents_queued`, and `status` (`queued`).
+- `POST /api/run-model/` with `{"project_id": <id>, "background": false}` runs
+  the model in the request and returns `status: complete`.
+- `GET /api/run-model/<project_id>/` returns `dataset_len`, `prepd_docs_len`,
+  `documents_remaining`, and `status` (`running`, `complete`, `idle`, or `failed`).
+- `DELETE /api/run-model/<project_id>/` stops a queued run.
+- `GET /api/run-model/` lists running and completed background runs.
+
+`/api/prepare-documents-bg/` and `/api/prep-docs-bg-tasks/` are the same
+handlers. The project list Run button uses those paths.
+
+The caller must be allowed to administer the project (staff, a project member,
+or a project-group administrator). Documents that already have annotations,
+have been submitted, or have already been prepared are left unchanged. Resetting
+a project clears that state, so a later run includes those documents again.
+
+The Python client wraps this as `session.run_model(project)`.
+
 ## Metrics APIs
 
 - `GET/POST /api/metrics-job/` (list jobs / submit new report)
