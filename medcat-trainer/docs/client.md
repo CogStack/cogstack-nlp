@@ -50,6 +50,11 @@ project = session.create_project(
     dataset=ds,
     modelpack=model_packs[0],
 )
+
+# Run the project model over the dataset. Background runs need the
+# MedCATTrainer process_tasks worker. background=False runs inside the request.
+run = session.run_model(project, wait=True, timeout=3600)
+print(run.status, run.prepared_docs, run.dataset_len)
 ```
 
 ## Project groups
@@ -96,6 +101,10 @@ required.
 - `get_datasets()`
 - `get_project_annos(projects)`
 - `upload_projects_export(...)`
+- `run_model(project, background=True, wait=False, timeout=None)`
+- `get_model_run(project)`
+- `stop_model_run(project)`
+- `get_model_runs()`
 
 ## Notes
 
@@ -105,3 +114,8 @@ required.
   object or resolved by name.
 - See [Project Groups](project_group_admin.md) for the UI workflow these client
   calls mirror.
+- `run_model` accepts a project object, id, or unique name. It runs the
+  configured model over dataset documents that are still unprepared.
+  Submitted documents, documents that already have annotations, and documents
+  that have already been prepared are left unchanged. `wait=True` polls until
+  the background worker finishes.
