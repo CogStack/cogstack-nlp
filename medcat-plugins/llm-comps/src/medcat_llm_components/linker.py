@@ -70,6 +70,19 @@ class LLMLinker(AbstractLLMEntityComponent):
             "required": ["cui"],
         }
 
+    def _prep_prompt(
+        self,
+        text: str,
+        ent: MutableEntity,
+        candidates: list[tuple[str, str]],
+    ) -> str:
+        start = max(0, ent.base.start_char_index - self.cnf.context_window)
+        end = min(len(text), ent.base.end_char_index + self.cnf.context_window)
+        cand_str = "\n".join(f"{cui}: {pretty}" for cui, pretty in candidates)
+        context = text[start:end]
+        prompt = self.cnf.prompt % (context, ent.base.text, cand_str)
+        return prompt
+
     def predict_entities(
         self, doc: MutableDocument, ents: list[MutableEntity] | None = None
     ) -> list[MutableEntity]:
@@ -83,11 +96,7 @@ class LLMLinker(AbstractLLMEntityComponent):
             candidates = self.candidate_fn(ent.detected_name)
             if not candidates:
                 continue
-            start = max(0, ent.base.start_char_index - self.cnf.context_window)
-            end = min(len(text), ent.base.end_char_index + self.cnf.context_window)
-            cand_str = "\n".join(f"{cui}: {pretty}" for cui, pretty in candidates)
-            context = text[start:end]
-            prompt = self.cnf.prompt % (context, ent.base.text, cand_str)
+            prompt = self._prep_prompt(text, ent, candidates)
             raw = one_chat(
                 self.cnf, self._client,
                 prompt, schema=self._candidate_schema(candidates)
