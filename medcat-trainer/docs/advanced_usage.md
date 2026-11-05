@@ -37,6 +37,7 @@ Modern project-admin UI uses dedicated endpoints:
 - `GET/PUT/DELETE /api/project-admin/projects/<project_id>/`
 - `POST /api/project-admin/projects/<project_id>/clone/`
 - `POST /api/project-admin/projects/<project_id>/reset/`
+- `POST /api/project-groups/` creates a project group and, by default, one annotation project per annotator
 
 ## Metrics APIs
 

@@ -13,23 +13,30 @@ Before first startup in production-like environments, set:
 If not set, MedCATtrainer defaults to `admin` / `admin`, which is not suitable
 for production.
 
-## 2) Sign in and create operational admin users
+## 2) Sign in
 
-You can manage users from:
+Staff and superuser accounts see a cog icon at the top-right of the header.
+That opens **Project Administration** (`/project-admin`), used to set up
+users, datasets, model packs, projects, and project groups. See
+[Project Administration](project_admin.md).
 
-- **Project Admin UI** (`/project-admin`) for day-to-day project operations
-- **Django Admin** (`/admin`) for full platform administration
+Django Admin (`/admin`) remains the place for full platform administration,
+including passwords and actions this screen does not cover.
 
-In Django admin (`/admin`), create at least one dedicated administrator account
-and grant:
+Create at least one dedicated administrator and grant:
 
-- `Staff status` for admin access
-- `Superuser status` for full unrestricted access
+- `Staff status`, so the account can open the cog icon
+- `Superuser status`, for unrestricted access, including Django admin
 
 ## 3) Create annotator users
 
-Create users for annotators and add them to project membership lists.
-Annotators do not need staff/superuser flags.
+Add annotators from the **Users** tab on Project Administration, then add
+them to a project or project group. Annotators do not need staff or
+superuser flags.
+
+The password field on that form is not stored. Set each password in Django
+admin (`/admin` -> **Users**), or through the password-reset flow, before
+the person signs in.
 
 ## 4) Remove or rotate bootstrap credentials
 
@@ -42,7 +49,7 @@ After creating named administrator accounts:
 
 When `USE_OIDC=1`, user permissions are mapped from IdP roles:
 
-- `medcattrainer_superuser` -> Django superuser + staff
-- `medcattrainer_staff` -> Django staff
+- `medcattrainer_superuser` -> Django superuser + staff. This role shows the cog icon.
+- `medcattrainer_staff` -> Django staff. This role does not show the cog icon.
 
 Ensure role assignment is correct in Keycloak before onboarding users.

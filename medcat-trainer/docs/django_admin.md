@@ -1,9 +1,13 @@
 # Django Admin
 
 The **Django Admin** (`/admin`) provides advanced actions and low-level data
-management that are not available in the Project Admin UI (`/project-admin`).
+management that are not available from the cog icon
+([Project Administration](project_admin.md), `/project-admin`).
 
-These include:
+Use it to edit an existing **project group** and push those settings onto its
+projects, to attach projects that were created separately, to set user
+passwords, and for the actions below. Creating a project or a new project
+group is done from the cog icon.
 
 
 

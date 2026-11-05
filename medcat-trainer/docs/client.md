@@ -67,12 +67,15 @@ project = session.create_project(
 - `get_meta_tasks()`
 - `get_rel_tasks()`
 - `get_projects()`
+- `create_project_group(...)`
+- `get_project_groups()`
 - `get_datasets()`
 - `get_project_annos(projects)`
 - `upload_projects_export(...)`
 
 ## Notes
 
-- `create_project` expects **either** `modelpack` **or** `concept_db + vocab`.
+- `create_project` and `create_project_group` expect **either** `modelpack` **or** `concept_db + vocab`.
+- `create_project_group` creates one annotation project per annotator when `create_associated_projects` is left at its default, `True`.
 - Wrapper objects (`MCTDataset`, `MCTConceptDB`, etc.) can often be passed by
   object or resolved by name.
