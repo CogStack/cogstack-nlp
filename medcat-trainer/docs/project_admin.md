@@ -77,6 +77,10 @@ Pick one of:
 | **Incl. Sub-concepts**         | Include all concepts that are descendants to the selected concepts below.
 | **Concept filter (optional)**| Add concept filters to limit available concepts for annotation by specifying a list of CUIs (Concept Unique Identifiers). Only these concepts will be available when annotating. |
 
+Concept filters can be built interactively in the [Concepts](concepts.md) tab
+(`/model-explore`) and uploaded here as a JSON CUI file, pasted as a
+comma-separated list, or assembled with the concept picker.
+
 ### Member Setting
 | Field                        | Description                                                                 |
 |------------------------------|-----------------------------------------------------------------------------|
