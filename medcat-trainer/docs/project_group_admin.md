@@ -15,13 +15,22 @@ Use a group when you need:
 
 ## Creating a Project Group
 
-Create groups from Django admin (`/admin` -> **Project groups**).
+Prefer **Project Admin** (`/project-admin`) for day-to-day group creation.
 
-The key option is **Create Associated Projects**.
+1. Open `/project-admin` and go to the **Projects** tab.
+2. Select **+ Create New Project**, then switch the form type to **Project Group**.
+3. Configure shared settings (dataset, model, concept filters, tasks, and so on).
+4. Under **Group Members**:
+   - **Administrators** can see and manage every project in the group (you are added automatically).
+   - **Annotators** each receive their own annotation project when associated projects are created.
+5. Leave **Create an annotation project for each annotator** checked unless you only want the group shell.
+6. Save.
 
-### `create_associated_projects = true`
+You can still create or edit groups in Django admin (`/admin` -> **Project groups**) when you need low-level control.
 
-On initial save, MedCATtrainer automatically creates one
+### `create_associated_projects = true` (default)
+
+On save, MedCATtrainer automatically creates one
 `ProjectAnnotateEntities` per selected annotator.
 
 Naming pattern:
@@ -52,10 +61,14 @@ home page and inspect projects within each group.
 Regular annotators typically work with individual projects and may not need the
 group view.
 
+## Automating with the Python client
+
+`mctclient` can create and list project groups for provisioning scripts and CI.
+See [Python Client](client.md).
+
 ## Best practices
 
 - For inter-annotator agreement studies, disable `train_model_on_submit` in
   all group projects.
 - Keep naming conventions consistent for easy report comparison.
 - Prefer one shared configuration template per annotation campaign.
-
