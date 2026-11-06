@@ -41,6 +41,7 @@ nav:
       - 3. Supervised training on model: introductory/basic/3._Supervised_training_on_model.ipynb
       - 4. Evaluating performance on dataset: introductory/basic/4._Evaluating_performance_on_dataset.ipynb
       - 5. Running models on large datasets: introductory/basic/5._Running_model_on_large_datasets.ipynb
+      - 6. Running DeID model: introductory/basic/6._Run_DeID_model_on_data.ipynb
     - MetaCAT:
       - README: introductory/meta/README.md
       - 1. Add a MetaCat to a Model: introductory/meta/1._Add_a_MetaCat_to_a_Model.ipynb
