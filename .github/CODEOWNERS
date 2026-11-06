@@ -1,0 +1,26 @@
+# Code owners for each top-level directory.
+#
+# Default owner is @CogStack/cogstack-development. A directory lists individual
+# members only when at least three current members of that team have committed
+# to it in the 12 months ending 2026-11-06. Those members are ordered by commit
+# count in that window. Bots and contributors outside the team are not counted.
+# The last matching pattern takes precedence. The catch-all covers root files.
+
+*                                @CogStack/cogstack-development
+
+/.devcontainer/                  @CogStack/cogstack-development
+/.github/                        @mart-r @tomolopolis @vladd-bit @adam-sutton-1992
+/anoncat-demo-app/               @CogStack/cogstack-development
+/cogstack-es/                    @CogStack/cogstack-development
+/medcat/                         @mart-r @adam-sutton-1992 @vladd-bit
+/medcat-den/                     @CogStack/cogstack-development @mart-r
+/medcat-model-distributor/       @CogStack/cogstack-development @mart-r
+/medcat-plugins/                 @CogStack/cogstack-development @mart-r
+/medcat-scripts/                 @CogStack/cogstack-development @mart-r
+/medcat-service/                 @CogStack/cogstack-development @vladd-bitt
+/medcat-test-models/             @CogStack/cogstack-development @mart-r
+/medcat-trainer/                 @tomolopolis @mart-r @vladd-bit
+/medcat-tutorials/               @CogStack/cogstack-development
+/medcat-v2/                      @CogStack/cogstack-development
+/media/                          @CogStack/cogstack-development
+/v1/                             @mart-r @shubham-s-agarwal @vladd-bit @tomolopolis
