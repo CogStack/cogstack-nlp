@@ -110,6 +110,18 @@ describe('ProjectList.vue', () => {
     )
   })
 
+  it('defaults status filter to Annotating', async () => {
+    const wrapper = mountList()
+    await flushPromises()
+    const vm = wrapper.vm as {
+      statusFilter: string
+      filteredProjectItems: typeof sampleProjects
+    }
+    expect(vm.statusFilter).toBe('A')
+    expect(vm.filteredProjectItems).toHaveLength(1)
+    expect(vm.filteredProjectItems[0].project_status).toBe('A')
+  })
+
   it('clearFilters resets filter state', async () => {
     const wrapper = mountList()
     await flushPromises()

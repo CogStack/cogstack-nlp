@@ -366,7 +366,7 @@ export default {
       searchQuery: '',
       debouncedSearchQuery: '',
       searchDebounceTimer: null,
-      statusFilter: ALL_FILTER,
+      statusFilter: 'A',
       modeFilter: ALL_FILTER,
       sortBy: 'last_modified',
       sortOrder: 'desc',
