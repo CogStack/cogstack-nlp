@@ -23,7 +23,7 @@ from .base import (
 logger = logging.getLogger(__name__)
 
 
-CandidateFn = Callable[[str], list[tuple[str, str]]]
+CandidateFn = Callable[[str], list[tuple[str, str, str]]]
 
 
 class LLMLinkConfig(LLMConnectionConfig):
@@ -45,9 +45,9 @@ def _extract_cui(raw: str) -> str:
         return text  # freeform fallback: model just replied with the CUI/NONE
 
 
-def _pick_cui(raw: str, candidates: list[tuple[str, str]]):
+def _pick_cui(raw: str, candidates: list[tuple[str, str, str]]):
         answer = _extract_cui(raw)
-        valid = {cui for cui, _ in candidates}
+        valid = {cui for cui, _, _ in candidates}
         return answer if answer in valid else None
 
 
@@ -62,11 +62,11 @@ class LLMLinker(AbstractLLMEntityComponent):
     def get_type(self) -> CoreComponentType:
         return CoreComponentType.linking
 
-    def _candidate_schema(self, candidates: list[tuple[str, str]]) -> dict[str, Any]:
+    def _candidate_schema(self, candidates: list[tuple[str, str, str]]) -> dict[str, Any]:
         return {
             "type": "object",
             "properties": {
-                "cui": {"type": "string", "enum": [c for c, _ in candidates] + ["NONE"]},
+                "cui": {"type": "string", "enum": [c for c, _, _ in candidates] + ["NONE"]},
             },
             "required": ["cui"],
         }
@@ -75,11 +75,11 @@ class LLMLinker(AbstractLLMEntityComponent):
         self,
         text: str,
         ent: MutableEntity,
-        candidates: list[tuple[str, str]],
+        candidates: list[tuple[str, str, str]],
     ) -> str:
         start = max(0, ent.base.start_char_index - self.cnf.context_window)
         end = min(len(text), ent.base.end_char_index + self.cnf.context_window)
-        cand_str = "\n".join(f"{cui}: {pretty}" for cui, pretty in candidates)
+        cand_str = "\n".join(f"{cui}: {pretty}" for cui, pretty, status in candidates)
         context = text[start:end]
         prompt = self.cnf.prompt % (context, ent.base.text, cand_str)
         return prompt
@@ -88,7 +88,7 @@ class LLMLinker(AbstractLLMEntityComponent):
         self,
         doc: MutableDocument,
         ents: list[MutableEntity],
-    ) -> Iterable[tuple[int, str, list[tuple[str, str]]]]:
+    ) -> Iterable[tuple[int, str, list[tuple[str, str, str]]]]:
         text = doc.base.text
         for idx, ent in enumerate(ents):
             candidates = self.candidate_fn(ent.detected_name)
@@ -100,7 +100,7 @@ class LLMLinker(AbstractLLMEntityComponent):
     def _predict_entities_with_context_sequential(
         self,
         ents: list[MutableEntity],
-        all_contexts: Iterable[tuple[int, str, list[tuple[str ,str]]]],
+        all_contexts: Iterable[tuple[int, str, list[tuple[str, str ,str]]]],
     ) -> list[MutableEntity]:
         linked_ents: list[MutableEntity] = []
         for ent_idx, prompt, candidates in all_contexts:
@@ -123,7 +123,7 @@ class LLMLinker(AbstractLLMEntityComponent):
     def _predict_entities_with_context_mp(
         self,
         ents: list[MutableEntity],
-        all_contexts: Iterable[tuple[int, str, list[tuple[str ,str]]]],
+        all_contexts: Iterable[tuple[int, str, list[tuple[str, str ,str]]]],
     ) -> list[MutableEntity]:
         from concurrent.futures import ThreadPoolExecutor, as_completed
         max_workers = self.cnf.prompt_multiprocess_threads
@@ -176,11 +176,11 @@ class LLMLinker(AbstractLLMEntityComponent):
         model_load_path: str | None,
     ) -> LLMLinker:
 
-        def get_candidates(name: str) -> list[tuple[str, str]]:
+        def get_candidates(name: str) -> list[tuple[str, str, str]]:
             if name not in cdb.name2info:
                 return []
-            return [(cui, cdb.get_name(cui)) for
-                    cui in cdb.name2info[name]['per_cui_status']]
+            return [(cui, cdb.get_name(cui), status) for
+                    cui, status in cdb.name2info[name]['per_cui_status'].items()]
         if not isinstance(cnf, Linking):
             raise MisconfiguredComponentException(
                 "Wrong type of config on config.linking - "
