@@ -5,12 +5,15 @@ import logging
 from collections.abc import Callable, Iterable
 from typing import Any
 
+from openai import OpenAI
+
 from medcat.cdb import CDB
 from medcat.components.types import CoreComponentType
 from medcat.config.config import ComponentConfig, Linking
 from medcat.tokenizing.tokenizers import BaseTokenizer
 from medcat.tokenizing.tokens import MutableDocument, MutableEntity
 from medcat.vocab import Vocab
+from medcat.utils.defaults import StatusTypes
 
 from .base import (
     AbstractLLMEntityComponent,
@@ -49,6 +52,20 @@ def _pick_cui(raw: str, candidates: list[tuple[str, str, str]]):
         answer = _extract_cui(raw)
         valid = {cui for cui, _, _ in candidates}
         return answer if answer in valid else None
+
+
+def _one_chat(
+    cnf: LLMLinkConfig,
+    client: OpenAI,
+    prompt: str,
+    schema: dict[str, Any] | None,
+    candidates: list[tuple[str, str, str]],
+) -> str:
+    if len(candidates) == 1 and candidates[0][2] not in StatusTypes.DO_DISAMBUGATION:
+        return candidates[0][0]
+    return one_chat(
+        cnf, client, prompt, schema
+    )
 
 
 class LLMLinker(AbstractLLMEntityComponent):
@@ -104,9 +121,10 @@ class LLMLinker(AbstractLLMEntityComponent):
     ) -> list[MutableEntity]:
         linked_ents: list[MutableEntity] = []
         for ent_idx, prompt, candidates in all_contexts:
-            raw = one_chat(
+            raw = _one_chat(
                 self.cnf, self._client,
-                prompt, schema=self._candidate_schema(candidates)
+                prompt, schema=self._candidate_schema(candidates),
+                candidates=candidates,
             )
             cui = _pick_cui(raw, candidates)
             ent = ents[ent_idx]
@@ -132,11 +150,13 @@ class LLMLinker(AbstractLLMEntityComponent):
             # Submit all tasks
             future_to_id_cands = {
                 executor.submit(
-                    one_chat,
+                    _one_chat,
                     self.cnf,
                     self._client,
                     prompt,
-                    self._candidate_schema(cands)): (idx, cands)
+                    self._candidate_schema(cands),
+                    cands,
+                ): (idx, cands)
                 for idx, prompt, cands in all_contexts}
 
             # Collect results as they complete
