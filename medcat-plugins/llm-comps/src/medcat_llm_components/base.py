@@ -131,7 +131,6 @@ def _one_call(
             "type": "json_schema",
             "json_schema": {"name": "response", "schema": schema, "strict": True},
         }
-    print(" - C w prompt len", len(prompt))
     try:
         resp = client.chat.completions.create(**kwargs)
     except APIError as exc:
@@ -139,6 +138,7 @@ def _one_call(
             raise _StructuredOutputUnsupported from exc
         raise
     return resp.choices[0].message.content or ""
+
 
 class AbstractLLMEntityComponent(AbstractEntityProvidingComponent, ABC):
     """Shared connection / chat / cleanup plumbing for LLM-based components.
@@ -166,6 +166,7 @@ def clean_response(raw: str) -> str:
     # models wrap output in ```csv/```json fences despite instructions not to
     text = _FENCE_RE.sub("", text).strip()
     return _strip_markdown_table(text)
+
 
 def _strip_markdown_table(text: str) -> str:
     r"""Small/instruction-weak models sometimes wrap the requested
