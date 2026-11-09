@@ -37,11 +37,8 @@ jobs:
         sudo apt-get clean
         df -h # Optional: Check space before build
 
-    - name: Set up Docker Compose
-      run: sudo apt-get update && sudo apt-get install -y docker compose
-
     - name: Build and start containers
-      run: docker compose -f docker compose-test.yml up -d --build
+      run: docker compose -f docker-compose-test.yml up -d --build
 
     - name: Run integration test
       run: ./tests/test_integration.sh  --model-file webapp/manage.py
@@ -53,7 +50,7 @@ jobs:
         docker compose logs medcatweb | grep -v "Applying auth.0007_alter_validators_add_error_messages" | grep -i 'error' && exit 1 || true
 
     - name: Tear down
-      run: docker compose -f docker compose-test.yml down
+      run: docker compose -f docker-compose-test.yml down
 
   publish-to-docker-hub:
     runs-on: ubuntu-latest
