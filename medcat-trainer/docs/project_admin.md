@@ -287,7 +287,13 @@ Annotators only need a username and a password set in Django admin. Leave
 users.
 
 ## Where to go next
-
+- Open and annotate a project.
+- Run document preparation in the background. The same run is available from
+  the API (`POST /api/run-model/`) and the Python client (`session.run_model`)
+  once the project exists.
+- View model-loaded state and clear model cache.
+- Save current model state.
+- Select compatible projects and submit a metrics report.
 - Annotate from the home **Projects** list. See [Annotator Guide](annotator_guide.md).
 - Open a group from the home **Project Groups** tab. See [Project Groups](project_group_admin.md).
 - Export annotations, import concepts by hand, and edit a group after creation in [Django Admin](django_admin.md).

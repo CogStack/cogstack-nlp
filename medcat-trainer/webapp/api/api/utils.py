@@ -419,25 +419,55 @@ def train_medcat(cat, project, document):
             cat.config.components.linking.filters.cuis_exclude = set()
         cat.config.components.linking.filters.cuis_exclude.add(cui)
 
-@background(schedule=1, queue='doc_prep')
-def prep_docs(project_id: List[int], doc_ids: List[int], user_id: int):
-    user = User.objects.get(id=user_id)
-    project = ProjectAnnotateEntities.objects.get(id=project_id)
-    docs = Document.objects.filter(id__in=doc_ids)
-
-    # Get CUI filters
+def project_cui_filters(project) -> set:
+    """CUIs configured on the project, from the text list and the optional JSON file."""
     cuis = set()
-    if project.cuis is not None and project.cuis:
-        cuis = set([str(cui).strip() for cui in project.cuis.split(",")])
-    if project.cuis_file is not None and project.cuis_file:
+    if project.cuis:
+        cuis = {str(cui).strip() for cui in project.cuis.split(',') if str(cui).strip()}
+    if project.cuis_file:
         try:
-            cuis.update(json.load(open(project.cuis_file.path)))
+            with open(project.cuis_file.path) as cui_file:
+                cuis.update(json.load(cui_file))
         except FileNotFoundError:
             logger.warning('Missing CUI filter file for project %s', project.id)
+    return cuis
+
+
+def documents_for_model_run(project):
+    """Documents the project model still needs to be run over.
+
+    A document is ready for a model run when it belongs to the project dataset,
+    has no annotations yet, has not been submitted, and has not already been
+    prepared. Submitted documents and documents that already have annotations
+    are left unchanged.
+    """
+    annotated_ids = AnnotatedEntity.objects.filter(project=project).values('document_id')
+    validated_ids = project.validated_documents.values('id')
+    prepared_ids = project.prepared_documents.values('id')
+    return (
+        Document.objects.filter(dataset=project.dataset)
+        .exclude(id__in=annotated_ids)
+        .exclude(id__in=validated_ids)
+        .exclude(id__in=prepared_ids)
+        .order_by('id')
+    )
+
+
+def run_model_over_documents(project, user, docs) -> int:
+    """Run the project model over ``docs`` and store the predictions.
+
+    Each document is committed on its own, then marked prepared. Returns the
+    number of documents processed.
+    """
+    docs = list(docs)
+    if not docs:
+        logger.info('No documents left to prepare for project %s', project.id)
+        return 0
+
+    cuis = project_cui_filters(project)
 
     if project.use_model_service:
-        # Use remote model service
-        logger.info('Using remote model service in bg process for project: %s', project.id)
+        logger.info('Using remote model service for project: %s', project.id)
         filters = SimpleFilters(cuis=cuis)
         for doc in docs:
             logger.info('Running remote MedCAT service for project %s:%s over doc: %s',
@@ -455,20 +485,15 @@ def prep_docs(project_id: List[int], doc_ids: List[int], user_id: int):
                                 existing_annotations=anns)
             project.prepared_documents.add(doc)
     else:
-        # Use local medcat model
-        logger.info('Loading CAT object in bg process for project: %s', project.id)
+        logger.info('Loading CAT object for project: %s', project.id)
         cat = get_medcat(project=project, addons=["meta_cat"])
-
-        # Set CAT filters
         cat.config.components.linking.filters.cuis = cuis
+        deid = DeIdModel(cat) if project.deid_model_annotation else None
 
         for doc in docs:
-            logger.info('Running MedCAT model for project %s:%s over doc: %s', project.id, project.name, doc.id)
-            if not project.deid_model_annotation:
-                spacy_doc = cat(doc.text)
-            else:
-                deid = DeIdModel(cat)
-                spacy_doc = deid(doc.text)
+            logger.info('Running MedCAT model for project %s:%s over doc: %s',
+                        project.id, project.name, doc.id)
+            spacy_doc = deid(doc.text) if deid is not None else cat(doc.text)
             anns = AnnotatedEntity.objects.filter(document=doc).filter(project=project)
             with transaction.atomic():
                 add_annotations(spacy_doc=spacy_doc,
@@ -478,9 +503,27 @@ def prep_docs(project_id: List[int], doc_ids: List[int], user_id: int):
                                 cat=cat,
                                 existing_annotations=anns)
             project.prepared_documents.add(doc)
+
     project.save()
-    logger.info('Prepared all docs for project: %s, docs processed: %s',
-                project.id, project.prepared_documents)
+    logger.info('Prepared documents for project %s, docs processed: %s', project.id, len(docs))
+    return len(docs)
+
+
+def run_project_model(project_id: int, doc_ids: List[int], user_id: int) -> int:
+    """Load the project and user, then run the model over ``doc_ids``.
+
+    This is the body of the ``doc_prep`` background task. Calling it directly
+    runs the model in the current process.
+    """
+    user = User.objects.get(id=user_id)
+    project = ProjectAnnotateEntities.objects.get(id=project_id)
+    docs = Document.objects.filter(id__in=doc_ids).order_by('id')
+    return run_model_over_documents(project, user, docs)
+
+
+@background(schedule=1, queue='doc_prep')
+def prep_docs(project_id: int, doc_ids: List[int], user_id: int):
+    run_project_model(project_id, doc_ids, user_id)
 
 
 @lru_cache(maxsize=8)

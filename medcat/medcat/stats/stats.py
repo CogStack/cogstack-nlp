@@ -121,7 +121,6 @@ class Metrics(BaseModel):
     overall: OverallMetrics
     per_cui: dict[str, CUIMetrics] = Field(default_factory=dict)
 
-
 class ModeStats(BaseModel):
     """Accumulated state and calculated metrics for one evaluation mode."""
 
