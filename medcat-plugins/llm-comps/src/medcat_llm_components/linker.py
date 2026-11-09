@@ -35,7 +35,8 @@ class LLMLinkConfig(LLMConnectionConfig):
     prompt: str = (
         "Given the surrounding text and a medical term found in it, pick "
         "the single best matching concept from the candidates below, or "
-        "'NONE' if none fit.\n\nCONTEXT:\n%s\n\nTERM: %s\n\nCANDIDATES "
+        "'NONE' if none fit. Only return the specific concept ID and "
+        "nothing else.\n\nCONTEXT:\n%s\n\nTERM: %s\n\nCANDIDATES "
         "(cui: name):\n%s"
     )
     prompt_multiprocess_threads: int = 4
