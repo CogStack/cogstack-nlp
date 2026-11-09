@@ -127,7 +127,7 @@ class LLMLinker(AbstractLLMEntityComponent):
     ) -> list[MutableEntity]:
         from concurrent.futures import ThreadPoolExecutor, as_completed
         max_workers = self.cnf.prompt_multiprocess_threads
-        linked_ents: list[MutableEntity | None] = [None for _ in all_contexts]
+        linked_ents: list[MutableEntity] = []
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             # Submit all tasks
             future_to_id_cands = {
@@ -148,7 +148,7 @@ class LLMLinker(AbstractLLMEntityComponent):
                 if cui is not None:
                     self._update_entity(ent, cui)
                     linked_ents.append(ent)
-        return [e for e in linked_ents if e is not None]
+        return linked_ents
 
     def predict_entities(
         self, doc: MutableDocument, ents: list[MutableEntity] | None = None
