@@ -4,7 +4,7 @@ seaborn~=0.11.2
 pytest<9.1.0
 pytest-xdist>=3.0,<4
 nbmake<1.5
-nbconvert<6
+nbconvert<8
 jinja2<=3.0
 matplotlib>=3.4.0,<3.8.0
 seaborn
