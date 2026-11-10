@@ -20,17 +20,23 @@ Use a group when you need:
 
 A single project is enough when only one person is annotating.
 
-## What save creates
+Prefer **Project Admin** (`/project-admin`) for day-to-day group creation.
 
-**Create an annotation project for each annotator** is checked by default.
-On the first save, MedCATtrainer creates one annotation project per selected
-annotator.
+1. Open `/project-admin` and go to the **Projects** tab.
+2. Select **+ Create New Project**, then switch the form type to **Project Group**.
+3. Configure shared settings (dataset, model, concept filters, tasks, and so on).
+4. Under **Group Members**:
+   - **Administrators** can see and manage every project in the group (you are added automatically).
+   - **Annotators** each receive their own annotation project when associated projects are created.
+5. Leave **Create an annotation project for each annotator** checked unless you only want the group shell.
+6. Save.
 
-Each project is named:
+You can still create or edit groups in Django admin (`/admin` -> **Project groups**) when you need low-level control.
 
-```text
-<group name> - <annotator username>
-```
+### `create_associated_projects = true` (default)
+
+On save, MedCATtrainer automatically creates one
+`ProjectAnnotateEntities` per selected annotator.
 
 Its members are the group's administrators, plus that annotator. The person
 who saved the group is an administrator even if they were not selected. The
@@ -84,11 +90,15 @@ Click a row to open the projects in that group. From there, open a project
 to annotate, or use the same admin actions as on the main project list
 (prepare documents, concept-import status, model cache, save model, metrics).
 
-![Projects inside a group](_static/img/projects-in-group.png)
-
 ## Good practice
 
-- Keep one group per campaign, with one shared dataset and model.
+- Keep one group per annotator, with one shared dataset and model.
 - Turn off **Train Model on Submit** when the goal is agreement between annotators.
 - Leave generated names as `<group name> - <annotator username>` so reports stay easy to compare.
 - Change shared settings on the group in Django admin, rather than editing each child project differently, while the projects are still in sync.
+
+## Automating with the Python client
+
+`mctclient` can create and list project groups for provisioning scripts and CI.
+See [Python Client](client.md).
+

@@ -24,8 +24,11 @@ The page has four tabs:
 | **Datasets** | Upload the documents that projects annotate. |
 | **Users** | Add annotators and administrators. |
 
-The button at the top right changes with the tab: **Create**, **Add Model
-Pack**, **Add Dataset**, or **Add User**.
+1. Open `/project-admin`.
+2. Go to the **Projects** tab and select **+ Create New Project**. To create several annotator projects that share one configuration, switch the create form to **Project Group** instead — see [Project Groups](project_group_admin.md).
+3. To edit an existing project, select the project row.
+4. Complete the forms for your project. Specifics of each field are discussed below.
+5. Save.
 
 A practical order for a new deployment:
 
@@ -297,3 +300,31 @@ users.
 - Annotate from the home **Projects** list. See [Annotator Guide](annotator_guide.md).
 - Open a group from the home **Project Groups** tab. See [Project Groups](project_group_admin.md).
 - Export annotations, import concepts by hand, and edit a group after creation in [Django Admin](django_admin.md).
+
+## Metrics reports
+
+Metrics reports compare model predictions against validated annotations across one or more compatible projects (same underlying model configuration).
+
+### Submitting a report
+
+1. On the home screen, select one or more compatible projects in the **Projects** table.
+2. Use the metrics action / **Submit metrics report** control.
+3. Open `/metrics-reports/` to watch job status, open completed reports, or delete failed/finished jobs.
+
+Only projects that share a compatible model setup should be combined. Reports with meta-annotation data also expose a **Meta Annotations** tab — see [Meta Annotations](meta_annotations.md).
+
+### Concept Summary filtering
+
+Open a completed report and go to the **Concept Summary** tab. Aggregate scores (macro/micro F1, precision, recall) and the concept table reflect only the concepts currently included.
+
+| Control | Purpose |
+|---------|---------|
+| **Low F1 below** | Threshold (default `0.7`) that marks low-performing concepts. |
+| **Exclude N low performers** | Removes every included concept whose F1 is below the threshold. |
+| Per-row **Exclude** | Removes a single concept from the scores. |
+| Excluded tray / **Restore** | Lists excluded concepts; restore one concept or **Restore all**. |
+
+While concepts are excluded, each summary metric shows the filtered value plus a delta against the full-set baseline. Use this to estimate how overall performance would look if low-performing concepts were removed from evaluation (for example before deciding where to focus further annotation).
+
+Click TP / FP / FN counts in a concept row to open example dialogs for those predictions.
+
