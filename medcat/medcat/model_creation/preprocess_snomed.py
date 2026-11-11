@@ -190,7 +190,7 @@ class SupportedExtension(Enum):
         exp_files=FileFormatDescriptor(
             concept="Concept_SpanishExtensionSnapshot",
             description="Description_SpanishExtensionSnapshot-es",
-            relationship="RelationshipConcreteValues_SpanishExtensionSnapshot",
+            relationship="Relationship_SpanishExtensionSnapshot",
             # NOTE: the below will be ignored for UK_CLIN bundle
             refset="der2_iisssccRefset_ExtendedMapSpanishExtensionSnapshot"
         ),
