@@ -1,127 +1,297 @@
-# Annotation Project Creation and Management
+# Project Administration
 
-An annotation project requires 4 elements:
+The cog icon in the top-right of the header opens **Project Administration**
+at `/project-admin`. Use it to set up the pieces an annotation campaign needs:
+users, a dataset, a model, and then either one annotation project or a
+project group.
 
-| Element         | Description                                                                              |
-|-----------------|------------------------------------------------------------------------------------------|
-| Project setup   | Define the project’s name, purpose, and configuration settings.                          |
-| Model           | Manage the available MedCAT models or connect to a remote model service for annotation projects   |
-| Dataset         | Select or upload collections of documents to be annotated in projects             |
-| Users           | Manage admins, annotators and superusers who can participate in annotation projects.            |
+Staff and superuser accounts see the cog. With username/password login that
+is any user marked **Staff** or **Superuser**. With OIDC it is users who have
+the `medcattrainer_superuser` realm role. Annotators do not see the icon and
+are sent back to the home page if they open `/project-admin` directly.
 
-MedCATtrainer supports two management surfaces to create, update, delete these elements.
+Django Admin (`/admin`) is still used for low-level actions that this screen
+does not cover. See [Django Admin](django_admin.md).
 
-- **Project Admin UI** (`/project-admin`) for most project operations.
-- **Django Admin** (`/admin`) for advanced actions and low-level data management.
+## Screen layout
 
-The following user guide covers. `/project-admin`
+The page has four tabs:
 
-## Project Administration
+| Tab | Use it to |
+| --- | --- |
+| **Projects** | Create and edit annotation projects, and create project groups. |
+| **Model Packs** | Upload a MedCAT model pack, or register a legacy Concept DB and vocabulary pair. |
+| **Datasets** | Upload the documents that projects annotate. |
+| **Users** | Add annotators and administrators. |
 
 1. Open `/project-admin`.
-2. Go to the **Projects** tab and select **+ Create New Project**. To edit an existing project select the project row.
-3. Complete the forms for your project. Specifics of each field are discussed below.
-4. Save.
+2. Go to the **Projects** tab and select **+ Create New Project**. To create several annotator projects that share one configuration, switch the create form to **Project Group** instead — see [Project Groups](project_group_admin.md).
+3. To edit an existing project, select the project row.
+4. Complete the forms for your project. Specifics of each field are discussed below.
+5. Save.
 
-### Basic Settings
+A practical order for a new deployment:
 
-| Field                        | Description                                                                 |
-|------------------------------|-----------------------------------------------------------------------------|
-| **Project Name**             | Enter a name for your project.                                              |
-| **Dataset**                  | Select an existing dataset or [upload a new one](#dataset-administration) to associate with the project. |
-| **Description**              | Optionally provide a short summary describing your project.                 |
-| **Guideline Link**           | (Optional) Add a URL to annotation guidelines for annotators.               |
+1. Add users.
+2. Upload a dataset.
+3. Upload a model pack.
+4. Create a project, or a project group.
+
+## Projects
+
+The **Projects** tab lists annotation projects you belong to, and projects in
+groups you administer. It does not list every project on the server. Saving
+a new project adds you as a member, so projects you create appear here
+afterwards.
+
+Each row shows the title, description, status, mode, dataset, and created and
+modified dates. Description is hidden on narrower windows. The list is sorted
+by last modified, newest first. Click a column heading to sort by title,
+created date, or modified date. Filter the title box, or use the **Status**
+and **Mode** dropdowns. **Clear filters** appears when nothing matches.
+
+| Mode badge | Meaning |
+| --- | --- |
+| **Annotate** | **Require Entity Validation** is on. Model suggestions must be reviewed before submit. |
+| **Validate** | **Require Entity Validation** is off. Suggestions are not held for review. |
+
+| Status badge | Meaning |
+| --- | --- |
+| **Annotating** | Collection is in progress. |
+| **Complete** | Collection has finished. |
+| **Discontinued** | The project was stopped. |
+
+Click a row to edit that project. The row actions are:
+
+| Action | Effect |
+| --- | --- |
+| **Clone** | Copies the project configuration, members, concept search filter, meta tasks, and relations under a new name. Annotations are not copied. The suggested name is `<project name> (Clone)`. |
+| **Reset** | Deletes every annotation on the project and clears its validated and prepared documents. Settings, dataset, and model stay as they are. |
+| **Delete** | Deletes the project. This cannot be undone. |
+
+An empty list offers **Create Your First Project** and **Create a Project
+Group**.
+
+### Create a project
+
+1. Open the cog icon, stay on **Projects**, and click **Create**.
+2. Leave the switch on **Project**.
+3. Fill in the form. Required fields are marked with `*`.
+4. Click **Save Project**.
+
+The same form is used to edit an existing project. Click **Back** to return
+to the list without saving.
+
+### Create a project group
+
+A project group stores one shared configuration and, by default, creates one
+annotation project per annotator. Use a group for double annotation,
+agreement metrics, or adjudication, where each annotator should see the same
+dataset and the same settings.
+
+1. Open the cog icon and click **Create** (or **Create a Project Group** on an empty list).
+2. Switch the form to **Project Group**.
+3. Leave **Create an annotation project for each annotator** checked unless you only want the group record.
+4. Fill in the shared settings. Select at least one annotator when the checkbox above is on.
+5. Click **Save Project Group**.
+
+The banner on the group form reads: shared settings across annotators, used
+for agreement metrics and adjudication.
+
+With the checkbox on, MedCATtrainer creates one project per selected
+annotator:
+
+- Name: `<group name> - <annotator username>`
+- Members: every selected administrator, the annotator for that project, and you
+- Settings: the dataset, model, filters, tasks, and annotation options from the form
+
+You are added as a group administrator even if you did not select yourself.
+Generated projects show up as normal rows on this tab and on the home
+**Projects** list. The group itself is opened from the home **Project
+Groups** tab. See [Project Groups](project_group_admin.md).
+
+Uncheck **Create an annotation project for each annotator** to save the group
+without creating projects. The settings are still stored on the group. Attach
+existing projects to it later from Django admin. The checkbox only applies
+when the group is first saved. This screen does not edit a group after that.
+To change the shared template, or to push those changes down into the child
+projects, use Django admin (`/admin` -> **Project groups**). Editing one
+generated project here changes only that project.
+
+For an agreement study, turn **Train Model on Submit** off so each annotator
+reviews the same model output.
+
+The same setup can be scripted with `mctclient`. See
+[Python Client](client.md).
+
+## Project and group form
+
+Projects and project groups share the sections below. The members section
+changes when **Project Group** is selected.
+
+### Basic Information
+
+| Field | Description |
+| --- | --- |
+| **Project Name** * | Name shown in project lists. Must be unique. For a group, this is the group name; each generated project appends the annotator username. |
+| **Dataset** * | Documents to annotate. Upload one on the **Datasets** tab if the list is empty. |
+| **Description** | Short note on what is being collected and why. |
+| **Annotation Guideline Link** | Optional URL, for example a Google Doc or SharePoint page, shown to annotators. |
+| **Use Default Guideline** | Fills the link with the built-in example guideline and locks the URL field. Clear the box to enter your own link. |
 
 ### Project Settings
-| Field                        | Description                                                                 |
-|------------------------------|-----------------------------------------------------------------------------|
-| **Project Status** | Sets the current lifecycle stage of the project. Options are:<br>**Annotating** – Active annotation is ongoing;<br>**Complete** – Annotation is finished; further changes are prevented.<br>**Discontinued** – The project is no longer active and closed for annotation. |
-| **Project Locked** | Locks project from further annotation edits. |
-| **Annotation classification**        | **Checked**: Annotations are relevant for a 'global' model<br>**Unchecked**: Annotations are specific to this specific project and should not be used for further model training or fine-tuning |
 
+| Field | Description |
+| --- | --- |
+| **Project Status** | **Annotating** (default), **Complete**, or **Discontinued (Fail)**. |
+| **Project Locked** | Marks collection as finished. Leave unchecked while annotators are still working. |
+| **Annotation Classification** | Checked when the labels are suitable for a general-purpose model. Leave unchecked when the labels are local to this clinical area or use case. If in doubt, leave it unchecked. |
 
-### Model Configuration Settings
-Available MedCAT models are shown here. If this is empty, first [add a local model pack](#model-pack-administration).
+### Model Configuration
 
-Pick one of:
-1. **Local Model Pack** (recommended), or
-2. **Use Concept DB + Vocabulary** pair. is a legacy MedCAT v1 option.
+Pick one model source:
 
-- **Remote model service** (`use_model_service`) can be used where model inference is available at a remote url.
-  `model_service_url`.
+1. **Local Model Pack** (recommended). Upload the pack on the **Model Packs** tab first.
+2. **Use Concept DB / Vocabulary pair**, for a legacy MedCAT v1 concept database and vocabulary.
+3. **Use remote MedCAT service API**, and enter **Remote Model Service URL** (for example `http://medcat-service:8000`).
+
+A project must have a model pack, or both a Concept DB and a vocabulary,
+unless it uses a remote service. A model pack and a Concept DB / vocabulary
+pair cannot be set together. Choosing a remote service turns off the local
+model pack selector.
 
 !!! tip
-    - Remote model service projects do not support interim train-on-submit updates.
-    - You cannot set Model Pack and CDB/Vocab at the same time.
+    Remote model service projects do not apply train-on-submit updates.
+    Interim training needs a local model pack.
+
+Choosing a model pack that includes MetaCAT models pre-selects the meta
+annotation tasks linked to those models.
 
 ### Annotation Settings
-| Field                        | Description                                                                 |
-|------------------------------|-----------------------------------------------------------------------------|
-| **Require entity validation**        | If enabled, model suggestions must be explicitly reviewed before submit.|
-| **Train on submit**                  | If enabled, validated annotations are used for incremental training on submit. |
-| **Add new entities**               | Allows users to add brand-new concepts. Should be used with caution as most concept Dbs will be relatively complete for most use cases. |
-| **Restrict concept lookup** | Restricts concept search to project CUI filters. |
-| **Terminate available** | Shows terminate action in annotation toolbar. |
-| **Irrelevant available** | Shows irrelevant action in annotation toolbar. |
-| **Entity annotation comments** | Enables free-text comments per annotation. |
 
-### Meta Annotation & Relation Tasks
-| Field                        | Description                                                                 |
-|------------------------------|-----------------------------------------------------------------------------|
-| **Meta Annotation Tasks** | Multi-select of Meta Tasks (for example Temporality, Assertion, Experiencer) shown in the annotator sidebar for Correct/Alternative concepts. Define task values in Django admin (`/admin`) first, or upload a model pack that includes MetaCAT models. Selecting a model pack with linked MetaCAT models pre-fills matching tasks. |
-| **Relation Tasks** | Multi-select of relation types available between annotated concepts in the Relation tab. |
+| Field | Default | Description |
+| --- | --- | --- |
+| **Require Entity Validation** | On | Suggestions start unvalidated and must be marked before the document can be submitted. This is the **Annotate** mode in the project list. |
+| **Train Model on Submit** | On | Each submission incrementally trains the local model. Has no effect on a remote model service. Turn this off for agreement studies. |
+| **Add New Entities** | Off | Lets annotators create concepts that are not already in the concept database. Leave off unless the database is known to be missing terms you intend to add. |
+| **Restrict Concept Lookup** | Off | Limits concept search to the CUI filter below. Has no effect when that filter is empty. |
+| **Terminate Available** | On | Shows **Terminate** in the annotation toolbar. |
+| **Irrelevant Available** | Off | Shows **Irrelevant** in the annotation toolbar. |
+| **Enable Entity Annotation Comments** | Off | Shows a free-text comment on each annotation. |
 
 ### Concept Filtering
-| Field                        | Description                                                                 |
-|------------------------------|-----------------------------------------------------------------------------|
-| **Incl. Sub-concepts**         | Include all concepts that are descendants to the selected concepts below.
-| **Concept filter (optional)**| Add concept filters to limit available concepts for annotation by specifying a list of CUIs (Concept Unique Identifiers). Only these concepts will be available when annotating. |
 
 Concept filters can be built interactively in the [Concepts](concepts.md) tab
 (`/model-explore`) and uploaded here as a JSON CUI file, pasted as a
 comma-separated list, or assembled with the concept picker.
 
-### Member Setting
-| Field                        | Description                                                                 |
-|------------------------------|-----------------------------------------------------------------------------|
-| **Members**                  | Add users to the project as annotators, administrators, or reviewers, controlling their access and editing permissions for this project. |
+- Select a model pack, or a Concept DB via the legacy option, then search with the concept picker. Each pick is added as a pill.
+- **Paste CUIs (optional)** accepts identifiers separated by commas, semicolons, or new lines.
 
+An empty filter means every concept in the model is available. **Restrict
+Concept Lookup** only searches within this list.
 
-## Model Pack Administration
-Manage the available local MedCAT models that can be configured into annotation projects
+Saving a project or group sets the concept-lookup database to the Concept DB
+inside the selected model pack, or to the Concept DB chosen in the legacy
+pair.
 
-1. Open `/project-admin`.
-2. Go to the **Model Packs** tab and select **+ Add Model Pack** OR a row to edit an existing model pack entry.
-3. Complete the forms for your project. Specifics of each field are discussed below.
-4. Save.
+### Meta Annotation & Relation Tasks
 
-To delete a model pack, use the action button.
+| Field | Description |
+| --- | --- |
+| **Meta Annotation Tasks** | Tasks such as Temporality or Experiencer, shown in the annotator sidebar for Correct and Alternative concepts. Hold Ctrl (Cmd on macOS) to select more than one. |
+| **Relation Tasks** | Relation types that can be marked between annotated concepts. |
 
-!!! tip
-    - Only model packs are shown here. Legacy ConceptDB, Vocabulary models are not availabe from `/project-admin/`, they are only available from `/admin/`.
-    - remote model service endpoints are directly entered as URLs within annotation projects
+If both lists are empty, create the tasks in Django admin (`/admin`, under
+**Meta tasks** and **Relations**), or upload a model pack that already links
+MetaCAT models. Task values are defined in Django admin. See
+[Meta Annotations](meta_annotations.md).
 
+### Members
 
-## Dataset Administration
-Manage the availalbe datasets that can be configured into annotation projects.
+For a single project, **Project Members** are the users who can open it.
+Hold Ctrl (Cmd on macOS) to select more than one. You are added if you are
+not already in the list.
 
-1. Open `/project-admin`.
-2. Go to the **Datasets** tab and select **+ Add Dataset** OR a row to edit a dataset entry.
-3. Complete the forms for your project. Specifics of each field are discussed below.
-4. Save.
+For a project group the section is **Group Members**:
 
-Upload CSV or XLSX with at least:
+| Field | Description |
+| --- | --- |
+| **Administrators** | Users who can see and manage every project in the group. You are added automatically. |
+| **Annotators** * | Required while **Create an annotation project for each annotator** is checked. One project is created for each username selected here. |
+
+## Concept lookup index (Solr import)
+
+Concept search in the annotator sidebar reads a Solr index of the project's
+concept database. Saving a project or project group checks that index. If it
+is missing, MedCATtrainer starts an import in the background and shows
+"Started importing concepts for the selected model." Large databases take a
+few minutes. The home project list then shows whether concepts are imported.
+
+If the sidebar never shows concept details, the import has not finished or
+did not start. You can run it yourself from Django admin. See
+[Concept lookup index (Solr import)](django_admin.md#concept-lookup-index-solr-import).
+
+## Model Packs
+
+1. Open the **Model Packs** tab.
+2. Click **Add Model Pack**, or click a row to edit one.
+3. Enter a name and choose a `.zip` model pack.
+4. Click **Save Model Pack**.
+
+**Legacy model upload (CBD & Vocab)** switches the form to an existing
+Concept DB and vocabulary instead of a zip file. Both are required in that
+mode. Those files themselves are uploaded from Django admin, not from this
+tab.
+
+The trash icon deletes a model pack. Projects that were using it no longer
+have a model and need another one before annotation can continue.
+
+## Datasets
+
+1. Open the **Datasets** tab.
+2. Click **Add Dataset**, or click a row to edit the name and description or to replace the file.
+3. Click **Save Dataset**.
+
+The file is `.csv` or `.xlsx` and must include:
 
 | name | text |
-|---|---|
+| --- | --- |
 | unique-doc-id | document text to annotate |
 
-`name` should be unique per dataset.
+`name` is the document id and must be unique inside the dataset. `text` is
+the text annotators see. Any other columns are ignored.
 
-## Project list operations
+Example:
 
-From the home **Projects** table:
+```csv
+name,text
+doc001,"This is the first document to annotate."
+doc002,"This is the second document with medical text."
+```
 
+The file is required when the dataset is created. The trash icon deletes the
+dataset and its file.
+
+## Users
+
+1. Open the **Users** tab.
+2. Click **Add User**, or click a row to edit username, email, and flags.
+3. Click **Save User**.
+
+| Field | Description |
+| --- | --- |
+| **Username** * | Sign-in name. |
+| **Email** | Optional. |
+| **Password** | Shown when adding a user. It is not saved from this screen. Set the password in Django admin (`/admin` -> **Users**) or with the password-reset flow before the person signs in. |
+| **Staff** | Lets the user open this screen from the cog icon. |
+| **Superuser (Admin)** | Full platform access, including Django admin. |
+
+Annotators only need a username and a password set in Django admin. Leave
+**Staff** and **Superuser (Admin)** off for them. This tab does not delete
+users.
+
+## Where to go next
 - Open and annotate a project.
 - Run document preparation in the background. The same run is available from
   the API (`POST /api/run-model/`) and the Python client (`session.run_model`)
@@ -129,4 +299,34 @@ From the home **Projects** table:
 - View model-loaded state and clear model cache.
 - Save current model state.
 - Select compatible projects and submit a metrics report.
+- Annotate from the home **Projects** list. See [Annotator Guide](annotator_guide.md).
+- Open a group from the home **Project Groups** tab. See [Project Groups](project_group_admin.md).
+- Export annotations, import concepts by hand, and edit a group after creation in [Django Admin](django_admin.md).
+
+## Metrics reports
+
+Metrics reports compare model predictions against validated annotations across one or more compatible projects (same underlying model configuration).
+
+### Submitting a report
+
+1. On the home screen, select one or more compatible projects in the **Projects** table.
+2. Use the metrics action / **Submit metrics report** control.
+3. Open `/metrics-reports/` to watch job status, open completed reports, or delete failed/finished jobs.
+
+Only projects that share a compatible model setup should be combined. Reports with meta-annotation data also expose a **Meta Annotations** tab — see [Meta Annotations](meta_annotations.md).
+
+### Concept Summary filtering
+
+Open a completed report and go to the **Concept Summary** tab. Aggregate scores (macro/micro F1, precision, recall) and the concept table reflect only the concepts currently included.
+
+| Control | Purpose |
+|---------|---------|
+| **Low F1 below** | Threshold (default `0.7`) that marks low-performing concepts. |
+| **Exclude N low performers** | Removes every included concept whose F1 is below the threshold. |
+| Per-row **Exclude** | Removes a single concept from the scores. |
+| Excluded tray / **Restore** | Lists excluded concepts; restore one concept or **Restore all**. |
+
+While concepts are excluded, each summary metric shows the filtered value plus a delta against the full-set baseline. Use this to estimate how overall performance would look if low-performing concepts were removed from evaluation (for example before deciding where to focus further annotation).
+
+Click TP / FP / FN counts in a concept row to open example dialogs for those predictions.
 

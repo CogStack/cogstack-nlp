@@ -123,6 +123,8 @@ Host-level Compose variables (for example port overrides) can be set by copying
 | `CSRF_TRUSTED_ORIGINS` | Allowed origins to access the admin panel. Mandatory to set if you expose the app over a different URL or port (default `'http://127.0.0.1:8001', 'http://localhost:8001'`). |
 | `MCTRAINER_PORT` | Host port for the web UI/API (default `8001`). |
 | `SOLR_PORT` | Host port for Solr admin (default `8983`). |
+| `DOCUMENT_SEARCH_COLLECTION` | SolrCloud collection used for clinical-note full-text search (default `medcattrainer_documents`). |
+| `DOCUMENT_SEARCH_INDEX_ENABLED` | Index uploaded datasets for text search (`1`/`0`, default `1`). |
 | `MEDCAT_CONFIG_FILE` | MedCAT config file path inside the container. |
 | `LOAD_EXAMPLES` | Load example model pack + dataset + project on startup (`1`/`0`). |
 | `PROVISIONING_CONFIG_PATH` | File path of a yaml defining projects to create on startup |

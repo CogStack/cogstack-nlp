@@ -20,15 +20,16 @@ review-only workflows (collect annotations without changing the model).
     - Terminate
     - Irrelevant
 - Collect optional **meta annotations** and **relation annotations**.
-- Use **Project Groups** for multi-annotator setups.
-- Run **metrics reports** across one or more compatible projects.
+- Use **Project Groups** for multi-annotator setups (from `/project-admin` or the Python client).
+- Run **metrics reports** across one or more compatible projects, including Concept Summary filtering of low-F1 concepts.
+- Search clinical notes by **name or full text** in the annotator Clinical Notes panel.
 - Explore concept hierarchies and export concept filters.
 
 ## Typical workflow
 
 1. Install and configure MedCATtrainer.
 2. Create users and upload model artifacts (Model Pack or CDB/Vocab). [Administrator Setup](admin_setup.md)
-3. Create a project and assign annotators. [Annotation Project Creation and Management](project_admin.md)
+3. Open the cog icon and create a project or a project group, then assign annotators. [Project Administration](project_admin.md)
 4. Annotate and submit documents. [Annotator Guide](annotator_guide.md)
 5. Export annotations and evaluate with the metrics tools.
 
@@ -36,7 +37,7 @@ review-only workflows (collect annotations without changing the model).
 
 - [Installation](installation.md)
 - [Administrator Setup](admin_setup.md)
-- [Annotation Project Creation and Management](project_admin.md)
+- [Project Administration](project_admin.md)
 - [Project Groups](project_group_admin.md)
 - [Django Admin](django_admin.md)
 - [Annotator Guide](annotator_guide.md)

@@ -57,9 +57,35 @@ run = session.run_model(project, wait=True, timeout=3600)
 print(run.status, run.prepared_docs, run.dataset_len)
 ```
 
+## Project groups
+
+Create one shared configuration and, by default, one annotation project per
+annotator (named `<group name> - <username>`):
+
+```python
+group = session.create_project_group(
+    name="Stroke IAA",
+    description="Inter-annotator agreement campaign",
+    annotators=[annotator],
+    administrators=[],  # optional; the authenticated user is always an admin
+    dataset=ds,
+    modelpack=model_packs[0],
+    create_associated_projects=True,
+)
+
+groups = session.get_project_groups()
+```
+
+Users, datasets, and model packs may be passed as wrapper objects or resolved
+by name. Supply **either** `modelpack` **or** `concept_db` + `vocab`, not both.
+With `create_associated_projects=True` (the default), at least one annotator is
+required.
+
 ## Common methods
 
 - `create_project(...)`
+- `create_project_group(...)`
+- `get_project_groups()`
 - `create_dataset(name, dataset_file)`
 - `create_user(username, password)`
 - `create_medcat_model(cdb, vocab)`
@@ -72,6 +98,8 @@ print(run.status, run.prepared_docs, run.dataset_len)
 - `get_meta_tasks()`
 - `get_rel_tasks()`
 - `get_projects()`
+- `create_project_group(...)`
+- `get_project_groups()`
 - `get_datasets()`
 - `get_project_annos(projects)`
 - `upload_projects_export(...)`
@@ -82,9 +110,12 @@ print(run.status, run.prepared_docs, run.dataset_len)
 
 ## Notes
 
-- `create_project` expects **either** `modelpack` **or** `concept_db + vocab`.
+- `create_project` and `create_project_group` expect **either** `modelpack` **or** `concept_db + vocab`.
+- `create_project_group` creates one annotation project per annotator when `create_associated_projects` is left at its default, `True`.
 - Wrapper objects (`MCTDataset`, `MCTConceptDB`, etc.) can often be passed by
   object or resolved by name.
+- See [Project Groups](project_group_admin.md) for the UI workflow these client
+  calls mirror.
 - `run_model` accepts a project object, id, or unique name. It runs the
   configured model over dataset documents that are still unprepared.
   Submitted documents, documents that already have annotations, and documents

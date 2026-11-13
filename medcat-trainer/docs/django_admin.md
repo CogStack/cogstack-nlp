@@ -1,9 +1,13 @@
 # Django Admin
 
 The **Django Admin** (`/admin`) provides advanced actions and low-level data
-management that are not available in the Project Admin UI (`/project-admin`).
+management that are not available from the cog icon
+([Project Administration](project_admin.md), `/project-admin`).
 
-These include:
+Use it to edit an existing **project group** and push those settings onto its
+projects, to attach projects that were created separately, to set user
+passwords, and for the actions below. Creating a project or a new project
+group is done from the cog icon.
 
 
 
@@ -24,6 +28,24 @@ After import, project list shows whether concepts are indexed for the selected
 `cdb_search_filter`.
 
 ![](_static/img/concepts-imported-status.png)
+
+
+## Document text-search index
+
+Clinical Notes **Text** search (annotate entities page) uses a separate Solr
+collection from concept lookup. New datasets are indexed automatically after
+upload when `DOCUMENT_SEARCH_INDEX_ENABLED=1`.
+
+To index datasets uploaded before text search was available:
+
+1. Open `/admin`.
+2. Go to **Datasets**.
+3. Select one or more datasets.
+4. Run **Index selected datasets for text search**.
+
+Until indexing finishes (or if Solr is down), text search falls back to a
+database match. See [Maintenance](maintenance.md) for the collection name and
+ops checks.
 
 
 ## Downloading annotations

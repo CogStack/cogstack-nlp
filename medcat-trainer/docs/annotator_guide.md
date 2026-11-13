@@ -7,11 +7,23 @@ predictions.
 
 ## 1) Document list
 
-The left panel shows documents in the project dataset.
+The left **Clinical Notes** panel shows documents in the project dataset.
 
 - Current document is highlighted.
 - Prepared documents (model predictions generated) are marked.
 - Submitted/validated documents are marked as complete.
+- Drag the pane divider to resize the notes panel relative to the clinical text and concept sidebar.
+
+### Searching clinical notes
+
+Click the search icon in the Clinical Notes panel header to open search.
+
+| Mode | Behaviour |
+|------|-----------|
+| **Name** | Prefix match against document names already loaded in the browser. |
+| **Text** | Full-text search across the dataset's clinical note bodies (Solr-backed). Matching spans are highlighted in the result snippets. Results are paginated; use **Load more** when available. |
+
+Text search indexes each dataset after upload. If indexing is incomplete or Solr is unavailable, the UI falls back to a slower database match. Admins can re-index older datasets from Django admin — see [Maintenance](maintenance.md) and [Django Admin](django_admin.md).
 
 ## 2) Clinical text
 
@@ -84,7 +96,7 @@ The sidebar shows details for the currently selected concept, including:
 If enabled by project settings, a **Comment** field is also available.
 
 !!! tip
-    If the details are not showing in the sidebar after you've selected one, the issue is likely with an unfinished Project setup. See the section for "Concept lookup index (Solr import)" in the [Project Creation and Management Guide](project_admin.md) for details.
+    If the details are not showing in the sidebar after you've selected one, the issue is likely with an unfinished Project setup. See [Concept lookup index (Solr import)](project_admin.md#concept-lookup-index-solr-import) in the Project Administration guide.
 
 ## Meta annotations
 
