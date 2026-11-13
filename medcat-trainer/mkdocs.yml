@@ -38,6 +38,7 @@ nav:
       - Demo: demo_page.md
   - User guide:
       - Annotator Guide: annotator_guide.md
+      - Concepts: concepts.md
       - Administratiors Guide:
         - Administrator setup: admin_setup.md
         - Annotation Project admin: project_admin.md

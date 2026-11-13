@@ -181,7 +181,9 @@ annotation tasks linked to those models.
 
 ### Concept Filtering
 
-Limit the concepts annotators can use by building a CUI list.
+Concept filters can be built interactively in the [Concepts](concepts.md) tab
+(`/model-explore`) and uploaded here as a JSON CUI file, pasted as a
+comma-separated list, or assembled with the concept picker.
 
 - Select a model pack, or a Concept DB via the legacy option, then search with the concept picker. Each pick is added as a pill.
 - **Paste CUIs (optional)** accepts identifiers separated by commas, semicolons, or new lines.

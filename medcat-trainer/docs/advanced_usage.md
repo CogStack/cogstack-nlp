@@ -100,6 +100,8 @@ match.
 
 ## Concept exploration and filter export
 
+For the full UI workflow, see [Concepts](concepts.md).
+
 Use the **Concepts** view (`/model-explore`) to:
 
 - browse hierarchy paths,
