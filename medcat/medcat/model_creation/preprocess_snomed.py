@@ -124,7 +124,7 @@ class ExtensionDescription:
 
 SNOMED_FOLDER_NAME_PATTERN = re.compile(
     # within:     EXTENSION      PRODUCTION     RELEASE
-    r"^SnomedCT_([A-Za-z0-9]+)_([A-Za-z0-9]+)_(\d{8}(?:T\d{6}Z)?)$")
+    r"^SnomedCT_([A-Za-z0-9-]+)_([A-Za-z0-9]+)_(\d{8}(?:T\d{6}Z)?)$")
 PER_FILE_TYPE_PATHS = {
     RefSetFileType.concept: os.path.join("Snapshot", "Terminology"),
     RefSetFileType.description: os.path.join("Snapshot", "Terminology"),
@@ -183,6 +183,16 @@ class SupportedExtension(Enum):
             description="Description_Snapshot-en-AU",
             relationship="Relationship_Snapshot",
             refset=_IGNORE_TAG,
+        ),
+    )
+    SPANISH = ExtensionDescription(
+        exp_name_in_folder="SpanishRelease-es",
+        exp_files=FileFormatDescriptor(
+            concept="Concept_SpanishExtensionSnapshot",
+            description="Description_SpanishExtensionSnapshot-es",
+            relationship="Relationship_SpanishExtensionSnapshot",
+            # NOTE: the below will be ignored for UK_CLIN bundle
+            refset="der2_iisssccRefset_ExtendedMapSpanishExtensionSnapshot"
         ),
     )
 
