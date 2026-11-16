@@ -83,18 +83,25 @@ def one_chat(
     client: OpenAI,
     prompt: str,
     schema: dict[str, Any] | None = None,
+    request_kwargs: dict[str, Any] | None = None,
 ) -> str:
     """Send `prompt` as a single user message, return the raw text
     response. `schema`, if given, requests structured output for
     this call specifically (falls back to freeform if the backend
-    rejects it). Retries transient connection/timeout failures."""
+    rejects it). Retries transient connection/timeout failures.
+
+    `request_kwargs` is merged into the chat-completions call for
+    backend-specific options (for example disabling reasoning).
+    Model, messages, temperature, and timeout always come from `cnf`.
+    """
     structured_output_supported = cnf.use_structured_output
     use_schema = schema if structured_output_supported else None
 
     last_exc: Exception | None = None
     for attempt in range(cnf.retries + 1):
         try:
-            return _one_call(cnf, client, prompt, use_schema)
+            return _one_call(
+                cnf, client, prompt, use_schema, request_kwargs)
         except _StructuredOutputUnsupported:
             logger.warning(
                 "%s: backend rejected structured output, falling "
@@ -119,13 +126,17 @@ def _one_call(
     client: OpenAI,
     prompt: str,
     schema: dict[str, Any] | None,
+    request_kwargs: dict[str, Any] | None = None,
 ) -> str:
-    kwargs: dict[str, Any] = {
+    kwargs: dict[str, Any] = {}
+    if request_kwargs:
+        kwargs.update(request_kwargs)
+    kwargs.update({
         "model": cnf.model,
         "messages": [{"role": "user", "content": prompt}],
         "temperature": cnf.temperature,
         "timeout": cnf.timeout,
-    }
+    })
     if schema is not None:
         kwargs["response_format"] = {
             "type": "json_schema",
