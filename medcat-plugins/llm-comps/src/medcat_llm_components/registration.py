@@ -12,3 +12,7 @@ def do_registration():
     lazy_register_core_component(
         CoreComponentType.linking, "llm_linker",
         "medcat_llm_components.linker", "LLMLinker.create_new_component")
+    lazy_register_core_component(
+        CoreComponentType.linking, "pure_llm_linker",
+        "medcat_llm_components.pure_llm_linker",
+        "PureLLMLinker.create_new_component")
