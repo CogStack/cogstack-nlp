@@ -5,15 +5,14 @@ import logging
 from collections.abc import Callable, Iterable
 from typing import Any
 
-from openai import OpenAI
-
 from medcat.cdb import CDB
 from medcat.components.types import CoreComponentType
 from medcat.config.config import ComponentConfig, Linking
 from medcat.tokenizing.tokenizers import BaseTokenizer
 from medcat.tokenizing.tokens import MutableDocument, MutableEntity
-from medcat.vocab import Vocab
 from medcat.utils.defaults import StatusTypes
+from medcat.vocab import Vocab
+from openai import OpenAI
 
 from .base import (
     AbstractLLMEntityComponent,
