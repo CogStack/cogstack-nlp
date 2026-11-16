@@ -5,6 +5,7 @@ from medcat.config.config import Linking, Ner, Config
 from medcat.cdb import CDB
 from medcat_llm_components.ner import LLMNERConfig
 from medcat_llm_components.linker import LLMLinkConfig
+from medcat_llm_components.pure_llm_linker import PureLLMLinkConfig
 
 
 BASE_CNF_OPTS = {
@@ -20,6 +21,9 @@ COMP_CREATORS = [
     ), None, None, None)),
     (CoreComponentType.linking, 'llm_linker', (Linking(
         additional=LLMLinkConfig(**BASE_CNF_OPTS),
+    ), None, None, None)),
+    (CoreComponentType.linking, 'pure_llm_linker', (Linking(
+        additional=PureLLMLinkConfig(**BASE_CNF_OPTS),
     ), None, None, None)),
 ]
 
