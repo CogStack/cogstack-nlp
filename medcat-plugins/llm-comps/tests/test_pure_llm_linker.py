@@ -1,8 +1,13 @@
 import pytest
 
+import pandas as pd
+
 from medcat.config.config import Linking, Ner
+from medcat.components.types import CoreComponentType
 from medcat.cdb import CDB
 from medcat.config import Config
+from medcat.stats import get_stats
+from medcat.model_creation.cdb_maker import CDBMaker
 
 from medcat_llm_components.base import MisconfiguredComponentException
 from medcat_llm_components.pure_llm_linker import (
@@ -12,6 +17,8 @@ from medcat_llm_components.pure_llm_linker import (
     find_start,
     parse_output,
 )
+
+from test_save_load import create_new_llm_model
 
 
 BASE = {"base_url": "http://localhost:9/v1", "model": "test-model"}
@@ -57,8 +64,9 @@ def test_parse_output_returns_empty_on_garbage():
 
 
 def test_prompt_is_filled_from_config_and_candidates():
-    cnf = PureLLMLinkConfig(**BASE)
-    linker = PureLLMLinker(cnf, tokenizer=None, name_separator="~",
+    l_cnf = Linking()
+    l_cnf.additional = cnf = PureLLMLinkConfig(**BASE)
+    linker = PureLLMLinker(l_cnf, cnf, tokenizer=None, name_separator="~",
                            all_candidates=[("111", "Pain")])
     prompt = linker._prep_prompt("patient has pain")
     assert "111 (Pain)" in prompt
@@ -81,7 +89,7 @@ def test_create_new_component_reads_candidates_from_the_cdb():
     linking = Linking(additional=PureLLMLinkConfig(**BASE))
     linker = PureLLMLinker.create_new_component(
         linking, tokenizer=None, cdb=cdb, vocab=None, model_load_path=None)
-    assert linker._all_candidates == [("111", "Pain")]
+    assert linker._all_candidates == {"111": "Pain"}
     assert linker._name_separator == "~"
 
 
@@ -94,3 +102,55 @@ def test_create_new_component_rejects_the_wrong_config():
         PureLLMLinker.create_new_component(
             Linking(), tokenizer=None, cdb=CDB(Config()), vocab=None,
             model_load_path=None)
+
+
+filtered_cuis = ["C1"]
+filtered_data = {
+    "projects": [
+        {
+            "id": "1",
+            "name": "p1",
+            "cuis": ",".join(filtered_cuis),
+            "documents": [
+                {
+                    "id": "101",
+                    "name": "D101",
+                    "text": "This text is super long",
+                    "annotations": []
+                }
+            ]
+        }
+    ]
+}
+
+
+@pytest.fixture
+def cat():
+    cat = create_new_llm_model(True, True)
+    maker = CDBMaker(cat.config, cat.cdb)
+    df = pd.DataFrame(
+        [["C1", "NAME1"], ["C2", "NAME2"]],
+        columns=["cui", "name"],
+    )
+    maker.prepare_csvs([df])
+    cat._recreate_pipe()
+    return cat
+
+
+def test_model_has_cuis(cat):
+    assert cat.cdb.cui2info
+    assert len(cat.cdb.cui2info) > 1
+
+
+def assert_pure_llm_linker_has_filter_cuis(cat, cuis):
+    linker = cat.pipe.get_component(CoreComponentType.linking)
+    assert isinstance(linker, PureLLMLinker)
+    assert linker._cur_cui_include == set(cuis)
+
+
+def test_uses_correct_filters(cat):
+    # prev has all
+    assert_pure_llm_linker_has_filter_cuis(cat, set(cat.cdb.cui2info))
+    get_stats(cat, filtered_data, use_project_filters=True)
+    # now has stuff in the filter
+    assert_pure_llm_linker_has_filter_cuis(cat, set(filtered_cuis))
