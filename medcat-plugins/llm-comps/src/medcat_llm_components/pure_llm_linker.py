@@ -199,7 +199,7 @@ class PureLLMLinker(AbstractLLMEntityComponent):
         )
 
     def _recreate_candidates(self) -> None:
-        cui_include: set[str] = self.l_cnf.filters.cuis
+        cui_include: set[str] = self.l_cnf.filters.cuis or set(self._valid_cuis)
         cui_exclude: set[str] = self.l_cnf.filters.cuis_exclude
         self._all_candidates_str = ", ".join(
             f"{cui} ({self._all_candidates[cui]})" for cui in cui_include
