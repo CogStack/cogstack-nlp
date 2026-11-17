@@ -283,6 +283,9 @@ class PureLLMLinker(AbstractLLMEntityComponent):
     def predict_entities(
         self, doc: MutableDocument, ents: list[MutableEntity] | None = None
     ) -> list[MutableEntity]:
+        if self._filter_changed():
+            logger.info("Recreating candidates based on new filter")
+            self._recreate_candidates()
         text = doc.base.text
         try:
             raw = one_chat(
