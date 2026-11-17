@@ -177,19 +177,36 @@ class PureLLMLinker(AbstractLLMEntityComponent):
 
     def __init__(
         self,
+        l_cnf: Linking,
         cnf: PureLLMLinkConfig,
         tokenizer: BaseTokenizer,
         name_separator: str,
         all_candidates: list[tuple[str, str]],
     ) -> None:
         super().__init__(cnf)
+        self.l_cnf = l_cnf
         self.cnf: PureLLMLinkConfig = cnf
         self._tokenizer = tokenizer
         self._name_separator = name_separator
-        self._all_candidates = all_candidates
+        self._all_candidates = dict(all_candidates)
         self._valid_cuis = {cui for cui, _ in all_candidates}
+        self._recreate_candidates()
+
+    def _filter_changed(self) -> bool:
+        return (
+            self.l_cnf.filters.cuis != self._cur_cui_include or
+            self.l_cnf.filters.cuis_exclude != self._cur_cui_exclude
+        )
+
+    def _recreate_candidates(self) -> None:
+        cui_include: set[str] = self.l_cnf.filters.cuis
+        cui_exclude: set[str] = self.l_cnf.filters.cuis_exclude
         self._all_candidates_str = ", ".join(
-            f"{cui} ({name})" for cui, name in all_candidates)
+            f"{cui} ({self._all_candidates[cui]})" for cui in cui_include
+            if self.l_cnf.filters.check_filters(cui)
+        )
+        self._cur_cui_include = set(cui_include)
+        self._cur_cui_exclude = set(cui_exclude)
 
     def get_type(self) -> CoreComponentType:
         return CoreComponentType.linking
@@ -302,4 +319,4 @@ class PureLLMLinker(AbstractLLMEntityComponent):
             )
         all_candidates = [(cui, cdb.get_name(cui)) for cui in cdb.cui2info]
         return cls(
-            llm_cnf, tokenizer, cdb.config.general.separator, all_candidates)
+            cnf, llm_cnf, tokenizer, cdb.config.general.separator, all_candidates)
