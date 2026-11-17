@@ -9,16 +9,20 @@ from medcat.config import Config
 from medcat_llm_components.ner import LLMNERConfig
 from medcat_llm_components.linker import LLMLinkConfig
 
+from medcat_llm_components.pure_llm_linker import PureLLMLinkConfig
 import pytest
 
 
 DEFAULT_BASE_URL = "my_ollama_ip:port/whatever"
 DEFAULT_MODEL = "gemma:2b"
-DEFAULT_PROMPT_NER = "Never gonna give you up"
+DEFAULT_PROMPT_NER = "Never gonna give you up: %s"
 DEFAULT_PROMPT_LINKER = "Never gonna let you go"
 
 
-def create_new_llm_model():
+def create_new_llm_model(
+    default_ner: bool = False,
+    use_pure_llm_linker: bool = False,
+):
 
     # the URL to the (e.g) ollama instance
     base_url = DEFAULT_BASE_URL
@@ -33,16 +37,19 @@ def create_new_llm_model():
         prompt=DEFAULT_PROMPT_NER,
     )
     # linker
-    linking_cnf = LLMLinkConfig(
+    l_cnf_cls = PureLLMLinkConfig if use_pure_llm_linker else LLMLinkConfig
+    linking_cnf = l_cnf_cls(
         base_url=base_url,
         model=llm_model,
         prompt=DEFAULT_PROMPT_LINKER,
     )
 
     config = Config()
-    config.components.ner.comp_name = "llm_ner"
-    config.components.ner.custom_cnf = ner_cnf
-    config.components.linking.comp_name = "llm_linker"
+    if not default_ner:
+        config.components.ner.comp_name = "llm_ner"
+        config.components.ner.custom_cnf = ner_cnf
+    config.components.linking.comp_name = (
+        "pure_llm_linker" if use_pure_llm_linker else "llm_linker")
     config.components.linking.additional = linking_cnf
 
     vocab = Vocab()

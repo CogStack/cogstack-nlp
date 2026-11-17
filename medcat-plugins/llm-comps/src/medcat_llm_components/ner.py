@@ -19,6 +19,8 @@ from .base import (
     LLMConnectionConfig,
     MisconfiguredComponentException,
     UnknownSpanException,
+    clean_response,
+    one_chat,
 )
 
 logger = logging.getLogger(__name__)
@@ -61,7 +63,7 @@ class LLMNER(AbstractLLMEntityComponent):
         return CoreComponentType.ner
 
     def _parse_csv(self, raw: str) -> list[tuple[str, int, int]]:
-        text = self._clean_response(raw)
+        text = clean_response(raw)
         if not text:
             return []
         reader = csv.DictReader(io.StringIO(text))
@@ -78,7 +80,9 @@ class LLMNER(AbstractLLMEntityComponent):
         return out
 
     def _call_api_raw(self, text: str) -> list[tuple[str, int, int]]:
-        raw = self._chat(self.cnf.prompt % text)
+        raw = one_chat(
+            self.cnf, self._client,
+            self.cnf.prompt % text)
         return self._parse_csv(raw)
 
     def _get_real_start_end(

@@ -78,6 +78,78 @@ class LLMConnectionConfig(ComponentConfig):
     def get_init_attrs(cls) -> list[str]:
         return ['base_url', 'model']
 
+def one_chat(
+    cnf: LLMConnectionConfig,
+    client: OpenAI,
+    prompt: str,
+    schema: dict[str, Any] | None = None,
+    request_kwargs: dict[str, Any] | None = None,
+) -> str:
+    """Send `prompt` as a single user message, return the raw text
+    response. `schema`, if given, requests structured output for
+    this call specifically (falls back to freeform if the backend
+    rejects it). Retries transient connection/timeout failures.
+
+    `request_kwargs` is merged into the chat-completions call for
+    backend-specific options (for example disabling reasoning).
+    Model, messages, temperature, and timeout always come from `cnf`.
+    """
+    structured_output_supported = cnf.use_structured_output
+    use_schema = schema if structured_output_supported else None
+
+    last_exc: Exception | None = None
+    for attempt in range(cnf.retries + 1):
+        try:
+            return _one_call(
+                cnf, client, prompt, use_schema, request_kwargs)
+        except _StructuredOutputUnsupported:
+            logger.warning(
+                "%s: backend rejected structured output, falling "
+                "back to freeform for the rest of this session",
+                cnf.comp_name)
+            structured_output_supported = False
+            use_schema = None
+            continue  # retry immediately, don't burn a retry slot on this
+        except (APIConnectionError, APITimeoutError, APIError) as exc:
+            last_exc = exc
+            logger.warning(
+                "%s: LLM call failed (attempt %d/%d): %s",
+                cnf.comp_name, attempt + 1, cnf.retries + 1, exc)
+            if attempt < cnf.retries:
+                time.sleep(cnf.retry_backoff_seconds)
+    assert last_exc is not None
+    raise last_exc
+
+
+def _one_call(
+    cnf: LLMConnectionConfig,
+    client: OpenAI,
+    prompt: str,
+    schema: dict[str, Any] | None,
+    request_kwargs: dict[str, Any] | None = None,
+) -> str:
+    kwargs: dict[str, Any] = {}
+    if request_kwargs:
+        kwargs.update(request_kwargs)
+    kwargs.update({
+        "model": cnf.model,
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": cnf.temperature,
+        "timeout": cnf.timeout,
+    })
+    if schema is not None:
+        kwargs["response_format"] = {
+            "type": "json_schema",
+            "json_schema": {"name": "response", "schema": schema, "strict": True},
+        }
+    try:
+        resp = client.chat.completions.create(**kwargs)
+    except APIError as exc:
+        if schema is not None and _looks_like_unsupported_response_format(exc):
+            raise _StructuredOutputUnsupported from exc
+        raise
+    return resp.choices[0].message.content or ""
+
 
 class AbstractLLMEntityComponent(AbstractEntityProvidingComponent, ABC):
     """Shared connection / chat / cleanup plumbing for LLM-based components.
@@ -94,91 +166,45 @@ class AbstractLLMEntityComponent(AbstractEntityProvidingComponent, ABC):
         # don't keep paying a failed round-trip to rediscover that
         self._structured_output_supported = cnf.use_structured_output
 
-    def _chat(self, prompt: str, schema: dict[str, Any] | None = None) -> str:
-        """Send `prompt` as a single user message, return the raw text
-        response. `schema`, if given, requests structured output for
-        this call specifically (falls back to freeform if the backend
-        rejects it). Retries transient connection/timeout failures."""
-        use_schema = schema if self._structured_output_supported else None
 
-        last_exc: Exception | None = None
-        for attempt in range(self.cnf.retries + 1):
-            try:
-                return self._one_call(prompt, use_schema)
-            except _StructuredOutputUnsupported:
-                logger.warning(
-                    "%s: backend rejected structured output, falling "
-                    "back to freeform for the rest of this session",
-                    self.cnf.comp_name)
-                self._structured_output_supported = False
-                use_schema = None
-                continue  # retry immediately, don't burn a retry slot on this
-            except (APIConnectionError, APITimeoutError, APIError) as exc:
-                last_exc = exc
-                logger.warning(
-                    "%s: LLM call failed (attempt %d/%d): %s",
-                    self.cnf.comp_name, attempt + 1, self.cnf.retries + 1, exc)
-                if attempt < self.cnf.retries:
-                    time.sleep(self.cnf.retry_backoff_seconds)
-        assert last_exc is not None
-        raise last_exc
+_FENCE_RE = re.compile(r"^```[a-zA-Z]*\n|\n```$")
+_TABLE_ROW_RE = re.compile(r"^\|.*\|$")
+_TABLE_SEP_RE = re.compile(r"^[\s|:-]+$")
 
-    def _one_call(self, prompt: str, schema: dict[str, Any] | None) -> str:
-        kwargs: dict[str, Any] = {
-            "model": self.cnf.model,
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": self.cnf.temperature,
-            "timeout": self.cnf.timeout,
-        }
-        if schema is not None:
-            kwargs["response_format"] = {
-                "type": "json_schema",
-                "json_schema": {"name": "response", "schema": schema, "strict": True},
-            }
-        try:
-            resp = self._client.chat.completions.create(**kwargs)
-        except APIError as exc:
-            if schema is not None and _looks_like_unsupported_response_format(exc):
-                raise _StructuredOutputUnsupported from exc
-            raise
-        return resp.choices[0].message.content or ""
 
-    _FENCE_RE = re.compile(r"^```[a-zA-Z]*\n|\n```$")
-    _TABLE_ROW_RE = re.compile(r"^\|.*\|$")
-    _TABLE_SEP_RE = re.compile(r"^[\s|:-]+$")
+def clean_response(raw: str) -> str:
+    text = raw.strip()
+    # models wrap output in ```csv/```json fences despite instructions not to
+    text = _FENCE_RE.sub("", text).strip()
+    return _strip_markdown_table(text)
 
-    def _clean_response(self, raw: str) -> str:
-        text = raw.strip()
-        # models wrap output in ```csv/```json fences despite instructions not to
-        text = self._FENCE_RE.sub("", text).strip()
-        return self._strip_markdown_table(text)
 
-    def _strip_markdown_table(self, text: str) -> str:
-        r"""Small/instruction-weak models sometimes wrap the requested
-        CSV/plain output in a markdown table instead - either one field
-        per cell (`| entity | start | end |`) or, just as often, the
-        whole line squished into a single cell (`| entity,start,end |`).
-        Detected structurally (every non-empty line is pipe-wrapped) so
-        it doesn't depend on the exact header text; both variants above
-        collapse to the same comma-joined output.
+def _strip_markdown_table(text: str) -> str:
+    r"""Small/instruction-weak models sometimes wrap the requested
+    CSV/plain output in a markdown table instead - either one field
+    per cell (`| entity | start | end |`) or, just as often, the
+    whole line squished into a single cell (`| entity,start,end |`).
+    Detected structurally (every non-empty line is pipe-wrapped) so
+    it doesn't depend on the exact header text; both variants above
+    collapse to the same comma-joined output.
 
-        Only triggers when the *entire* response looks like a table.
-        Prose mixed with a table (e.g. "Here are the entities:\n| ... |")
-        isn't handled - that needs pulling the table out of surrounding
-        text, a step up in complexity from a plain cleanup pass.
-        """
-        non_empty = [ln.strip() for ln in text.splitlines() if ln.strip()]
-        if not non_empty or not all(
-                self._TABLE_ROW_RE.match(ln) for ln in non_empty):
-            return text
+    Only triggers when the *entire* response looks like a table.
+    Prose mixed with a table (e.g. "Here are the entities:\n| ... |")
+    isn't handled - that needs pulling the table out of surrounding
+    text, a step up in complexity from a plain cleanup pass.
+    """
+    non_empty = [ln.strip() for ln in text.splitlines() if ln.strip()]
+    if not non_empty or not all(
+            _TABLE_ROW_RE.match(ln) for ln in non_empty):
+        return text
 
-        out_lines = []
-        for ln in non_empty:
-            if self._TABLE_SEP_RE.match(ln):
-                continue  # header-separator row
-            cells = [c.strip() for c in ln.strip("|").split("|")]
-            out_lines.append(",".join(cells) if len(cells) > 1 else cells[0])
-        return "\n".join(out_lines)
+    out_lines = []
+    for ln in non_empty:
+        if _TABLE_SEP_RE.match(ln):
+            continue  # header-separator row
+        cells = [c.strip() for c in ln.strip("|").split("|")]
+        out_lines.append(",".join(cells) if len(cells) > 1 else cells[0])
+    return "\n".join(out_lines)
 
 
 class MisconfiguredComponentException(ValueError):
