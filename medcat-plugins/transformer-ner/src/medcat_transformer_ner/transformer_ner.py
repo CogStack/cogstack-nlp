@@ -323,7 +323,7 @@ class NER(AbstractEntityProvidingComponent,
         for pred_id, (tok_start, tok_end) in zip(preds, offsets_chunk):
 
             # skip padding / special tokens
-            if (tok_start, tok_end) == (0, 0):
+            if tok_end <= tok_start:
                 continue
 
             label = self.id2label[pred_id]
@@ -474,6 +474,10 @@ class NER(AbstractEntityProvidingComponent,
         for span in spans:
             detected_start = span["start"]
             detected_end = span["end"]
+
+            if detected_end <= detected_start:
+                continue
+
             detected_string = text[detected_start:detected_end]
             if not detected_string:
                 continue
@@ -495,16 +499,23 @@ class NER(AbstractEntityProvidingComponent,
                 token_start = token_start - 1 if token_start > 0 else token_start
             # Loop through all contiguous token subspans [i:j]
             for i in range(token_start, token_end):
+                # if there is a token of white space, skip it
+                # we'll hit the text inside eventually
+                if not doc[i].base.text.strip():
+                    continue
                 for j in range(i + 1, token_end + 1):
                     span_key = (i, j)
                     if span_key in seen_token_spans:
                         continue
-                    
+                    if not doc[j - 1].base.text.strip():
+                        continue
                     sub_tokens = list(doc[i:j])
                     # there might be more cleaning required here
                     detected_name = self.config.general.separator.join(
                         token.base.text.lower() for token in sub_tokens
                     )
+                    if not any(ch.isalnum() for ch in detected_name):
+                        continue
                     ent = None
                     if detected_name in self.cdb.name2info:
                         ent = annotate_name(
@@ -525,6 +536,8 @@ class NER(AbstractEntityProvidingComponent,
                         )
                     
                     if ent:
+                        if ent.base.end_char_index <= ent.base.start_char_index:
+                            continue
                         logger.debug(
                             "Created entity: %r tokens [%s, %s]",
                             ent.text,
