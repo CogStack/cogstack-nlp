@@ -49,21 +49,16 @@ def merge_cdb(cdb1: CDB,
 
     # Merge concepts from cdb2 into the merged CDB
     for cui, cui_info2 in cdb2.cui2info.items():
-        # Get name status from cdb2
-        name_status = 'A'  # default status
-        for name in cui_info2['names']:
-            if name in cdb2.name2info:
-                name_info = cdb2.name2info[name]
-                if cui in name_info['per_cui_status']:
-                    name_status = name_info['per_cui_status'][cui]
-                    break
-
-        # Prepare names dict for _add_concept
-        names = {}
+        # Prepare names dicts for _add_concept, grouped by the status
+        # each name has for this concept in cdb2
+        names_per_status: dict[str, dict] = defaultdict(dict)
         for name in cui_info2['names']:
             # Create a simple NameDescriptor-like structure
             name_info_entry: NameInfo | None = cdb2.name2info.get(name)
-            names[name] = type('NameDescriptor', (), {
+            name_status = 'A'  # default status
+            if name_info_entry is not None:
+                name_status = name_info_entry['per_cui_status'].get(cui, 'A')
+            names_per_status[name_status][name] = type('NameDescriptor', (), {
                 'snames': cui_info2['subnames'],
                 # Guard for unknown structure in name2info and avoid mismatched defaults
                 'is_upper': (bool(name_info_entry.get('is_upper', False))
@@ -84,15 +79,18 @@ def merge_cdb(cdb1: CDB,
             other: Iterable[str] = cui_info2.get('in_other_ontology') or []
             ontologies.update(other)
 
-        cdb._add_concept(
-            cui=cui, names=names, ontologies=ontologies, name_status=name_status,
-            type_ids=cui_info2['type_ids'], description=description,
-            full_build=to_build
-        )
+        for name_status, names in names_per_status.items():
+            cdb._add_concept(
+                cui=cui, names=names, ontologies=ontologies,
+                name_status=name_status, type_ids=cui_info2['type_ids'],
+                description=description, full_build=to_build
+            )
 
         # Copy training data from cdb2 for concepts that don't exist in cdb1
         if cui not in cdb1.cui2info:
             cui_info_merged = cdb.cui2info[cui]
+            if cui_info2['preferred_name']:
+                cui_info_merged['preferred_name'] = cui_info2['preferred_name']
             cui_info_merged['count_train'] = cui_info2['count_train']
             cui_info_merged['context_vectors'] = deepcopy(cui_info2['context_vectors'])
             cui_info_merged['average_confidence'] = cui_info2['average_confidence']
