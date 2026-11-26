@@ -115,10 +115,16 @@ def merge_cdb(cdb1: CDB,
                         cui_info1['count_train'] + cui_info2['count_train']
                     )
 
-            # Merge context vectors
-            if (cui_info1['context_vectors'] is not None and
-                not (overwrite_training == 1 and
-                     cui_info1['context_vectors'] is not None)):
+            # Merge context vectors. A concept trained in only one of the
+            # CDBs keeps that CDB's vectors (cdb1's are already in place).
+            if (cui_info1['context_vectors'] is None and
+                    cui_info2['context_vectors'] is not None):
+                cui_info_merged['context_vectors'] = deepcopy(
+                    cui_info2['context_vectors']
+                )
+            elif (cui_info1['context_vectors'] is not None and
+                  cui_info2['context_vectors'] is not None and
+                  overwrite_training != 1):
 
                 if (overwrite_training == 2 and
                     cui_info2['context_vectors'] is not None):
