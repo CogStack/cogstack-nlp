@@ -583,12 +583,9 @@ class Linker(AbstractEntityProvidingComponent):
                     continue
                 if self.cnf_l.multiple_predictions_per_detected_entity:
                     # create a barebones entity that has what is requried
-                    ent = self.tokenizer.create_entity(
-                            doc,
-                            entity.base.start_index,
-                            entity.base.end_index,
-                            entity.detected_name,
-                    )
+                    tokens = doc.get_tokens(entity.base.start_char_index, 
+                                            entity.base.end_char_index)
+                    ent = self.tokenizer.entity_from_tokens(tokens)
                 else:
                     ent = entity
                 ent.cui = predicted_cui
