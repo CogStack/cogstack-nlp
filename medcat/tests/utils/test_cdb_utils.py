@@ -491,6 +491,36 @@ class CDBUtilsTests(unittest.TestCase):
 
         np.testing.assert_array_almost_equal(merged_vec, expected_vec, decimal=10)
 
+    def test_merge_cdb_keeps_vectors_trained_in_one_cdb(self):
+        """Test that a concept trained in only one CDB keeps its vectors."""
+        trained_vec = np.array([1.0, 2.0, 3.0] + [0.0] * 297)
+        for trained_in in (1, 2):
+            for overwrite_training in (0, 1, 2):
+                with self.subTest(trained_in=trained_in,
+                                  overwrite_training=overwrite_training):
+                    cdbs = {1: CDB(self.config), 2: CDB(self.config)}
+                    for num, cdb in cdbs.items():
+                        is_trained = num == trained_in
+                        cdb.cui2info["CUI1"] = get_new_cui_info(
+                            cui="CUI1",
+                            preferred_name="Test",
+                            names={"test"},
+                            count_train=10 if is_trained else 0,
+                            context_vectors=(
+                                {"long": trained_vec.copy()}
+                                if is_trained else None)
+                        )
+
+                    merged_cdb = merge_cdb(
+                        cdbs[1], cdbs[2],
+                        overwrite_training=overwrite_training)
+
+                    merged_info = merged_cdb.cui2info["CUI1"]
+                    self.assertEqual(merged_info['count_train'], 10)
+                    self.assertIsNotNone(merged_info['context_vectors'])
+                    np.testing.assert_array_equal(
+                        merged_info['context_vectors']['long'], trained_vec)
+
     def test_merge_cdb_tags_merging(self):
         """Test that tags are properly merged."""
         cdb1 = CDB(self.config)
