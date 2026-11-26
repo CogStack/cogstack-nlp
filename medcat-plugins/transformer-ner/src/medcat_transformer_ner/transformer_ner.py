@@ -501,13 +501,13 @@ class NER(AbstractEntityProvidingComponent,
             for i in range(token_start, token_end):
                 # if there is a token of white space, skip it
                 # we'll hit the text inside eventually
-                if not doc[i].base.text.strip():
+                if doc[i].to_skip:
                     continue
                 for j in range(i + 1, token_end + 1):
                     span_key = (i, j)
                     if span_key in seen_token_spans:
                         continue
-                    if not doc[j - 1].base.text.strip():
+                    if doc[j - 1].to_skip:
                         continue
                     sub_tokens = list(doc[i:j])
                     # there might be more cleaning required here
