@@ -613,7 +613,7 @@ class Snomed:
         """
         refset_dict = refset_df.groupby('referencedComponentId').apply(
             lambda group: [{'code': row['mapTarget'],
-                            'mapGroup': row['mapPriority'],
+                            'mapGroup': row['mapGroup'],
                             'mapPriority': row['mapPriority'],
                             'mapRule': row['mapRule'],
                             'mapAdvice': row['mapAdvice']}
