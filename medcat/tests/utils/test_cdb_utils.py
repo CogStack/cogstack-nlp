@@ -255,6 +255,36 @@ class CDBUtilsTests(unittest.TestCase):
         # Should use cdb2's status (P) since it's more recent
         self.assertEqual(name_info['per_cui_status']['CUI1'], 'P')
 
+    def test_merge_cdb_keeps_status_of_each_name(self):
+        """Test that each name keeps its own status from cdb2."""
+        statuses = {"diabetes~mellitus": "P", "diabetes": "A", "dm": "N"}
+
+        def create_cdb() -> CDB:
+            cdb = CDB(self.config)
+            cdb.cui2info["CUI1"] = get_new_cui_info(
+                cui="CUI1",
+                preferred_name="Diabetes mellitus",
+                names=set(statuses),
+                subnames={"diabetes", "dm"}
+            )
+            for name, status in statuses.items():
+                cdb.name2info[name] = get_new_name_info(
+                    name=name, per_cui_status={"CUI1": status})
+            return cdb
+
+        for cdb1 in (CDB(self.config), create_cdb()):
+            in_cdb1 = "CUI1" in cdb1.cui2info
+            merged_cdb = merge_cdb(cdb1, create_cdb())
+            for name, status in statuses.items():
+                with self.subTest(in_cdb1=in_cdb1, name=name):
+                    self.assertEqual(
+                        merged_cdb.name2info[name]['per_cui_status']['CUI1'],
+                        status)
+            with self.subTest(in_cdb1=in_cdb1):
+                self.assertEqual(
+                    merged_cdb.cui2info["CUI1"]['preferred_name'],
+                    "Diabetes mellitus")
+
     def test_merge_cdb_token_counts(self):
         """Test that token counts are properly merged."""
         merged_cdb = merge_cdb(
