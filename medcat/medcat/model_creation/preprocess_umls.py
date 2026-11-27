@@ -51,7 +51,6 @@ medcat_csv_mapper: dict = {
     'CUI': 'cui',
     'STR': 'name',
     'SAB': 'ontologies',
-    'ISPREF': 'name_status',
     'TUI': 'type_ids',  # from MRSTY.RRF
 }
 
@@ -106,6 +105,13 @@ class UMLS:
             self.sem_types_file, names=self.sem_types_columns, sep=self.sep,
             index_col=False)
         df = df.merge(sem_types)
+
+        # The concept's preferred name is the row with TS = 'P',
+        # STT = 'PF' and ISPREF = 'Y'; every other name is automatic.
+        # ISPREF alone is Y/N, and MedCAT reads 'N' as must-disambiguate.
+        is_preferred = ((df['TS'] == 'P') & (df['STT'] == 'PF') &
+                        (df['ISPREF'] == 'Y'))
+        df['name_status'] = is_preferred.map({True: 'P', False: 'A'})
 
         # rename columns
 
